@@ -3,6 +3,7 @@
 import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
+import Image from "next/image"
 
 import {
   Sidebar,
@@ -48,9 +49,21 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2 font-bold text-[#00463c]">
-          <ShieldCheck className="h-6 w-6" />
-          <span>SEO OS</span>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-center px-2">
+            <Image
+              src="/docmorris-logo.png"
+              alt="DocMorris Logo"
+              width={140}
+              height={36}
+              priority
+              className="h-auto w-auto"
+            />
+          </div>
+          <div className="flex items-center gap-2 font-bold text-[#00463c] px-2">
+            <ShieldCheck className="h-5 w-5" />
+            <span className="text-sm">SEO Content Intelligence</span>
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>

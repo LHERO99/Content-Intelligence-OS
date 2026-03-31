@@ -5,6 +5,7 @@ import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 function SignInForm() {
   const [email, setEmail] = useState("");
@@ -47,7 +48,17 @@ function SignInForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#e7f3ee]">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
-        <div className="text-center">
+        <div className="text-center flex flex-col items-center">
+          <div className="mb-6">
+            <Image
+              src="/docmorris-logo.png"
+              alt="DocMorris Logo"
+              width={180}
+              height={48}
+              priority
+              className="h-auto w-auto"
+            />
+          </div>
           <h2 className="text-3xl font-bold text-[#00463c]">SEO Content Intelligence OS</h2>
           <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
         </div>
