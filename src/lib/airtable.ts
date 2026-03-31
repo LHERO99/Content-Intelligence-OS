@@ -142,18 +142,27 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
 
 export async function getUserByEmail(email: string): Promise<UserRecord | null> {
   try {
-    const records = await base('Users')
+    console.log(`[Airtable] Fetching user by email: ${email}`);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Airtable request timed out')), 5000)
+    );
+
+    const fetchPromise = base('Users')
       .select({
         filterByFormula: `{Email} = '${email}'`,
         maxRecords: 1,
       })
       .firstPage();
 
+    const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+
     if (records.length === 0) {
+      console.log(`[Airtable] No user found for email: ${email}`);
       return null;
     }
 
     const record = records[0];
+    console.log(`[Airtable] User found: ${record.id}`);
     return {
       id: record.id,
       Name: record.get('Name') as string,
@@ -169,7 +178,15 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
 
 export async function countUsers(): Promise<number> {
   try {
-    const records = await base('Users').select({ maxRecords: 1 }).firstPage();
+    console.log('[Airtable] Counting users...');
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Airtable request timed out')), 5000)
+    );
+
+    const fetchPromise = base('Users').select({ maxRecords: 1 }).firstPage();
+    const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+    
+    console.log(`[Airtable] User count check returned ${records.length} records`);
     return records.length;
   } catch (error) {
     console.error('Error counting users in Airtable:', error);
