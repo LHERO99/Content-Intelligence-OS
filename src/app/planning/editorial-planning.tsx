@@ -12,6 +12,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  ColumnOrderState,
 } from "@tanstack/react-table";
 import { 
   ArrowUpDown, 
@@ -22,7 +23,8 @@ import {
   Trash2,
   Filter,
   X,
-  AlertCircle
+  AlertCircle,
+  GripVertical
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +73,84 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+// DND Kit Imports
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+
 // --- Components ---
+
+const DraggableTableHeader = ({ header }: { header: any }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: header.column.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    opacity: isDragging ? 0.8 : 1,
+    position: "relative",
+  };
+
+  return (
+    <TableHead
+      ref={setNodeRef}
+      style={style}
+      className="text-[#00463c] font-bold whitespace-nowrap pb-2"
+    >
+      <div className="flex items-center gap-2">
+        {header.column.getCanSort() ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold flex items-center"
+            onClick={header.column.getToggleSortingHandler()}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            {header.column.getIsSorted() === "asc" ? (
+              <ChevronDown className="ml-2 h-4 w-4 rotate-180 shrink-0" />
+            ) : header.column.getIsSorted() === "desc" ? (
+              <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />
+            )}
+          </Button>
+        ) : (
+          <div className="h-8 flex items-center">
+            {flexRender(header.column.columnDef.header, header.getContext())}
+          </div>
+        )}
+        {header.column.id !== "select" && header.column.id !== "actions" && (
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+    </TableHead>
+  );
+};
 
 interface FilterBarProps {
   table: any;
@@ -542,6 +621,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>([]);
 
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -612,6 +692,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onColumnOrderChange: setColumnOrder,
     meta: {
       updateData,
       deleteData,
@@ -621,8 +702,36 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       columnFilters,
       columnVisibility,
       rowSelection,
+      columnOrder,
     },
   });
+
+  // Initialize column order
+  React.useEffect(() => {
+    if (columnOrder.length === 0 && table.getAllLeafColumns().length > 0) {
+      setColumnOrder(table.getAllLeafColumns().map((d) => d.id));
+    }
+  }, [table, columnOrder.length]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      setColumnOrder((columnOrder) => {
+        const oldIndex = columnOrder.indexOf(active.id as string);
+        const newIndex = columnOrder.indexOf(over.id as string);
+        return arrayMove(columnOrder, oldIndex, newIndex);
+      });
+    }
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -641,57 +750,62 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="text-[#00463c] font-bold whitespace-nowrap pb-2">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className="hover:bg-muted/50 border-[#00463c]/5 cursor-pointer"
-                      onClick={() => {
-                        setEditingKeyword(row.original);
-                        setIsEditModalOpen(true);
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToHorizontalAxis]}
+              onDragEnd={handleDragEnd}
+            >
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
+                      <SortableContext
+                        items={columnOrder}
+                        strategy={horizontalListSortingStrategy}
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <DraggableTableHeader key={header.id} header={header} />
+                        ))}
+                      </SortableContext>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      Keine Ergebnisse.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                        className="hover:bg-muted/50 border-[#00463c]/5 cursor-pointer"
+                        onClick={() => {
+                          setEditingKeyword(row.original);
+                          setIsEditModalOpen(true);
+                        }}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                      >
+                        Keine Ergebnisse.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </DndContext>
           </div>
         </CardContent>
       </Card>

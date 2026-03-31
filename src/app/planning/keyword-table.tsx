@@ -131,33 +131,33 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
       style={style}
       className="text-[#00463c] font-bold whitespace-nowrap pb-2"
     >
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          {header.column.getCanSort() ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold"
-              onClick={header.column.getToggleSortingHandler()}
-            >
-              {flexRender(header.column.columnDef.header, header.getContext())}
-              {header.column.getIsSorted() === "asc" ? (
-                <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-              ) : header.column.getIsSorted() === "desc" ? (
-                <ChevronDown className="ml-2 h-4 w-4" />
-              ) : (
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-              )}
-            </Button>
-          ) : (
-            flexRender(header.column.columnDef.header, header.getContext())
-          )}
-          {header.column.id !== "select" && header.column.id !== "actions" && (
-            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
-            </div>
-          )}
-        </div>
+      <div className="flex items-center gap-2">
+        {header.column.getCanSort() ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold flex items-center"
+            onClick={header.column.getToggleSortingHandler()}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            {header.column.getIsSorted() === "asc" ? (
+              <ChevronDown className="ml-2 h-4 w-4 rotate-180 shrink-0" />
+            ) : header.column.getIsSorted() === "desc" ? (
+              <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />
+            )}
+          </Button>
+        ) : (
+          <div className="h-8 flex items-center">
+            {flexRender(header.column.columnDef.header, header.getContext())}
+          </div>
+        )}
+        {header.column.id !== "select" && header.column.id !== "actions" && (
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
       </div>
     </TableHead>
   );
