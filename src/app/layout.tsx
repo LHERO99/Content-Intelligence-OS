@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Poppins, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth-provider";
 import { AlertsProvider } from "@/components/alerts-provider";
-import { GlobalAlerts } from "@/components/global-alerts";
+import { AuthenticatedLayout } from "@/components/authenticated-layout";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -31,22 +30,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <AuthProvider>
           <AlertsProvider>
             <TooltipProvider>
-              <SidebarProvider>
-                <AppSidebar />
-                <main className="flex-1">
-                  <div className="p-4">
-                    <SidebarTrigger />
-                    <GlobalAlerts />
-                    {children}
-                  </div>
-                </main>
-              </SidebarProvider>
+              <AuthenticatedLayout>
+                {children}
+              </AuthenticatedLayout>
             </TooltipProvider>
           </AlertsProvider>
         </AuthProvider>

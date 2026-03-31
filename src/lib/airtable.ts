@@ -65,6 +65,14 @@ export interface AuditLog {
   Raw_Payload?: string;
 }
 
+export interface UserRecord {
+  id: string;
+  Name: string;
+  Email: string;
+  Role: 'Admin' | 'Editor' | 'Viewer';
+  Password?: string;
+}
+
 // --- Fetchers ---
 
 export async function getKeywordMap(): Promise<KeywordMap[]> {
@@ -130,4 +138,72 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
     User_ID: record.get('User_ID') as string[],
     Raw_Payload: record.get('Raw_Payload') as string,
   }));
+}
+
+export async function getUserByEmail(email: string): Promise<UserRecord | null> {
+  try {
+    const records = await base('Users')
+      .select({
+        filterByFormula: `{Email} = '${email}'`,
+        maxRecords: 1,
+      })
+      .firstPage();
+
+    if (records.length === 0) {
+      return null;
+    }
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+    };
+  } catch (error) {
+    console.error('Error fetching user from Airtable:', error);
+    return null;
+  }
+}
+
+export async function countUsers(): Promise<number> {
+  try {
+    const records = await base('Users').select({ maxRecords: 1 }).firstPage();
+    return records.length;
+  } catch (error) {
+    console.error('Error counting users in Airtable:', error);
+    return 0;
+  }
+}
+
+export async function createUser(userData: Partial<UserRecord>): Promise<UserRecord | null> {
+  try {
+    const records = await base('Users').create([
+      {
+        fields: {
+          Name: userData.Name,
+          Email: userData.Email,
+          Role: userData.Role || 'Editor',
+          Password: userData.Password,
+        },
+      },
+    ]);
+
+    if (records.length === 0) {
+      return null;
+    }
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+    };
+  } catch (error) {
+    console.error('Error creating user in Airtable:', error);
+    return null;
+  }
 }
