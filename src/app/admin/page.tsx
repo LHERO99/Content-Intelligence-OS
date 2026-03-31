@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, UserPlus, Copy, Check } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X } from "lucide-react";
 
 interface User {
   id: string;
@@ -50,6 +50,12 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Editing state
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<{ name: string; role: string }>({ name: "", role: "" });
+  const [updating, setUpdating] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -64,7 +70,7 @@ export default function AdminPage() {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/users");
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!res.ok) throw new Error("Fehler beim Laden der Benutzer");
       const data = await res.json();
       setUsers(data);
     } catch (err: any) {
@@ -88,7 +94,7 @@ export default function AdminPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to invite user");
+      if (!res.ok) throw new Error(data.error || "Fehler beim Einladen des Benutzers");
 
       setInviteResult(data);
       setInviteData({ name: "", email: "", role: "Editor" });
@@ -97,6 +103,45 @@ export default function AdminPage() {
       setError(err.message);
     } finally {
       setInviting(false);
+    }
+  };
+
+  const handleUpdateUser = async (id: string) => {
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Name: editData.name, Role: editData.role }),
+      });
+
+      if (!res.ok) throw new Error("Fehler beim Aktualisieren des Benutzers");
+      
+      setEditingUserId(null);
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?")) return;
+    
+    setDeletingUserId(id);
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Fehler beim Löschen des Benutzers");
+      
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -117,12 +162,12 @@ export default function AdminPage() {
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Admin Panel</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Admin-Bereich</h2>
       </div>
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Fehler</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -133,41 +178,41 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5" />
-              Invite New User
+              Neuen Benutzer einladen
             </CardTitle>
             <CardDescription>
-              Create a new user and generate an invite link.
+              Erstellen Sie einen neuen Benutzer und generieren Sie einen Einladungslink.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleInvite} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name</label>
+                <label className="text-sm font-medium">Vollständiger Name</label>
                 <Input 
-                  placeholder="John Doe" 
+                  placeholder="Max Mustermann" 
                   value={inviteData.name}
                   onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email Address</label>
+                <label className="text-sm font-medium">E-Mail-Adresse</label>
                 <Input 
                   type="email" 
-                  placeholder="john@example.com" 
+                  placeholder="max@example.com" 
                   value={inviteData.email}
                   onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Role</label>
+                <label className="text-sm font-medium">Rolle</label>
                 <Select 
                   value={inviteData.role} 
                   onValueChange={(v) => setInviteData({ ...inviteData, role: v || "Editor" })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder="Rolle auswählen" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Admin">Admin</SelectItem>
@@ -177,20 +222,20 @@ export default function AdminPage() {
                 </Select>
               </div>
               <Button type="submit" className="w-full" disabled={inviting}>
-                {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generate Invite"}
+                {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Einladung generieren"}
               </Button>
             </form>
 
             {inviteResult && (
               <div className="mt-6 space-y-4 rounded-lg border bg-muted p-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Temporary Password:</p>
+                  <p className="text-sm font-medium">Temporäres Passwort:</p>
                   <code className="block rounded bg-background p-2 text-xs font-mono">
                     {inviteResult.tempPassword}
                   </code>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Invite Link:</p>
+                  <p className="text-sm font-medium">Einladungslink:</p>
                   <div className="flex gap-2">
                     <Input 
                       readOnly 
@@ -207,7 +252,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Share this link and password with the user. They should change their password after first login.
+                  Teilen Sie diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.
                 </p>
               </div>
             )}
@@ -217,9 +262,9 @@ export default function AdminPage() {
         {/* User List */}
         <Card>
           <CardHeader>
-            <CardTitle>User List</CardTitle>
+            <CardTitle>Benutzerliste</CardTitle>
             <CardDescription>
-              All users currently registered in the system.
+              Alle aktuell im System registrierten Benutzer.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -233,26 +278,97 @@ export default function AdminPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
+                      <TableHead>E-Mail</TableHead>
+                      <TableHead>Rolle</TableHead>
+                      <TableHead className="text-right">Aktionen</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {users.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.Name}</TableCell>
+                        <TableCell className="font-medium">
+                          {editingUserId === user.id ? (
+                            <Input 
+                              value={editData.name} 
+                              onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                              className="h-8"
+                            />
+                          ) : (
+                            user.Name
+                          )}
+                        </TableCell>
                         <TableCell>{user.Email}</TableCell>
                         <TableCell>
-                          <Badge variant={user.Role === "Admin" ? "default" : "secondary"}>
-                            {user.Role}
-                          </Badge>
+                          {editingUserId === user.id ? (
+                            <Select 
+                              value={editData.role} 
+                              onValueChange={(v) => setEditData({ ...editData, role: v || "Editor" })}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Admin">Admin</SelectItem>
+                                <SelectItem value="Editor">Editor</SelectItem>
+                                <SelectItem value="Viewer">Viewer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant={user.Role === "Admin" ? "default" : "secondary"}>
+                              {user.Role}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {editingUserId === user.id ? (
+                              <>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={() => handleUpdateUser(user.id)}
+                                  disabled={updating}
+                                >
+                                  {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 text-green-600" />}
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={() => setEditingUserId(null)}
+                                >
+                                  <X className="h-4 w-4 text-red-600" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={() => {
+                                    setEditingUserId(user.id);
+                                    setEditData({ name: user.Name, role: user.Role });
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  disabled={deletingUserId === user.id}
+                                >
+                                  {deletingUserId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-600" />}
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
                     {users.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground">
-                          No users found.
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          Keine Benutzer gefunden.
                         </TableCell>
                       </TableRow>
                     )}

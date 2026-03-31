@@ -4,14 +4,15 @@
 The SEO Content Tool is currently in active development, with core infrastructure for authentication, data fetching, and UI components established.
 
 ## Key Features Implemented
+- **German Localization**: The entire application UI has been fully localized to German, ensuring a seamless experience for German-speaking users.
 - **Authentication Flow**: A robust authentication system using NextAuth.js is in place. The flow has been fixed to ensure reliable session management and route protection.
 - **DocMorris Integration**: The DocMorris brand identity has been integrated, including the official logo (`public/docmorris-logo.png`) used in the sidebar and authentication pages.
 - **Planning Module**: Includes a Keyword Table and Trend Radar for SEO strategy.
 - **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel.
 - **Monitoring Module**: Dashboard for tracking content performance.
 - **Admin Panel**: A comprehensive administrative interface ([`src/app/admin/page.tsx`](src/app/admin/page.tsx)) featuring:
-  - **User Management**: A real-time list of all registered users with their roles.
-  - **Invite System**: Ability to invite new users by generating secure, temporary passwords and unique invite links.
+  - **User Management**: A real-time list of all registered users with their roles, including advanced features to **Edit** and **Delete** users.
+  - **Invite System**: Ability to invite new users by generating secure, temporary passwords and unique invite links, with the added capability to **Cancel** pending invitations.
   - **Role-Based Access**: Strict enforcement of Admin-only access to management tools.
 - **Airtable Integration**: Connection to Airtable for data storage and retrieval, including:
   - **Table Name Alignment**: All table names in the codebase are now explicitly aligned with the actual Airtable base structure using a centralized `TABLES` constant in [`src/lib/airtable.ts`](src/lib/airtable.ts:27).

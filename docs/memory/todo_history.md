@@ -16,10 +16,13 @@
 - [x] Developed core UI components (Button, Card, Input, etc.) using shadcn/ui.
 - [x] Implemented responsive sidebar with mobile support.
 - [x] Created global alerts system for user feedback.
+- [x] Fully localized the application UI to German.
 - [x] Resolved 404 errors by creating the missing Admin page and fixing sidebar navigation logic.
 - [x] Implemented Admin Panel features:
   - [x] User list with role badges.
   - [x] Invite system with temporary password and link generation.
+  - [x] Advanced user management: **Edit** and **Delete** users via [`src/app/api/admin/users/[id]/route.ts`](src/app/api/admin/users/[id]/route.ts).
+  - [x] Invitation management: **Cancel** pending invitations.
   - [x] Role-based access control for the Admin route.
 
 ### Data & API

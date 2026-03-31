@@ -113,7 +113,7 @@ export default function MonitoringPage() {
     let timeToRank = 'N/A';
     if (publishDate && top10Date && top10Date > publishDate) {
       const diffTime = Math.abs(top10Date.getTime() - publishDate.getTime());
-      timeToRank = `${Math.ceil(diffTime / (1000 * 60 * 60 * 24))} Days`;
+      timeToRank = `${Math.ceil(diffTime / (1000 * 60 * 60 * 24))} Tage`;
     }
 
     // Efficiency Score: (Latest Clicks - Initial Clicks) / Number of Updates
@@ -124,7 +124,7 @@ export default function MonitoringPage() {
     return {
       timeToRank,
       efficiencyScore,
-      publishDate: publishDate?.toLocaleDateString() || 'Unknown'
+      publishDate: publishDate?.toLocaleDateString('de-DE') || 'Unbekannt'
     };
   }, [selectedKeyword, keywordPerformance, contentLogs, selectedKeywordId]);
 
@@ -146,8 +146,8 @@ export default function MonitoringPage() {
     <div className="p-8 space-y-6 bg-[#e7f3ee] min-h-screen text-[#00463c]">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Content Monitoring</h1>
-          <p className="text-muted-foreground">Track performance and ROI of your published content.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Content-Monitoring</h1>
+          <p className="text-muted-foreground">Verfolgen Sie die Performance und den ROI Ihrer veröffentlichten Inhalte.</p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -166,17 +166,17 @@ export default function MonitoringPage() {
                 if (res.ok) {
                   addAlert({
                     type: 'success',
-                    message: 'Full System Audit Triggered',
-                    description: 'n8n is now performing a deep scan of GSC and Sistrix data.'
+                    message: 'Vollständiges System-Audit gestartet',
+                    description: 'n8n führt nun einen Tiefenscan der GSC- und Sistrix-Daten durch.'
                   });
                 } else {
-                  throw new Error('Failed to trigger audit');
+                  throw new Error('Audit konnte nicht gestartet werden');
                 }
               } catch (err) {
                 addAlert({
                   type: 'error',
-                  message: 'Audit Trigger Failed',
-                  description: 'Could not connect to n8n orchestration engine.'
+                  message: 'Audit-Trigger fehlgeschlagen',
+                  description: 'Verbindung zur n8n-Orchestrierungs-Engine fehlgeschlagen.'
                 });
               } finally {
                 setIsAuditing(false);
@@ -184,13 +184,13 @@ export default function MonitoringPage() {
             }}
           >
             <ShieldAlert className="w-4 h-4 mr-2" />
-            {isAuditing ? 'Auditing...' : 'Full System Audit'}
+            {isAuditing ? 'Audit läuft...' : 'Vollständiges System-Audit'}
           </Button>
 
           <div className="w-full md:w-72">
             <Select value={selectedKeywordId} onValueChange={(value) => setSelectedKeywordId(value || '')}>
               <SelectTrigger className="bg-white border-[#00463c]/20">
-                <SelectValue placeholder="Select a keyword" />
+                <SelectValue placeholder="Keyword auswählen" />
               </SelectTrigger>
               <SelectContent>
                 {keywords.map((kw) => (
@@ -216,27 +216,27 @@ export default function MonitoringPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{roiMetrics?.timeToRank}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Published on: {roiMetrics?.publishDate}
+                  Veröffentlicht am: {roiMetrics?.publishDate}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">Efficiency Score</CardTitle>
+                <CardTitle className="text-sm font-medium">Effizienz-Score</CardTitle>
                 <Zap className="w-4 h-4 text-[#00463c]" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{roiMetrics?.efficiencyScore}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Traffic gain per update
+                  Traffic-Gewinn pro Update
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">Current Visibility</CardTitle>
+                <CardTitle className="text-sm font-medium">Aktuelle Sichtbarkeit</CardTitle>
                 <TrendingUp className="w-4 h-4 text-[#00463c]" />
               </CardHeader>
               <CardContent>
@@ -244,7 +244,7 @@ export default function MonitoringPage() {
                   {keywordPerformance[keywordPerformance.length - 1]?.Sistrix_VI?.toFixed(3) || '0.000'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Sistrix Visibility Index
+                  Sistrix Sichtbarkeitsindex
                 </p>
               </CardContent>
             </Card>
@@ -256,10 +256,10 @@ export default function MonitoringPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5" />
-                  Search Performance Trends
+                  Suchperformance-Trends
                 </CardTitle>
                 <CardDescription>
-                  GSC Clicks vs Impressions for "{selectedKeyword.Keyword}"
+                  GSC Klicks vs. Impressionen für "{selectedKeyword.Keyword}"
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
@@ -278,7 +278,7 @@ export default function MonitoringPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="Date" 
-                      tickFormatter={(str) => new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
                       stroke="#00463c"
                       fontSize={12}
                     />
@@ -286,14 +286,14 @@ export default function MonitoringPage() {
                     <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                      labelFormatter={(label) => new Date(label).toLocaleDateString('de-DE')}
                     />
                     <Legend />
                     <Area 
                       yAxisId="left"
                       type="monotone" 
                       dataKey="GSC_Clicks" 
-                      name="Clicks"
+                      name="Klicks"
                       stroke="#00463c" 
                       fillOpacity={1} 
                       fill="url(#colorClicks)" 
@@ -302,7 +302,7 @@ export default function MonitoringPage() {
                       yAxisId="right"
                       type="monotone" 
                       dataKey="GSC_Impressions" 
-                      name="Impressions"
+                      name="Impressionen"
                       stroke="#82ca9d" 
                       fillOpacity={1} 
                       fill="url(#colorImpressions)" 
@@ -314,9 +314,9 @@ export default function MonitoringPage() {
 
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
-                <CardTitle>Sistrix Visibility Index</CardTitle>
+                <CardTitle>Sistrix Sichtbarkeitsindex</CardTitle>
                 <CardDescription>
-                  Long-term visibility trend for the target URL
+                  Langfristiger Sichtbarkeitstrend für die Ziel-URL
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
@@ -325,23 +325,23 @@ export default function MonitoringPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="Date" 
-                      tickFormatter={(str) => new Date(str).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
                       stroke="#00463c"
                       fontSize={12}
                     />
                     <YAxis stroke="#00463c" fontSize={12} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                      labelFormatter={(label) => new Date(label).toLocaleDateString('de-DE')}
                     />
                     <Line 
                       type="monotone" 
                       dataKey="Sistrix_VI" 
-                      name="Visibility Index"
+                      name="Sichtbarkeitsindex"
                       stroke="#00463c" 
                       strokeWidth={2}
                       dot={{ r: 4, fill: '#00463c' }}
-                      activeDot={{ r: 6 }}
+                      activeDot={{ r: 6 }} 
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -354,9 +354,9 @@ export default function MonitoringPage() {
           <div className="bg-white p-8 rounded-full mb-4">
             <BarChart3 className="w-12 h-12 text-[#00463c]/20" />
           </div>
-          <h2 className="text-xl font-semibold">No Published Content Found</h2>
+          <h2 className="text-xl font-semibold">Keine veröffentlichten Inhalte gefunden</h2>
           <p className="text-muted-foreground max-w-md mx-auto mt-2">
-            Start publishing content in the Creation module to see performance data here.
+            Beginnen Sie mit der Veröffentlichung von Inhalten im Erstellungs-Modul, um hier Performance-Daten zu sehen.
           </p>
         </div>
       )}

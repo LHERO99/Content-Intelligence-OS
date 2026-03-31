@@ -27,12 +27,12 @@ const items = [
     icon: LayoutDashboard,
   },
   {
-    title: "Content-Planning",
+    title: "Content-Planung",
     url: "/planning",
     icon: FileText,
   },
   {
-    title: "Content-Creation",
+    title: "Content-Erstellung",
     url: "/creation",
     icon: PenTool,
   },
@@ -83,7 +83,7 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton render={<Link href="/admin" />}>
                     <ShieldCheck className="text-red-600" />
-                    <span>Admin Panel</span>
+                    <span>Admin-Bereich</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
@@ -111,7 +111,7 @@ export function AppSidebar() {
                   className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <LogOut />
-                  <span>Sign out</span>
+                  <span>Abmelden</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -121,7 +121,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton render={<Link href="/auth/signin" />}>
                 <User />
-                <span>Sign in</span>
+                <span>Anmelden</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

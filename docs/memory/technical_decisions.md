@@ -31,10 +31,14 @@
 ## UI Framework
 - **Decision**: Using Tailwind CSS and Radix UI (via shadcn/ui) for the component library.
 - **Rationale**: Enables rapid development of accessible and responsive UI components with a consistent design language.
+- **Decision**: Full UI localization to German.
+- **Rationale**: To align with the primary user base and the DocMorris brand context, the entire application interface has been localized to German.
 
 ## User Onboarding & Invite System
 - **Decision**: Implemented a temporary password and invite link generation system for user onboarding in [`src/app/api/admin/invite/route.ts`](src/app/api/admin/invite/route.ts).
 - **Rationale**: Provides a secure and controlled way to add new users without requiring an immediate SMTP setup. Admins generate a unique link containing the temporary password, which the user can use for their first login.
+- **Decision**: Implemented user management API routes ([`/api/admin/users/[id]`](src/app/api/admin/users/[id]/route.ts)) for editing and deleting users.
+- **Rationale**: To provide full administrative control over the user lifecycle, allowing admins to update user roles, details, or remove access as needed.
 - **Decision**: Using `crypto.randomBytes(8).toString("hex")` for temporary passwords.
 - **Rationale**: Ensures high entropy and sufficient complexity for initial credentials while remaining easy for admins to copy and share.
 

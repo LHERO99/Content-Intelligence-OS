@@ -187,7 +187,7 @@ export default function DashboardPage() {
             className="border-deep-forest/20 text-deep-forest"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            Aktualisieren
           </Button>
         </div>
       </div>
@@ -195,21 +195,21 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <KPICard 
-          title="Total Visibility Index" 
+          title="Sichtbarkeitsindex Gesamt" 
           value={latestVI} 
-          description="Aggregated Sistrix VI" 
+          description="Aggregierter Sistrix VI" 
           icon={TrendingUp} 
         />
         <KPICard 
-          title="GSC Clicks" 
+          title="GSC Klicks" 
           value={totalClicks.toLocaleString()} 
-          description="Last 30 days" 
+          description="Letzte 30 Tage" 
           icon={MousePointer2} 
         />
         <KPICard 
-          title="Active Trends" 
+          title="Aktive Trends" 
           value={activeTrendsCount} 
-          description="New opportunities identified" 
+          description="Neue Potenziale identifiziert" 
           icon={Activity} 
         />
       </div>
@@ -218,8 +218,8 @@ export default function DashboardPage() {
         {/* Performance Chart */}
         <Card className="col-span-4 bg-white border-mint-mist/20">
           <CardHeader>
-            <CardTitle className="text-deep-forest">Visibility Index Trend</CardTitle>
-            <CardDescription>Historical performance across all tracked keywords</CardDescription>
+            <CardTitle className="text-deep-forest">Sichtbarkeitsindex Trend</CardTitle>
+            <CardDescription>Historische Performance über alle Keywords</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[350px] w-full">
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                       fontSize={12} 
                       tickLine={false} 
                       axisLine={false}
-                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
                     />
                     <YAxis 
                       stroke="#00463c" 
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground">
-                  No performance data available
+                  Keine Performance-Daten verfügbar
                 </div>
               )}
             </div>
@@ -268,8 +268,8 @@ export default function DashboardPage() {
         {/* Alerts Feed */}
         <Card className="col-span-3 bg-white border-mint-mist/20">
           <CardHeader>
-            <CardTitle className="text-deep-forest">Recent Alerts</CardTitle>
-            <CardDescription>Closed Loop diagnoses & system actions</CardDescription>
+            <CardTitle className="text-deep-forest">Aktuelle Warnmeldungen</CardTitle>
+            <CardDescription>Closed Loop Diagnosen & Systemaktionen</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -279,17 +279,17 @@ export default function DashboardPage() {
                     <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-deep-forest'}`} />
                     <div className="flex-1 space-y-1">
                       <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-deep-forest'}`}>
-                        {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unknown Action'}
+                        {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Aktion'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {log.Timestamp ? new Date(log.Timestamp).toLocaleString() : 'Unknown Date'}
+                        {log.Timestamp ? new Date(log.Timestamp).toLocaleString('de-DE') : 'Unbekanntes Datum'}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  No recent alerts found
+                  Keine aktuellen Warnmeldungen gefunden
                 </div>
               )}
             </div>

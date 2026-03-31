@@ -270,3 +270,49 @@ export async function createUser(userData: Partial<UserRecord>): Promise<UserRec
     return handleAirtableError(error, 'createUser');
   }
 }
+
+export async function updateUser(id: string, userData: Partial<UserRecord>): Promise<UserRecord | null> {
+  try {
+    console.log(`[Airtable] Updating user: ${id}`);
+    const fields: any = {};
+    if (userData.Name) fields.Name = userData.Name;
+    if (userData.Email) fields.Email = userData.Email;
+    if (userData.Role) fields.Role = userData.Role;
+    if (userData.Password) fields.Password = userData.Password;
+
+    const records = await base(TABLES.USERS).update([
+      {
+        id,
+        fields,
+      },
+    ]);
+
+    if (records.length === 0) {
+      console.error('[Airtable] No records returned after update');
+      return null;
+    }
+
+    const record = records[0];
+    console.log(`[Airtable] User updated successfully: ${record.id}`);
+    return {
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'updateUser');
+  }
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  try {
+    console.log(`[Airtable] Deleting user: ${id}`);
+    await base(TABLES.USERS).destroy([id]);
+    console.log(`[Airtable] User deleted successfully: ${id}`);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error, 'deleteUser');
+  }
+}
