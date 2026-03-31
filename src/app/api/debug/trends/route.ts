@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPotentialTrends, base } from '@/lib/airtable';
+import { getPotentialTrends, base, TABLES } from '@/lib/airtable';
 
 export async function GET() {
   const results: any = {
@@ -12,9 +12,9 @@ export async function GET() {
   };
 
   try {
-    console.log('[Debug-Trends] Step 1: Attempting simple fetch from "Potential-Trends"');
+    console.log(`[Debug-Trends] Step 1: Attempting simple fetch from "${TABLES.POTENTIAL_TRENDS}"`);
     // Try a very simple fetch first
-    const simpleRecords = await base('Potential-Trends').select({
+    const simpleRecords = await base(TABLES.POTENTIAL_TRENDS).select({
       maxRecords: 1,
       fields: [] // Fetch no fields, just to check table access
     }).firstPage();
@@ -22,7 +22,7 @@ export async function GET() {
     results.step1_simple_fetch = {
       success: true,
       count: simpleRecords.length,
-      message: 'Table "Potential-Trends" is accessible'
+      message: `Table "${TABLES.POTENTIAL_TRENDS}" is accessible`
     };
   } catch (error: any) {
     console.error('[Debug-Trends] Step 1 Failed:', error.message);
@@ -30,7 +30,7 @@ export async function GET() {
       success: false,
       error: error.message,
       statusCode: error.statusCode,
-      hint: 'If 403, the table name "Potential-Trends" might be wrong or the token lacks "data.records:read" scope for this base.'
+      hint: `If 403, the table name "${TABLES.POTENTIAL_TRENDS}" might be wrong or the token lacks "data.records:read" scope for this base.`
     };
   }
 
@@ -49,23 +49,6 @@ export async function GET() {
       error: error.message,
       statusCode: error.statusCode
     };
-  }
-
-  // Final check: Try with space instead of hyphen if hyphen failed
-  if (!results.step1_simple_fetch.success && results.step1_simple_fetch.statusCode === 403) {
-    try {
-      console.log('[Debug-Trends] Step 3: Attempting fetch from "Potential Trends" (with space)');
-      const spaceRecords = await base('Potential Trends').select({ maxRecords: 1 }).firstPage();
-      results.step3_space_check = {
-        success: true,
-        message: 'Table "Potential Trends" (with space) IS accessible! The hyphen was the issue.'
-      };
-    } catch (e: any) {
-      results.step3_space_check = {
-        success: false,
-        error: e.message
-      };
-    }
   }
 
   return NextResponse.json(results);

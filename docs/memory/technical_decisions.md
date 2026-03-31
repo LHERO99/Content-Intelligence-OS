@@ -12,7 +12,9 @@
 - **Decision**: Enforced server-only execution for Airtable logic and extracted types.
 - **Rationale**: To prevent sensitive Airtable API keys and logic from leaking to the client, [`src/lib/airtable.ts`](src/lib/airtable.ts) is now marked with `server-only`. Shared types were moved to [`src/lib/airtable-types.ts`](src/lib/airtable-types.ts) to allow client components to use types without importing the server-side logic.
 - **Decision**: Centralized Airtable error handling with specific 403/401/404 logic.
-- **Rationale**: To improve developer and user experience, a unified `handleAirtableError` function in [`src/lib/airtable.ts`](src/lib/airtable.ts:28) now intercepts all Airtable API errors. It provides specific troubleshooting steps for 403 (Authorization/Scopes) and 401 (Invalid Key) errors, making it easier to diagnose configuration issues.
+- **Rationale**: To improve developer and user experience, a unified `handleAirtableError` function in [`src/lib/airtable.ts`](src/lib/airtable.ts:38) now intercepts all Airtable API errors. It provides specific troubleshooting steps for 403 (Authorization/Scopes) and 401 (Invalid Key) errors, making it easier to diagnose configuration issues.
+- **Decision**: Centralized table name management via a `TABLES` constant and removed resilient matching logic.
+- **Rationale**: To ensure consistency and prevent runtime errors due to table name mismatches, all table names are now explicitly defined in a centralized `TABLES` constant in [`src/lib/airtable.ts`](src/lib/airtable.ts:27). This replaces previous "resilient matching" logic with explicit, predictable naming that matches the actual Airtable base structure.
 
 ## Route Protection
 - **Decision**: Using `withAuth` HOC and NextAuth.js for route protection.
@@ -29,6 +31,12 @@
 ## UI Framework
 - **Decision**: Using Tailwind CSS and Radix UI (via shadcn/ui) for the component library.
 - **Rationale**: Enables rapid development of accessible and responsive UI components with a consistent design language.
+
+## User Onboarding & Invite System
+- **Decision**: Implemented a temporary password and invite link generation system for user onboarding in [`src/app/api/admin/invite/route.ts`](src/app/api/admin/invite/route.ts).
+- **Rationale**: Provides a secure and controlled way to add new users without requiring an immediate SMTP setup. Admins generate a unique link containing the temporary password, which the user can use for their first login.
+- **Decision**: Using `crypto.randomBytes(8).toString("hex")` for temporary passwords.
+- **Rationale**: Ensures high entropy and sufficient complexity for initial credentials while remaining easy for admins to copy and share.
 
 ## State Management
 - **Decision**: Leveraging React Context and Hooks for local and global state management (e.g., `AlertsProvider`, `AuthProvider`).

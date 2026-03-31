@@ -23,6 +23,16 @@ if (!process.env.AIRTABLE_BASE_ID) {
 export const airtable = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY });
 export const base = airtable.base(process.env.AIRTABLE_BASE_ID);
 
+// --- Table Names ---
+export const TABLES = {
+  KEYWORD_MAP: 'Keyword-Map',
+  CONTENT_LOG: 'Content-Log',
+  PERFORMANCE_DATA: 'Performance_Data',
+  POTENTIAL_TRENDS: 'Potential_Trends',
+  AUDIT_LOGS: 'Audit_Logs',
+  USERS: 'Users',
+} as const;
+
 // --- Fetchers ---
 
 async function handleAirtableError(error: any, operation: string): Promise<never> {
@@ -55,7 +65,7 @@ async function handleAirtableError(error: any, operation: string): Promise<never
 
 export async function getKeywordMap(): Promise<KeywordMap[]> {
   try {
-    const records = await base('Keyword-Map').select().all();
+    const records = await base(TABLES.KEYWORD_MAP).select().all();
     return records.map((record) => ({
       id: record.id,
       Keyword: record.get('Keyword') as string,
@@ -73,7 +83,7 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
 
 export async function getContentLogs(): Promise<ContentLog[]> {
   try {
-    const records = await base('Content-Log').select().all();
+    const records = await base(TABLES.CONTENT_LOG).select().all();
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
@@ -91,7 +101,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
 
 export async function getPerformanceData(): Promise<PerformanceData[]> {
   try {
-    const records = await base('Performance-Data').select().all();
+    const records = await base(TABLES.PERFORMANCE_DATA).select().all();
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
@@ -109,35 +119,17 @@ export async function getPerformanceData(): Promise<PerformanceData[]> {
 
 export async function getPotentialTrends(): Promise<PotentialTrend[]> {
   try {
-    // Try 'Potential-Trends' first, then 'Potential Trends' if it fails with 403/404
-    const tableNames = ['Potential-Trends', 'Potential Trends'];
-    let lastError: any;
-
-    for (const tableName of tableNames) {
-      try {
-        console.log(`[Airtable] Attempting fetch from table: "${tableName}"`);
-        const records = await base(tableName).select().all();
-        console.log(`[Airtable] Successfully fetched ${records.length} records from "${tableName}"`);
-        
-        return records.map((record) => ({
-          id: record.id,
-          Trend_Topic: record.get('Trend_Topic') as string,
-          Source: record.get('Source') as 'GSC' | 'Sistrix',
-          Gap_Score: record.get('Gap_Score') as number,
-          Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
-        }));
-      } catch (error: any) {
-        lastError = error;
-        const status = error.statusCode || error.status;
-        console.warn(`[Airtable] Failed to fetch from "${tableName}" (Status: ${status})`);
-        // If it's not a 403 or 404, it might be a network/auth issue that won't be fixed by changing table name
-        if (status !== 403 && status !== 404) {
-          break;
-        }
-      }
-    }
+    console.log(`[Airtable] Fetching from table: "${TABLES.POTENTIAL_TRENDS}"`);
+    const records = await base(TABLES.POTENTIAL_TRENDS).select().all();
+    console.log(`[Airtable] Successfully fetched ${records.length} records from "${TABLES.POTENTIAL_TRENDS}"`);
     
-    return handleAirtableError(lastError, 'getPotentialTrends');
+    return records.map((record) => ({
+      id: record.id,
+      Trend_Topic: record.get('Trend_Topic') as string,
+      Source: record.get('Source') as 'GSC' | 'Sistrix',
+      Gap_Score: record.get('Gap_Score') as number,
+      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
+    }));
   } catch (error) {
     return handleAirtableError(error, 'getPotentialTrends');
   }
@@ -145,7 +137,7 @@ export async function getPotentialTrends(): Promise<PotentialTrend[]> {
 
 export async function getAuditLogs(): Promise<AuditLog[]> {
   try {
-    const records = await base('Audit-Logs').select().all();
+    const records = await base(TABLES.AUDIT_LOGS).select().all();
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
@@ -171,7 +163,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
         setTimeout(() => reject(new Error('Airtable request timed out')), TIMEOUT_MS)
       );
 
-      const fetchPromise = base('Users')
+      const fetchPromise = base(TABLES.USERS)
         .select({
           filterByFormula: `{Email} = '${email}'`,
           maxRecords: 1,
@@ -218,7 +210,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
 export async function countUsers(): Promise<number> {
   try {
     console.log('[Airtable] Counting users...');
-    const records = await base('Users').select({
+    const records = await base(TABLES.USERS).select({
       fields: ['Email'],
     }).all();
     
@@ -229,10 +221,27 @@ export async function countUsers(): Promise<number> {
   }
 }
 
+export async function getAllUsers(): Promise<UserRecord[]> {
+  try {
+    console.log('[Airtable] Fetching all users...');
+    const records = await base(TABLES.USERS).select().all();
+    
+    return records.map((record) => ({
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getAllUsers');
+  }
+}
+
 export async function createUser(userData: Partial<UserRecord>): Promise<UserRecord | null> {
   try {
     console.log(`[Airtable] Creating user: ${userData.Email}`);
-    const records = await base('Users').create([
+    const records = await base(TABLES.USERS).create([
       {
         fields: {
           Name: userData.Name,

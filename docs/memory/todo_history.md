@@ -17,10 +17,16 @@
 - [x] Implemented responsive sidebar with mobile support.
 - [x] Created global alerts system for user feedback.
 - [x] Resolved 404 errors by creating the missing Admin page and fixing sidebar navigation logic.
+- [x] Implemented Admin Panel features:
+  - [x] User list with role badges.
+  - [x] Invite system with temporary password and link generation.
+  - [x] Role-based access control for the Admin route.
 
 ### Data & API
 - [x] Established Airtable connection with timeout handling.
-- [x] Resolved Airtable 403 Authorization errors by implementing centralized error handling and troubleshooting logic in [`src/lib/airtable.ts`](src/lib/airtable.ts:28).
+- [x] Aligned Airtable table names in the codebase with the actual base structure using a centralized `TABLES` constant in [`src/lib/airtable.ts`](src/lib/airtable.ts:27).
+- [x] Removed resilient matching logic in favor of explicit table naming.
+- [x] Resolved Airtable 403 Authorization errors by implementing centralized error handling and troubleshooting logic in [`src/lib/airtable.ts`](src/lib/airtable.ts:38).
 - [x] Fixed `TypeError: Cannot read properties of undefined (reading 'startsWith')` on the dashboard by adding defensive null/undefined checks for Airtable field accesses in [`src/app/page.tsx`](src/app/page.tsx:95).
 - [x] Implemented n8n trigger API for workflow automation.
 - [x] Created debug routes for simulating data drops, counting users, and verifying Airtable connectivity.
