@@ -9,6 +9,9 @@ export interface KeywordMap {
   Status: KeywordStatus;
   Editorial_Deadline?: string;
   Assigned_Editor?: string[]; // Link to Users
+  Main_Keyword: 'Y' | 'N';
+  Article_Count?: number;
+  Avg_Product_Value?: number;
 }
 
 export interface ContentLog {

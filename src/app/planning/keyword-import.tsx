@@ -36,6 +36,9 @@ export function KeywordImport() {
             Search_Volume: parseInt(row.Search_Volume || row.search_volume || row.Volume || row.volume || "0"),
             Difficulty: parseInt(row.Difficulty || row.difficulty || "0"),
             Status: "New",
+            Main_Keyword: (row.Main_Keyword || row.main_keyword || "N").toUpperCase() === "Y" ? "Y" : "N",
+            Article_Count: row.Article_Count || row.article_count ? parseInt(row.Article_Count || row.article_count) : undefined,
+            Avg_Product_Value: row.Avg_Product_Value || row.avg_product_value ? parseFloat(row.Avg_Product_Value || row.avg_product_value) : undefined,
           })).filter((kw: any) => kw.Keyword && kw.Target_URL);
 
           if (keywords.length === 0) {
@@ -87,7 +90,7 @@ export function KeywordImport() {
         <DialogHeader>
           <DialogTitle>Keywords importieren</DialogTitle>
           <DialogDescription>
-            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword (Pflicht), Target_URL (Pflicht), Search_Volume, Difficulty.
+            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword (Pflicht), Target_URL (Pflicht), Search_Volume, Difficulty, Main_Keyword (Y/N), Article_Count, Avg_Product_Value.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

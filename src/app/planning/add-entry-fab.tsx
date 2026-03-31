@@ -42,6 +42,9 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
   const [url, setUrl] = useState('');
   const [volume, setVolume] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [mainKeyword, setMainKeyword] = useState<'Y' | 'N'>('N');
+  const [articleCount, setArticleCount] = useState('');
+  const [avgProductValue, setAvgProductValue] = useState('');
   const [trendTopic, setTrendTopic] = useState('');
   const [source, setSource] = useState<'GSC' | 'Sistrix'>('GSC');
   const [reason, setReason] = useState('');
@@ -60,6 +63,9 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
     setUrl('');
     setVolume('');
     setDifficulty('');
+    setMainKeyword('N');
+    setArticleCount('');
+    setAvgProductValue('');
     setTrendTopic('');
     setSource('GSC');
     setReason('');
@@ -84,6 +90,9 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
           Search_Volume: volume ? Number(volume) : undefined,
           Difficulty: difficulty ? Number(difficulty) : undefined,
           Status: 'Backlog',
+          Main_Keyword: mainKeyword,
+          Article_Count: articleCount ? Number(articleCount) : undefined,
+          Avg_Product_Value: avgProductValue ? Number(avgProductValue) : undefined,
         };
       } else if (type === 'trend') {
         if (!trendTopic || !source) throw new Error('Trend-Thema und Quelle sind erforderlich.');
@@ -199,6 +208,41 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       className="h-11 text-base"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="mainKeyword" className="text-sm font-semibold">Main Keyword *</Label>
+                    <Select value={mainKeyword} onValueChange={(v) => setMainKeyword(v as 'Y' | 'N')}>
+                      <SelectTrigger id="mainKeyword" className="h-11 text-base">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Y">Ja (Y)</SelectItem>
+                        <SelectItem value="N">Nein (N)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="articleCount" className="text-sm font-semibold">Article Count</Label>
+                    <Input
+                      id="articleCount"
+                      type="number"
+                      value={articleCount}
+                      onChange={(e) => setArticleCount(e.target.value)}
+                      className="h-11 text-base"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="avgProductValue" className="text-sm font-semibold">Avg. Product Value</Label>
+                  <Input
+                    id="avgProductValue"
+                    type="number"
+                    step="0.01"
+                    value={avgProductValue}
+                    onChange={(e) => setAvgProductValue(e.target.value)}
+                    className="h-11 text-base"
+                  />
                 </div>
               </>
             )}

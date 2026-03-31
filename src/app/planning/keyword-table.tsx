@@ -68,6 +68,20 @@ export const columns: ColumnDef<KeywordMap>[] = [
     ),
   },
   {
+    accessorKey: "Main_Keyword",
+    header: "Main",
+    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
+      const isMain = row.getValue("Main_Keyword") === "Y";
+      return (
+        <div className="flex justify-center">
+          <Badge variant={isMain ? "default" : "outline"} className={isMain ? "bg-[#00463c] text-white" : ""}>
+            {isMain ? "Y" : "N"}
+          </Badge>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "Search_Volume",
     header: ({ column }: HeaderContext<KeywordMap, unknown>) => {
       return (
@@ -109,6 +123,21 @@ export const columns: ColumnDef<KeywordMap>[] = [
           {status}
         </Badge>
       );
+    },
+  },
+  {
+    accessorKey: "Article_Count",
+    header: "Articles",
+    cell: ({ row }: CellContext<KeywordMap, unknown>) => (
+      <div className="text-center">{row.getValue("Article_Count") ?? "-"}</div>
+    ),
+  },
+  {
+    accessorKey: "Avg_Product_Value",
+    header: "Avg. Value",
+    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
+      const val = row.getValue("Avg_Product_Value") as number;
+      return <div className="text-center">{val ? `${val.toFixed(2)} €` : "-"}</div>;
     },
   },
   {

@@ -17,7 +17,18 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { Keyword, Target_URL, Search_Volume, Difficulty, Status, Editorial_Deadline, Assigned_Editor } = body;
+    const { 
+      Keyword, 
+      Target_URL, 
+      Search_Volume, 
+      Difficulty, 
+      Status, 
+      Editorial_Deadline, 
+      Assigned_Editor,
+      Main_Keyword,
+      Article_Count,
+      Avg_Product_Value
+    } = body;
 
     if (!Keyword || !Target_URL) {
       return NextResponse.json(
@@ -34,6 +45,9 @@ export async function POST(request: Request) {
       Status: Status || 'Backlog',
       Editorial_Deadline,
       Assigned_Editor,
+      Main_Keyword: Main_Keyword || 'N',
+      Article_Count: Article_Count ? Number(Article_Count) : undefined,
+      Avg_Product_Value: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
     });
 
     if (!result) {
