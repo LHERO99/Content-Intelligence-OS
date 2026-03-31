@@ -20,7 +20,8 @@ import {
   MoreHorizontal,
   AlertCircle,
   Trash2,
-  Filter
+  Filter,
+  X
 } from 'lucide-react';
 import { BlacklistEntry } from '@/lib/airtable-types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +60,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // --- Edit Modal Component ---
 
@@ -230,80 +240,28 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   {
     accessorKey: "Keyword",
     header: ({ column }) => (
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="-ml-3 h-8 text-[#00463c] font-bold"
-        >
-          Keyword
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-        <Popover>
-          <PopoverTrigger>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={`h-8 w-8 p-0 ${column.getFilterValue() ? 'text-[#00463c]' : 'text-muted-foreground'}`}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              <Filter className="h-3.5 w-3.5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-60 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Filter Keyword</h4>
-              <Input
-                placeholder="Suchen..."
-                value={(column.getFilterValue() as string) ?? ""}
-                onChange={(event) => column.setFilterValue(event.target.value)}
-                className="h-8 text-xs"
-                autoFocus
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="-ml-3 h-8 text-[#00463c] font-bold"
+      >
+        Keyword
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
     ),
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Reason",
     header: ({ column }) => (
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="-ml-3 h-8 text-[#00463c] font-bold"
-        >
-          Grund
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-        <Popover>
-          <PopoverTrigger>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={`h-8 w-8 p-0 ${column.getFilterValue() ? 'text-[#00463c]' : 'text-muted-foreground'}`}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              <Filter className="h-3.5 w-3.5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-60 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Filter Grund</h4>
-              <Input
-                placeholder="Suchen..."
-                value={(column.getFilterValue() as string) ?? ""}
-                onChange={(event) => column.setFilterValue(event.target.value)}
-                className="h-8 text-xs"
-                autoFocus
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="-ml-3 h-8 text-[#00463c] font-bold"
+      >
+        Grund
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
     ),
     cell: ({ row }) => <div>{row.getValue("Reason") || "-"}</div>,
   },
@@ -373,7 +331,7 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
                 <Button 
                   variant="destructive" 
                   size="sm" 
-                  className="h-7 text-xs w-full"
+                  className="h-7 text-xs w-full bg-red-600 hover:bg-red-700 text-white font-bold"
                   onClick={async (e: React.MouseEvent) => {
                     e.stopPropagation();
                     await (table.options.meta as any).deleteData(entry.id);
@@ -389,6 +347,90 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
     },
   },
 ];
+
+interface FilterBarProps {
+  table: any;
+  columns: ColumnDef<any>[];
+}
+
+function FilterBar({ table, columns }: FilterBarProps) {
+  const [selectedColumn, setSelectedColumn] = React.useState<string>("");
+  const [filterValue, setFilterValue] = React.useState<string>("");
+
+  const columnFilters = table.getState().columnFilters;
+
+  const addFilter = () => {
+    if (!selectedColumn || !filterValue) return;
+    table.getColumn(selectedColumn)?.setFilterValue(filterValue);
+    setSelectedColumn("");
+    setFilterValue("");
+  };
+
+  const removeFilter = (columnId: string) => {
+    table.getColumn(columnId)?.setFilterValue(undefined);
+  };
+
+  const filterableColumns = columns.filter(
+    (col) => col.id !== "select" && col.id !== "actions" && (col as any).accessorKey
+  );
+
+  return (
+    <div className="flex flex-col gap-3 py-2">
+      <div className="flex items-center gap-2">
+        <Select value={selectedColumn} onValueChange={(v) => setSelectedColumn(v || "")}>
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue placeholder="Spalte wählen" />
+          </SelectTrigger>
+          <SelectContent>
+            {filterableColumns.map((col) => (
+              <SelectItem key={col.id || (col as any).accessorKey} value={col.id || (col as any).accessorKey}>
+                {typeof col.header === 'string' ? col.header : (col.id || (col as any).accessorKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Filterwert..."
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          className="w-[200px] h-9"
+          onKeyDown={(e) => e.key === "Enter" && addFilter()}
+        />
+        <Button onClick={addFilter} size="sm" className="bg-[#00463c] hover:bg-[#00332c] h-9">
+          Filter hinzufügen
+        </Button>
+      </div>
+      
+      {columnFilters.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {columnFilters.map((filter: any) => {
+            const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
+            const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
+            return (
+              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-[#00463c]/10 text-[#00463c] border-[#00463c]/20">
+                <span className="font-semibold">{label}:</span> {filter.value}
+                <button 
+                  onClick={() => removeFilter(filter.id)}
+                  className="ml-1 hover:bg-[#00463c]/20 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => table.resetColumnFilters()}
+            className="h-7 text-xs text-muted-foreground hover:text-[#00463c]"
+          >
+            Alle löschen
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // --- Main Component ---
 
@@ -569,7 +611,7 @@ export function Blacklist() {
         {selectedRows.length > 0 && (
           <Popover>
             <PopoverTrigger>
-              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
+              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold">
                 <Trash2 className="h-4 w-4 mr-2" />
                 {selectedRows.length} löschen
               </Button>
@@ -580,7 +622,7 @@ export function Blacklist() {
                 <Button 
                   variant="destructive" 
                   size="sm" 
-                  className="w-full"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold"
                   disabled={isBulkDeleting}
                   onClick={() => bulkDelete(selectedRows.map(r => r.original.id))}
                 >
@@ -591,6 +633,8 @@ export function Blacklist() {
           </Popover>
         )}
       </div>
+
+      <FilterBar table={table} columns={columns} />
 
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardContent className="p-0">

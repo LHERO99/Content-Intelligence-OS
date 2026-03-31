@@ -24,7 +24,8 @@ import {
   Plus,
   AlertCircle,
   Trash2,
-  Filter
+  Filter,
+  X
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -148,47 +149,95 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
-          {header.column.getCanFilter() && (
-            <Popover>
-              <PopoverTrigger>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={`h-8 w-8 p-0 ${header.column.getFilterValue() ? 'text-[#00463c]' : 'text-muted-foreground'}`}
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                >
-                  <Filter className="h-3.5 w-3.5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-60 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Filter {flexRender(header.column.columnDef.header, header.getContext())}</h4>
-                  <Input
-                    placeholder="Suchen..."
-                    value={(header.column.getFilterValue() as string) ?? ""}
-                    onChange={(event) => header.column.setFilterValue(event.target.value)}
-                    className="h-8 text-xs"
-                    autoFocus
-                  />
-                  {header.column.getFilterValue() && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 text-xs w-full"
-                      onClick={() => header.column.setFilterValue(undefined)}
-                    >
-                      Filter zurücksetzen
-                    </Button>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
         </div>
       </div>
     </TableHead>
   );
 };
+
+interface FilterBarProps {
+  table: any;
+  columns: ColumnDef<any>[];
+}
+
+function FilterBar({ table, columns }: FilterBarProps) {
+  const [selectedColumn, setSelectedColumn] = React.useState<string>("");
+  const [filterValue, setFilterValue] = React.useState<string>("");
+
+  const columnFilters = table.getState().columnFilters;
+
+  const addFilter = () => {
+    if (!selectedColumn || !filterValue) return;
+    table.getColumn(selectedColumn)?.setFilterValue(filterValue);
+    setSelectedColumn("");
+    setFilterValue("");
+  };
+
+  const removeFilter = (columnId: string) => {
+    table.getColumn(columnId)?.setFilterValue(undefined);
+  };
+
+  const filterableColumns = columns.filter(
+    (col) => col.id !== "select" && col.id !== "actions" && col.id !== "Content-Plan" && (col as any).accessorKey
+  );
+
+  return (
+    <div className="flex flex-col gap-3 py-2">
+      <div className="flex items-center gap-2">
+        <Select value={selectedColumn} onValueChange={(v) => setSelectedColumn(v || "")}>
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue placeholder="Spalte wählen" />
+          </SelectTrigger>
+          <SelectContent>
+            {filterableColumns.map((col) => (
+              <SelectItem key={col.id || (col as any).accessorKey} value={col.id || (col as any).accessorKey}>
+                {typeof col.header === 'string' ? col.header : (col.id || (col as any).accessorKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="Filterwert..."
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          className="w-[200px] h-9"
+          onKeyDown={(e) => e.key === "Enter" && addFilter()}
+        />
+        <Button onClick={addFilter} size="sm" className="bg-[#00463c] hover:bg-[#00332c] h-9">
+          Filter hinzufügen
+        </Button>
+      </div>
+      
+      {columnFilters.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {columnFilters.map((filter: any) => {
+            const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
+            const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
+            return (
+              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-[#00463c]/10 text-[#00463c] border-[#00463c]/20">
+                <span className="font-semibold">{label}:</span> {filter.value}
+                <button 
+                  onClick={() => removeFilter(filter.id)}
+                  className="ml-1 hover:bg-[#00463c]/20 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => table.resetColumnFilters()}
+            className="h-7 text-xs text-muted-foreground hover:text-[#00463c]"
+          >
+            Alle löschen
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface EditKeywordModalProps {
   keyword: KeywordMap | null;
@@ -738,7 +787,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
         {selectedRows.length > 0 && (
           <Popover>
             <PopoverTrigger>
-              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
+              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold">
                 <Trash2 className="h-4 w-4 mr-2" />
                 {selectedRows.length} löschen
               </Button>
@@ -750,7 +799,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
                   <Button 
                     variant="destructive" 
                     size="sm" 
-                    className="flex-1"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
                     disabled={isBulkDeleting}
                     onClick={() => bulkDelete(selectedRows.map(r => r.original.id))}
                   >
@@ -791,6 +840,8 @@ export function KeywordTable({ data }: KeywordTableProps) {
           </DropdownMenu>
         </div>
       </div>
+
+      <FilterBar table={table} columns={columns} />
 
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardContent className="p-0">
