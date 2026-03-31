@@ -9,6 +9,8 @@
 ## Airtable Query Handling
 - **Decision**: Implemented explicit timeouts for all Airtable queries in [`src/lib/airtable.ts`](src/lib/airtable.ts).
 - **Rationale**: Prevents long-running requests from blocking the application and improves overall responsiveness.
+- **Decision**: Enforced server-only execution for Airtable logic and extracted types.
+- **Rationale**: To prevent sensitive Airtable API keys and logic from leaking to the client, [`src/lib/airtable.ts`](src/lib/airtable.ts) is now marked with `server-only`. Shared types were moved to [`src/lib/airtable-types.ts`](src/lib/airtable-types.ts) to allow client components to use types without importing the server-side logic.
 
 ## Route Protection
 - **Decision**: Using `withAuth` HOC and NextAuth.js for route protection.
@@ -19,6 +21,8 @@
 - **Rationale**: Simplifies initial setup by allowing the first person to sign in to automatically become the administrator, removing the need for hardcoded mock credentials.
 - **Decision**: Removed mock credentials from the sign-in page UI.
 - **Rationale**: Enhances security and provides a cleaner user experience for production-ready environments.
+- **Decision**: Configured dynamic cookie settings for NextAuth.
+- **Rationale**: To ensure compatibility across different environments (local development vs. production), NextAuth is configured to use secure cookies only when `NEXTAUTH_URL` starts with `https`. This resolves session persistence issues in non-HTTPS environments.
 
 ## UI Framework
 - **Decision**: Using Tailwind CSS and Radix UI (via shadcn/ui) for the component library.
