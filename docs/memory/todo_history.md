@@ -10,6 +10,10 @@
 - [x] Resolved "Signing in..." hang with client-side timeouts and `finally` blocks.
 - [x] Secured Airtable logic with `server-only` and extracted types to prevent client-side leaks.
 - [x] Added session debug route to troubleshoot authentication state.
+- [x] Implemented mandatory password change flow for new users.
+- [x] Created `PasswordChangeModal` component for forced security updates.
+- [x] Developed User Profile page ([`src/app/profile/page.tsx`](src/app/profile/page.tsx)) for account management.
+- [x] Added API route for password changes ([`src/app/api/user/change-password/route.ts`](src/app/api/user/change-password/route.ts)).
 
 ### UI & Branding
 - [x] Integrated DocMorris logo into the sidebar and sign-in page.

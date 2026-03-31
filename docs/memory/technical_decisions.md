@@ -37,6 +37,10 @@
 ## User Onboarding & Invite System
 - **Decision**: Implemented a temporary password and invite link generation system for user onboarding in [`src/app/api/admin/invite/route.ts`](src/app/api/admin/invite/route.ts).
 - **Rationale**: Provides a secure and controlled way to add new users without requiring an immediate SMTP setup. Admins generate a unique link containing the temporary password, which the user can use for their first login.
+- **Decision**: Forced password change for new users via `PasswordChangeModal`.
+- **Rationale**: To ensure account security, users invited with a temporary password are required to change it upon their first successful login. This is enforced by checking a `requiresPasswordChange` flag in the user session.
+- **Decision**: Implemented a dedicated Profile page for user self-service.
+- **Rationale**: Allows users to manage their own account details and update their password independently, reducing administrative overhead.
 - **Decision**: Implemented user management API routes ([`/api/admin/users/[id]`](src/app/api/admin/users/[id]/route.ts)) for editing and deleting users.
 - **Rationale**: To provide full administrative control over the user lifecycle, allowing admins to update user roles, details, or remove access as needed.
 - **Decision**: Using `crypto.randomBytes(8).toString("hex")` for temporary passwords.

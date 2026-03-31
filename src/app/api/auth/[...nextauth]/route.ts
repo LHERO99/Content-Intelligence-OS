@@ -8,11 +8,13 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      passwordChanged: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: string;
+    passwordChanged: boolean;
   }
 }
 
@@ -20,6 +22,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: string;
+    passwordChanged: boolean;
   }
 }
 
@@ -57,6 +60,7 @@ export const authOptions: NextAuthOptions = {
                 name: user.Name,
                 email: user.Email,
                 role: user.Role,
+                passwordChanged: !!user.Password_Changed,
               };
             }
             return null;
@@ -75,6 +79,7 @@ export const authOptions: NextAuthOptions = {
               Email: credentials.email,
               Password: hashedPassword,
               Role: 'Admin',
+              Password_Changed: true, // First user sets their own password immediately
             });
 
             if (newUser) {
@@ -84,6 +89,7 @@ export const authOptions: NextAuthOptions = {
                 name: newUser.Name,
                 email: newUser.Email,
                 role: newUser.Role,
+                passwordChanged: true,
               };
             }
           }
@@ -104,6 +110,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.passwordChanged = user.passwordChanged;
       }
       return token;
     },
@@ -113,6 +120,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.passwordChanged = token.passwordChanged;
       }
       console.log("[Auth] Session Callback - Final Session User:", !!session.user, "ID:", session.user?.id);
       return session;

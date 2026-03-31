@@ -185,6 +185,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
         Email: record.get('Email') as string,
         Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
         Password: record.get('Password') as string,
+        Password_Changed: record.get('Password_Changed') as boolean,
       };
     } catch (error: any) {
       const status = error.statusCode || error.status;
@@ -232,6 +233,7 @@ export async function getAllUsers(): Promise<UserRecord[]> {
       Email: record.get('Email') as string,
       Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
       Password: record.get('Password') as string,
+      Password_Changed: record.get('Password_Changed') as boolean,
     }));
   } catch (error) {
     return handleAirtableError(error, 'getAllUsers');
@@ -248,6 +250,7 @@ export async function createUser(userData: Partial<UserRecord>): Promise<UserRec
           Email: userData.Email,
           Role: userData.Role || 'Editor',
           Password: userData.Password,
+          Password_Changed: userData.Password_Changed || false,
         },
       },
     ]);
@@ -265,6 +268,7 @@ export async function createUser(userData: Partial<UserRecord>): Promise<UserRec
       Email: record.get('Email') as string,
       Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
       Password: record.get('Password') as string,
+      Password_Changed: record.get('Password_Changed') as boolean,
     };
   } catch (error) {
     return handleAirtableError(error, 'createUser');
@@ -279,6 +283,7 @@ export async function updateUser(id: string, userData: Partial<UserRecord>): Pro
     if (userData.Email) fields.Email = userData.Email;
     if (userData.Role) fields.Role = userData.Role;
     if (userData.Password) fields.Password = userData.Password;
+    if (userData.Password_Changed !== undefined) fields.Password_Changed = userData.Password_Changed;
 
     const records = await base(TABLES.USERS).update([
       {
@@ -300,6 +305,7 @@ export async function updateUser(id: string, userData: Partial<UserRecord>): Pro
       Email: record.get('Email') as string,
       Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
       Password: record.get('Password') as string,
+      Password_Changed: record.get('Password_Changed') as boolean,
     };
   } catch (error) {
     return handleAirtableError(error, 'updateUser');

@@ -6,6 +6,9 @@ The SEO Content Tool is currently in active development, with core infrastructur
 ## Key Features Implemented
 - **German Localization**: The entire application UI has been fully localized to German, ensuring a seamless experience for German-speaking users.
 - **Authentication Flow**: A robust authentication system using NextAuth.js is in place. The flow has been fixed to ensure reliable session management and route protection.
+- **Security & Profile Management**:
+  - **Mandatory Password Change**: A security flow that forces new users to change their temporary password upon first login via a dedicated modal ([`src/components/password-change-modal.tsx`](src/components/password-change-modal.tsx)).
+  - **User Profile Page**: A dedicated profile management page ([`src/app/profile/page.tsx`](src/app/profile/page.tsx)) where users can view their information and update their password at any time.
 - **DocMorris Integration**: The DocMorris brand identity has been integrated, including the official logo (`public/docmorris-logo.png`) used in the sidebar and authentication pages.
 - **Planning Module**: Includes a Keyword Table and Trend Radar for SEO strategy.
 - **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel.

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalAlerts } from "@/components/global-alerts";
+import { PasswordChangeModal } from "@/components/password-change-modal";
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -33,6 +34,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
             {children}
           </div>
         </main>
+        <PasswordChangeModal />
       </SidebarProvider>
     );
   }

@@ -56,4 +56,5 @@ export interface UserRecord {
   Email: string;
   Role: 'Admin' | 'Editor' | 'Viewer';
   Password?: string;
+  Password_Changed?: boolean;
 }

@@ -106,6 +106,12 @@ export function AppSidebar() {
             </div>
             <SidebarMenu>
               <SidebarMenuItem>
+                <SidebarMenuButton render={<Link href="/profile" />}>
+                  <User className="h-4 w-4" />
+                  <span>Profil</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={() => signOut({ callbackUrl: "/auth/signin" })}
                   className="text-red-600 hover:bg-red-50 hover:text-red-700"
