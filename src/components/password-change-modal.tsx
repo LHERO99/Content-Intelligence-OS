@@ -24,6 +24,7 @@ export function PasswordChangeModal() {
   const [error, setError] = useState<string | null>(null);
 
   // Only show if user is logged in and hasn't changed password
+  // We check for explicit false to ensure it doesn't show while session is loading or if field is missing
   const isOpen = !!session?.user && session.user.passwordChanged === false;
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -16,10 +16,18 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **Keyword-Map**: Strategic management of target keywords and their status.
     - **Trend-Radar**: Identifies new potentials via GSC and Sistrix gap analysis.
     - **Blacklist**: Management of excluded keywords to prevent irrelevant content creation.
+  - **Standardized Table Features**:
+    - **Draggable Columns**: Users can reorder table columns for personalized data views.
+    - **Unified Toolbar**: A consistent toolbar across all planning tables for actions and filtering.
+    - **Dynamic Filters**: Real-time filtering capabilities to quickly narrow down datasets.
+    - **Restricted Sorting**: Optimized sorting logic to maintain data context.
+    - **Persistent Modals**: Modals now require explicit closure (preventing outside click closure) to protect user input.
   - **UI Refinements**:
     - **Enhanced Visual Hierarchy**: Implemented bold headlines and improved spacing for better readability.
     - **Optimized Inputs**: Larger input fields for better touch and mouse interaction.
     - **Layout Stability**: Fixed clipping issues and ensured consistent alignment across all planning tabs.
+    - **Standardized Headers**: Table headers are now left-aligned with a uniform height for a cleaner, professional look.
+    - **Bulk Actions**: Transitioned from row-level actions to a bulk action model to reduce UI clutter.
   - **Unified Data Entry**:
     - **"Add Entry" FAB**: Implemented a unified Floating Action Button ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)) that serves as the central entry point for all planning data.
     - **Multi-Type Support**: The FAB supports adding Keywords, Trends, and Blacklist entries through a single, context-aware interface that automatically adapts to the active tab.

@@ -57,8 +57,12 @@
 - **Rationale**: Airtable's API limits batch operations to 10 records per call. The `bulkCreateKeywords` function automatically handles chunking to ensure reliable imports of larger datasets while staying within API limits.
 - **Decision**: Enforced mandatory "Keyword" and "Target_URL" fields for all data entry methods (manual and import).
 - **Rationale**: To ensure data integrity and prevent incomplete records in the planning workspace, these two fields are now strictly required. Manual entry forms and CSV import logic both validate for these fields before submission.
-- **Decision**: Implementation of a dedicated Blacklist view in the Planning module.
-- **Rationale**: To maintain content quality and focus, a separate management interface for excluded keywords was added, allowing users to explicitly mark and manage terms that should not be targeted.
+  - **Decision**: Implementation of a dedicated Blacklist view in the Planning module.
+  - **Rationale**: To maintain content quality and focus, a separate management interface for excluded keywords was added, allowing users to explicitly mark and manage terms that should not be targeted.
+  - **Decision**: Standardized table headers (left-aligned, uniform height) and removal of row-level actions.
+  - **Rationale**: To create a cleaner, more professional UI, table headers were standardized. Row-level actions were replaced with bulk actions to reduce visual clutter and streamline the user experience.
+  - **Decision**: Persistent modals (preventing closure on outside click).
+  - **Rationale**: To protect user input and prevent accidental data loss, modals were made persistent, requiring an explicit click on a close button or action button to dismiss.
 
 ## State Management
 - **Decision**: Leveraging React Context and Hooks for local and global state management (e.g., `AlertsProvider`, `AuthProvider`).

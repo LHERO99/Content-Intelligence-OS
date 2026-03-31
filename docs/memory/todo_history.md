@@ -53,6 +53,12 @@
 - [x] Refined Planning UI:
   - [x] Implemented bold headlines and larger input fields.
   - [x] Fixed clipping issues and improved layout interaction design.
+  - [x] Standardized table headers (left-aligned, uniform height).
+  - [x] Implemented draggable columns for all planning tables.
+  - [x] Unified toolbar for actions and filtering across Keyword-Map, Editorial Planning, and Blacklist.
+  - [x] Added dynamic filters and restricted sorting to improve data navigation.
+  - [x] Transitioned to bulk actions and removed row-level action clutter.
+  - [x] Implemented persistent modals to prevent accidental data loss on outside clicks.
 - [x] Implemented unified "Add Entry" FAB ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)):
   - [x] Centralized entry point for Keywords, Trends, and Blacklist items.
   - [x] Context-aware type selection based on active tab.

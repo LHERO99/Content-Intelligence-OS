@@ -60,7 +60,7 @@ export const authOptions: NextAuthOptions = {
                 name: user.Name,
                 email: user.Email,
                 role: user.Role,
-                passwordChanged: !!user.Password_Changed,
+                passwordChanged: user.Password_Changed === true,
               };
             }
             return null;
