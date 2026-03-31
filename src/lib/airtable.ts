@@ -196,6 +196,7 @@ export async function countUsers(): Promise<number> {
 
 export async function createUser(userData: Partial<UserRecord>): Promise<UserRecord | null> {
   try {
+    console.log(`[Airtable] Creating user: ${userData.Email}`);
     const records = await base('Users').create([
       {
         fields: {
@@ -208,10 +209,12 @@ export async function createUser(userData: Partial<UserRecord>): Promise<UserRec
     ]);
 
     if (records.length === 0) {
+      console.error('[Airtable] No records returned after creation');
       return null;
     }
 
     const record = records[0];
+    console.log(`[Airtable] User created successfully: ${record.id}`);
     return {
       id: record.id,
       Name: record.get('Name') as string,

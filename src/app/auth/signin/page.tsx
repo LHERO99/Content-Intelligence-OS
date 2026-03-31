@@ -41,7 +41,12 @@ function SignInForm() {
       console.log("Sign-in result received:", result);
 
       if (result?.error) {
-        console.error("Sign-in error:", result.error);
+        console.error("Sign-in error details:", {
+          error: result.error,
+          status: result.status,
+          ok: result.ok,
+          url: result.url
+        });
         setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
       } else if (result?.ok) {
         console.log("Sign-in successful, redirecting to:", callbackUrl);

@@ -38,6 +38,8 @@ export default withAuth(
         const isAuthPage = path.startsWith("/auth/signin");
         const isApiAuthPage = path.startsWith("/api/auth");
         
+        console.log("[Middleware] Authorized check:", { path, hasToken: !!token, role: token?.role });
+
         // Always allow auth pages and API auth routes
         if (isAuthPage || isApiAuthPage) {
           return true;

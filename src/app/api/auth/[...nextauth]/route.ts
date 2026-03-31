@@ -114,6 +114,9 @@ export const authOptions = {
     async jwt({ token, user }: { token: any; user: any }) {
       console.log("JWT callback triggered", { hasUser: !!user, tokenRole: token.role });
       if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
         token.role = user.role;
       }
       return token;
@@ -121,6 +124,7 @@ export const authOptions = {
     async session({ session, token }: { session: any; token: any }) {
       console.log("Session callback triggered", { tokenRole: token.role });
       if (session.user) {
+        session.user.id = token.id;
         session.user.role = token.role;
       }
       return session;
