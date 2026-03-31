@@ -1,6 +1,6 @@
 "use client";
 
-import { PotentialTrend } from "@/lib/airtable";
+import { PotentialTrend } from "@/lib/airtable-types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

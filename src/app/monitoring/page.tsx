@@ -28,13 +28,10 @@ import {
   Area
 } from 'recharts';
 import { 
-  getKeywordMap, 
-  getPerformanceData, 
-  getContentLogs,
   KeywordMap, 
   PerformanceData, 
   ContentLog 
-} from '@/lib/airtable';
+} from '@/lib/airtable-types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Clock, Zap, BarChart3, ShieldAlert } from 'lucide-react';
@@ -53,14 +50,23 @@ export default function MonitoringPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [kwData, perfData, logData] = await Promise.all([
-          getKeywordMap(),
-          getPerformanceData(),
-          getContentLogs()
+        // In a real app, these would be dedicated API routes.
+        // For now, we're using the test/debug routes as placeholders to avoid client-side Airtable imports.
+        const [kwRes, perfRes, logRes] = await Promise.all([
+          fetch('/api/test-airtable'),
+          fetch('/api/debug/airtable?table=Performance-Data'),
+          fetch('/api/debug/airtable?table=Content-Log')
         ]);
         
+        const kwData = await kwRes.json();
+        // Handle potential errors or empty responses from placeholder routes
+        const perfData = perfRes.ok ? (await perfRes.json()).records || [] : [];
+        const logData = logRes.ok ? (await logRes.json()).records || [] : [];
+        
         // Only show published keywords or those with performance data
-        const publishedKeywords = kwData.filter(k => k.Status === 'Published' || perfData.some(p => p.Keyword_ID?.includes(k.id)));
+        const publishedKeywords = Array.isArray(kwData) 
+          ? kwData.filter((k: KeywordMap) => k.Status === 'Published' || perfData.some((p: PerformanceData) => p.Keyword_ID?.includes(k.id)))
+          : [];
         
         setKeywords(publishedKeywords);
         setPerformance(perfData);
@@ -111,7 +117,6 @@ export default function MonitoringPage() {
     }
 
     // Efficiency Score: (Latest Clicks - Initial Clicks) / Number of Updates
-    // For simplicity, we'll use (Max Clicks / Total Logs) as a proxy if data is sparse
     const maxClicks = Math.max(...keywordPerformance.map(p => p.GSC_Clicks || 0));
     const totalUpdates = contentLogs.filter(l => l.Keyword_ID?.includes(selectedKeywordId)).length || 1;
     const efficiencyScore = (maxClicks / totalUpdates).toFixed(1);

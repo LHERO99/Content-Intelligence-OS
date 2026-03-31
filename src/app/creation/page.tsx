@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getKeywordMap, getContentLogs, KeywordMap, ContentLog } from '@/lib/airtable';
+import { KeywordMap, ContentLog } from '@/lib/airtable-types';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { ScoringEngine } from './scoring-engine';
 import { ReasoningPanel } from './reasoning-panel';
@@ -26,7 +26,15 @@ export default function CreationPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [kwData, logData] = await Promise.all([getKeywordMap(), getContentLogs()]);
+        // Using placeholder API routes to avoid client-side Airtable imports
+        const [kwRes, logRes] = await Promise.all([
+          fetch('/api/test-airtable'),
+          fetch('/api/debug/airtable?table=Content-Log')
+        ]);
+        
+        const kwData = await kwRes.json();
+        const logData = logRes.ok ? (await logRes.json()).records || [] : [];
+        
         setKeywords(kwData);
         setContentLogs(logData);
       } catch (error) {

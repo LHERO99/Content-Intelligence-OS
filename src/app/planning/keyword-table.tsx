@@ -37,7 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { KeywordMap } from "@/lib/airtable";
+import { KeywordMap } from "@/lib/airtable-types";
 
 export const columns: ColumnDef<KeywordMap>[] = [
   {

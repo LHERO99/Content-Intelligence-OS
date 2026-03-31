@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  getPerformanceData, 
-  getPotentialTrends, 
-  getAuditLogs,
   PerformanceData,
   PotentialTrend,
   AuditLog
-} from "@/lib/airtable";
+} from "@/lib/airtable-types";
 import { 
   Card, 
   CardContent, 
@@ -82,20 +79,25 @@ export default function DashboardPage() {
     else setLoading(true);
 
     try {
-      const [perf, trends, logs] = await Promise.all([
-        getPerformanceData(),
-        getPotentialTrends(),
-        getAuditLogs(),
+      // Using placeholder API routes to avoid client-side Airtable imports
+      const [perfRes, trendsRes, logsRes] = await Promise.all([
+        fetch('/api/debug/airtable?table=Performance-Data'),
+        fetch('/api/debug/airtable?table=Potential-Trends'),
+        fetch('/api/debug/airtable?table=Audit-Logs'),
       ]);
       
+      const perf = perfRes.ok ? (await perfRes.json()).records || [] : [];
+      const trends = trendsRes.ok ? (await trendsRes.json()).records || [] : [];
+      const logs = logsRes.ok ? (await logsRes.json()).records || [] : [];
+
       // Check for new diagnostic alerts since last fetch
-      const diagnosticAlerts = logs.filter(log => 
+      const diagnosticAlerts = logs.filter((log: AuditLog) => 
         log.Action.startsWith("DIAGNOSTIC_ALERT:") && 
         (!auditLogs.some(oldLog => oldLog.id === log.id))
       );
 
       if (isRefresh && diagnosticAlerts.length > 0) {
-        diagnosticAlerts.forEach(alert => {
+        diagnosticAlerts.forEach((alert: AuditLog) => {
           addAlert({
             type: 'warning',
             message: alert.Action.replace('DIAGNOSTIC_ALERT: ', ''),
