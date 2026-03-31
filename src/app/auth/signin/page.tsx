@@ -1,13 +1,14 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useState, Suspense } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useState, Suspense, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 
 function SignInForm() {
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,6 +16,14 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get("callbackUrl") || "/planning";
+
+  useEffect(() => {
+    console.log("[SignIn] Session status changed:", { status, hasSession: !!session });
+    if (status === "authenticated") {
+      console.log("[SignIn] User is already authenticated, redirecting to:", callbackUrl);
+      router.push(callbackUrl);
+    }
+  }, [status, session, callbackUrl, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -7,8 +7,8 @@ export default withAuth(
     const path = req.nextUrl.pathname;
     const isAuthPage = path.startsWith("/auth/signin");
 
-    // Always allow auth pages and API auth routes
-    if (isAuthPage || path.startsWith("/api/auth")) {
+    // Always allow auth pages, API auth routes, and debug routes
+    if (isAuthPage || path.startsWith("/api/auth") || path.startsWith("/api/debug")) {
       if (isAuthPage && token) {
         console.log("[Middleware] Authenticated user on signin page, redirecting to /planning");
         return NextResponse.redirect(new URL("/planning", req.url));
@@ -37,11 +37,12 @@ export default withAuth(
         const path = req.nextUrl.pathname;
         const isAuthPage = path.startsWith("/auth/signin");
         const isApiAuthPage = path.startsWith("/api/auth");
+        const isDebugPage = path.startsWith("/api/debug");
         
         console.log("[Middleware] Authorized check:", { path, hasToken: !!token, role: token?.role });
 
-        // Always allow auth pages and API auth routes
-        if (isAuthPage || isApiAuthPage) {
+        // Always allow auth pages, API auth routes, and debug routes
+        if (isAuthPage || isApiAuthPage || isDebugPage) {
           return true;
         }
         
