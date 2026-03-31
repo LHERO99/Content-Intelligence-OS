@@ -224,7 +224,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="articleCount" className="text-sm font-semibold">Article Count</Label>
+                    <Label htmlFor="articleCount" className="text-sm font-semibold">Produkt-Anzahl</Label>
                     <Input
                       id="articleCount"
                       type="number"

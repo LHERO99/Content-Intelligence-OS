@@ -90,7 +90,7 @@ export function KeywordImport() {
         <DialogHeader>
           <DialogTitle>Keywords importieren</DialogTitle>
           <DialogDescription>
-            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword (Pflicht), Target_URL (Pflicht), Search_Volume, Difficulty, Main_Keyword (Y/N), Article_Count, Avg_Product_Value.
+            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword (Pflicht), Target_URL (Pflicht), Search_Volume, Difficulty, Main_Keyword (Y/N), Produkt-Anzahl, Avg_Product_Value.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

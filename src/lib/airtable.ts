@@ -367,14 +367,29 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
           }
         }
 
-        if (kw.Main_Keyword === 'Y' && kw.Target_URL) {
-          const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
-            filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`,
-            maxRecords: 1,
-          }).firstPage();
+        if (kw.Main_Keyword === 'Y') {
+          // 1. Check if URL already has a Main Keyword
+          if (kw.Target_URL) {
+            const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
+              filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`,
+              maxRecords: 1,
+            }).firstPage();
 
-          if (existingMainKeywords.length > 0) {
-            throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword. Import abgebrochen.`, 409);
+            if (existingMainKeywords.length > 0) {
+              throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword. Import abgebrochen.`, 409);
+            }
+          }
+
+          // 2. Check if this Keyword is already a Main Keyword for ANY URL
+          if (kw.Keyword) {
+            const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({
+              filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`,
+              maxRecords: 1,
+            }).firstPage();
+
+            if (existingGlobalMain.length > 0) {
+              throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
+            }
           }
         }
       }
@@ -440,7 +455,9 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
     }
 
     // Validation: A URL can only have ONE "Main Keyword" (Y)
+    // AND a Keyword can only be a "Main Keyword" (Y) ONCE globally
     if (kw.Main_Keyword === 'Y') {
+      // 1. URL check
       const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
         filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`,
         maxRecords: 1,
@@ -448,6 +465,16 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
 
       if (existingMainKeywords.length > 0) {
         throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
+      }
+
+      // 2. Global Keyword check
+      const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({
+        filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`,
+        maxRecords: 1,
+      }).firstPage();
+
+      if (existingGlobalMain.length > 0) {
+        throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
       }
     }
 
@@ -517,8 +544,9 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
         }
       }
 
-      // 2. Check Main Keyword uniqueness if Main_Keyword became 'Y' or URL changed while it is 'Y'
-      if (nextMain === 'Y' && (kw.Main_Keyword === 'Y' || kw.Target_URL !== undefined)) {
+      // 2. Check Main Keyword uniqueness if Main_Keyword became 'Y' or URL/Keyword changed while it is 'Y'
+      if (nextMain === 'Y' && (kw.Main_Keyword === 'Y' || kw.Target_URL !== undefined || kw.Keyword !== undefined)) {
+        // 2a. URL check
         const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
           filterByFormula: `AND({Target_URL} = '${nextURL}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`,
           maxRecords: 1,
@@ -526,6 +554,16 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
 
         if (existingMainKeywords.length > 0) {
           throw new AirtableValidationError(`Die URL ${nextURL} hat bereits ein Main Keyword.`, 409);
+        }
+
+        // 2b. Global Keyword check
+        const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({
+          filterByFormula: `AND({Keyword} = '${nextKeyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`,
+          maxRecords: 1,
+        }).firstPage();
+
+        if (existingGlobalMain.length > 0) {
+          throw new AirtableValidationError(`Das Keyword "${nextKeyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
         }
       }
     }

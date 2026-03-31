@@ -12,10 +12,19 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  HeaderContext,
-  CellContext,
+  ColumnOrderState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { 
+  ArrowUpDown, 
+  ChevronDown, 
+  MoreHorizontal, 
+  Search, 
+  Map, 
+  Loader2, 
+  GripVertical,
+  Plus,
+  AlertCircle
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,273 +53,422 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { KeywordMap, KeywordStatus } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/airtable-types";
 import { KeywordImport } from "./keyword-import";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Map, Check, X, Loader2, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAlerts } from "@/components/alerts-provider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-interface EditableCellProps {
-  value: any;
-  rowId: string;
-  columnId: string;
-  onSave: (value: any) => Promise<void>;
-  type?: "text" | "number" | "select";
-  options?: { label: string; value: string }[];
+// DND Kit Imports
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+
+// --- Components ---
+
+const DraggableTableHeader = ({ header }: { header: any }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: header.column.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    opacity: isDragging ? 0.8 : 1,
+    position: "relative",
+  };
+
+  return (
+    <TableHead
+      ref={setNodeRef}
+      style={style}
+      className="text-[#00463c] font-bold whitespace-nowrap"
+    >
+      <div className="flex items-center gap-2">
+        {header.column.getCanSort() ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold"
+            onClick={header.column.getToggleSortingHandler()}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ) : (
+          flexRender(header.column.columnDef.header, header.getContext())
+        )}
+        {header.column.id !== "select" && header.column.id !== "actions" && (
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+    </TableHead>
+  );
+};
+
+interface EditKeywordModalProps {
+  keyword: KeywordMap | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (id: string, updates: any) => Promise<void>;
 }
 
-function EditableCell({
-  value: initialValue,
-  rowId,
-  columnId,
-  onSave,
-  type = "text",
-  options = [],
-}: EditableCellProps) {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [value, setValue] = React.useState(initialValue);
+function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordModalProps) {
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  
+  // Form states
+  const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
 
-  const handleSave = async () => {
-    if (value === initialValue) {
-      setIsEditing(false);
-      return;
+  React.useEffect(() => {
+    if (keyword) {
+      setFormData({
+        Keyword: keyword.Keyword,
+        Target_URL: keyword.Target_URL,
+        Search_Volume: keyword.Search_Volume,
+        Difficulty: keyword.Difficulty,
+        Main_Keyword: keyword.Main_Keyword,
+        Status: keyword.Status,
+        Article_Count: keyword.Article_Count,
+        Avg_Product_Value: keyword.Avg_Product_Value,
+      });
     }
+  }, [keyword]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyword) return;
+    
+    setError(null);
     setLoading(true);
     try {
-      await onSave(value);
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to save:", error);
-      setValue(initialValue);
+      await onSave(keyword.id, formData);
+      onOpenChange(false);
+    } catch (err: any) {
+      setError(err.message || "Fehler beim Speichern");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    setValue(initialValue);
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        {type === "select" ? (
-          <Select value={value} onValueChange={setValue}>
-            <SelectTrigger className="h-8 min-w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input
-            className="h-8 w-full min-w-[80px]"
-            type={type}
-            value={value ?? ""}
-            onChange={(e) => setValue(type === "number" ? Number(e.target.value) : e.target.value)}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") handleCancel();
-            }}
-          />
-        )}
-        <Button size="icon-sm" variant="ghost" onClick={handleSave} disabled={loading}>
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-green-600" />}
-        </Button>
-        <Button size="icon-sm" variant="ghost" onClick={handleCancel} disabled={loading}>
-          <X className="h-3 w-3 text-red-600" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors min-h-[32px] flex items-center"
-      onClick={() => setIsEditing(true)}
-    >
-      {type === "select" ? (
-        <Badge className="bg-[#00463c] text-[#e7f3ee] hover:bg-[#00463c]/90">
-          {initialValue}
-        </Badge>
-      ) : (
-        <span>{type === "number" && initialValue !== undefined ? initialValue.toLocaleString() : (initialValue || "-")}</span>
-      )}
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              Keyword bearbeiten
+            </DialogTitle>
+            <DialogDescription>
+              Ändern Sie die Details für "{keyword?.Keyword}".
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-keyword">Keyword *</Label>
+                <Input
+                  id="edit-keyword"
+                  value={formData.Keyword || ""}
+                  onChange={(e) => setFormData({ ...formData, Keyword: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-url">Target URL *</Label>
+                <Input
+                  id="edit-url"
+                  value={formData.Target_URL || ""}
+                  onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-volume">Suchvolumen</Label>
+                <Input
+                  id="edit-volume"
+                  type="number"
+                  value={formData.Search_Volume ?? ""}
+                  onChange={(e) => setFormData({ ...formData, Search_Volume: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-difficulty">Difficulty</Label>
+                <Input
+                  id="edit-difficulty"
+                  type="number"
+                  value={formData.Difficulty ?? ""}
+                  onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-main">Main Keyword</Label>
+                <Select 
+                  value={formData.Main_Keyword} 
+                  onValueChange={(v) => setFormData({ ...formData, Main_Keyword: v as 'Y' | 'N' })}
+                >
+                  <SelectTrigger id="edit-main">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Y">Ja (Y)</SelectItem>
+                    <SelectItem value="N">Nein (N)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select 
+                  value={formData.Status} 
+                  onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
+                >
+                  <SelectTrigger id="edit-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Backlog">Backlog</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Review">Review</SelectItem>
+                    <SelectItem value="Done">Done</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-articles">Produkt-Anzahl</Label>
+                <Input
+                  id="edit-articles"
+                  type="number"
+                  value={formData.Article_Count ?? ""}
+                  onChange={(e) => setFormData({ ...formData, Article_Count: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-value">Avg. Value</Label>
+                <Input
+                  id="edit-value"
+                  type="number"
+                  step="0.01"
+                  value={formData.Avg_Product_Value ?? ""}
+                  onChange={(e) => setFormData({ ...formData, Avg_Product_Value: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Fehler</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Abbrechen
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Speichern
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
+// --- Table Definition ---
+
 export const columns: ColumnDef<KeywordMap>[] = [
   {
-    accessorKey: "Keyword",
-    header: ({ column }: HeaderContext<KeywordMap, unknown>) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Keyword
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Keyword")}
-        rowId={row.original.id}
-        columnId="Keyword"
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Keyword: val })}
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
       />
     ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value: any) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "Keyword",
+    header: "Keyword",
+    cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Target_URL",
     header: "Target URL",
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Target_URL")}
-        rowId={row.original.id}
-        columnId="Target_URL"
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Target_URL: val })}
-      />
-    ),
+    cell: ({ row }) => {
+      const url = row.getValue("Target_URL") as string;
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <div className="max-w-[200px] truncate text-muted-foreground text-xs">
+                {url}
+              </div>
+            </TooltipTrigger>
+            {url && (
+              <TooltipContent className="max-w-md break-all">
+                <p>{url}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      );
+    },
+  },
+  {
+    id: "Content-Plan",
+    header: "Content-Plan",
+    cell: ({ row, table }) => {
+      const isMain = row.original.Main_Keyword === "Y";
+      if (!isMain) return null;
+
+      const isInEditorial = row.original.Editorial_Deadline || row.original.Status !== "Backlog";
+      
+      if (isInEditorial) {
+        return <Badge variant="outline" className="text-green-600 border-green-600">Vorhanden</Badge>;
+      }
+
+      return (
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-7 text-xs border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+          onClick={async (e: React.MouseEvent) => {
+            e.stopPropagation();
+            const today = new Date().toISOString().split('T')[0];
+            await (table.options.meta as any).updateData(row.original.id, { 
+              Editorial_Deadline: today,
+              Status: "In Progress"
+            });
+          }}
+        >
+          <Plus className="h-3 w-3 mr-1" /> Add
+        </Button>
+      );
+    }
   },
   {
     accessorKey: "Main_Keyword",
     header: "Main",
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => {
-      const isMain = row.getValue("Main_Keyword") === "Y";
-      return (
-        <div className="flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-0 h-auto"
-            onClick={() => (table.options.meta as any).updateData(row.original.id, { Main_Keyword: isMain ? "N" : "Y" })}
-          >
-            <Badge variant={isMain ? "default" : "outline"} className={isMain ? "bg-[#00463c] text-white" : ""}>
-              {isMain ? "Y" : "N"}
-            </Badge>
-          </Button>
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <Badge className={row.getValue("Main_Keyword") === "Y" ? "bg-[#00463c] text-white" : "bg-muted text-muted-foreground"}>
+        {row.getValue("Main_Keyword")}
+      </Badge>
+    ),
   },
   {
     accessorKey: "Search_Volume",
-    header: ({ column }: HeaderContext<KeywordMap, unknown>) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Volume
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Search_Volume")}
-        rowId={row.original.id}
-        columnId="Search_Volume"
-        type="number"
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Search_Volume: val })}
-      />
-    ),
+    header: "Volume",
+    cell: ({ row }) => <div>{row.getValue<number>("Search_Volume")?.toLocaleString() || "-"}</div>,
   },
   {
     accessorKey: "Difficulty",
     header: "Difficulty",
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Difficulty")}
-        rowId={row.original.id}
-        columnId="Difficulty"
-        type="number"
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Difficulty: val })}
-      />
-    ),
+    cell: ({ row }) => <div>{row.getValue("Difficulty") || "-"}</div>,
   },
   {
     accessorKey: "Status",
     header: "Status",
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Status")}
-        rowId={row.original.id}
-        columnId="Status"
-        type="select"
-        options={[
-          { label: "Backlog", value: "Backlog" },
-          { label: "In Progress", value: "In Progress" },
-          { label: "Review", value: "Review" },
-          { label: "Done", value: "Done" },
-        ]}
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Status: val })}
-      />
+    cell: ({ row }) => (
+      <Badge variant="secondary">
+        {row.getValue("Status")}
+      </Badge>
     ),
   },
   {
     accessorKey: "Article_Count",
-    header: "Articles",
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Article_Count")}
-        rowId={row.original.id}
-        columnId="Article_Count"
-        type="number"
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Article_Count: val })}
-      />
-    ),
+    header: "Produkt-Anzahl",
+    cell: ({ row }) => <div>{row.getValue("Article_Count") || "-"}</div>,
   },
   {
     accessorKey: "Avg_Product_Value",
     header: "Avg. Value",
-    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
-      <EditableCell
-        value={row.getValue("Avg_Product_Value")}
-        rowId={row.original.id}
-        columnId="Avg_Product_Value"
-        type="number"
-        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Avg_Product_Value: val })}
-      />
-    ),
+    cell: ({ row }) => <div>{row.getValue<number>("Avg_Product_Value")?.toFixed(2) || "-"} €</div>,
   },
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
+    cell: ({ row }) => {
       const keyword = row.original;
-
       return (
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Menü öffnen</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            }
-          />
+          <DropdownMenuTrigger>
+            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <span className="sr-only">Menü öffnen</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Aktionen</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(keyword.Keyword)}
-            >
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(keyword.Keyword)}>
               Keyword kopieren
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Details anzeigen</DropdownMenuItem>
-            <DropdownMenuItem>Status bearbeiten</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -325,12 +483,46 @@ interface KeywordTableProps {
 export function KeywordTable({ data }: KeywordTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const { addAlert } = useAlerts();
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(
+    columns.map((column) => column.id as string || (column as any).accessorKey as string)
+  );
+
+  const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor)
+  );
+
+  const updateData = async (rowId: string, updates: any) => {
+    try {
+      const response = await fetch("/api/planning/keywords", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: rowId, ...updates }),
+      });
+      
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.error || "Update failed");
+      }
+
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error: any) {
+      console.error("Error updating keyword:", error);
+      addAlert({
+        message: "Fehler beim Aktualisieren",
+        description: error.message,
+        type: "error",
+      });
+      throw error;
+    }
+  };
 
   const table = useReactTable({
     data,
@@ -343,40 +535,29 @@ export function KeywordTable({ data }: KeywordTableProps) {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onColumnOrderChange: setColumnOrder,
     meta: {
-      updateData: async (rowId: string, updates: any) => {
-        try {
-          const response = await fetch("/api/planning/keywords", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: rowId, ...updates }),
-          });
-          
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || "Update failed");
-          }
-
-          window.dispatchEvent(new CustomEvent("refresh-planning-data"));
-        } catch (error: any) {
-          console.error("Error updating keyword:", error);
-          addAlert({
-            message: "Fehler beim Aktualisieren",
-            description: error.message,
-            type: "error",
-          });
-          throw error;
-        }
-      },
+      updateData,
     },
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      columnOrder,
     },
   });
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      setColumnOrder((columnOrder) => {
+        const oldIndex = columnOrder.indexOf(active.id as string);
+        const newIndex = columnOrder.indexOf(over.id as string);
+        return arrayMove(columnOrder, oldIndex, newIndex);
+      });
+    }
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -390,25 +571,26 @@ export function KeywordTable({ data }: KeywordTableProps) {
         </p>
       </div>
 
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Keywords filtern..."
-          value={(table.getColumn("Keyword")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("Keyword")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm border-[#00463c]/20 focus-visible:ring-[#00463c]"
-        />
+      <div className="flex items-center py-4 gap-4">
+        <div className="relative max-w-sm w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Keywords filtern..."
+            value={(table.getColumn("Keyword")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("Keyword")?.setFilterValue(event.target.value)
+            }
+            className="pl-9 border-[#00463c]/20 focus-visible:ring-[#00463c]"
+          />
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <KeywordImport />
           <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="outline" className="border-[#00463c]/20">
-                  Spalten <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              }
-            />
+            <DropdownMenuTrigger>
+              <Button variant="outline" className="border-[#00463c]/20">
+                Spalten <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {table
                 .getAllColumns()
@@ -423,7 +605,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.id}
+                      {column.id.replace(/_/g, " ")}
                     </DropdownMenuCheckboxItem>
                   );
                 })}
@@ -435,55 +617,62 @@ export function KeywordTable({ data }: KeywordTableProps) {
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id} className="text-[#00463c] font-bold whitespace-nowrap">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className="hover:bg-muted/50 border-[#00463c]/5"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="whitespace-nowrap">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToHorizontalAxis]}
+              onDragEnd={handleDragEnd}
+            >
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
+                      <SortableContext
+                        items={columnOrder}
+                        strategy={horizontalListSortingStrategy}
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <DraggableTableHeader key={header.id} header={header} />
+                        ))}
+                      </SortableContext>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      Keine Ergebnisse.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                        className="hover:bg-muted/50 border-[#00463c]/5 cursor-pointer"
+                        onClick={() => {
+                          setEditingKeyword(row.original);
+                          setIsEditModalOpen(true);
+                        }}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                      >
+                        Keine Ergebnisse.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </DndContext>
           </div>
         </CardContent>
       </Card>
@@ -514,6 +703,13 @@ export function KeywordTable({ data }: KeywordTableProps) {
           </Button>
         </div>
       </div>
+
+      <EditKeywordModal 
+        keyword={editingKeyword}
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSave={updateData}
+      />
     </div>
   );
 }
