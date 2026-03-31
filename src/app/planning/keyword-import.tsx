@@ -36,10 +36,10 @@ export function KeywordImport() {
             Search_Volume: parseInt(row.Search_Volume || row.search_volume || row.Volume || row.volume || "0"),
             Difficulty: parseInt(row.Difficulty || row.difficulty || "0"),
             Status: "New",
-          })).filter((kw: any) => kw.Keyword);
+          })).filter((kw: any) => kw.Keyword && kw.Target_URL);
 
           if (keywords.length === 0) {
-            throw new Error("Keine gültigen Keywords in der Datei gefunden.");
+            throw new Error("Keine gültigen Keywords mit Target_URL in der Datei gefunden.");
           }
 
           const response = await fetch("/api/planning/import", {
@@ -87,7 +87,7 @@ export function KeywordImport() {
         <DialogHeader>
           <DialogTitle>Keywords importieren</DialogTitle>
           <DialogDescription>
-            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword, Target_URL, Search_Volume, Difficulty.
+            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword (Pflicht), Target_URL (Pflicht), Search_Volume, Difficulty.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

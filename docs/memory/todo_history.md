@@ -42,9 +42,16 @@
 - [x] Created debug routes for simulating data drops, counting users, and verifying Airtable connectivity.
 - [x] Developed Keyword Table and Trend Radar components for the Planning module.
 - [x] Restructured Planning workspace with a tabbed interface:
-  - [x] **Trend-Radar**: For identifying new potentials.
+  - [x] **Redaktions-Planung**: Primary view for editorial scheduling.
   - [x] **Keyword-Map**: For strategic keyword management.
-  - [x] **Redaktions-Planung**: For editorial scheduling.
+  - [x] **Trend-Radar**: For identifying new potentials.
+  - [x] **Blacklist**: For managing excluded keywords.
+- [x] Implemented manual keyword entry ([`src/app/planning/manual-keyword-entry.tsx`](src/app/planning/manual-keyword-entry.tsx)):
+  - [x] Form validation for mandatory fields.
+  - [x] Direct Airtable integration for single-record creation.
+- [x] Enhanced Keyword Import:
+  - [x] Added validation for mandatory "Keyword" and "Target_URL" columns.
+  - [x] Improved error reporting for malformed CSV files.
 - [x] Implemented CSV/Excel keyword import:
   - [x] Client-side parsing with `papaparse`.
   - [x] Bulk Airtable creation with 10-record chunking in [`src/lib/airtable.ts`](src/lib/airtable.ts:326).

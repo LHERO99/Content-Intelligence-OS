@@ -50,6 +50,13 @@ export interface AuditLog {
   Raw_Payload?: string;
 }
 
+export interface BlacklistEntry {
+  id: string;
+  Keyword: string;
+  Reason?: string;
+  Added_At: string;
+}
+
 export interface UserRecord {
   id: string;
   Name: string;

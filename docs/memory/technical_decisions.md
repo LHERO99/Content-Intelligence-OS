@@ -51,6 +51,10 @@
 - **Rationale**: Offloading parsing to the client reduces server load and allows for immediate validation of the CSV structure before sending data to the API.
 - **Decision**: Implemented bulk Airtable updates in chunks of 10 in [`src/lib/airtable.ts`](src/lib/airtable.ts:332).
 - **Rationale**: Airtable's API limits batch operations to 10 records per call. The `bulkCreateKeywords` function automatically handles chunking to ensure reliable imports of larger datasets while staying within API limits.
+- **Decision**: Enforced mandatory "Keyword" and "Target_URL" fields for all data entry methods (manual and import).
+- **Rationale**: To ensure data integrity and prevent incomplete records in the planning workspace, these two fields are now strictly required. Manual entry forms and CSV import logic both validate for these fields before submission.
+- **Decision**: Implementation of a dedicated Blacklist view in the Planning module.
+- **Rationale**: To maintain content quality and focus, a separate management interface for excluded keywords was added, allowing users to explicitly mark and manage terms that should not be targeted.
 
 ## State Management
 - **Decision**: Leveraging React Context and Hooks for local and global state management (e.g., `AlertsProvider`, `AuthProvider`).

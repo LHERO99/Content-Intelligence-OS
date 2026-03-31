@@ -39,6 +39,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { KeywordMap } from "@/lib/airtable-types";
 import { KeywordImport } from "./keyword-import";
+import { ManualKeywordEntry } from "./manual-keyword-entry";
 
 export const columns: ColumnDef<KeywordMap>[] = [
   {
@@ -175,7 +176,9 @@ export function KeywordTable({ data }: KeywordTableProps) {
   });
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      <ManualKeywordEntry />
+      
       <div className="flex items-center py-4">
         <Input
           placeholder="Keywords filtern..."

@@ -7,7 +7,8 @@ import {
   PerformanceData, 
   PotentialTrend, 
   AuditLog, 
-  UserRecord 
+  UserRecord,
+  BlacklistEntry
 } from './airtable-types';
 
 export * from './airtable-types';
@@ -31,6 +32,7 @@ export const TABLES = {
   POTENTIAL_TRENDS: 'Potential_Trends',
   AUDIT_LOGS: 'Audit_Logs',
   USERS: 'Users',
+  BLACKLIST: 'Blacklist',
 } as const;
 
 // --- Fetchers ---
@@ -369,5 +371,54 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
     return createdRecords;
   } catch (error) {
     return handleAirtableError(error, 'bulkCreateKeywords');
+  }
+}
+
+export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap | null> {
+  try {
+    console.log(`[Airtable] Creating single keyword: ${kw.Keyword}`);
+    const records = await base(TABLES.KEYWORD_MAP).create([
+      {
+        fields: {
+          Keyword: kw.Keyword,
+          Target_URL: kw.Target_URL,
+          Search_Volume: kw.Search_Volume,
+          Difficulty: kw.Difficulty,
+          Status: kw.Status || 'New',
+          Editorial_Deadline: kw.Editorial_Deadline,
+          Assigned_Editor: kw.Assigned_Editor,
+        },
+      },
+    ]);
+
+    if (records.length === 0) return null;
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
+      Search_Volume: record.get('Search_Volume') as number,
+      Difficulty: record.get('Difficulty') as number,
+      Status: record.get('Status') as KeywordStatus,
+      Editorial_Deadline: record.get('Editorial_Deadline') as string,
+      Assigned_Editor: record.get('Assigned_Editor') as string[],
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'createKeyword');
+  }
+}
+
+export async function getBlacklist(): Promise<BlacklistEntry[]> {
+  try {
+    const records = await base(TABLES.BLACKLIST).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Reason: record.get('Reason') as string,
+      Added_At: record.get('Added_At') as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getBlacklist');
   }
 }
