@@ -7,9 +7,10 @@ export default withAuth(
     const path = req.nextUrl.pathname;
     const isAuthPage = path.startsWith("/auth/signin");
 
-    // Redirect authenticated users away from signin page
-    if (isAuthPage) {
-      if (token) {
+    // Always allow auth pages and API auth routes
+    if (isAuthPage || path.startsWith("/api/auth")) {
+      if (isAuthPage && token) {
+        console.log("[Middleware] Authenticated user on signin page, redirecting to /planning");
         return NextResponse.redirect(new URL("/planning", req.url));
       }
       return null;
@@ -17,6 +18,7 @@ export default withAuth(
 
     // Admin only routes
     if (path.startsWith("/admin") && token?.role !== "Admin") {
+      console.log("[Middleware] Non-admin user on admin route, redirecting to /");
       return NextResponse.redirect(new URL("/", req.url));
     }
 

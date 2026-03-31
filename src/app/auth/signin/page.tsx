@@ -23,27 +23,41 @@ function SignInForm() {
 
     try {
       console.log("Attempting sign-in for:", email);
-      const result = await signIn("credentials", {
+      
+      // Add a timeout to the sign-in attempt to prevent indefinite hanging
+      const signInPromise = signIn("credentials", {
         email,
         password,
         redirect: false,
         callbackUrl,
       });
 
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Sign-in request timed out")), 10000)
+      );
+
+      const result = await Promise.race([signInPromise, timeoutPromise]) as any;
+
       console.log("Sign-in result received:", result);
 
       if (result?.error) {
         console.error("Sign-in error:", result.error);
-        setError("Invalid credentials");
-        setIsLoading(false);
-      } else {
+        setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
+      } else if (result?.ok) {
         console.log("Sign-in successful, redirecting to:", callbackUrl);
-        router.push(callbackUrl);
-        router.refresh();
+        // Use window.location.href for a hard redirect to ensure session is picked up
+        window.location.href = callbackUrl;
+        return; // Don't reset loading if we are redirecting
+      } else {
+        console.error("Sign-in result state unknown:", result);
+        setError("An unexpected error occurred during sign-in");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Unexpected sign-in error:", err);
-      setError("An unexpected error occurred");
+      setError(err.message || "An unexpected error occurred");
+    } finally {
+      // Only reset loading if we haven't started a redirect
+      // If result.ok was true, we don't reach here because of the return
       setIsLoading(false);
     }
   };
