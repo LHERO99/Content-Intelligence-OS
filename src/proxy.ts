@@ -2,9 +2,18 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-  function proxy(req) {
+  function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
+    const isAuthPage = path.startsWith("/auth/signin");
+
+    // Redirect authenticated users away from signin page
+    if (isAuthPage) {
+      if (token) {
+        return NextResponse.redirect(new URL("/planning", req.url));
+      }
+      return null;
+    }
 
     // Admin only routes
     if (path.startsWith("/admin") && token?.role !== "Admin") {
@@ -13,7 +22,6 @@ export default withAuth(
 
     // All other app routes require at least Editor
     // (Dashboard, Planning, Creation, Monitoring)
-    // We assume everything except /auth and public assets is protected
     const protectedRoutes = ["/", "/planning", "/creation", "/monitoring"];
     const isProtectedRoute = protectedRoutes.some(route => path === route || path.startsWith(route + "/"));
     
@@ -23,7 +31,19 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+        const path = req.nextUrl.pathname;
+        const isAuthPage = path.startsWith("/auth/signin");
+        const isApiAuthPage = path.startsWith("/api/auth");
+        
+        // Always allow auth pages and API auth routes
+        if (isAuthPage || isApiAuthPage) {
+          return true;
+        }
+        
+        // Require token for everything else matched by the config
+        return !!token;
+      },
     },
   }
 );
@@ -33,12 +53,11 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api/auth (NextAuth routes)
-     * - auth/signin (Login page)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public assets
+     * - public assets (svg)
      */
-    "/((?!api/auth|auth/signin|_next/static|_next/image|favicon.ico|.*\\.svg).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.svg).*)",
   ],
 };
