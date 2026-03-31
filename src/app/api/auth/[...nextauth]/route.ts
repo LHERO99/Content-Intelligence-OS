@@ -60,6 +60,7 @@ export const authOptions = {
                   };
                 }
                 console.log("[Auth] Airtable password invalid");
+                return "INVALID_PASSWORD";
               } else if (!airtableUser) {
                 console.log("[Auth] User not found in Airtable, checking if first user...");
                 const userCount = await countUsers();
@@ -92,6 +93,10 @@ export const authOptions = {
             )
           ]);
 
+          if (authResult === "INVALID_PASSWORD") {
+            return null;
+          }
+
           if (authResult !== "NO_USER") {
             console.log(`[Auth] Airtable auth successful in ${Date.now() - startTime}ms`);
             return authResult as any;
@@ -100,23 +105,6 @@ export const authOptions = {
           console.error("[Auth] Airtable auth error or timeout:", error);
         }
 
-        // 2. Fallback to mock users for demonstration
-        console.log("[Auth] Falling back to mock users...");
-        const mockUsers = [
-          { id: "1", name: "Admin User", email: "admin@example.com", password: "password", role: "Admin" },
-          { id: "2", name: "Editor User", email: "editor@example.com", password: "password", role: "Editor" },
-        ];
-
-        const user = mockUsers.find(
-          (u) => u.email === credentials.email && u.password === credentials.password
-        );
-
-        if (user) {
-          console.log(`[Auth] Mock user authenticated in ${Date.now() - startTime}ms`);
-          const { password, ...userWithoutPassword } = user;
-          return userWithoutPassword;
-        }
-        
         console.log(`[Auth] Authentication failed after ${Date.now() - startTime}ms`);
         return null;
       },

@@ -12,6 +12,12 @@
 - **Decision**: Using `withAuth` HOC and NextAuth.js for route protection.
 - **Rationale**: Provides a standardized way to secure pages and API routes, ensuring only authenticated users can access sensitive data and features.
 
+## Authentication Flow
+- **Decision**: Implemented "First User as Admin" logic in [`src/app/api/auth/[...nextauth]/route.ts`](src/app/api/auth/[...nextauth]/route.ts).
+- **Rationale**: Simplifies initial setup by allowing the first person to sign in to automatically become the administrator, removing the need for hardcoded mock credentials.
+- **Decision**: Removed mock credentials from the sign-in page UI.
+- **Rationale**: Enhances security and provides a cleaner user experience for production-ready environments.
+
 ## UI Framework
 - **Decision**: Using Tailwind CSS and Radix UI (via shadcn/ui) for the component library.
 - **Rationale**: Enables rapid development of accessible and responsive UI components with a consistent design language.

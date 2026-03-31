@@ -120,10 +120,6 @@ function SignInForm() {
             </Button>
           </div>
         </form>
-        <div className="mt-4 text-xs text-gray-500 text-center">
-          <p>Admin: admin@example.com / password</p>
-          <p>Editor: editor@example.com / password</p>
-        </div>
       </div>
     </div>
   );
