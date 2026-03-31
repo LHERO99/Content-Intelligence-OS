@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBlacklist, addToBlacklist } from '@/lib/airtable';
+import { getBlacklist, addToBlacklist, updateBlacklist, deleteFromBlacklist } from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -41,6 +41,60 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API] Error adding to blacklist:', error);
+    return NextResponse.json(
+      { error: 'Interner Serverfehler', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID ist erforderlich.' },
+        { status: 400 }
+      );
+    }
+
+    const result = await updateBlacklist(id, updates);
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Fehler beim Aktualisieren der Blacklist in Airtable.' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('[API] Error updating blacklist:', error);
+    return NextResponse.json(
+      { error: 'Interner Serverfehler', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID ist erforderlich.' },
+        { status: 400 }
+      );
+    }
+
+    await deleteFromBlacklist(id);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('[API] Error deleting from blacklist:', error);
     return NextResponse.json(
       { error: 'Interner Serverfehler', details: error.message },
       { status: 500 }

@@ -747,3 +747,41 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
     return handleAirtableError(error, 'updateConfig');
   }
 }
+
+export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
+  try {
+    console.log(`[Airtable] Updating blacklist entry: ${id}`);
+    const fields: any = {};
+    if (entry.Keyword !== undefined) fields.Keyword = entry.Keyword;
+    if (entry.Reason !== undefined) fields.Reason = entry.Reason;
+
+    const records = await base(TABLES.BLACKLIST).update([
+      {
+        id,
+        fields,
+      },
+    ]);
+
+    if (records.length === 0) return null;
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Reason: record.get('Reason') as string,
+      Added_At: record.get('Added_At') as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'updateBlacklist');
+  }
+}
+
+export async function deleteFromBlacklist(id: string): Promise<boolean> {
+  try {
+    console.log(`[Airtable] Deleting from blacklist: ${id}`);
+    await base(TABLES.BLACKLIST).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error, 'deleteFromBlacklist');
+  }
+}

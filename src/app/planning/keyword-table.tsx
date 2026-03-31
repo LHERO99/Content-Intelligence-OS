@@ -120,26 +120,41 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
     <TableHead
       ref={setNodeRef}
       style={style}
-      className="text-[#00463c] font-bold whitespace-nowrap"
+      className="text-[#00463c] font-bold whitespace-nowrap pb-2"
     >
-      <div className="flex items-center gap-2">
-        {header.column.getCanSort() ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold"
-            onClick={header.column.getToggleSortingHandler()}
-          >
-            {flexRender(header.column.columnDef.header, header.getContext())}
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        ) : (
-          flexRender(header.column.columnDef.header, header.getContext())
-        )}
-        {header.column.id !== "select" && header.column.id !== "actions" && (
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {header.column.getCanSort() ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold"
+              onClick={header.column.getToggleSortingHandler()}
+            >
+              {flexRender(header.column.columnDef.header, header.getContext())}
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            flexRender(header.column.columnDef.header, header.getContext())
+          )}
+          {header.column.id !== "select" && header.column.id !== "actions" && (
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+        {header.column.getCanFilter() ? (
+          <div className="px-1">
+            <Input
+              placeholder="Filter..."
+              value={(header.column.getFilterValue() as string) ?? ""}
+              onChange={(event) => header.column.setFilterValue(event.target.value)}
+              className="h-7 text-xs font-normal border-[#00463c]/10 focus-visible:ring-[#00463c]"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
+        ) : (
+          <div className="h-7" /> // Spacer for alignment
         )}
       </div>
     </TableHead>
@@ -334,14 +349,19 @@ export const columns: ColumnDef<KeywordMap>[] = [
   {
     id: "select",
     header: ({ table }) => (
-      <Checkbox
-        checked={
-          (table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")) as any
-        }
-        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center h-8">
+          <Checkbox
+            checked={
+              (table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && "indeterminate")) as any
+            }
+            onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        </div>
+        <div className="h-7" />
+      </div>
     ),
     cell: ({ row }) => (
       <Checkbox
@@ -353,6 +373,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    enableColumnFilter: false,
   },
   {
     accessorKey: "Keyword",
@@ -384,7 +405,15 @@ export const columns: ColumnDef<KeywordMap>[] = [
   },
   {
     id: "Content-Plan",
-    header: "Content-Plan",
+    header: () => (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-center h-8">
+          Content-Plan
+        </div>
+        <div className="h-7" />
+      </div>
+    ),
+    enableColumnFilter: false,
     cell: ({ row, table }) => {
       const isMain = row.original.Main_Keyword === "Y";
       if (!isMain) return null;
@@ -392,25 +421,31 @@ export const columns: ColumnDef<KeywordMap>[] = [
       const isInEditorial = row.original.Editorial_Deadline || row.original.Status !== "Backlog";
       
       if (isInEditorial) {
-        return <Badge variant="outline" className="text-green-600 border-green-600">Vorhanden</Badge>;
+        return (
+          <div className="flex justify-center">
+            <Badge variant="outline" className="text-green-600 border-green-600">Vorhanden</Badge>
+          </div>
+        );
       }
 
       return (
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-7 text-xs border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
-          onClick={async (e: React.MouseEvent) => {
-            e.stopPropagation();
-            const today = new Date().toISOString().split('T')[0];
-            await (table.options.meta as any).updateData(row.original.id, { 
-              Editorial_Deadline: today,
-              Status: "In Progress"
-            });
-          }}
-        >
-          <Plus className="h-3 w-3 mr-1" /> Add
-        </Button>
+        <div className="flex justify-center">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-7 text-xs border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+            onClick={async (e: React.MouseEvent) => {
+              e.stopPropagation();
+              const today = new Date().toISOString().split('T')[0];
+              await (table.options.meta as any).updateData(row.original.id, { 
+                Editorial_Deadline: today,
+                Status: "In Progress"
+              });
+            }}
+          >
+            <Plus className="h-3 w-3 mr-1" /> Add
+          </Button>
+        </div>
       );
     }
   },
@@ -455,6 +490,13 @@ export const columns: ColumnDef<KeywordMap>[] = [
   {
     id: "actions",
     enableHiding: false,
+    enableColumnFilter: false,
+    header: () => (
+      <div className="flex flex-col gap-2">
+        <div className="h-8" />
+        <div className="h-7" />
+      </div>
+    ),
     cell: ({ row }) => {
       const keyword = row.original;
       return (
@@ -575,17 +617,6 @@ export function KeywordTable({ data }: KeywordTableProps) {
       </div>
 
       <div className="flex items-center py-4 gap-4">
-        <div className="relative max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Keywords filtern..."
-            value={(table.getColumn("Keyword")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("Keyword")?.setFilterValue(event.target.value)
-            }
-            className="pl-9 border-[#00463c]/20 focus-visible:ring-[#00463c]"
-          />
-        </div>
         <div className="ml-auto flex items-center gap-2">
           <KeywordImport />
           <DropdownMenu>
