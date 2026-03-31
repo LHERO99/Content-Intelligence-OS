@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 
 function SignInForm() {
@@ -13,6 +13,7 @@ function SignInForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const callbackUrl = searchParams?.get("callbackUrl") || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,6 +22,7 @@ function SignInForm() {
     setError("");
 
     try {
+      console.log("[SignIn] Attempting sign in for:", email);
       const result = await signIn("credentials", {
         email,
         password,
@@ -28,14 +30,20 @@ function SignInForm() {
         callbackUrl,
       });
 
+      console.log("[SignIn] Result:", result);
+
       if (result?.error) {
+        console.error("[SignIn] Error:", result.error);
         setError("Invalid email or password");
         setIsLoading(false);
       } else if (result?.ok) {
-        // Full page reload to ensure session is correctly initialized
-        window.location.href = callbackUrl;
+        console.log("[SignIn] Success, redirecting to:", callbackUrl);
+        // Use router.push for a smoother transition handled by Next.js
+        router.push(callbackUrl);
+        router.refresh();
       }
     } catch (err: any) {
+      console.error("[SignIn] Unexpected error:", err);
       setError("An unexpected error occurred");
       setIsLoading(false);
     }

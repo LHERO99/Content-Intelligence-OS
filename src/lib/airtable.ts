@@ -141,39 +141,54 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
 }
 
 export async function getUserByEmail(email: string): Promise<UserRecord | null> {
-  try {
-    console.log(`[Airtable] Fetching user by email: ${email}`);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Airtable request timed out')), 5000)
-    );
+  const MAX_RETRIES = 3;
+  const TIMEOUT_MS = 10000; // Increased to 10s
 
-    const fetchPromise = base('Users')
-      .select({
-        filterByFormula: `{Email} = '${email}'`,
-        maxRecords: 1,
-      })
-      .firstPage();
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[Airtable] Fetching user by email: ${email} (Attempt ${attempt}/${MAX_RETRIES})`);
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Airtable request timed out')), TIMEOUT_MS)
+      );
 
-    const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+      const fetchPromise = base('Users')
+        .select({
+          filterByFormula: `{Email} = '${email}'`,
+          maxRecords: 1,
+        })
+        .firstPage();
 
-    if (records.length === 0) {
-      console.log(`[Airtable] No user found for email: ${email}`);
-      return null;
+      const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+
+      if (records.length === 0) {
+        console.log(`[Airtable] No user found for email: ${email}`);
+        return null;
+      }
+
+      const record = records[0];
+      console.log(`[Airtable] User found: ${record.id}`);
+      return {
+        id: record.id,
+        Name: record.get('Name') as string,
+        Email: record.get('Email') as string,
+        Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+        Password: record.get('Password') as string,
+      };
+    } catch (error: any) {
+      console.error(`[Airtable] Error fetching user (Attempt ${attempt}):`, error.message || error);
+      
+      if (attempt === MAX_RETRIES) {
+        console.error('[Airtable] Max retries reached for getUserByEmail');
+        return null;
+      }
+      
+      // Exponential backoff: 500ms, 1000ms
+      const delay = attempt * 500;
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-
-    const record = records[0];
-    console.log(`[Airtable] User found: ${record.id}`);
-    return {
-      id: record.id,
-      Name: record.get('Name') as string,
-      Email: record.get('Email') as string,
-      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
-      Password: record.get('Password') as string,
-    };
-  } catch (error) {
-    console.error('Error fetching user from Airtable:', error);
-    return null;
   }
+  return null;
 }
 
 export async function countUsers(): Promise<number> {

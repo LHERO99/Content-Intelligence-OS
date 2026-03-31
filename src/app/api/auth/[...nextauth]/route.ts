@@ -37,13 +37,19 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          console.log("[Auth] Authorize attempt for:", credentials.email);
           // 1. Check if user exists
           const user = await getUserByEmail(credentials.email);
+          console.log("[Auth] User found in Airtable:", user ? "Yes" : "No");
 
           if (user) {
             // 2. Verify password
-            if (!user.Password) return null;
+            if (!user.Password) {
+              console.log("[Auth] User has no password set");
+              return null;
+            }
             const isValid = await bcrypt.compare(credentials.password, user.Password);
+            console.log("[Auth] Password valid:", isValid);
             
             if (isValid) {
               return {
@@ -58,8 +64,10 @@ export const authOptions: NextAuthOptions = {
 
           // 3. If no user, check if table is empty
           const userCount = await countUsers();
+          console.log("[Auth] User count in table:", userCount);
           
           if (userCount === 0) {
+            console.log("[Auth] Creating first admin user");
             // 4. Create first user as Admin
             const hashedPassword = await bcrypt.hash(credentials.password, 10);
             const newUser = await createUser({
@@ -70,6 +78,7 @@ export const authOptions: NextAuthOptions = {
             });
 
             if (newUser) {
+              console.log("[Auth] First admin user created:", newUser.id);
               return {
                 id: newUser.id,
                 name: newUser.Name,
@@ -80,6 +89,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           // 5. User not found and table not empty
+          console.log("[Auth] User not found and table not empty");
           return null;
         } catch (error) {
           console.error("[Auth] Authorize error:", error);
@@ -90,6 +100,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      console.log("[Auth] JWT Callback - Token:", !!token, "User:", !!user);
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -97,6 +108,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      console.log("[Auth] Session Callback - Session:", !!session, "Token:", !!token);
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
@@ -109,7 +121,9 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
