@@ -179,12 +179,9 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
 export async function countUsers(): Promise<number> {
   try {
     console.log('[Airtable] Counting users...');
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Airtable request timed out')), 5000)
-    );
-
-    const fetchPromise = base('Users').select({ maxRecords: 1 }).firstPage();
-    const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+    const records = await base('Users').select({
+      fields: ['Email'],
+    }).all();
     
     console.log(`[Airtable] User count check returned ${records.length} records`);
     return records.length;

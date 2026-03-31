@@ -5,21 +5,9 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
-    const isAuthPage = path.startsWith("/auth/signin");
 
-    // If user is authenticated and tries to access signin page or root, redirect to /planning
-    if ((isAuthPage || path === "/") && token) {
-      const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
-      if (callbackUrl && !callbackUrl.startsWith("/auth/signin")) {
-        console.log("[Middleware] Authenticated user redirected to callbackUrl:", callbackUrl);
-        return NextResponse.redirect(new URL(callbackUrl, req.url));
-      }
-      console.log("[Middleware] Authenticated user redirected to /planning");
-      return NextResponse.redirect(new URL("/planning", req.url));
-    }
-
-    // Admin only routes
-    if (path.startsWith("/admin") && token?.role !== "Admin") {
+    // If authenticated and on sign-in page, redirect to home
+    if (path.startsWith("/auth/signin") && token) {
       return NextResponse.redirect(new URL("/", req.url));
     }
 
@@ -29,13 +17,11 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
-        
-        // Always allow auth pages and API auth routes
+        // Public paths
         if (path.startsWith("/auth/signin") || path.startsWith("/api/auth")) {
           return true;
         }
-        
-        // Require token for everything else matched by the config
+        // Require authentication for all other matched paths
         return !!token;
       },
     },

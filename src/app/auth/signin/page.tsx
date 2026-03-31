@@ -1,27 +1,19 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
-import { useState, Suspense, useEffect } from "react";
+import { signIn } from "next-auth/react";
+import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 
 function SignInForm() {
-  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams?.get("callbackUrl") || "/planning";
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.push(callbackUrl);
-    }
-  }, [status, callbackUrl, router]);
+  const callbackUrl = searchParams?.get("callbackUrl") || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,22 +29,14 @@ function SignInForm() {
       });
 
       if (result?.error) {
-        console.error("[SignIn] Error result:", result.error);
-        setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
+        setError("Invalid email or password");
+        setIsLoading(false);
       } else if (result?.ok) {
-        console.log("[SignIn] Success, redirecting to:", callbackUrl);
-        // Use window.location.href for a full page reload to ensure session is picked up
+        // Full page reload to ensure session is correctly initialized
         window.location.href = callbackUrl;
-        return;
-      } else {
-        console.error("[SignIn] Unexpected result:", result);
-        setError("An unexpected error occurred during sign-in");
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
-    } finally {
-      // Only reset loading if we haven't started a redirect
-      // If result.ok was true, we don't reach here because of the return
+      setError("An unexpected error occurred");
       setIsLoading(false);
     }
   };
