@@ -109,10 +109,12 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       console.log("[Auth] Session Callback - Session:", !!session, "Token:", !!token);
+      console.log("[Auth] Session Callback - Token ID:", token?.id, "Token Role:", token?.role);
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
       }
+      console.log("[Auth] Session Callback - Final Session User:", !!session.user, "ID:", session.user?.id);
       return session;
     },
   },
