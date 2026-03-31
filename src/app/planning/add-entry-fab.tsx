@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Loader2, AlertCircle, Map, Radar, ShieldAlert } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, Map, Radar, ShieldAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -133,13 +133,24 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) return; // Prevent closing via onOpenChange (outside click/escape)
+    setOpen(newOpen);
+  };
+
+  const closeDialog = () => {
+    setOpen(false);
+    resetForm();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (!val) resetForm(); }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
           <Button
             className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-xl bg-[#00463c] hover:bg-[#00332c] text-white z-50"
             size="icon"
+            onClick={() => setOpen(true)}
           />
         }
       >
@@ -148,12 +159,23 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-              {type === 'keyword' && 'Neues Keyword hinzufügen'}
-              {type === 'trend' && 'Neuen Trend hinzufügen'}
-              {type === 'blacklist' && 'Keyword blacklisten'}
-              {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+                {type === 'keyword' && 'Neues Keyword hinzufügen'}
+                {type === 'trend' && 'Neuen Trend hinzufügen'}
+                {type === 'blacklist' && 'Keyword blacklisten'}
+                {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
+              </DialogTitle>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                onClick={closeDialog}
+                className="h-8 w-8 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
             <DialogDescription className="text-base">
               Füllen Sie die erforderlichen Felder aus, um den Eintrag zu speichern.
             </DialogDescription>
@@ -316,7 +338,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={closeDialog}
               disabled={loading}
               size="sm"
               className="px-4"

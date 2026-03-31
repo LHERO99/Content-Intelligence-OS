@@ -78,14 +78,12 @@ export function KeywordImport() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger
-        render={
-          <Button variant="outline" className="border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee]">
-            <Upload className="mr-2 h-4 w-4" />
-            Keywords importieren
-          </Button>
-        }
-      />
+      <DialogTrigger>
+        <Button variant="outline" className="border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee] h-10 px-4">
+          <Upload className="mr-2 h-4 w-4" />
+          Keywords importieren
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Keywords importieren</DialogTitle>

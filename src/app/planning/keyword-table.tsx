@@ -294,7 +294,7 @@ function FilterBar({ table, columns }: FilterBarProps) {
           {selectedRows.length > 0 && (
             <Popover>
               <PopoverTrigger>
-                <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white h-9">
+                <Button variant="destructive" className="bg-red-600 hover:bg-red-700 text-white h-10 px-4">
                   <Trash2 className="h-4 w-4 mr-2" />
                   {selectedRows.length} löschen
                 </Button>
@@ -322,7 +322,7 @@ function FilterBar({ table, columns }: FilterBarProps) {
           
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Button variant="outline" size="sm" className="border-[#00463c]/20 h-9">
+              <Button variant="outline" className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]">
                 Spalten <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -426,14 +426,35 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    // Only allow closing if it's not from an outside click or escape key
+    // In many Dialog implementations, onOpenChange(false) is called for all close actions.
+    // If we want to allow the "X" button but not outside click, we need to check the source.
+    // However, with standard Shadcn/Radix, onOpenChange doesn't provide the event.
+    onOpenChange(newOpen);
+  };
+
+  const closeDialog = () => onOpenChange(false);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-              Keyword bearbeiten
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+                Keyword bearbeiten
+              </DialogTitle>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                onClick={closeDialog}
+                className="h-8 w-8 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
             <DialogDescription>
               Ändern Sie die Details für "{keyword?.Keyword}".
             </DialogDescription>
@@ -549,7 +570,7 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button type="button" variant="outline" onClick={closeDialog} disabled={loading}>
               Abbrechen
             </Button>
             <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
@@ -708,31 +729,6 @@ export const columns: ColumnDef<KeywordMap>[] = [
       const keyword = row.original;
       return (
         <div className="flex items-center justify-end gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                <span className="sr-only">Menü öffnen</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Aktionen</DropdownMenuLabel>
-              <DropdownMenuItem onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(keyword.Keyword);
-              }}>
-                Keyword kopieren
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                (table.options.meta as any).openEditModal(keyword);
-              }}>
-                Details bearbeiten
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
           <Popover>
             <PopoverTrigger>
               <Button 
@@ -746,7 +742,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
             </PopoverTrigger>
             <PopoverContent className="w-44 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
               <div className="space-y-3">
-                <p className="text-xs font-medium">Eintrag löschen?</p>
+                <p className="text-xs font-medium">Möchtest du wirklich löschen?</p>
                 <div className="flex gap-2">
                   <Button 
                     variant="destructive" 
