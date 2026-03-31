@@ -87,6 +87,16 @@ export function AppSidebar() {
         <Separator className="mb-4" />
         {session ? (
           <div className="space-y-4">
+            {session?.user?.role === "Admin" && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton render={<Link href="/admin" />}>
+                    <ShieldCheck className="text-red-600" />
+                    <span>Admin-Bereich</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
             <Link href="/profile" className="flex items-center gap-3 px-2 hover:bg-gray-100 rounded-md p-1 transition-colors">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00463c] text-white">
                 <User className="h-4 w-4" />
@@ -97,14 +107,6 @@ export function AppSidebar() {
               </div>
             </Link>
             <SidebarMenu>
-              {session?.user?.role === "Admin" && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton render={<Link href="/admin" />}>
-                    <ShieldCheck className="text-red-600" />
-                    <span>Admin-Bereich</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={() => signOut({ callbackUrl: "/auth/signin" })}

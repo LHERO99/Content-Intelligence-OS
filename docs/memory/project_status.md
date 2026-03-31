@@ -16,10 +16,11 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **Keyword-Map**: Strategic management of target keywords and their status.
     - **Trend-Radar**: Identifies new potentials via GSC and Sistrix gap analysis.
     - **Blacklist**: Management of excluded keywords to prevent irrelevant content creation.
-  - **Keyword Entry & Import**:
-    - **Manual Entry**: Added a manual keyword entry feature ([`src/app/planning/manual-keyword-entry.tsx`](src/app/planning/manual-keyword-entry.tsx)) with strict validation for mandatory fields.
-    - **Bulk Import**: Implemented a CSV/Excel import feature ([`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx)) allowing bulk upload of keywords with automatic mapping of search volume and difficulty.
-  - **Data Integrity**: Enforced mandatory "Keyword" and "Target_URL" fields for all entry methods to ensure high-quality planning data.
+  - **Unified Data Entry**:
+    - **"Add Entry" FAB**: Implemented a unified Floating Action Button ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)) that serves as the central entry point for all planning data.
+    - **Multi-Type Support**: The FAB supports adding Keywords, Trends, and Blacklist entries through a single, context-aware interface that automatically adapts to the active tab.
+    - **Bulk Import**: Maintained the CSV/Excel import feature ([`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx)) for high-volume keyword uploads.
+  - **Data Integrity**: Enforced mandatory fields (e.g., "Keyword", "Target_URL", "Trend_Topic") across all entry types to ensure high-quality planning data.
 - **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel.
 - **Monitoring Module**: Dashboard for tracking content performance.
 - **Admin Panel**: A comprehensive administrative interface ([`src/app/admin/page.tsx`](src/app/admin/page.tsx)) featuring:

@@ -5,6 +5,7 @@ import { EditorialPlanning } from "./editorial-planning";
 import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Radar, Map, Calendar, ShieldAlert } from "lucide-react";
+import { AddEntryFab } from "./add-entry-fab";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function PlanningPage() {
     ]);
 
     return (
-      <div className="flex-1 space-y-8 p-8 pt-6 bg-[#f8faf9]">
+      <div className="flex-1 space-y-8 p-8 pt-6 bg-[#f8faf9] relative">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Planung</h2>
         </div>
@@ -75,6 +76,8 @@ export default async function PlanningPage() {
             <Blacklist />
           </TabsContent>
         </Tabs>
+
+        <AddEntryFab />
       </div>
     );
   } catch (error: any) {

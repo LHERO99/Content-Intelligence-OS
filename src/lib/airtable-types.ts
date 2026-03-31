@@ -57,6 +57,14 @@ export interface BlacklistEntry {
   Added_At: string;
 }
 
+export interface ConfigRecord {
+  id: string;
+  Key: string;
+  Value: string;
+  Description?: string;
+  Updated_At?: string;
+}
+
 export interface UserRecord {
   id: string;
   Name: string;

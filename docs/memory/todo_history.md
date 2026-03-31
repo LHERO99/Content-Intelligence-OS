@@ -46,9 +46,10 @@
   - [x] **Keyword-Map**: For strategic keyword management.
   - [x] **Trend-Radar**: For identifying new potentials.
   - [x] **Blacklist**: For managing excluded keywords.
-- [x] Implemented manual keyword entry ([`src/app/planning/manual-keyword-entry.tsx`](src/app/planning/manual-keyword-entry.tsx)):
-  - [x] Form validation for mandatory fields.
-  - [x] Direct Airtable integration for single-record creation.
+- [x] Implemented unified "Add Entry" FAB ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)):
+  - [x] Centralized entry point for Keywords, Trends, and Blacklist items.
+  - [x] Context-aware type selection based on active tab.
+  - [x] Removed redundant manual entry forms to streamline the UI.
 - [x] Enhanced Keyword Import:
   - [x] Added validation for mandatory "Keyword" and "Target_URL" columns.
   - [x] Improved error reporting for malformed CSV files.

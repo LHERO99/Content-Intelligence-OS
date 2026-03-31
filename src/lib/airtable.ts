@@ -8,7 +8,8 @@ import {
   PotentialTrend, 
   AuditLog, 
   UserRecord,
-  BlacklistEntry
+  BlacklistEntry,
+  ConfigRecord
 } from './airtable-types';
 
 export * from './airtable-types';
@@ -33,6 +34,7 @@ export const TABLES = {
   AUDIT_LOGS: 'Audit_Logs',
   USERS: 'Users',
   BLACKLIST: 'Blacklist',
+  CONFIG: 'Config',
 } as const;
 
 // --- Fetchers ---
@@ -409,6 +411,62 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
   }
 }
 
+export async function createTrend(trend: Partial<PotentialTrend>): Promise<PotentialTrend | null> {
+  try {
+    console.log(`[Airtable] Creating single trend: ${trend.Trend_Topic}`);
+    const records = await base(TABLES.POTENTIAL_TRENDS).create([
+      {
+        fields: {
+          Trend_Topic: trend.Trend_Topic,
+          Source: trend.Source || 'GSC',
+          Gap_Score: trend.Gap_Score || 0,
+          Status: trend.Status || 'New',
+        },
+      },
+    ]);
+
+    if (records.length === 0) return null;
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Trend_Topic: record.get('Trend_Topic') as string,
+      Source: record.get('Source') as 'GSC' | 'Sistrix',
+      Gap_Score: record.get('Gap_Score') as number,
+      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'createTrend');
+  }
+}
+
+export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
+  try {
+    console.log(`[Airtable] Adding to blacklist: ${entry.Keyword}`);
+    const records = await base(TABLES.BLACKLIST).create([
+      {
+        fields: {
+          Keyword: entry.Keyword,
+          Reason: entry.Reason,
+          Added_At: new Date().toISOString(),
+        },
+      },
+    ]);
+
+    if (records.length === 0) return null;
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Reason: record.get('Reason') as string,
+      Added_At: record.get('Added_At') as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'addToBlacklist');
+  }
+}
+
 export async function getBlacklist(): Promise<BlacklistEntry[]> {
   try {
     const records = await base(TABLES.BLACKLIST).select().all();
@@ -420,5 +478,73 @@ export async function getBlacklist(): Promise<BlacklistEntry[]> {
     }));
   } catch (error) {
     return handleAirtableError(error, 'getBlacklist');
+  }
+}
+
+export async function getConfig(): Promise<ConfigRecord[]> {
+  try {
+    const records = await base(TABLES.CONFIG).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      Key: record.get('Key') as string,
+      Value: record.get('Value') as string,
+      Description: record.get('Description') as string,
+      Updated_At: record.get('Updated_At') as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getConfig');
+  }
+}
+
+export async function updateConfig(key: string, value: string): Promise<ConfigRecord | null> {
+  try {
+    console.log(`[Airtable] Updating config: ${key}`);
+    
+    // Find the record first
+    const records = await base(TABLES.CONFIG).select({
+      filterByFormula: `{Key} = '${key}'`,
+      maxRecords: 1,
+    }).firstPage();
+
+    if (records.length === 0) {
+      // Create if not exists
+      const newRecords = await base(TABLES.CONFIG).create([
+        {
+          fields: {
+            Key: key,
+            Value: value,
+          },
+        },
+      ]);
+      const record = newRecords[0];
+      return {
+        id: record.id,
+        Key: record.get('Key') as string,
+        Value: record.get('Value') as string,
+        Description: record.get('Description') as string,
+        Updated_At: record.get('Updated_At') as string,
+      };
+    }
+
+    const recordId = records[0].id;
+    const updatedRecords = await base(TABLES.CONFIG).update([
+      {
+        id: recordId,
+        fields: {
+          Value: value,
+        },
+      },
+    ]);
+
+    const record = updatedRecords[0];
+    return {
+      id: record.id,
+      Key: record.get('Key') as string,
+      Value: record.get('Value') as string,
+      Description: record.get('Description') as string,
+      Updated_At: record.get('Updated_At') as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'updateConfig');
   }
 }
