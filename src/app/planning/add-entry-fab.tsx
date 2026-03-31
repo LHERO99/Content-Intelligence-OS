@@ -138,81 +138,58 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="text-[#00463c] flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Neuen Eintrag hinzufügen
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              <Plus className="h-6 w-6" />
+              {type === 'keyword' && 'Neues Keyword hinzufügen'}
+              {type === 'trend' && 'Neuen Trend hinzufügen'}
+              {type === 'blacklist' && 'Keyword blacklisten'}
+              {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
             </DialogTitle>
-            <DialogDescription>
-              Wählen Sie den Typ und füllen Sie die erforderlichen Felder aus.
+            <DialogDescription className="text-base">
+              Füllen Sie die erforderlichen Felder aus, um den Eintrag zu speichern.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">Eintragstyp</Label>
-              <Select value={type} onValueChange={(v) => setType(v as EntryType)}>
-                <SelectTrigger id="type" className="border-[#00463c]/20">
-                  <SelectValue placeholder="Typ auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="keyword">
-                    <div className="flex items-center gap-2">
-                      <Map className="h-4 w-4" />
-                      <span>Keyword-Map</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="trend">
-                    <div className="flex items-center gap-2">
-                      <Radar className="h-4 w-4" />
-                      <span>Trend-Radar</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="blacklist">
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert className="h-4 w-4" />
-                      <span>Blacklist</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="grid gap-6 py-6">
             {type === 'keyword' && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="keyword">Keyword *</Label>
+                    <Label htmlFor="keyword" className="text-sm font-semibold">Keyword *</Label>
                     <Input
                       id="keyword"
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
                       placeholder="z.B. Vitamin C"
+                      className="h-11 text-base"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="url">Target URL *</Label>
+                    <Label htmlFor="url" className="text-sm font-semibold">Target URL *</Label>
                     <Input
                       id="url"
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       placeholder="https://..."
+                      className="h-11 text-base"
                       required
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="volume">Suchvolumen</Label>
+                    <Label htmlFor="volume" className="text-sm font-semibold">Suchvolumen</Label>
                     <Input
                       id="volume"
                       type="number"
                       value={volume}
                       onChange={(e) => setVolume(e.target.value)}
+                      className="h-11 text-base"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="difficulty">Difficulty (0-100)</Label>
+                    <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty (0-100)</Label>
                     <Input
                       id="difficulty"
                       type="number"
@@ -220,6 +197,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       max="100"
                       value={difficulty}
                       onChange={(e) => setDifficulty(e.target.value)}
+                      className="h-11 text-base"
                     />
                   </div>
                 </div>
@@ -229,19 +207,20 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             {type === 'trend' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="trendTopic">Trend-Thema *</Label>
+                  <Label htmlFor="trendTopic" className="text-sm font-semibold">Trend-Thema *</Label>
                   <Input
                     id="trendTopic"
                     value={trendTopic}
                     onChange={(e) => setTrendTopic(e.target.value)}
                     placeholder="z.B. Bio-Hacking"
+                    className="h-11 text-base"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="source">Quelle *</Label>
+                  <Label htmlFor="source" className="text-sm font-semibold">Quelle *</Label>
                   <Select value={source} onValueChange={(v) => setSource(v as 'GSC' | 'Sistrix')}>
-                    <SelectTrigger id="source">
+                    <SelectTrigger id="source" className="h-11 text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -256,22 +235,24 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             {type === 'blacklist' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="blKeyword">Keyword *</Label>
+                  <Label htmlFor="blKeyword" className="text-sm font-semibold">Keyword *</Label>
                   <Input
                     id="blKeyword"
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
                     placeholder="z.B. Konkurrenzmarke"
+                    className="h-11 text-base"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reason">Grund *</Label>
+                  <Label htmlFor="reason" className="text-sm font-semibold">Grund *</Label>
                   <Input
                     id="reason"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="z.B. Rechtliche Einschränkungen"
+                    className="h-11 text-base"
                     required
                   />
                 </div>
@@ -287,23 +268,24 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
+              className="h-11 px-6 text-base"
             >
               Abbrechen
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#00463c] hover:bg-[#00332c] text-white"
+              className="bg-[#00463c] hover:bg-[#00332c] text-white h-11 px-8 text-base"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Speichern...
                 </>
               ) : (

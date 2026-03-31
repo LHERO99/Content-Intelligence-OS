@@ -25,11 +25,10 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   if (status === "authenticated" && !isAuthPage) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
+      <SidebarProvider defaultOpen={true}>
+        <AppSidebar collapsible="none" />
         <main className="flex-1">
           <div className="p-6">
-            <SidebarTrigger />
             <GlobalAlerts />
             {children}
           </div>

@@ -24,6 +24,8 @@
 - [x] Created global alerts system for user feedback.
 - [x] Fully localized the application UI to German.
 - [x] Reorganized sidebar navigation:
+  - [x] Implemented **Sticky Sidebar** for persistent navigation.
+  - [x] Transitioned to a **Non-Collapsible** sidebar design for layout stability.
   - [x] Moved Admin Panel link to the sidebar footer.
   - [x] Linked user identity block directly to the Profile page.
 - [x] Resolved 404 errors by creating the missing Admin page and fixing sidebar navigation logic.
@@ -48,6 +50,9 @@
   - [x] **Keyword-Map**: For strategic keyword management.
   - [x] **Trend-Radar**: For identifying new potentials.
   - [x] **Blacklist**: For managing excluded keywords.
+- [x] Refined Planning UI:
+  - [x] Implemented bold headlines and larger input fields.
+  - [x] Fixed clipping issues and improved layout interaction design.
 - [x] Implemented unified "Add Entry" FAB ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)):
   - [x] Centralized entry point for Keywords, Trends, and Blacklist items.
   - [x] Context-aware type selection based on active tab.

@@ -43,11 +43,11 @@ const items = [
   },
 ]
 
-export function AppSidebar() {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
 
   return (
-    <Sidebar>
+    <Sidebar {...props}>
       <SidebarHeader className="p-4">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-center px-2">

@@ -16,6 +16,10 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **Keyword-Map**: Strategic management of target keywords and their status.
     - **Trend-Radar**: Identifies new potentials via GSC and Sistrix gap analysis.
     - **Blacklist**: Management of excluded keywords to prevent irrelevant content creation.
+  - **UI Refinements**:
+    - **Enhanced Visual Hierarchy**: Implemented bold headlines and improved spacing for better readability.
+    - **Optimized Inputs**: Larger input fields for better touch and mouse interaction.
+    - **Layout Stability**: Fixed clipping issues and ensured consistent alignment across all planning tabs.
   - **Unified Data Entry**:
     - **"Add Entry" FAB**: Implemented a unified Floating Action Button ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)) that serves as the central entry point for all planning data.
     - **Multi-Type Support**: The FAB supports adding Keywords, Trends, and Blacklist entries through a single, context-aware interface that automatically adapts to the active tab.
@@ -29,6 +33,8 @@ The SEO Content Tool is currently in active development, with core infrastructur
   - **Role-Based Access**: Strict enforcement of Admin-only access to management tools.
 - **API Stability**: Resolved 500, 405, and 401 errors by aligning API method handlers and ensuring robust session validation using `authOptions`.
 - **Sidebar & Navigation**:
+  - **Sticky Sidebar**: The sidebar is now fixed to the left side of the viewport, ensuring navigation is always accessible regardless of scroll position.
+  - **Non-Collapsible Design**: Transitioned to a stable, non-collapsible sidebar to provide a consistent layout and prevent layout shifts.
   - **Reorganized Layout**: The sidebar has been streamlined for better UX.
   - **Admin Panel Integration**: The Admin Panel link is now located in the sidebar footer for administrative users.
   - **User Identity & Profile**: The user identity block in the footer now links directly to the [`Profile page`](src/app/profile/page.tsx), providing quick access to account settings.

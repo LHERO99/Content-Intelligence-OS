@@ -53,39 +53,41 @@ export function Blacklist() {
         Keywords, die explizit von der Planung ausgeschlossen wurden.
       </p>
 
-      <Card className="border-[#00463c]/10">
+      <Card className="border-[#00463c]/10 overflow-hidden">
         <CardHeader className="bg-[#e7f3ee]/50">
           <CardTitle className="text-sm font-medium text-[#00463c]">Ausgeschlossene Keywords</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-[#00463c]/10">
-                <TableHead className="text-[#00463c] font-bold">Keyword</TableHead>
-                <TableHead className="text-[#00463c] font-bold">Grund</TableHead>
-                <TableHead className="text-[#00463c] font-bold">Hinzugefügt am</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {blacklist.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                    Keine Einträge in der Blacklist gefunden.
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-[#00463c]/10">
+                  <TableHead className="text-[#00463c] font-bold whitespace-nowrap">Keyword</TableHead>
+                  <TableHead className="text-[#00463c] font-bold whitespace-nowrap">Grund</TableHead>
+                  <TableHead className="text-[#00463c] font-bold whitespace-nowrap">Hinzugefügt am</TableHead>
                 </TableRow>
-              ) : (
-                blacklist.map((entry) => (
-                  <TableRow key={entry.id} className="border-[#00463c]/5">
-                    <TableCell className="font-medium">{entry.Keyword}</TableCell>
-                    <TableCell>{entry.Reason || '-'}</TableCell>
-                    <TableCell>
-                      {entry.Added_At ? new Date(entry.Added_At).toLocaleDateString('de-DE') : '-'}
+              </TableHeader>
+              <TableBody>
+                {blacklist.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      Keine Einträge in der Blacklist gefunden.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  blacklist.map((entry) => (
+                    <TableRow key={entry.id} className="border-[#00463c]/5">
+                      <TableCell className="font-medium whitespace-nowrap">{entry.Keyword}</TableCell>
+                      <TableCell className="whitespace-nowrap">{entry.Reason || '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {entry.Added_At ? new Date(entry.Added_At).toLocaleDateString('de-DE') : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
