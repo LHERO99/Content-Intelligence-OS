@@ -22,12 +22,15 @@ function SignInForm() {
     setError("");
 
     try {
+      console.log("Attempting sign-in for:", email);
       const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
         callbackUrl,
       });
+
+      console.log("Sign-in result received:", result);
 
       if (result?.error) {
         console.error("Sign-in error:", result.error);
