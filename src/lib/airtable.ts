@@ -104,7 +104,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
 }
 
 export async function getPerformanceData(): Promise<PerformanceData[]> {
-  const records = await base('Performance_Data').select().all();
+  const records = await base('Performance-Data').select().all();
   return records.map((record) => ({
     id: record.id,
     ID: record.get('ID') as number,
@@ -118,7 +118,7 @@ export async function getPerformanceData(): Promise<PerformanceData[]> {
 }
 
 export async function getPotentialTrends(): Promise<PotentialTrend[]> {
-  const records = await base('Potential_Trends').select().all();
+  const records = await base('Potential-Trends').select().all();
   return records.map((record) => ({
     id: record.id,
     Trend_Topic: record.get('Trend_Topic') as string,
@@ -129,7 +129,7 @@ export async function getPotentialTrends(): Promise<PotentialTrend[]> {
 }
 
 export async function getAuditLogs(): Promise<AuditLog[]> {
-  const records = await base('Audit_Logs').select().all();
+  const records = await base('Audit-Logs').select().all();
   return records.map((record) => ({
     id: record.id,
     ID: record.get('ID') as number,
