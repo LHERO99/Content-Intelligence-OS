@@ -63,7 +63,7 @@ export default function PlanningPage() {
 
   return (
     <div className="flex-1 space-y-8 relative">
-      <div className="flex items-center justify-between space-y-2">
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Planung</h1>
       </div>
 
