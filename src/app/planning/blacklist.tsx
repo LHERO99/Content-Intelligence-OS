@@ -487,52 +487,6 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
       return <div>{date ? new Date(date).toLocaleDateString('de-DE') : "-"}</div>;
     },
   },
-  {
-    id: "actions",
-    enableHiding: false,
-    enableColumnFilter: false,
-    header: "",
-    cell: ({ row, table }) => {
-      const entry = row.original;
-      return (
-        <div className="flex items-center justify-end gap-2">
-          <Popover>
-            <PopoverTrigger>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-44 p-3"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              <div className="space-y-3">
-                <p className="text-xs font-medium">Möchtest du wirklich löschen?</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="h-7 text-xs flex-1"
-                    onClick={async (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      await (table.options.meta as any).deleteData(entry.id);
-                    }}
-                  >
-                    Löschen
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      );
-    },
-  },
 ];
 
 // --- Main Component ---
