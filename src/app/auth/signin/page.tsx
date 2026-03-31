@@ -38,9 +38,8 @@ function SignInForm() {
         setIsLoading(false);
       } else if (result?.ok) {
         console.log("[SignIn] Success, redirecting to:", callbackUrl);
-        // Use router.push for a smoother transition handled by Next.js
-        router.push(callbackUrl);
-        router.refresh();
+        // Use window.location.href for a full page reload to ensure session is picked up
+        window.location.href = callbackUrl;
       }
     } catch (err: any) {
       console.error("[SignIn] Unexpected error:", err);
