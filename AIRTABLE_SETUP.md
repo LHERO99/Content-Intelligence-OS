@@ -22,6 +22,65 @@ To enable authentication, ensure your `Users` table has the following fields:
 - `Email`: Email (used for login)
 - `Password`: Single line text (stored as a bcrypt hash)
 - `Role`: Single select (`Admin`, `Editor`, `Viewer`)
+- `Password_Changed`: Checkbox
+
+## Table Schema: Keyword-Map
+
+- `Keyword`: Single line text (Primary)
+- `Target_URL`: URL
+- `Search_Volume`: Number
+- `Difficulty`: Number (0-100)
+- `Status`: Single select (`Backlog`, `Planned`, `In Progress`, `Published`)
+- `Editorial_Deadline`: Date
+- `Assigned_Editor`: Link to `Users`
+
+## Table Schema: Potential_Trends
+
+- `Trend_Topic`: Single line text (Primary)
+- `Source`: Single select (`GSC`, `Sistrix`)
+- `Gap_Score`: Number
+- `Status`: Single select (`New`, `Claimed`, `Blacklisted`)
+
+## Table Schema: Blacklist
+
+- `Keyword`: Single line text (Primary)
+- `Reason`: Long text
+- `Added_At`: Date (with time)
+
+## Table Schema: Config
+
+- `Key`: Single line text (Primary)
+- `Value`: Long text
+- `Description`: Single line text
+- `Updated_At`: Date (with time)
+
+## Table Schema: Content-Log
+
+- `ID`: Autonumber (Primary)
+- `Keyword_ID`: Link to `Keyword-Map`
+- `Version`: Single select (`v1`, `v2`)
+- `Content_Body`: Long text
+- `Diff_Summary`: Long text
+- `Reasoning_Chain`: Long text
+- `Created_At`: Date (with time)
+
+## Table Schema: Performance_Data
+
+- `ID`: Autonumber (Primary)
+- `Keyword_ID`: Link to `Keyword-Map`
+- `Date`: Date
+- `GSC_Clicks`: Number
+- `GSC_Impressions`: Number
+- `Sistrix_VI`: Number
+- `Position`: Number
+
+## Table Schema: Audit_Logs
+
+- `ID`: Autonumber (Primary)
+- `Action`: Single line text
+- `Timestamp`: Date (with time)
+- `User_ID`: Link to `Users`
+- `Raw_Payload`: Long text
 
 ## Password Hashing
 

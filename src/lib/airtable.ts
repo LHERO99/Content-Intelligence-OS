@@ -513,6 +513,7 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
           fields: {
             Key: key,
             Value: value,
+            Updated_At: new Date().toISOString(),
           },
         },
       ]);
@@ -532,6 +533,7 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
         id: recordId,
         fields: {
           Value: value,
+          Updated_At: new Date().toISOString(),
         },
       },
     ]);

@@ -48,9 +48,11 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
 
   // Sync type with active tab
   useEffect(() => {
+    if (!open) return; // Only sync when opening
     if (activeTab === 'keyword-map') setType('keyword');
     else if (activeTab === 'trend-radar') setType('trend');
     else if (activeTab === 'blacklist') setType('blacklist');
+    else setType('keyword'); // Default for editorial or others
   }, [activeTab, open]);
 
   const resetForm = () => {
