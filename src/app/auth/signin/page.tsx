@@ -37,11 +37,15 @@ function SignInForm() {
       });
 
       if (result?.error) {
+        console.error("[SignIn] Error result:", result.error);
         setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
       } else if (result?.ok) {
+        console.log("[SignIn] Success, redirecting to:", callbackUrl);
+        // Use window.location.href for a full page reload to ensure session is picked up
         window.location.href = callbackUrl;
         return;
       } else {
+        console.error("[SignIn] Unexpected result:", result);
         setError("An unexpected error occurred during sign-in");
       }
     } catch (err: any) {

@@ -13,10 +13,12 @@ The SEO Content Tool is currently in active development, with core infrastructur
 - **n8n Integration**: Triggering workflows via API.
 
 ## Recent Fixes
-- **Sign-in Hang Resolution**: Fixed a persistent "Signing in..." hang by:
+- **Sign-in Hang & Redirect Resolution**: Fixed persistent "Signing in..." hangs and redirection loops by:
   - Adding a `finally` block in [`src/app/auth/signin/page.tsx`](src/app/auth/signin/page.tsx:53) to ensure the loading state is always reset.
   - Implementing a 10-second client-side timeout for the `signIn` promise.
-  - Wrapping the `authorize` callback in [`src/app/api/auth/[...nextauth]/route.ts`](src/app/api/auth/[...nextauth]/route.ts:40) with an 8-second timeout to prevent Airtable connectivity issues from hanging the auth process.
-  - Adding detailed logging with execution times to both the frontend and backend auth flows.
+  - Refactoring the `authorize` callback in [`src/app/api/auth/[...nextauth]/route.ts`](src/app/api/auth/[...nextauth]/route.ts:32) to be extremely resilient, with explicit handling for missing passwords, user creation failures, and an 8-second timeout.
+  - Updating [`src/proxy.ts`](src/proxy.ts:11) to respect `callbackUrl` when an already-authenticated user hits the sign-in page, preventing loops.
+  - Adding detailed logging with execution times and object inspection to both the frontend and backend auth flows.
+- **Airtable Debugging**: Created a dedicated debug route [`src/app/api/debug/airtable/route.ts`](src/app/api/debug/airtable/route.ts) to verify connectivity and record counts in the `Users` table.
 - **Middleware Robustness**: Refined [`src/proxy.ts`](src/proxy.ts:8) to explicitly handle auth-related paths and prevent potential redirection loops during the sign-in process.
 - **Airtable Integration**: Optimized query performance with explicit timeouts in [`src/lib/airtable.ts`](src/lib/airtable.ts:143).

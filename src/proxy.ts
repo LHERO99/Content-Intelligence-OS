@@ -9,6 +9,12 @@ export default withAuth(
 
     // If user is authenticated and tries to access signin page or root, redirect to /planning
     if ((isAuthPage || path === "/") && token) {
+      const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
+      if (callbackUrl && !callbackUrl.startsWith("/auth/signin")) {
+        console.log("[Middleware] Authenticated user redirected to callbackUrl:", callbackUrl);
+        return NextResponse.redirect(new URL(callbackUrl, req.url));
+      }
+      console.log("[Middleware] Authenticated user redirected to /planning");
       return NextResponse.redirect(new URL("/planning", req.url));
     }
 

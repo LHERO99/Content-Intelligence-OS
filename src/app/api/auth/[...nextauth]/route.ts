@@ -38,33 +38,43 @@ export const authOptions = {
           return null;
         }
 
-        // 1. Try Airtable first
         try {
           console.log("[Auth] Checking Airtable for user...");
           
-          // Wrap the entire Airtable logic in a timeout to ensure it doesn't hang NextAuth
           const authResult = await Promise.race([
             (async () => {
-              const airtableUser = await getUserByEmail(credentials.email);
-              if (airtableUser && airtableUser.Password) {
-                console.log("[Auth] User found in Airtable, verifying password...");
-                const isValid = await bcrypt.compare(credentials.password, airtableUser.Password);
+              try {
+                const airtableUser = await getUserByEmail(credentials.email);
                 
-                if (isValid) {
-                  console.log("[Auth] Airtable password valid");
-                  return {
-                    id: airtableUser.id,
-                    name: airtableUser.Name,
-                    email: airtableUser.Email,
-                    role: airtableUser.Role,
-                  };
+                if (airtableUser) {
+                  if (!airtableUser.Password) {
+                    console.log("[Auth] User found but has no password set in Airtable");
+                    return "NO_PASSWORD";
+                  }
+
+                  console.log("[Auth] User found in Airtable, verifying password...");
+                  const isValid = await bcrypt.compare(credentials.password, airtableUser.Password);
+                  
+                  if (isValid) {
+                    console.log("[Auth] Airtable password valid");
+                    const userObject = {
+                      id: airtableUser.id,
+                      name: airtableUser.Name || credentials.email.split('@')[0],
+                      email: airtableUser.Email,
+                      role: airtableUser.Role || 'Viewer',
+                    };
+                    console.log("[Auth] Returning user object:", JSON.stringify(userObject));
+                    return userObject;
+                  }
+                  console.log("[Auth] Airtable password invalid");
+                  return "INVALID_PASSWORD";
                 }
-                console.log("[Auth] Airtable password invalid");
-                return "INVALID_PASSWORD";
-              } else if (!airtableUser) {
+
+                // No user found, check if we should create the first admin
                 console.log("[Auth] User not found in Airtable, checking if first user...");
                 const userCount = await countUsers();
                 console.log("[Auth] Current user count:", userCount);
+                
                 if (userCount === 0) {
                   console.log("[Auth] First user detected, registering as Admin...");
                   const hashedPassword = await bcrypt.hash(credentials.password, 10);
@@ -84,29 +94,31 @@ export const authOptions = {
                       role: newUser.Role,
                     };
                   }
+                  console.error("[Auth] Failed to create first user");
                 }
+                
+                return "NO_USER";
+              } catch (innerError) {
+                console.error("[Auth] Inner Airtable logic error:", innerError);
+                throw innerError;
               }
-              return "NO_USER";
             })(),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error("Airtable auth timeout")), 8000)
+              setTimeout(() => reject(new Error("Airtable auth timeout after 8s")), 8000)
             )
           ]);
 
-          if (authResult === "INVALID_PASSWORD") {
-            return null;
-          }
-
-          if (authResult !== "NO_USER") {
+          if (typeof authResult === "object" && authResult !== null) {
             console.log(`[Auth] Airtable auth successful in ${Date.now() - startTime}ms`);
             return authResult as any;
           }
-        } catch (error) {
-          console.error("[Auth] Airtable auth error or timeout:", error);
-        }
 
-        console.log(`[Auth] Authentication failed after ${Date.now() - startTime}ms`);
-        return null;
+          console.log(`[Auth] Airtable auth result: ${authResult}`);
+          return null;
+        } catch (error) {
+          console.error("[Auth] Airtable auth critical error or timeout:", error);
+          return null;
+        }
       },
     }),
   ],
