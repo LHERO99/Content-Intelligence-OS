@@ -11,6 +11,8 @@
 - **Rationale**: Prevents long-running requests from blocking the application and improves overall responsiveness.
 - **Decision**: Enforced server-only execution for Airtable logic and extracted types.
 - **Rationale**: To prevent sensitive Airtable API keys and logic from leaking to the client, [`src/lib/airtable.ts`](src/lib/airtable.ts) is now marked with `server-only`. Shared types were moved to [`src/lib/airtable-types.ts`](src/lib/airtable-types.ts) to allow client components to use types without importing the server-side logic.
+- **Decision**: Centralized Airtable error handling with specific 403/401/404 logic.
+- **Rationale**: To improve developer and user experience, a unified `handleAirtableError` function in [`src/lib/airtable.ts`](src/lib/airtable.ts:28) now intercepts all Airtable API errors. It provides specific troubleshooting steps for 403 (Authorization/Scopes) and 401 (Invalid Key) errors, making it easier to diagnose configuration issues.
 
 ## Route Protection
 - **Decision**: Using `withAuth` HOC and NextAuth.js for route protection.

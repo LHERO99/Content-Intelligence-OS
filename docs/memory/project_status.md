@@ -10,10 +10,14 @@ The SEO Content Tool is currently in active development, with core infrastructur
 - **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel.
 - **Monitoring Module**: Dashboard for tracking content performance.
 - **Admin Panel**: A new administrative interface ([`src/app/admin/page.tsx`](src/app/admin/page.tsx)) has been created to provide role-based access to system management tools.
-- **Airtable Integration**: Connection to Airtable for data storage and retrieval, including timeout handling and server-side security enforcement.
+- **Airtable Integration**: Connection to Airtable for data storage and retrieval, including timeout handling, server-side security enforcement, and enhanced 403/401 error handling.
 - **n8n Integration**: Triggering workflows via API.
 
 ## Recent Fixes
+- **Airtable 403 Authorization Resolution**: Addressed persistent 403 errors by:
+  - Implementing a centralized error handler `handleAirtableError` in [`src/lib/airtable.ts`](src/lib/airtable.ts:28).
+  - Adding specific troubleshooting guidance for `NOT_AUTHORIZED` errors and scope-related issues.
+  - Improving UI resilience by surfacing actionable error messages when API keys or permissions are misconfigured.
 - **Routing & Navigation (404 Resolution)**: Resolved 404 errors related to missing routes and incorrect sidebar logic:
   - Created the missing Admin page at [`src/app/admin/page.tsx`](src/app/admin/page.tsx).
   - Corrected the sidebar navigation logic in [`src/components/app-sidebar.tsx`](src/components/app-sidebar.tsx:82) to properly handle role-based visibility for the Admin Panel.
