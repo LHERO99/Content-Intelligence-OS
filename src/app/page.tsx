@@ -159,7 +159,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-6 p-8 pt-6 bg-mint-mist/5 min-h-screen">
+      <div className="flex-1 space-y-6">
         <Skeleton className="h-10 w-48" />
         <div className="grid gap-4 md:grid-cols-3">
           <Skeleton className="h-32" />
@@ -175,9 +175,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6 bg-mint-mist/5 min-h-screen">
+    <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-deep-forest">Dashboard</h2>
+        <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Dashboard</h1>
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 

@@ -231,9 +231,6 @@ export function KeywordTable({ data }: KeywordTableProps) {
       </div>
 
       <Card className="border-[#00463c]/10 overflow-hidden">
-        <CardHeader className="bg-[#e7f3ee]/50">
-          <CardTitle className="text-sm font-medium text-[#00463c]">Keywords</CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -261,7 +258,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && "selected"}
-                      className="hover:bg-[#e7f3ee]/20 border-[#00463c]/5"
+                      className="hover:bg-muted/50 border-[#00463c]/5"
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id} className="whitespace-nowrap">

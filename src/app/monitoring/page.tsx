@@ -130,7 +130,7 @@ export default function MonitoringPage() {
 
   if (loading) {
     return (
-      <div className="p-8 space-y-6 bg-[#e7f3ee] min-h-screen">
+      <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Skeleton className="h-32" />
@@ -143,7 +143,7 @@ export default function MonitoringPage() {
   }
 
   return (
-    <div className="p-8 space-y-6 bg-[#e7f3ee] min-h-screen text-[#00463c]">
+    <div className="space-y-6 text-[#00463c]">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Content-Monitoring</h1>

@@ -55,17 +55,15 @@ export function TrendRadar({ trends }: TrendRadarProps) {
         {newTrends.length > 0 ? (
           newTrends.map((trend) => (
             <Card key={trend.id} className="border-[#00463c]/10 hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg font-bold text-[#00463c]">
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start mb-4">
+                  <h4 className="text-lg font-bold text-[#00463c]">
                     {trend.Trend_Topic}
-                  </CardTitle>
-                  <Badge variant="outline" className="bg-[#e7f3ee] text-[#00463c] border-[#00463c]/20">
+                  </h4>
+                  <Badge variant="outline" className="bg-white text-[#00463c] border-[#00463c]/20">
                     {trend.Source}
                   </Badge>
                 </div>
-              </CardHeader>
-              <CardContent>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Zap className="h-4 w-4 text-yellow-500" />
                   <span>Gap Score: <span className="font-bold text-foreground">{trend.Gap_Score || 0}</span></span>

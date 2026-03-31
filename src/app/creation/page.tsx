@@ -78,10 +78,10 @@ export default function CreationPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-[#e7f3ee]/30 min-h-screen">
+    <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-emerald-950">Content-Erstellung</h1>
+          <h1 className="text-3xl font-bold text-[#00463c]">Content-Erstellung</h1>
           <p className="text-emerald-700">Überprüfen und verfeinern Sie KI-generierte Content-Vorschläge.</p>
         </div>
         <div className="flex items-center gap-3">

@@ -56,9 +56,6 @@ export function Blacklist() {
       </div>
 
       <Card className="border-[#00463c]/10 overflow-hidden">
-        <CardHeader className="bg-[#e7f3ee]/50">
-          <CardTitle className="text-sm font-medium text-[#00463c]">Ausgeschlossene Keywords</CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -78,7 +75,7 @@ export function Blacklist() {
                   </TableRow>
                 ) : (
                   blacklist.map((entry) => (
-                    <TableRow key={entry.id} className="hover:bg-[#e7f3ee]/20 border-[#00463c]/5">
+                    <TableRow key={entry.id} className="hover:bg-muted/50 border-[#00463c]/5">
                       <TableCell className="font-medium whitespace-nowrap">{entry.Keyword}</TableCell>
                       <TableCell className="whitespace-nowrap">{entry.Reason || '-'}</TableCell>
                       <TableCell className="whitespace-nowrap">

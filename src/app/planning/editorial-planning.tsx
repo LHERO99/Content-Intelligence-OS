@@ -34,9 +34,6 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       </div>
 
       <Card className="border-[#00463c]/10 overflow-hidden">
-        <CardHeader className="bg-[#e7f3ee]/50">
-          <CardTitle className="text-sm font-medium text-[#00463c]">Aktueller Plan</CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
@@ -51,7 +48,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
               <TableBody>
                 {plannedKeywords.length > 0 ? (
                   plannedKeywords.map((kw) => (
-                    <TableRow key={kw.id} className="hover:bg-[#e7f3ee]/20 border-[#00463c]/5">
+                    <TableRow key={kw.id} className="hover:bg-muted/50 border-[#00463c]/5">
                       <TableCell className="font-medium whitespace-nowrap">{kw.Keyword}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <Badge className="bg-[#00463c] text-[#e7f3ee] hover:bg-[#00463c]/90">

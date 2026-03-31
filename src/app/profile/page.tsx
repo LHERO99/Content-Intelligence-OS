@@ -62,7 +62,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">Benutzerprofil</h1>
+      <h1 className="text-3xl font-bold text-[#00463c]">Benutzerprofil</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-1">

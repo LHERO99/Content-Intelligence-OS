@@ -44,7 +44,7 @@ export default function PlanningPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#f8faf9]">
+      <div className="flex-1 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
       </div>
     );
@@ -52,9 +52,9 @@ export default function PlanningPage() {
 
   if (error || !data) {
     return (
-      <div className="flex-1 p-8 bg-[#f8faf9]">
+      <div className="flex-1">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-red-800 text-xl font-bold mb-2">Airtable Verbindungsfehler</h2>
+          <h1 className="text-red-800 text-xl font-bold mb-2">Airtable Verbindungsfehler</h1>
           <p className="text-red-700 mb-4">{error}</p>
         </div>
       </div>
@@ -62,9 +62,9 @@ export default function PlanningPage() {
   }
 
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6 bg-[#f8faf9] relative">
+    <div className="flex-1 space-y-8 relative">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Planung</h2>
+        <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Planung</h1>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
