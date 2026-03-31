@@ -18,12 +18,13 @@ import {
   ArrowUpDown, 
   ChevronDown, 
   MoreHorizontal, 
-  Search, 
   Map, 
   Loader2, 
   GripVertical,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Filter
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // DND Kit Imports
 import {
@@ -142,20 +148,43 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
+          {header.column.getCanFilter() && (
+            <Popover>
+              <PopoverTrigger>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`h-8 w-8 p-0 ${header.column.getFilterValue() ? 'text-[#00463c]' : 'text-muted-foreground'}`}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Filter {flexRender(header.column.columnDef.header, header.getContext())}</h4>
+                  <Input
+                    placeholder="Suchen..."
+                    value={(header.column.getFilterValue() as string) ?? ""}
+                    onChange={(event) => header.column.setFilterValue(event.target.value)}
+                    className="h-8 text-xs"
+                    autoFocus
+                  />
+                  {header.column.getFilterValue() && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs w-full"
+                      onClick={() => header.column.setFilterValue(undefined)}
+                    >
+                      Filter zurücksetzen
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
-        {header.column.getCanFilter() ? (
-          <div className="px-1">
-            <Input
-              placeholder="Filter..."
-              value={(header.column.getFilterValue() as string) ?? ""}
-              onChange={(event) => header.column.setFilterValue(event.target.value)}
-              className="h-7 text-xs font-normal border-[#00463c]/10 focus-visible:ring-[#00463c]"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        ) : (
-          <div className="h-7" /> // Spacer for alignment
-        )}
       </div>
     </TableHead>
   );
@@ -349,18 +378,16 @@ export const columns: ColumnDef<KeywordMap>[] = [
   {
     id: "select",
     header: ({ table }) => (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center h-8">
-          <Checkbox
-            checked={
-              (table.getIsAllPageRowsSelected() ||
-                (table.getIsSomePageRowsSelected() && "indeterminate")) as any
-            }
-            onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        </div>
-        <div className="h-7" />
+      <div className="flex items-center h-8">
+        <Checkbox
+          checked={
+            (table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")) as any
+          }
+          onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          onClick={(e) => e.stopPropagation()}
+        />
       </div>
     ),
     cell: ({ row }) => (
@@ -405,14 +432,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
   },
   {
     id: "Content-Plan",
-    header: () => (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-center h-8">
-          Content-Plan
-        </div>
-        <div className="h-7" />
-      </div>
-    ),
+    header: "Content-Plan",
     enableColumnFilter: false,
     cell: ({ row, table }) => {
       const isMain = row.original.Main_Keyword === "Y";
@@ -491,31 +511,67 @@ export const columns: ColumnDef<KeywordMap>[] = [
     id: "actions",
     enableHiding: false,
     enableColumnFilter: false,
-    header: () => (
-      <div className="flex flex-col gap-2">
-        <div className="h-8" />
-        <div className="h-7" />
-      </div>
-    ),
-    cell: ({ row }) => {
+    header: "",
+    cell: ({ row, table }) => {
       const keyword = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <span className="sr-only">Menü öffnen</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Aktionen</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(keyword.Keyword)}>
-              Keyword kopieren
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Details anzeigen</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center justify-end gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                <span className="sr-only">Menü öffnen</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Aktionen</DropdownMenuLabel>
+              <DropdownMenuItem onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(keyword.Keyword);
+              }}>
+                Keyword kopieren
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                (table.options.meta as any).openEditModal(keyword);
+              }}>
+                Details bearbeiten
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Popover>
+            <PopoverTrigger>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-44 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <div className="space-y-3">
+                <p className="text-xs font-medium">Eintrag löschen?</p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="h-7 text-xs flex-1"
+                    onClick={async (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      await (table.options.meta as any).deleteData(keyword.id);
+                    }}
+                  >
+                    Löschen
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       );
     },
   },
@@ -537,6 +593,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
 
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -569,6 +626,60 @@ export function KeywordTable({ data }: KeywordTableProps) {
     }
   };
 
+  const deleteData = async (id: string) => {
+    try {
+      const response = await fetch(`/api/planning/keywords?id=${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const resData = await response.json();
+        throw new Error(resData.error || "Delete failed");
+      }
+
+      addAlert({
+        message: "Keyword gelöscht",
+        type: "success",
+      });
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error: any) {
+      addAlert({
+        message: "Fehler beim Löschen",
+        description: error.message,
+        type: "error",
+      });
+    }
+  };
+
+  const bulkDelete = async (ids: string[]) => {
+    try {
+      setIsBulkDeleting(true);
+      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const resData = await response.json();
+        throw new Error(resData.error || "Bulk delete failed");
+      }
+
+      addAlert({
+        message: `${ids.length} Keywords gelöscht`,
+        type: "success",
+      });
+      setRowSelection({});
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error: any) {
+      addAlert({
+        message: "Fehler beim Bulk-Löschen",
+        description: error.message,
+        type: "error",
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   const table = useReactTable({
     data,
     columns,
@@ -583,6 +694,11 @@ export function KeywordTable({ data }: KeywordTableProps) {
     onColumnOrderChange: setColumnOrder,
     meta: {
       updateData,
+      deleteData,
+      openEditModal: (keyword: KeywordMap) => {
+        setEditingKeyword(keyword);
+        setIsEditModalOpen(true);
+      }
     },
     state: {
       sorting,
@@ -604,6 +720,8 @@ export function KeywordTable({ data }: KeywordTableProps) {
     }
   }
 
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+
   return (
     <div className="w-full space-y-6">
       <div className="space-y-2">
@@ -617,6 +735,32 @@ export function KeywordTable({ data }: KeywordTableProps) {
       </div>
 
       <div className="flex items-center py-4 gap-4">
+        {selectedRows.length > 0 && (
+          <Popover>
+            <PopoverTrigger>
+              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
+                <Trash2 className="h-4 w-4 mr-2" />
+                {selectedRows.length} löschen
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Möchten Sie {selectedRows.length} Einträge wirklich löschen?</p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="flex-1"
+                    disabled={isBulkDeleting}
+                    onClick={() => bulkDelete(selectedRows.map(r => r.original.id))}
+                  >
+                    {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, löschen"}
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <KeywordImport />
           <DropdownMenu>

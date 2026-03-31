@@ -785,3 +785,45 @@ export async function deleteFromBlacklist(id: string): Promise<boolean> {
     return handleAirtableError(error, 'deleteFromBlacklist');
   }
 }
+
+export async function deleteKeyword(id: string): Promise<boolean> {
+  try {
+    console.log(`[Airtable] Deleting keyword: ${id}`);
+    await base(TABLES.KEYWORD_MAP).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error, 'deleteKeyword');
+  }
+}
+
+export async function bulkDeleteKeywords(ids: string[]): Promise<boolean> {
+  try {
+    console.log(`[Airtable] Bulk deleting ${ids.length} keywords`);
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      chunks.push(ids.slice(i, i + 10));
+    }
+    for (const chunk of chunks) {
+      await base(TABLES.KEYWORD_MAP).destroy(chunk);
+    }
+    return true;
+  } catch (error) {
+    return handleAirtableError(error, 'bulkDeleteKeywords');
+  }
+}
+
+export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
+  try {
+    console.log(`[Airtable] Bulk deleting ${ids.length} from blacklist`);
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      chunks.push(ids.slice(i, i + 10));
+    }
+    for (const chunk of chunks) {
+      await base(TABLES.BLACKLIST).destroy(chunk);
+    }
+    return true;
+  } catch (error) {
+    return handleAirtableError(error, 'bulkDeleteFromBlacklist');
+  }
+}

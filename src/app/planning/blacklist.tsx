@@ -17,10 +17,10 @@ import {
   ShieldAlert, 
   Loader2, 
   ArrowUpDown, 
-  Search,
   MoreHorizontal,
   AlertCircle,
-  Trash2
+  Trash2,
+  Filter
 } from 'lucide-react';
 import { BlacklistEntry } from '@/lib/airtable-types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +54,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // --- Edit Modal Component ---
 
@@ -96,7 +101,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave, onDelete }: Edi
   };
 
   const handleDelete = async () => {
-    if (!entry || !confirm("Möchten Sie diesen Eintrag wirklich löschen?")) return;
+    if (!entry) return;
     
     setError(null);
     setLoading(true);
@@ -153,16 +158,32 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave, onDelete }: Edi
           </div>
 
           <DialogFooter className="flex justify-between sm:justify-between">
-            <Button 
-              type="button" 
-              variant="destructive" 
-              onClick={handleDelete} 
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Löschen
-            </Button>
+            <Popover>
+              <PopoverTrigger>
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  disabled={loading}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Löschen
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-44 p-3">
+                <div className="space-y-3">
+                  <p className="text-xs font-medium">Eintrag wirklich löschen?</p>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="h-7 text-xs w-full"
+                    onClick={handleDelete}
+                  >
+                    Ja, löschen
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
                 Abbrechen
@@ -192,6 +213,7 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
         }
         onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
+        onClick={(e) => e.stopPropagation()}
       />
     ),
     cell: ({ row }) => (
@@ -208,28 +230,80 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   {
     accessorKey: "Keyword",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Keyword
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-3 h-8 text-[#00463c] font-bold"
+        >
+          Keyword
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+        <Popover>
+          <PopoverTrigger>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={`h-8 w-8 p-0 ${column.getFilterValue() ? 'text-[#00463c]' : 'text-muted-foreground'}`}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <Filter className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Filter Keyword</h4>
+              <Input
+                placeholder="Suchen..."
+                value={(column.getFilterValue() as string) ?? ""}
+                onChange={(event) => column.setFilterValue(event.target.value)}
+                className="h-8 text-xs"
+                autoFocus
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     ),
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Reason",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Grund
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-3 h-8 text-[#00463c] font-bold"
+        >
+          Grund
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+        <Popover>
+          <PopoverTrigger>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={`h-8 w-8 p-0 ${column.getFilterValue() ? 'text-[#00463c]' : 'text-muted-foreground'}`}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <Filter className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Filter Grund</h4>
+              <Input
+                placeholder="Suchen..."
+                value={(column.getFilterValue() as string) ?? ""}
+                onChange={(event) => column.setFilterValue(event.target.value)}
+                className="h-8 text-xs"
+                autoFocus
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     ),
     cell: ({ row }) => <div>{row.getValue("Reason") || "-"}</div>,
   },
@@ -256,32 +330,61 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
     cell: ({ row, table }) => {
       const entry = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-              <span className="sr-only">Menü öffnen</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Aktionen</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(entry.Keyword)}>
-              Keyword kopieren
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              className="text-red-600"
-              onClick={async (e) => {
+        <div className="flex items-center justify-end gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                <span className="sr-only">Menü öffnen</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Aktionen</DropdownMenuLabel>
+              <DropdownMenuItem onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                if (confirm("Möchten Sie diesen Eintrag wirklich löschen?")) {
-                  await (table.options.meta as any).deleteData(entry.id);
-                }
-              }}
-            >
-              Löschen
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                navigator.clipboard.writeText(entry.Keyword);
+              }}>
+                Keyword kopieren
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                (table.options.meta as any).openEditModal(entry);
+              }}>
+                Details bearbeiten
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Popover>
+            <PopoverTrigger>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-44 p-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <div className="space-y-3">
+                <p className="text-xs font-medium">Eintrag löschen?</p>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="h-7 text-xs w-full"
+                  onClick={async (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    await (table.options.meta as any).deleteData(entry.id);
+                  }}
+                >
+                  Löschen
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       );
     },
   },
@@ -299,6 +402,7 @@ export function Blacklist() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
 
   const [editingEntry, setEditingEntry] = React.useState<BlacklistEntry | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -375,6 +479,35 @@ export function Blacklist() {
     }
   };
 
+  const bulkDelete = async (ids: string[]) => {
+    try {
+      setIsBulkDeleting(true);
+      const response = await fetch(`/api/planning/blacklist?ids=${ids.join(',')}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const resData = await response.json();
+        throw new Error(resData.error || "Bulk delete failed");
+      }
+
+      addAlert({
+        message: `${ids.length} Einträge gelöscht`,
+        type: "success",
+      });
+      setRowSelection({});
+      fetchData();
+    } catch (error: any) {
+      addAlert({
+        message: "Fehler beim Bulk-Löschen",
+        description: error.message,
+        type: "error",
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   const table = useReactTable({
     data,
     columns,
@@ -389,6 +522,10 @@ export function Blacklist() {
     meta: {
       updateData,
       deleteData,
+      openEditModal: (entry: BlacklistEntry) => {
+        setEditingEntry(entry);
+        setIsEditModalOpen(true);
+      }
     },
     state: {
       sorting,
@@ -414,6 +551,8 @@ export function Blacklist() {
     );
   }
 
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -427,17 +566,30 @@ export function Blacklist() {
       </div>
 
       <div className="flex items-center py-4 gap-4">
-        <div className="relative max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Blacklist filtern..."
-            value={(table.getColumn("Keyword")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("Keyword")?.setFilterValue(event.target.value)
-            }
-            className="pl-9 border-[#00463c]/20 focus-visible:ring-[#00463c]"
-          />
-        </div>
+        {selectedRows.length > 0 && (
+          <Popover>
+            <PopoverTrigger>
+              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
+                <Trash2 className="h-4 w-4 mr-2" />
+                {selectedRows.length} löschen
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Möchten Sie {selectedRows.length} Einträge wirklich löschen?</p>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  disabled={isBulkDeleting}
+                  onClick={() => bulkDelete(selectedRows.map(r => r.original.id))}
+                >
+                  {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, löschen"}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       <Card className="border-[#00463c]/10 overflow-hidden">

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createKeyword, getKeywordMap, updateKeyword, AirtableValidationError } from '@/lib/airtable';
+import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteKeywords, AirtableValidationError } from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -108,6 +108,36 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(
       { error: 'Interner Serverfehler', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const idsParam = searchParams.get('ids');
+
+    if (idsParam) {
+      const ids = idsParam.split(',');
+      await bulkDeleteKeywords(ids);
+      return NextResponse.json({ success: true });
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID oder IDs sind erforderlich für Deletion.' },
+        { status: 400 }
+      );
+    }
+
+    await deleteKeyword(id);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('[API] Error deleting keyword:', error);
+    return NextResponse.json(
+      { error: 'Fehler beim Löschen des Keywords', details: error.message },
       { status: 500 }
     );
   }

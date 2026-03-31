@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBlacklist, addToBlacklist, updateBlacklist, deleteFromBlacklist } from '@/lib/airtable';
+import { getBlacklist, addToBlacklist, updateBlacklist, deleteFromBlacklist, bulkDeleteFromBlacklist } from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -83,10 +83,17 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const idsParam = searchParams.get('ids');
+
+    if (idsParam) {
+      const ids = idsParam.split(',');
+      await bulkDeleteFromBlacklist(ids);
+      return NextResponse.json({ success: true });
+    }
 
     if (!id) {
       return NextResponse.json(
-        { error: 'ID ist erforderlich.' },
+        { error: 'ID oder IDs sind erforderlich.' },
         { status: 400 }
       );
     }
