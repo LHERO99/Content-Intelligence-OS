@@ -7,8 +7,8 @@ export default withAuth(
     const path = req.nextUrl.pathname;
     const isAuthPage = path.startsWith("/auth/signin");
 
-    // If user is authenticated and tries to access signin page, redirect to /planning
-    if (isAuthPage && token) {
+    // If user is authenticated and tries to access signin page or root, redirect to /planning
+    if ((isAuthPage || path === "/") && token) {
       return NextResponse.redirect(new URL("/planning", req.url));
     }
 
