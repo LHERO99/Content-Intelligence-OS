@@ -1,30 +1,46 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function SignIn() {
+function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams?.get("callbackUrl") || "/planning";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    setIsLoading(true);
+    setError("");
 
-    if (result?.error) {
-      setError("Invalid credentials");
-    } else {
-      router.push("/");
-      router.refresh();
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        console.error("Sign-in error:", result.error);
+        setError("Invalid credentials");
+        setIsLoading(false);
+      } else {
+        console.log("Sign-in successful, redirecting to:", callbackUrl);
+        router.push(callbackUrl);
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("Unexpected sign-in error:", err);
+      setError("An unexpected error occurred");
+      setIsLoading(false);
     }
   };
 
@@ -49,6 +65,7 @@ export default function SignIn() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
                 className="border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
               />
             </div>
@@ -59,6 +76,7 @@ export default function SignIn() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
                 className="border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
               />
             </div>
@@ -67,9 +85,10 @@ export default function SignIn() {
           <div>
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full bg-[#00463c] hover:bg-[#00332b] text-white"
             >
-              Sign in
+              {isLoading ? "Signing in..." : "Sign in"}
             </Button>
           </div>
         </form>
@@ -79,5 +98,13 @@ export default function SignIn() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }
