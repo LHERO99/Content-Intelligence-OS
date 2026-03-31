@@ -108,8 +108,9 @@ export function ApiKeysManagement() {
                 placeholder="Ihr Sistrix API-Key" 
                 value={sistrixKey}
                 onChange={(e) => setSistrixKey(e.target.value)}
+                className="h-10"
               />
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} disabled={saving} className="h-10 bg-[#00463c] hover:bg-[#00332c]">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Speichern
               </Button>

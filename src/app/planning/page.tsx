@@ -92,29 +92,11 @@ export default function PlanningPage() {
         </TabsContent>
 
         <TabsContent value="keyword-map" className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[#00463c]">
-              <Map className="h-6 w-6" />
-              <h3 className="text-xl font-semibold">Keyword-Map</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Strategische Verwaltung von Ziel-Keywords und deren aktuellem Status.
-            </p>
-            <KeywordTable data={data.keywords} />
-          </div>
+          <KeywordTable data={data.keywords} />
         </TabsContent>
 
         <TabsContent value="trend-radar" className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[#00463c]">
-              <Radar className="h-6 w-6" />
-              <h3 className="text-xl font-semibold">Trend-Radar</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Neue Potenziale, identifiziert durch GSC- und Sistrix-Gap-Analyse.
-            </p>
-            <TrendRadar trends={data.trends} />
-          </div>
+          <TrendRadar trends={data.trends} />
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4">

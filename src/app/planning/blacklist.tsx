@@ -44,14 +44,16 @@ export function Blacklist() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-[#00463c]">
-        <ShieldAlert className="h-6 w-6" />
-        <h3 className="text-xl font-semibold">Blacklist</h3>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[#00463c]">
+          <ShieldAlert className="h-6 w-6" />
+          <h3 className="text-xl font-semibold">Blacklist</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Keywords, die explizit von der Planung ausgeschlossen wurden.
+        </p>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Keywords, die explizit von der Planung ausgeschlossen wurden.
-      </p>
 
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardHeader className="bg-[#e7f3ee]/50">
@@ -76,7 +78,7 @@ export function Blacklist() {
                   </TableRow>
                 ) : (
                   blacklist.map((entry) => (
-                    <TableRow key={entry.id} className="border-[#00463c]/5">
+                    <TableRow key={entry.id} className="hover:bg-[#e7f3ee]/20 border-[#00463c]/5">
                       <TableCell className="font-medium whitespace-nowrap">{entry.Keyword}</TableCell>
                       <TableCell className="whitespace-nowrap">{entry.Reason || '-'}</TableCell>
                       <TableCell className="whitespace-nowrap">

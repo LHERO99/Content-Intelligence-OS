@@ -39,6 +39,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { KeywordMap } from "@/lib/airtable-types";
 import { KeywordImport } from "./keyword-import";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Map } from "lucide-react";
 
 export const columns: ColumnDef<KeywordMap>[] = [
   {
@@ -176,6 +178,16 @@ export function KeywordTable({ data }: KeywordTableProps) {
 
   return (
     <div className="w-full space-y-6">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[#00463c]">
+          <Map className="h-6 w-6" />
+          <h3 className="text-xl font-semibold">Keyword-Map</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Strategische Verwaltung von Ziel-Keywords und deren aktuellem Status.
+        </p>
+      </div>
+
       <div className="flex items-center py-4">
         <Input
           placeholder="Keywords filtern..."
@@ -217,59 +229,66 @@ export function KeywordTable({ data }: KeywordTableProps) {
           </DropdownMenu>
         </div>
       </div>
-      <div className="rounded-md border border-[#00463c]/10 overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-[#e7f3ee]">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id} className="text-[#00463c] font-bold whitespace-nowrap">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className="hover:bg-[#e7f3ee]/50"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="whitespace-nowrap">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
+
+      <Card className="border-[#00463c]/10 overflow-hidden">
+        <CardHeader className="bg-[#e7f3ee]/50">
+          <CardTitle className="text-sm font-medium text-[#00463c]">Keywords</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id} className="text-[#00463c] font-bold whitespace-nowrap">
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    Keine Ergebnisse.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="hover:bg-[#e7f3ee]/20 border-[#00463c]/5"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="whitespace-nowrap">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      Keine Ergebnisse.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} von{" "}

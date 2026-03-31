@@ -119,6 +119,7 @@ export default function ProfilePage() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  className="h-10"
                   required
                   minLength={8}
                 />
@@ -130,11 +131,12 @@ export default function ProfilePage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="h-10"
                   required
                   minLength={8}
                 />
               </div>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" className="h-10 bg-[#00463c] hover:bg-[#00332c]" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Passwort aktualisieren
               </Button>

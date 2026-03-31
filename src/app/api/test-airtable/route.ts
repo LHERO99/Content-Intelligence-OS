@@ -4,7 +4,12 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const data = await getKeywordMap();
-    return NextResponse.json({ success: true, data });
+    const statuses = Array.from(new Set(data.map((item: any) => item.Status)));
+    return NextResponse.json({ 
+      success: true, 
+      uniqueStatuses: statuses,
+      sampleRecords: data.slice(0, 5)
+    });
   } catch (error: any) {
     console.error('Airtable Fetch Error:', error);
     return NextResponse.json(

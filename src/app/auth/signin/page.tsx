@@ -80,7 +80,7 @@ function SignInForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
-                className="border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
+                className="h-11 border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
               />
             </div>
             <div>
@@ -91,7 +91,7 @@ function SignInForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                className="border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
+                className="h-11 border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
               />
             </div>
           </div>
@@ -100,7 +100,7 @@ function SignInForm() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#00463c] hover:bg-[#00332b] text-white"
+              className="w-full h-11 bg-[#00463c] hover:bg-[#00332b] text-white"
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>

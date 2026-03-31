@@ -25,9 +25,9 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   if (status === "authenticated" && !isAuthPage) {
     return (
-      <SidebarProvider defaultOpen={true}>
-        <AppSidebar collapsible="none" />
-        <main className="flex-1">
+      <SidebarProvider defaultOpen={true} className="min-h-screen items-stretch">
+        <AppSidebar collapsible="none" className="h-screen sticky top-0" />
+        <main className="flex-1 min-h-screen overflow-y-auto">
           <div className="p-6">
             <GlobalAlerts />
             {children}

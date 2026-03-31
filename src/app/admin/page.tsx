@@ -207,6 +207,7 @@ export default function AdminPage() {
                       placeholder="Max Mustermann" 
                       value={inviteData.name}
                       onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
+                      className="h-10"
                       required
                     />
                   </div>
@@ -217,6 +218,7 @@ export default function AdminPage() {
                       placeholder="max@example.com" 
                       value={inviteData.email}
                       onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                      className="h-10"
                       required
                     />
                   </div>
@@ -226,7 +228,7 @@ export default function AdminPage() {
                       value={inviteData.role} 
                       onValueChange={(v) => setInviteData({ ...inviteData, role: v || "Editor" })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-10">
                         <SelectValue placeholder="Rolle auswählen" />
                       </SelectTrigger>
                       <SelectContent>
@@ -236,7 +238,7 @@ export default function AdminPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="w-full" disabled={inviting}>
+                  <Button type="submit" className="w-full h-10 bg-[#00463c] hover:bg-[#00332c]" disabled={inviting}>
                     {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Einladung generieren"}
                   </Button>
                 </form>

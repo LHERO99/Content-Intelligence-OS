@@ -139,7 +139,6 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-              <Plus className="h-6 w-6" />
               {type === 'keyword' && 'Neues Keyword hinzufügen'}
               {type === 'trend' && 'Neuen Trend hinzufügen'}
               {type === 'blacklist' && 'Keyword blacklisten'}
@@ -268,24 +267,26 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex gap-3 sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
-              className="h-11 px-6 text-base"
+              size="sm"
+              className="px-4"
             >
               Abbrechen
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#00463c] hover:bg-[#00332c] text-white h-11 px-8 text-base"
+              size="sm"
+              className="bg-[#00463c] hover:bg-[#00332c] text-white px-6"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Speichern...
                 </>
               ) : (
