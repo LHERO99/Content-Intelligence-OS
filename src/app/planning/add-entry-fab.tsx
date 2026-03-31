@@ -117,14 +117,15 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
         body: JSON.stringify(body),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || 'Fehler beim Speichern des Eintrags');
       }
 
       setOpen(false);
       resetForm();
-      router.refresh();
+      window.dispatchEvent(new CustomEvent('refresh-planning-data'));
     } catch (err: any) {
       setError(err.message);
     } finally {

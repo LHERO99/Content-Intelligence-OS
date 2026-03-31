@@ -16,30 +16,34 @@ export default function PlanningPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const response = await fetch('/api/debug/airtable'); // Using debug route or similar to fetch data client-side if needed, or just fetch from API routes
-        // Actually, let's keep it simple and use the existing API routes if they exist or create a combined one.
-        // For now, I'll fetch from the specific planning routes.
-        const [kwRes, trendRes] = await Promise.all([
-          fetch('/api/planning/keywords'),
-          fetch('/api/planning/trends')
-        ]);
-        
-        if (!kwRes.ok || !trendRes.ok) throw new Error("Fehler beim Laden der Daten");
-        
-        const keywords = await kwRes.json();
-        const trends = await trendRes.json();
-        
-        setData({ keywords, trends });
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  const fetchData = async () => {
+    try {
+      const [kwRes, trendRes] = await Promise.all([
+        fetch('/api/planning/keywords'),
+        fetch('/api/planning/trends')
+      ]);
+      
+      if (!kwRes.ok || !trendRes.ok) throw new Error("Fehler beim Laden der Daten");
+      
+      const keywords = await kwRes.json();
+      const trends = await trendRes.json();
+      
+      setData({ keywords, trends });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const handleRefresh = () => fetchData();
+    window.addEventListener('refresh-planning-data', handleRefresh);
+    return () => window.removeEventListener('refresh-planning-data', handleRefresh);
   }, []);
 
   if (loading) {

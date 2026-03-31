@@ -37,9 +37,19 @@ export const TABLES = {
   CONFIG: 'Config',
 } as const;
 
-// --- Fetchers ---
+// --- Error Handling ---
+
+export class AirtableValidationError extends Error {
+  constructor(public message: string, public status: number = 400) {
+    super(message);
+    this.name = 'AirtableValidationError';
+  }
+}
 
 async function handleAirtableError(error: any, operation: string): Promise<never> {
+  if (error instanceof AirtableValidationError) {
+    throw error;
+  }
   const status = error.statusCode || error.status;
   const message = error.message || '';
   
@@ -345,6 +355,18 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
     for (const chunk of chunks) {
       // Validation for bulk: Check if any of the keywords being imported as 'Y' already exist for that URL
       for (const kw of chunk) {
+        if (kw.Target_URL && kw.Keyword) {
+          // Check for Keyword + URL uniqueness
+          const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({
+            filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`,
+            maxRecords: 1,
+          }).firstPage();
+
+          if (existingKeywordUrl.length > 0) {
+            throw new AirtableValidationError(`Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.`, 409);
+          }
+        }
+
         if (kw.Main_Keyword === 'Y' && kw.Target_URL) {
           const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
             filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`,
@@ -352,7 +374,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
           }).firstPage();
 
           if (existingMainKeywords.length > 0) {
-            throw new Error(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword. Import abgebrochen.`);
+            throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword. Import abgebrochen.`, 409);
           }
         }
       }
@@ -403,15 +425,29 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
   try {
     console.log(`[Airtable] Creating single keyword: ${kw.Keyword}`);
 
+    if (!kw.Keyword || !kw.Target_URL) {
+      throw new AirtableValidationError('Keyword und Target_URL sind Pflichtfelder.');
+    }
+
+    // Validation: Keyword + URL uniqueness
+    const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({
+      filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`,
+      maxRecords: 1,
+    }).firstPage();
+
+    if (existingKeywordUrl.length > 0) {
+      throw new AirtableValidationError(`Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.`, 409);
+    }
+
     // Validation: A URL can only have ONE "Main Keyword" (Y)
-    if (kw.Main_Keyword === 'Y' && kw.Target_URL) {
+    if (kw.Main_Keyword === 'Y') {
       const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
         filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`,
         maxRecords: 1,
       }).firstPage();
 
       if (existingMainKeywords.length > 0) {
-        throw new Error(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`);
+        throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
       }
     }
 
@@ -450,6 +486,87 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
     };
   } catch (error) {
     return handleAirtableError(error, 'createKeyword');
+  }
+}
+
+export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promise<KeywordMap | null> {
+  try {
+    console.log(`[Airtable] Updating keyword: ${id}`);
+
+    // If Keyword or Target_URL or Main_Keyword is being updated, we need to re-validate
+    if (kw.Keyword !== undefined || kw.Target_URL !== undefined || kw.Main_Keyword !== undefined) {
+      // Fetch current record to have full context for validation
+      const currentRecord = await base(TABLES.KEYWORD_MAP).find(id);
+      const currentKeyword = currentRecord.get('Keyword') as string;
+      const currentURL = currentRecord.get('Target_URL') as string;
+      const currentMain = currentRecord.get('Main_Keyword') as string;
+
+      const nextKeyword = kw.Keyword !== undefined ? kw.Keyword : currentKeyword;
+      const nextURL = kw.Target_URL !== undefined ? kw.Target_URL : currentURL;
+      const nextMain = kw.Main_Keyword !== undefined ? kw.Main_Keyword : currentMain;
+
+      // 1. Check Keyword + URL uniqueness if either changed
+      if (kw.Keyword !== undefined || kw.Target_URL !== undefined) {
+        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({
+          filterByFormula: `AND({Target_URL} = '${nextURL}', {Keyword} = '${nextKeyword.replace(/'/g, "\\'")}', RECORD_ID() != '${id}')`,
+          maxRecords: 1,
+        }).firstPage();
+
+        if (existingKeywordUrl.length > 0) {
+          throw new AirtableValidationError(`Die Kombination aus Keyword "${nextKeyword}" und URL "${nextURL}" existiert bereits.`, 409);
+        }
+      }
+
+      // 2. Check Main Keyword uniqueness if Main_Keyword became 'Y' or URL changed while it is 'Y'
+      if (nextMain === 'Y' && (kw.Main_Keyword === 'Y' || kw.Target_URL !== undefined)) {
+        const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
+          filterByFormula: `AND({Target_URL} = '${nextURL}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`,
+          maxRecords: 1,
+        }).firstPage();
+
+        if (existingMainKeywords.length > 0) {
+          throw new AirtableValidationError(`Die URL ${nextURL} hat bereits ein Main Keyword.`, 409);
+        }
+      }
+    }
+
+    const fields: any = {};
+    if (kw.Keyword !== undefined) fields.Keyword = kw.Keyword;
+    if (kw.Target_URL !== undefined) fields.Target_URL = kw.Target_URL;
+    if (kw.Search_Volume !== undefined) fields.Search_Volume = kw.Search_Volume;
+    if (kw.Difficulty !== undefined) fields.Difficulty = kw.Difficulty;
+    if (kw.Status !== undefined) fields.Status = kw.Status;
+    if (kw.Editorial_Deadline !== undefined) fields.Editorial_Deadline = kw.Editorial_Deadline;
+    if (kw.Assigned_Editor !== undefined) fields.Assigned_Editor = kw.Assigned_Editor;
+    if (kw.Main_Keyword !== undefined) fields.Main_Keyword = kw.Main_Keyword;
+    if (kw.Article_Count !== undefined) fields.Article_Count = kw.Article_Count;
+    if (kw.Avg_Product_Value !== undefined) fields.Avg_Product_Value = kw.Avg_Product_Value;
+
+    const records = await base(TABLES.KEYWORD_MAP).update([
+      {
+        id,
+        fields,
+      },
+    ]);
+
+    if (records.length === 0) return null;
+
+    const record = records[0];
+    return {
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
+      Search_Volume: record.get('Search_Volume') as number,
+      Difficulty: record.get('Difficulty') as number,
+      Status: record.get('Status') as KeywordStatus,
+      Editorial_Deadline: record.get('Editorial_Deadline') as string,
+      Assigned_Editor: record.get('Assigned_Editor') as string[],
+      Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+      Article_Count: record.get('Article_Count') as number,
+      Avg_Product_Value: record.get('Avg_Product_Value') as number,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'updateKeyword');
   }
 }
 

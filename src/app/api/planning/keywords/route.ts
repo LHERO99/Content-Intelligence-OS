@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createKeyword, getKeywordMap } from '@/lib/airtable';
+import { createKeyword, getKeywordMap, updateKeyword, AirtableValidationError } from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -30,13 +30,6 @@ export async function POST(request: Request) {
       Avg_Product_Value
     } = body;
 
-    if (!Keyword || !Target_URL) {
-      return NextResponse.json(
-        { error: 'Keyword und Target_URL sind Pflichtfelder.' },
-        { status: 400 }
-      );
-    }
-
     const result = await createKeyword({
       Keyword,
       Target_URL,
@@ -60,6 +53,59 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API] Error creating keyword:', error);
+    
+    if (error instanceof AirtableValidationError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Interner Serverfehler', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID ist erforderlich für Updates.' },
+        { status: 400 }
+      );
+    }
+
+    // Convert numeric fields if they exist in updates
+    if (updates.Search_Volume !== undefined) updates.Search_Volume = Number(updates.Search_Volume);
+    if (updates.Difficulty !== undefined) updates.Difficulty = Number(updates.Difficulty);
+    if (updates.Article_Count !== undefined) updates.Article_Count = Number(updates.Article_Count);
+    if (updates.Avg_Product_Value !== undefined) updates.Avg_Product_Value = Number(updates.Avg_Product_Value);
+
+    const result = await updateKeyword(id, updates);
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Fehler beim Aktualisieren des Keywords in Airtable.' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('[API] Error updating keyword:', error);
+
+    if (error instanceof AirtableValidationError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Interner Serverfehler', details: error.message },
       { status: 500 }

@@ -27,6 +27,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -37,10 +44,109 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap, KeywordStatus } from "@/lib/airtable-types";
 import { KeywordImport } from "./keyword-import";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Map } from "lucide-react";
+import { Map, Check, X, Loader2, AlertCircle } from "lucide-react";
+import { useAlerts } from "@/components/alerts-provider";
+
+interface EditableCellProps {
+  value: any;
+  rowId: string;
+  columnId: string;
+  onSave: (value: any) => Promise<void>;
+  type?: "text" | "number" | "select";
+  options?: { label: string; value: string }[];
+}
+
+function EditableCell({
+  value: initialValue,
+  rowId,
+  columnId,
+  onSave,
+  type = "text",
+  options = [],
+}: EditableCellProps) {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [value, setValue] = React.useState(initialValue);
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSave = async () => {
+    if (value === initialValue) {
+      setIsEditing(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      await onSave(value);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save:", error);
+      setValue(initialValue);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setValue(initialValue);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        {type === "select" ? (
+          <Select value={value} onValueChange={setValue}>
+            <SelectTrigger className="h-8 min-w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input
+            className="h-8 w-full min-w-[80px]"
+            type={type}
+            value={value ?? ""}
+            onChange={(e) => setValue(type === "number" ? Number(e.target.value) : e.target.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") handleCancel();
+            }}
+          />
+        )}
+        <Button size="icon-sm" variant="ghost" onClick={handleSave} disabled={loading}>
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-green-600" />}
+        </Button>
+        <Button size="icon-sm" variant="ghost" onClick={handleCancel} disabled={loading}>
+          <X className="h-3 w-3 text-red-600" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors min-h-[32px] flex items-center"
+      onClick={() => setIsEditing(true)}
+    >
+      {type === "select" ? (
+        <Badge className="bg-[#00463c] text-[#e7f3ee] hover:bg-[#00463c]/90">
+          {initialValue}
+        </Badge>
+      ) : (
+        <span>{type === "number" && initialValue !== undefined ? initialValue.toLocaleString() : (initialValue || "-")}</span>
+      )}
+    </div>
+  );
+}
 
 export const columns: ColumnDef<KeywordMap>[] = [
   {
@@ -56,27 +162,44 @@ export const columns: ColumnDef<KeywordMap>[] = [
         </Button>
       );
     },
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => <div className="font-medium">{row.getValue("Keyword")}</div>,
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Keyword")}
+        rowId={row.original.id}
+        columnId="Keyword"
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Keyword: val })}
+      />
+    ),
   },
   {
     accessorKey: "Target_URL",
     header: "Target URL",
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => (
-      <div className="max-w-[200px] truncate text-muted-foreground">
-        {(row.getValue("Target_URL") as string) || "-"}
-      </div>
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Target_URL")}
+        rowId={row.original.id}
+        columnId="Target_URL"
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Target_URL: val })}
+      />
     ),
   },
   {
     accessorKey: "Main_Keyword",
     header: "Main",
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => {
       const isMain = row.getValue("Main_Keyword") === "Y";
       return (
         <div className="flex justify-center">
-          <Badge variant={isMain ? "default" : "outline"} className={isMain ? "bg-[#00463c] text-white" : ""}>
-            {isMain ? "Y" : "N"}
-          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0 h-auto"
+            onClick={() => (table.options.meta as any).updateData(row.original.id, { Main_Keyword: isMain ? "N" : "Y" })}
+          >
+            <Badge variant={isMain ? "default" : "outline"} className={isMain ? "bg-[#00463c] text-white" : ""}>
+              {isMain ? "Y" : "N"}
+            </Badge>
+          </Button>
         </div>
       );
     },
@@ -94,51 +217,73 @@ export const columns: ColumnDef<KeywordMap>[] = [
         </Button>
       );
     },
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
-      const volume = parseFloat(row.getValue("Search_Volume") as string);
-      return <div className="text-center">{!isNaN(volume) ? volume.toLocaleString() : "-"}</div>;
-    },
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Search_Volume")}
+        rowId={row.original.id}
+        columnId="Search_Volume"
+        type="number"
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Search_Volume: val })}
+      />
+    ),
   },
   {
     accessorKey: "Difficulty",
     header: "Difficulty",
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
-      const difficulty = row.getValue("Difficulty") as number;
-      return (
-        <div className="flex items-center justify-center">
-          <Badge variant={difficulty > 50 ? "destructive" : "secondary"}>
-            {difficulty || "-"}
-          </Badge>
-        </div>
-      );
-    },
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Difficulty")}
+        rowId={row.original.id}
+        columnId="Difficulty"
+        type="number"
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Difficulty: val })}
+      />
+    ),
   },
   {
     accessorKey: "Status",
     header: "Status",
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
-      const status = row.getValue("Status") as string;
-      return (
-        <Badge className="bg-[#00463c] text-[#e7f3ee] hover:bg-[#00463c]/90">
-          {status}
-        </Badge>
-      );
-    },
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Status")}
+        rowId={row.original.id}
+        columnId="Status"
+        type="select"
+        options={[
+          { label: "Backlog", value: "Backlog" },
+          { label: "In Progress", value: "In Progress" },
+          { label: "Review", value: "Review" },
+          { label: "Done", value: "Done" },
+        ]}
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Status: val })}
+      />
+    ),
   },
   {
     accessorKey: "Article_Count",
     header: "Articles",
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => (
-      <div className="text-center">{row.getValue("Article_Count") ?? "-"}</div>
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Article_Count")}
+        rowId={row.original.id}
+        columnId="Article_Count"
+        type="number"
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Article_Count: val })}
+      />
     ),
   },
   {
     accessorKey: "Avg_Product_Value",
     header: "Avg. Value",
-    cell: ({ row }: CellContext<KeywordMap, unknown>) => {
-      const val = row.getValue("Avg_Product_Value") as number;
-      return <div className="text-center">{val ? `${val.toFixed(2)} €` : "-"}</div>;
-    },
+    cell: ({ row, table }: CellContext<KeywordMap, unknown>) => (
+      <EditableCell
+        value={row.getValue("Avg_Product_Value")}
+        rowId={row.original.id}
+        columnId="Avg_Product_Value"
+        type="number"
+        onSave={(val) => (table.options.meta as any).updateData(row.original.id, { Avg_Product_Value: val })}
+      />
+    ),
   },
   {
     id: "actions",
@@ -179,6 +324,7 @@ interface KeywordTableProps {
 
 export function KeywordTable({ data }: KeywordTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const { addAlert } = useAlerts();
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
@@ -197,6 +343,33 @@ export function KeywordTable({ data }: KeywordTableProps) {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    meta: {
+      updateData: async (rowId: string, updates: any) => {
+        try {
+          const response = await fetch("/api/planning/keywords", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: rowId, ...updates }),
+          });
+          
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Update failed");
+          }
+
+          window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+        } catch (error: any) {
+          console.error("Error updating keyword:", error);
+          addAlert({
+            message: "Fehler beim Aktualisieren",
+            description: error.message,
+            type: "error",
+          });
+          throw error;
+        }
+      },
+    },
     state: {
       sorting,
       columnFilters,
