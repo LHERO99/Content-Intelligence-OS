@@ -109,14 +109,35 @@ export async function getPerformanceData(): Promise<PerformanceData[]> {
 
 export async function getPotentialTrends(): Promise<PotentialTrend[]> {
   try {
-    const records = await base('Potential-Trends').select().all();
-    return records.map((record) => ({
-      id: record.id,
-      Trend_Topic: record.get('Trend_Topic') as string,
-      Source: record.get('Source') as 'GSC' | 'Sistrix',
-      Gap_Score: record.get('Gap_Score') as number,
-      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
-    }));
+    // Try 'Potential-Trends' first, then 'Potential Trends' if it fails with 403/404
+    const tableNames = ['Potential-Trends', 'Potential Trends'];
+    let lastError: any;
+
+    for (const tableName of tableNames) {
+      try {
+        console.log(`[Airtable] Attempting fetch from table: "${tableName}"`);
+        const records = await base(tableName).select().all();
+        console.log(`[Airtable] Successfully fetched ${records.length} records from "${tableName}"`);
+        
+        return records.map((record) => ({
+          id: record.id,
+          Trend_Topic: record.get('Trend_Topic') as string,
+          Source: record.get('Source') as 'GSC' | 'Sistrix',
+          Gap_Score: record.get('Gap_Score') as number,
+          Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
+        }));
+      } catch (error: any) {
+        lastError = error;
+        const status = error.statusCode || error.status;
+        console.warn(`[Airtable] Failed to fetch from "${tableName}" (Status: ${status})`);
+        // If it's not a 403 or 404, it might be a network/auth issue that won't be fixed by changing table name
+        if (status !== 403 && status !== 404) {
+          break;
+        }
+      }
+    }
+    
+    return handleAirtableError(lastError, 'getPotentialTrends');
   } catch (error) {
     return handleAirtableError(error, 'getPotentialTrends');
   }
