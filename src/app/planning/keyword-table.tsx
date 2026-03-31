@@ -335,7 +335,10 @@ export const columns: ColumnDef<KeywordMap>[] = [
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
         onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
