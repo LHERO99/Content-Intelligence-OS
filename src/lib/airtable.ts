@@ -322,3 +322,52 @@ export async function deleteUser(id: string): Promise<boolean> {
     return handleAirtableError(error, 'deleteUser');
   }
 }
+
+export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promise<KeywordMap[]> {
+  try {
+    console.log(`[Airtable] Bulk creating ${keywords.length} keywords`);
+    
+    // Airtable allows max 10 records per create call
+    const chunks = [];
+    for (let i = 0; i < keywords.length; i += 10) {
+      chunks.push(keywords.slice(i, i + 10));
+    }
+
+    const createdRecords: KeywordMap[] = [];
+
+    for (const chunk of chunks) {
+      const records = await base(TABLES.KEYWORD_MAP).create(
+        chunk.map((kw) => ({
+          fields: {
+            Keyword: kw.Keyword,
+            Target_URL: kw.Target_URL,
+            Search_Volume: kw.Search_Volume,
+            Difficulty: kw.Difficulty,
+            Status: kw.Status || 'New',
+            Editorial_Deadline: kw.Editorial_Deadline,
+            // Assigned_Editor is an array of record IDs
+            Assigned_Editor: kw.Assigned_Editor,
+          },
+        }))
+      );
+
+      records.forEach((record) => {
+        createdRecords.push({
+          id: record.id,
+          Keyword: record.get('Keyword') as string,
+          Target_URL: record.get('Target_URL') as string,
+          Search_Volume: record.get('Search_Volume') as number,
+          Difficulty: record.get('Difficulty') as number,
+          Status: record.get('Status') as KeywordStatus,
+          Editorial_Deadline: record.get('Editorial_Deadline') as string,
+          Assigned_Editor: record.get('Assigned_Editor') as string[],
+        });
+      });
+    }
+
+    console.log(`[Airtable] Successfully created ${createdRecords.length} keywords`);
+    return createdRecords;
+  } catch (error) {
+    return handleAirtableError(error, 'bulkCreateKeywords');
+  }
+}

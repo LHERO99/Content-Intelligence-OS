@@ -46,6 +46,12 @@
 - **Decision**: Using `crypto.randomBytes(8).toString("hex")` for temporary passwords.
 - **Rationale**: Ensures high entropy and sufficient complexity for initial credentials while remaining easy for admins to copy and share.
 
+## Data Management & Import
+- **Decision**: Using client-side CSV parsing with `papaparse` in [`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx).
+- **Rationale**: Offloading parsing to the client reduces server load and allows for immediate validation of the CSV structure before sending data to the API.
+- **Decision**: Implemented bulk Airtable updates in chunks of 10 in [`src/lib/airtable.ts`](src/lib/airtable.ts:332).
+- **Rationale**: Airtable's API limits batch operations to 10 records per call. The `bulkCreateKeywords` function automatically handles chunking to ensure reliable imports of larger datasets while staying within API limits.
+
 ## State Management
 - **Decision**: Leveraging React Context and Hooks for local and global state management (e.g., `AlertsProvider`, `AuthProvider`).
 - **Rationale**: Minimizes boilerplate and provides a clean, declarative way to manage application state.

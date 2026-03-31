@@ -41,6 +41,14 @@
 - [x] Implemented n8n trigger API for workflow automation.
 - [x] Created debug routes for simulating data drops, counting users, and verifying Airtable connectivity.
 - [x] Developed Keyword Table and Trend Radar components for the Planning module.
+- [x] Restructured Planning workspace with a tabbed interface:
+  - [x] **Trend-Radar**: For identifying new potentials.
+  - [x] **Keyword-Map**: For strategic keyword management.
+  - [x] **Redaktions-Planung**: For editorial scheduling.
+- [x] Implemented CSV/Excel keyword import:
+  - [x] Client-side parsing with `papaparse`.
+  - [x] Bulk Airtable creation with 10-record chunking in [`src/lib/airtable.ts`](src/lib/airtable.ts:326).
+  - [x] Dedicated API route for imports ([`src/app/api/planning/import/route.ts`](src/app/api/planning/import/route.ts)).
 
 ### Infrastructure
 - [x] Configured ESLint and PostCSS for code quality and styling.

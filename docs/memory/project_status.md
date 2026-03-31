@@ -10,7 +10,12 @@ The SEO Content Tool is currently in active development, with core infrastructur
   - **Mandatory Password Change**: A security flow that forces new users to change their temporary password upon first login via a dedicated modal ([`src/components/password-change-modal.tsx`](src/components/password-change-modal.tsx)).
   - **User Profile Page**: A dedicated profile management page ([`src/app/profile/page.tsx`](src/app/profile/page.tsx)) where users can view their information and update their password at any time.
 - **DocMorris Integration**: The DocMorris brand identity has been integrated, including the official logo (`public/docmorris-logo.png`) used in the sidebar and authentication pages.
-- **Planning Module**: Includes a Keyword Table and Trend Radar for SEO strategy.
+- **Planning Module**:
+  - **Tabbed Workspace**: Restructured the planning interface into three specialized views:
+    - **Trend-Radar**: Identifies new potentials via GSC and Sistrix gap analysis.
+    - **Keyword-Map**: Strategic management of target keywords and their status.
+    - **Redaktions-Planung**: Editorial calendar and assignment management.
+  - **Keyword Import**: Implemented a CSV/Excel import feature ([`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx)) allowing bulk upload of keywords with automatic mapping of search volume and difficulty.
 - **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel.
 - **Monitoring Module**: Dashboard for tracking content performance.
 - **Admin Panel**: A comprehensive administrative interface ([`src/app/admin/page.tsx`](src/app/admin/page.tsx)) featuring:
