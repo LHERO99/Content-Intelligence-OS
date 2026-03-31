@@ -1,5 +1,18 @@
 import { NextResponse } from 'next/server';
-import { createTrend } from '@/lib/airtable';
+import { createTrend, getPotentialTrends } from '@/lib/airtable';
+
+export async function GET() {
+  try {
+    const trends = await getPotentialTrends();
+    return NextResponse.json(trends);
+  } catch (error: any) {
+    console.error('[API] Error fetching trends:', error);
+    return NextResponse.json(
+      { error: 'Fehler beim Abrufen der Trends', details: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {

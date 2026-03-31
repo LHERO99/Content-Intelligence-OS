@@ -14,6 +14,8 @@
 - [x] Created `PasswordChangeModal` component for forced security updates.
 - [x] Developed User Profile page ([`src/app/profile/page.tsx`](src/app/profile/page.tsx)) for account management.
 - [x] Added API route for password changes ([`src/app/api/user/change-password/route.ts`](src/app/api/user/change-password/route.ts)).
+- [x] Resolved 500, 405, and 401 errors by aligning API method handlers and ensuring robust session validation using `authOptions` in `getServerSession`.
+- [x] Implemented defensive data validation in the Content Creation module to prevent frontend crashes.
 
 ### UI & Branding
 - [x] Integrated DocMorris logo into the sidebar and sign-in page.

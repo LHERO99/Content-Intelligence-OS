@@ -21,12 +21,13 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **Multi-Type Support**: The FAB supports adding Keywords, Trends, and Blacklist entries through a single, context-aware interface that automatically adapts to the active tab.
     - **Bulk Import**: Maintained the CSV/Excel import feature ([`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx)) for high-volume keyword uploads.
   - **Data Integrity**: Enforced mandatory fields (e.g., "Keyword", "Target_URL", "Trend_Topic") across all entry types to ensure high-quality planning data.
-- **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel.
+- **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel. Enhanced stability with defensive data validation to prevent frontend crashes.
 - **Monitoring Module**: Dashboard for tracking content performance.
 - **Admin Panel**: A comprehensive administrative interface ([`src/app/admin/page.tsx`](src/app/admin/page.tsx)) featuring:
   - **User Management**: A real-time list of all registered users with their roles, including advanced features to **Edit** and **Delete** users.
   - **Invite System**: Ability to invite new users by generating secure, temporary passwords and unique invite links, with the added capability to **Cancel** pending invitations.
   - **Role-Based Access**: Strict enforcement of Admin-only access to management tools.
+- **API Stability**: Resolved 500, 405, and 401 errors by aligning API method handlers and ensuring robust session validation using `authOptions`.
 - **Sidebar & Navigation**:
   - **Reorganized Layout**: The sidebar has been streamlined for better UX.
   - **Admin Panel Integration**: The Admin Panel link is now located in the sidebar footer for administrative users.
@@ -37,6 +38,10 @@ The SEO Content Tool is currently in active development, with core infrastructur
 - **n8n Integration**: Triggering workflows via API.
 
 ## Recent Fixes
+- **API Method & Auth Stability**: Resolved 500, 405, and 401 errors across multiple routes by:
+  - Correcting API method mismatches (e.g., ensuring POST handlers match client requests).
+  - Requiring `authOptions` in all `getServerSession` calls within API routes to ensure reliable authentication and prevent 401 Unauthorized errors.
+- **Frontend Crash Prevention**: Implemented defensive data validation in the Content Creation module to handle missing or malformed data gracefully, preventing application crashes.
 - **Airtable 403 Authorization Resolution**: Addressed persistent 403 errors by:
   - Implementing a centralized error handler `handleAirtableError` in [`src/lib/airtable.ts`](src/lib/airtable.ts:28).
   - Adding specific troubleshooting guidance for `NOT_AUTHORIZED` errors and scope-related issues.

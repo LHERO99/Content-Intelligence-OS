@@ -35,11 +35,11 @@ export default function CreationPage() {
         const kwData = await kwRes.json();
         const logData = logRes.ok ? (await logRes.json()).records || [] : [];
         
-        setKeywords(kwData);
-        setContentLogs(logData);
+        setKeywords(Array.isArray(kwData) ? kwData : []);
+        setContentLogs(Array.isArray(logData) ? logData : []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
-        toast.error('Failed to load content data');
+        toast.error('Fehler beim Laden der Content-Daten');
       } finally {
         setLoading(false);
       }
@@ -48,7 +48,9 @@ export default function CreationPage() {
   }, []);
 
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
-  const relevantLogs = contentLogs.filter((log) => log.Keyword_ID?.includes(selectedKeywordId));
+  const relevantLogs = contentLogs.filter((log) => 
+    Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(selectedKeywordId)
+  );
   
   const v1Content = relevantLogs.find((log) => log.Version === 'v1')?.Content_Body || '';
   const v2Log = relevantLogs.find((log) => log.Version === 'v2');

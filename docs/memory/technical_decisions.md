@@ -27,12 +27,16 @@
 - **Rationale**: Enhances security and provides a cleaner user experience for production-ready environments.
 - **Decision**: Configured dynamic cookie settings for NextAuth.
 - **Rationale**: To ensure compatibility across different environments (local development vs. production), NextAuth is configured to use secure cookies only when `NEXTAUTH_URL` starts with `https`. This resolves session persistence issues in non-HTTPS environments.
+- **Decision**: Mandatory use of `authOptions` in `getServerSession` within API routes.
+- **Rationale**: NextAuth requires the configuration object (`authOptions`) to be passed to `getServerSession` in API routes to correctly retrieve the session. Omitting it often leads to 401 Unauthorized errors even when a valid session exists.
 
 ## UI Framework
 - **Decision**: Using Tailwind CSS and Radix UI (via shadcn/ui) for the component library.
 - **Rationale**: Enables rapid development of accessible and responsive UI components with a consistent design language.
 - **Decision**: Full UI localization to German.
 - **Rationale**: To align with the primary user base and the DocMorris brand context, the entire application interface has been localized to German.
+- **Decision**: Implementation of defensive data validation in frontend components.
+- **Rationale**: To prevent application crashes (e.g., in the Content Creation module), components now include robust checks for null, undefined, or malformed data before attempting to render or process it.
 
 ## User Onboarding & Invite System
 - **Decision**: Implemented a temporary password and invite link generation system for user onboarding in [`src/app/api/admin/invite/route.ts`](src/app/api/admin/invite/route.ts).

@@ -1,5 +1,18 @@
 import { NextResponse } from 'next/server';
-import { createKeyword } from '@/lib/airtable';
+import { createKeyword, getKeywordMap } from '@/lib/airtable';
+
+export async function GET() {
+  try {
+    const keywords = await getKeywordMap();
+    return NextResponse.json(keywords);
+  } catch (error: any) {
+    console.error('[API] Error fetching keywords:', error);
+    return NextResponse.json(
+      { error: 'Fehler beim Abrufen der Keywords', details: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {

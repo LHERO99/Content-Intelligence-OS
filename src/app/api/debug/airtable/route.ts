@@ -1,9 +1,23 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { base } from '@/lib/airtable';
+import { base, TABLES } from '@/lib/airtable';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const tableName = searchParams.get('table') || 'Users';
+  const requestedTable = searchParams.get('table');
+  
+  // Map requested table name to centralized TABLES constant if possible
+  let tableName = requestedTable || TABLES.USERS;
+  
+  // Check if the requested table matches any of our defined tables (case-insensitive)
+  const tableEntries = Object.entries(TABLES);
+  const matchingEntry = tableEntries.find(([key, value]) => 
+    key.toLowerCase() === requestedTable?.toLowerCase() || 
+    value.toLowerCase() === requestedTable?.toLowerCase()
+  );
+
+  if (matchingEntry) {
+    tableName = matchingEntry[1];
+  }
 
   try {
     console.log(`[Debug] Testing Airtable connection to "${tableName}" table...`);
