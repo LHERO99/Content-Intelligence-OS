@@ -1,35 +1,34 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { base } from '@/lib/airtable';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const tableName = searchParams.get('table') || 'Users';
+
   try {
-    console.log('[Debug] Testing Airtable connection to "Users" table...');
+    console.log(`[Debug] Testing Airtable connection to "${tableName}" table...`);
     
-    // Attempt to list records from the Users table
-    const records = await base('Users').select({
-      maxRecords: 10,
-      view: 'Grid view' // Assuming a default view exists, or omit if unsure
+    const records = await base(tableName).select({
+      maxRecords: 100,
     }).firstPage();
 
-    console.log(`[Debug] Airtable connection successful. Found ${records.length} records in "Users" table.`);
+    console.log(`[Debug] Airtable connection successful. Found ${records.length} records in "${tableName}" table.`);
 
     return NextResponse.json({
       status: 'success',
-      message: 'Airtable connection verified',
+      message: `Airtable connection verified for ${tableName}`,
       recordCount: records.length,
       records: records.map(r => ({
         id: r.id,
-        email: r.get('Email'),
-        role: r.get('Role')
+        ...r.fields
       }))
     });
   } catch (error: any) {
-    console.error('[Debug] Airtable connection failed:', error);
+    console.error(`[Debug] Airtable connection failed for ${tableName}:`, error);
     return NextResponse.json({
       status: 'error',
-      message: 'Airtable connection failed',
+      message: `Airtable connection failed for ${tableName}`,
       error: error.message,
-      stack: error.stack
     }, { status: 500 });
   }
 }

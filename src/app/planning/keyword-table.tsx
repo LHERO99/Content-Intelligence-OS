@@ -79,7 +79,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
     },
     cell: ({ row }: CellContext<KeywordMap, unknown>) => {
       const volume = parseFloat(row.getValue("Search_Volume") as string);
-      return <div className="text-center">{volume?.toLocaleString() || "-"}</div>;
+      return <div className="text-center">{!isNaN(volume) ? volume.toLocaleString() : "-"}</div>;
     },
   },
   {

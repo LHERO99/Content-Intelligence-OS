@@ -21,6 +21,7 @@
 ### Data & API
 - [x] Established Airtable connection with timeout handling.
 - [x] Resolved Airtable 403 Authorization errors by implementing centralized error handling and troubleshooting logic in [`src/lib/airtable.ts`](src/lib/airtable.ts:28).
+- [x] Fixed `TypeError: Cannot read properties of undefined (reading 'startsWith')` on the dashboard by adding defensive null/undefined checks for Airtable field accesses in [`src/app/page.tsx`](src/app/page.tsx:95).
 - [x] Implemented n8n trigger API for workflow automation.
 - [x] Created debug routes for simulating data drops, counting users, and verifying Airtable connectivity.
 - [x] Developed Keyword Table and Trend Radar components for the Planning module.
@@ -32,6 +33,7 @@
 
 ## Debugging Steps Taken
 - **Airtable 403 Authorization**: Investigated persistent 403 errors during Airtable operations. Identified that generic error messages made it difficult to distinguish between incorrect Base IDs, missing scopes in Personal Access Tokens, and invalid API keys. Resolved by implementing `handleAirtableError` in [`src/lib/airtable.ts`](src/lib/airtable.ts:28) to provide specific troubleshooting guidance for 403 and 401 status codes.
+- **Dashboard Crash (startsWith)**: Investigated a `TypeError` on the dashboard. Identified that `AuditLog.Action` could be `undefined` when records are incomplete in Airtable, causing `.startsWith()` to fail. Resolved by adding optional chaining (`?.`) and fallback values to all string operations on Airtable data in [`src/app/page.tsx`](src/app/page.tsx:95) and [`src/app/planning/keyword-table.tsx`](src/app/planning/keyword-table.tsx:82).
 - **404 Errors & Routing**: Investigated 404 errors occurring when navigating to the Admin Panel. Resolved by creating the missing [`src/app/admin/page.tsx`](src/app/admin/page.tsx) and correcting the conditional rendering logic in [`src/components/app-sidebar.tsx`](src/components/app-sidebar.tsx:82).
 - **Auth Redirect Loop**: Investigated middleware and NextAuth configuration to identify the cause of the loop. Fixed by ensuring correct session handling and redirect logic.
 - **Sign-in Hangs**: Identified that the `signIn` promise could hang indefinitely. Added a 10-second timeout and ensured the loading state is reset in a `finally` block.

@@ -92,7 +92,7 @@ export default function DashboardPage() {
 
       // Check for new diagnostic alerts since last fetch
       const diagnosticAlerts = logs.filter((log: AuditLog) => 
-        log.Action.startsWith("DIAGNOSTIC_ALERT:") && 
+        log.Action?.startsWith("DIAGNOSTIC_ALERT:") && 
         (!auditLogs.some(oldLog => oldLog.id === log.id))
       );
 
@@ -100,7 +100,7 @@ export default function DashboardPage() {
         diagnosticAlerts.forEach((alert: AuditLog) => {
           addAlert({
             type: 'warning',
-            message: alert.Action.replace('DIAGNOSTIC_ALERT: ', ''),
+            message: alert.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unknown diagnostic alert',
             description: 'A new system diagnostic alert has been detected in the logs.'
           });
         });
@@ -131,13 +131,14 @@ export default function DashboardPage() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const totalClicks = performanceData
-    .filter(item => new Date(item.Date) >= thirtyDaysAgo)
+    .filter(item => item.Date && new Date(item.Date) >= thirtyDaysAgo)
     .reduce((sum, item) => sum + (item.GSC_Clicks || 0), 0);
 
   const activeTrendsCount = potentialTrends.filter(t => t.Status === 'New').length;
 
   const chartDataMap = performanceData.reduce((acc, item) => {
     const date = item.Date;
+    if (!date) return acc;
     if (!acc[date]) acc[date] = 0;
     acc[date] += item.Sistrix_VI || 0;
     return acc;
@@ -149,9 +150,9 @@ export default function DashboardPage() {
 
   const alerts = auditLogs
     .filter(log => 
-      log.Action.toLowerCase().includes("closed loop") || 
-      log.Action.toLowerCase().includes("diagnosis") ||
-      log.Action.startsWith("DIAGNOSTIC_ALERT:")
+      log.Action?.toLowerCase().includes("closed loop") || 
+      log.Action?.toLowerCase().includes("diagnosis") ||
+      log.Action?.startsWith("DIAGNOSTIC_ALERT:")
     )
     .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime())
     .slice(0, 5);
@@ -274,14 +275,14 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {alerts.length > 0 ? (
                 alerts.map((log) => (
-                  <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-mint-mist/10 hover:bg-mint-mist/5'}`}>
-                    <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-deep-forest'}`} />
+                  <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-mint-mist/10 hover:bg-mint-mist/5'}`}>
+                    <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-deep-forest'}`} />
                     <div className="flex-1 space-y-1">
-                      <p className={`text-sm font-medium leading-none ${log.Action.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-deep-forest'}`}>
-                        {log.Action.replace('DIAGNOSTIC_ALERT: ', '')}
+                      <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-deep-forest'}`}>
+                        {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unknown Action'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(log.Timestamp).toLocaleString()}
+                        {log.Timestamp ? new Date(log.Timestamp).toLocaleString() : 'Unknown Date'}
                       </p>
                     </div>
                   </div>
