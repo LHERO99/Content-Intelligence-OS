@@ -44,6 +44,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
@@ -139,7 +141,13 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
               onClick={header.column.getToggleSortingHandler()}
             >
               {flexRender(header.column.columnDef.header, header.getContext())}
-              <ArrowUpDown className="ml-2 h-4 w-4" />
+              {header.column.getIsSorted() === "asc" ? (
+                <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
+              ) : header.column.getIsSorted() === "desc" ? (
+                <ChevronDown className="ml-2 h-4 w-4" />
+              ) : (
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+              )}
             </Button>
           ) : (
             flexRender(header.column.columnDef.header, header.getContext())
@@ -165,6 +173,9 @@ function FilterBar({ table, columns }: FilterBarProps) {
   const [filterValue, setFilterValue] = React.useState<string>("");
 
   const columnFilters = table.getState().columnFilters;
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
+  const { addAlert } = useAlerts();
 
   const addFilter = () => {
     if (!selectedColumn || !filterValue) return;
@@ -177,39 +188,170 @@ function FilterBar({ table, columns }: FilterBarProps) {
     table.getColumn(columnId)?.setFilterValue(undefined);
   };
 
+  const bulkDelete = async (ids: string[]) => {
+    try {
+      setIsBulkDeleting(true);
+      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const resData = await response.json();
+        throw new Error(resData.error || "Bulk delete failed");
+      }
+
+      addAlert({
+        message: `${ids.length} Keywords gelöscht`,
+        type: "success",
+      });
+      table.resetRowSelection();
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error: any) {
+      addAlert({
+        message: "Fehler beim Bulk-Löschen",
+        description: error.message,
+        type: "error",
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   const filterableColumns = columns.filter(
     (col) => col.id !== "select" && col.id !== "actions" && col.id !== "Content-Plan" && (col as any).accessorKey
   );
 
+  // Get unique values for the selected column
+  const suggestions = React.useMemo(() => {
+    if (!selectedColumn) return [];
+    const allData = table.getCoreRowModel().flatRows.map((row: any) => row.original[selectedColumn]);
+    const uniqueValues = Array.from(new Set(allData))
+      .filter(val => val !== null && val !== undefined && val !== "")
+      .sort();
+    return uniqueValues;
+  }, [selectedColumn, table]);
+
   return (
-    <div className="flex flex-col gap-3 py-2">
-      <div className="flex items-center gap-2">
-        <Select value={selectedColumn} onValueChange={(v) => setSelectedColumn(v || "")}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue placeholder="Spalte wählen" />
-          </SelectTrigger>
-          <SelectContent>
-            {filterableColumns.map((col) => (
-              <SelectItem key={col.id || (col as any).accessorKey} value={col.id || (col as any).accessorKey}>
-                {typeof col.header === 'string' ? col.header : (col.id || (col as any).accessorKey)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Filterwert..."
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
-          className="w-[200px] h-9"
-          onKeyDown={(e) => e.key === "Enter" && addFilter()}
-        />
-        <Button onClick={addFilter} size="sm" className="bg-[#00463c] hover:bg-[#00332c] h-9">
-          Filter hinzufügen
-        </Button>
+    <div className="flex flex-col gap-4 py-4 border-b border-[#00463c]/10">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border border-[#00463c]/10">
+          <Select value={selectedColumn} onValueChange={(v) => {
+            setSelectedColumn(v || "");
+            setFilterValue("");
+          }}>
+            <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
+              <Filter className="h-4 w-4 mr-2 text-[#00463c]" />
+              <SelectValue placeholder="Spalte" />
+            </SelectTrigger>
+            <SelectContent>
+              {filterableColumns.map((col) => (
+                <SelectItem key={col.id || (col as any).accessorKey} value={col.id || (col as any).accessorKey}>
+                  {typeof col.header === 'string' ? col.header : (col.id || (col as any).accessorKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="h-4 w-[1px] bg-[#00463c]/20 mx-1" />
+
+          {suggestions.length > 0 ? (
+            <Select value={filterValue} onValueChange={(v) => setFilterValue(v || "")}>
+              <SelectTrigger className="w-[200px] h-9 border-none bg-transparent focus:ring-0">
+                <SelectValue placeholder="Wert wählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Vorschläge</SelectLabel>
+                  {suggestions.map((val: any) => (
+                    <SelectItem key={String(val)} value={String(val)}>
+                      {String(val)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              placeholder="Filterwert..."
+              value={filterValue}
+              onChange={(e) => setFilterValue(e.target.value)}
+              className="w-[200px] h-9 border-none bg-transparent focus-visible:ring-0"
+              onKeyDown={(e) => e.key === "Enter" && addFilter()}
+            />
+          )}
+          
+          <Button 
+            onClick={addFilter} 
+            size="sm" 
+            className="bg-[#00463c] hover:bg-[#00332c] h-8 px-3 ml-1"
+            disabled={!selectedColumn || !filterValue}
+          >
+            Anwenden
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto">
+          {selectedRows.length > 0 && (
+            <Popover>
+              <PopoverTrigger>
+                <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white h-9">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {selectedRows.length} löschen
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-4">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Möchten Sie {selectedRows.length} Einträge wirklich löschen?</p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
+                      disabled={isBulkDeleting}
+                      onClick={() => bulkDelete(selectedRows.map((r: any) => r.original.id))}
+                    >
+                      {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, löschen"}
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          
+          <KeywordImport />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="outline" size="sm" className="border-[#00463c]/20 h-9">
+                Spalten <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column: any) => column.getCanHide())
+                .map((column: any) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id.replace(/_/g, " ")}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       {columnFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs font-medium text-muted-foreground mr-1">Aktive Filter:</span>
           {columnFilters.map((filter: any) => {
             const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
             const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
@@ -440,12 +582,13 @@ export const columns: ColumnDef<KeywordMap>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value: any) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value: any) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
@@ -732,6 +875,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
   const table = useReactTable({
     data,
     columns,
+    enableSortingRemoval: false,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -784,61 +928,6 @@ export function KeywordTable({ data }: KeywordTableProps) {
       </div>
 
       <div className="flex items-center py-4 gap-4">
-        {selectedRows.length > 0 && (
-          <Popover>
-            <PopoverTrigger>
-              <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold">
-                <Trash2 className="h-4 w-4 mr-2" />
-                {selectedRows.length} löschen
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-4">
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Möchten Sie {selectedRows.length} Einträge wirklich löschen?</p>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
-                    disabled={isBulkDeleting}
-                    onClick={() => bulkDelete(selectedRows.map(r => r.original.id))}
-                  >
-                    {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, löschen"}
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <KeywordImport />
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="outline" className="border-[#00463c]/20">
-                Spalten <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id.replace(/_/g, " ")}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
 
       <FilterBar table={table} columns={columns} />
