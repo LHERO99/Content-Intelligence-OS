@@ -79,14 +79,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {session?.user?.role === "Admin" && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton render={<Link href="/admin" />}>
-                    <ShieldCheck className="text-red-600" />
-                    <span>Admin-Bereich</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -95,7 +87,7 @@ export function AppSidebar() {
         <Separator className="mb-4" />
         {session ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 px-2">
+            <Link href="/profile" className="flex items-center gap-3 px-2 hover:bg-gray-100 rounded-md p-1 transition-colors">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00463c] text-white">
                 <User className="h-4 w-4" />
               </div>
@@ -103,14 +95,16 @@ export function AppSidebar() {
                 <span className="truncate text-sm font-medium">{session.user?.name}</span>
                 <span className="truncate text-xs text-gray-500">{session.user?.role}</span>
               </div>
-            </div>
+            </Link>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<Link href="/profile" />}>
-                  <User className="h-4 w-4" />
-                  <span>Profil</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {session?.user?.role === "Admin" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton render={<Link href="/admin" />}>
+                    <ShieldCheck className="text-red-600" />
+                    <span>Admin-Bereich</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={() => signOut({ callbackUrl: "/auth/signin" })}

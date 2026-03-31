@@ -21,6 +21,9 @@
 - [x] Implemented responsive sidebar with mobile support.
 - [x] Created global alerts system for user feedback.
 - [x] Fully localized the application UI to German.
+- [x] Reorganized sidebar navigation:
+  - [x] Moved Admin Panel link to the sidebar footer.
+  - [x] Linked user identity block directly to the Profile page.
 - [x] Resolved 404 errors by creating the missing Admin page and fixing sidebar navigation logic.
 - [x] Implemented Admin Panel features:
   - [x] User list with role badges.

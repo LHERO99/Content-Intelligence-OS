@@ -17,6 +17,10 @@ The SEO Content Tool is currently in active development, with core infrastructur
   - **User Management**: A real-time list of all registered users with their roles, including advanced features to **Edit** and **Delete** users.
   - **Invite System**: Ability to invite new users by generating secure, temporary passwords and unique invite links, with the added capability to **Cancel** pending invitations.
   - **Role-Based Access**: Strict enforcement of Admin-only access to management tools.
+- **Sidebar & Navigation**:
+  - **Reorganized Layout**: The sidebar has been streamlined for better UX.
+  - **Admin Panel Integration**: The Admin Panel link is now located in the sidebar footer for administrative users.
+  - **User Identity & Profile**: The user identity block in the footer now links directly to the [`Profile page`](src/app/profile/page.tsx), providing quick access to account settings.
 - **Airtable Integration**: Connection to Airtable for data storage and retrieval, including:
   - **Table Name Alignment**: All table names in the codebase are now explicitly aligned with the actual Airtable base structure using a centralized `TABLES` constant in [`src/lib/airtable.ts`](src/lib/airtable.ts:27).
   - **Security & Resilience**: Includes timeout handling, server-side security enforcement (`server-only`), and enhanced 403/401 error handling.
