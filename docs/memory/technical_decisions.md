@@ -3,6 +3,8 @@
 ## Middleware and Proxying
 - **Decision**: Merged middleware logic into [`src/proxy.ts`](src/proxy.ts).
 - **Rationale**: Centralizing proxying and request handling logic simplifies the architecture and ensures consistent behavior across different environments.
+- **Decision**: Simplified middleware redirection logic to prevent infinite loops.
+- **Rationale**: Authenticated users are now correctly redirected away from the sign-in page, and unauthenticated users are redirected to sign-in for protected routes, resolving a bug where valid sessions were being ignored by the middleware.
 
 ## Airtable Query Handling
 - **Decision**: Implemented explicit timeouts for all Airtable queries in [`src/lib/airtable.ts`](src/lib/airtable.ts).

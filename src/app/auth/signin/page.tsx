@@ -18,12 +18,10 @@ function SignInForm() {
   const callbackUrl = searchParams?.get("callbackUrl") || "/planning";
 
   useEffect(() => {
-    console.log("[SignIn] Session status changed:", { status, hasSession: !!session });
     if (status === "authenticated") {
-      console.log("[SignIn] User is already authenticated, redirecting to:", callbackUrl);
       router.push(callbackUrl);
     }
-  }, [status, session, callbackUrl, router]);
+  }, [status, callbackUrl, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,43 +29,22 @@ function SignInForm() {
     setError("");
 
     try {
-      console.log("Attempting sign-in for:", email);
-      
-      // Add a timeout to the sign-in attempt to prevent indefinite hanging
-      const signInPromise = signIn("credentials", {
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
         callbackUrl,
       });
 
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Sign-in request timed out")), 10000)
-      );
-
-      const result = await Promise.race([signInPromise, timeoutPromise]) as any;
-
-      console.log("Sign-in result received:", result);
-
       if (result?.error) {
-        console.error("Sign-in error details:", {
-          error: result.error,
-          status: result.status,
-          ok: result.ok,
-          url: result.url
-        });
         setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
       } else if (result?.ok) {
-        console.log("Sign-in successful, redirecting to:", callbackUrl);
-        // Use window.location.href for a hard redirect to ensure session is picked up
         window.location.href = callbackUrl;
-        return; // Don't reset loading if we are redirecting
+        return;
       } else {
-        console.error("Sign-in result state unknown:", result);
         setError("An unexpected error occurred during sign-in");
       }
     } catch (err: any) {
-      console.error("Unexpected sign-in error:", err);
       setError(err.message || "An unexpected error occurred");
     } finally {
       // Only reset loading if we haven't started a redirect

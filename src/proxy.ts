@@ -7,42 +7,25 @@ export default withAuth(
     const path = req.nextUrl.pathname;
     const isAuthPage = path.startsWith("/auth/signin");
 
-    // Always allow auth pages, API auth routes, and debug routes
-    if (isAuthPage || path.startsWith("/api/auth") || path.startsWith("/api/debug")) {
-      if (isAuthPage && token) {
-        console.log("[Middleware] Authenticated user on signin page, redirecting to /planning");
-        return NextResponse.redirect(new URL("/planning", req.url));
-      }
-      return null;
+    // If user is authenticated and tries to access signin page, redirect to /planning
+    if (isAuthPage && token) {
+      return NextResponse.redirect(new URL("/planning", req.url));
     }
 
     // Admin only routes
     if (path.startsWith("/admin") && token?.role !== "Admin") {
-      console.log("[Middleware] Non-admin user on admin route, redirecting to /");
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // All other app routes require at least Editor
-    // (Dashboard, Planning, Creation, Monitoring)
-    const protectedRoutes = ["/", "/planning", "/creation", "/monitoring"];
-    const isProtectedRoute = protectedRoutes.some(route => path === route || path.startsWith(route + "/"));
-    
-    if (isProtectedRoute && !token?.role) {
-        // next-auth/middleware handles redirect to signin automatically if authorized returns false
-    }
+    return NextResponse.next();
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
-        const isAuthPage = path.startsWith("/auth/signin");
-        const isApiAuthPage = path.startsWith("/api/auth");
-        const isDebugPage = path.startsWith("/api/debug");
         
-        console.log("[Middleware] Authorized check:", { path, hasToken: !!token, role: token?.role });
-
-        // Always allow auth pages, API auth routes, and debug routes
-        if (isAuthPage || isApiAuthPage || isDebugPage) {
+        // Always allow auth pages and API auth routes
+        if (path.startsWith("/auth/signin") || path.startsWith("/api/auth")) {
           return true;
         }
         
