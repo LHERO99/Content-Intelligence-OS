@@ -1,7 +1,7 @@
-# Project Status - 2026-03-31
+# Project Status - 2026-04-01
 
 ## Current State
-The SEO Content Tool is currently in active development, with core infrastructure for authentication, data fetching, and UI components established.
+The SEO Content Tool is currently in active development, with core infrastructure for authentication, data fetching, and UI components established. Recent focus has been on enhancing the Planning module's resilience and user experience.
 
 ## Key Features Implemented
 - **German Localization**: The entire application UI has been fully localized to German, ensuring a seamless experience for German-speaking users.
@@ -16,6 +16,10 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **Keyword-Map**: Strategic management of target keywords and their status.
     - **Trend-Radar**: Identifies new potentials via GSC and Sistrix gap analysis.
     - **Blacklist**: Management of excluded keywords to prevent irrelevant content creation.
+  - **Enhanced Blacklist**:
+    - **Multi-Type Support**: Now supports both Keyword and URL-based blacklisting.
+    - **BlacklistReasonModal**: A new modal ([`src/app/planning/blacklist-reason-modal.tsx`](src/app/planning/blacklist-reason-modal.tsx)) for providing context when blacklisting, featuring validation and mandatory field indicators.
+    - **Real-time Updates**: Immediate data refresh in the Blacklist tab after manual entry.
   - **Standardized Table Features**:
     - **Draggable Columns**: Users can reorder table columns for personalized data views.
     - **Unified Toolbar**: A consistent toolbar across all planning tables for actions and filtering.
@@ -28,8 +32,12 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **Layout Stability**: Fixed clipping issues and ensured consistent alignment across all planning tabs.
     - **Standardized Headers**: Table headers are now left-aligned with a uniform height for a cleaner, professional look.
     - **Bulk Actions**: Transitioned from row-level actions to a bulk action model to reduce UI clutter.
+    - **Keyword-Map Alignment**: Center-aligned the "Content-Plan" column for better visual balance.
+    - **Status Label Updates**: Updated status labels for clarity (e.g., "Vorhanden" -> "Hinzugefügt").
+    - **Edit Modal Enhancements**: Added "Content-Plan" status and "Add to Plan" action to the Keyword Edit Modal.
   - **Unified Data Entry**:
     - **"Add Entry" FAB**: Implemented a unified Floating Action Button ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)) that serves as the central entry point for all planning data.
+    - **Reorganized Layout**: Improved the "Add Keyword" form layout within the FAB for better usability.
     - **Multi-Type Support**: The FAB supports adding Keywords, Trends, and Blacklist entries through a single, context-aware interface that automatically adapts to the active tab.
     - **Bulk Import**: Maintained the CSV/Excel import feature ([`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx)) for high-volume keyword uploads.
   - **Data Integrity**: Enforced strict validation rules across all entry types to ensure high-quality planning data:
@@ -56,6 +64,10 @@ The SEO Content Tool is currently in active development, with core infrastructur
 - **n8n Integration**: Triggering workflows via a dedicated API endpoint ([`src/app/api/n8n/trigger/route.ts`](src/app/api/n8n/trigger/route.ts)) and a centralized helper utility ([`src/lib/n8n.ts`](src/lib/n8n.ts)).
 
 ## Recent Fixes
+- **Airtable Deployment Fix**: Resolved a critical scope issue in [`src/lib/airtable.ts`](src/lib/airtable.ts) that affected deployment stability.
+- **Airtable Resilience**: Implemented defensive fetching for the `Type` field in the Blacklist table to handle schema mismatches (422 errors) gracefully.
+- **Resilient Importer**: Updated `bulkCreateKeywords` to skip duplicates and collect errors instead of failing the entire batch, improving the reliability of large imports.
+- **FAB Dialog Closure**: Fixed issues where dialogs within the FAB would not close correctly after submission.
 - **API Method & Auth Stability**: Resolved 500, 405, and 401 errors across multiple routes by:
   - Correcting API method mismatches (e.g., ensuring POST handlers match client requests).
   - Requiring `authOptions` in all `getServerSession` calls within API routes to ensure reliable authentication and prevent 401 Unauthorized errors.

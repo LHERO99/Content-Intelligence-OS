@@ -2,9 +2,25 @@
 
 ## Resolved Tasks - 2026-04-01
 
-### Admin & Configuration
+### Airtable & Backend
+- [x] Resolved Airtable scope issue in [`src/lib/airtable.ts`](src/lib/airtable.ts) to fix deployment errors.
+- [x] Implemented defensive fetching for the `Type` field in the Blacklist table to handle schema mismatches (422 errors).
+- [x] Updated `bulkCreateKeywords` to skip duplicates and collect errors instead of failing the entire batch.
 - [x] Developed API Key Management UI ([`src/app/admin/api-keys-management.tsx`](src/app/admin/api-keys-management.tsx)).
 - [x] Implemented Config API with GET/PATCH handlers ([`src/app/api/admin/config/route.ts`](src/app/api/admin/config/route.ts)).
+
+### Planning Module & UI
+- [x] Enhanced Blacklist functionality:
+  - [x] Added support for Keyword and URL blacklisting.
+  - [x] Created `BlacklistReasonModal` ([`src/app/planning/blacklist-reason-modal.tsx`](src/app/planning/blacklist-reason-modal.tsx)) with validation and mandatory field indicators.
+  - [x] Implemented immediate data refresh in the Blacklist tab after manual entry.
+- [x] UI Refinements:
+  - [x] Reorganized "Add Keyword" form layout in the FAB ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)).
+  - [x] Reorganized Keyword Edit Modal layout.
+  - [x] Center-aligned "Content-Plan" column in the Keyword-Map.
+  - [x] Updated status labels (e.g., "Vorhanden" -> "Hinzugefügt").
+  - [x] Added "Content-Plan" status and "Add to Plan" action to the Keyword Edit Modal.
+  - [x] Fixed dialog closure issues in the FAB.
 - [x] Refined Admin Navigation using Radix Tabs.
 
 ### Data Integrity & Validation

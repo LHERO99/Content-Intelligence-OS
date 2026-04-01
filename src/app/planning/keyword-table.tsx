@@ -499,8 +499,9 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            {/* Row 1: Keyword and Main Keyword */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2 space-y-2">
                 <Label htmlFor="edit-keyword">Keyword *</Label>
                 <Input
                   id="edit-keyword"
@@ -510,17 +511,24 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-url">Target URL *</Label>
-                <Input
-                  id="edit-url"
-                  value={formData.Target_URL || ""}
-                  onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
-                  required
-                />
+                <Label htmlFor="edit-main">Main Keyword</Label>
+                <Select 
+                  value={formData.Main_Keyword} 
+                  onValueChange={(v) => setFormData({ ...formData, Main_Keyword: v as 'Y' | 'N' })}
+                >
+                  <SelectTrigger id="edit-main">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Y">Ja (Y)</SelectItem>
+                    <SelectItem value="N">Nein (N)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Row 2: Suchvolumen, Difficulty, Status */}
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-volume">Suchvolumen</Label>
                 <Input
@@ -538,24 +546,6 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                   value={formData.Difficulty ?? ""}
                   onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
                 />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-main">Main Keyword</Label>
-                <Select 
-                  value={formData.Main_Keyword} 
-                  onValueChange={(v) => setFormData({ ...formData, Main_Keyword: v as 'Y' | 'N' })}
-                >
-                  <SelectTrigger id="edit-main">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Y">Ja (Y)</SelectItem>
-                    <SelectItem value="N">Nein (N)</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-status">Status</Label>
@@ -576,6 +566,18 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
               </div>
             </div>
 
+            {/* Row 3: Target URL (Full width) */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-url">Target URL *</Label>
+              <Input
+                id="edit-url"
+                value={formData.Target_URL || ""}
+                onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Row 4: Produkt-Anzahl and Avg. Value */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-articles">Produkt-Anzahl</Label>

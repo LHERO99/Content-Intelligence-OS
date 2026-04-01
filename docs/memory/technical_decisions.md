@@ -15,6 +15,8 @@
 - **Rationale**: To improve developer and user experience, a unified `handleAirtableError` function in [`src/lib/airtable.ts`](src/lib/airtable.ts:38) now intercepts all Airtable API errors. It provides specific troubleshooting steps for 403 (Authorization/Scopes) and 401 (Invalid Key) errors, making it easier to diagnose configuration issues.
 - **Decision**: Centralized table name management via a `TABLES` constant and removed resilient matching logic.
 - **Rationale**: To ensure consistency and prevent runtime errors due to table name mismatches, all table names are now explicitly defined in a centralized `TABLES` constant in [`src/lib/airtable.ts`](src/lib/airtable.ts:27). This replaces previous "resilient matching" logic with explicit, predictable naming that matches the actual Airtable base structure.
+- **Decision**: Defensive fetching for schema-sensitive fields (e.g., `Type` in Blacklist).
+- **Rationale**: To handle potential schema mismatches or missing fields in Airtable (which cause 422 errors), the application now uses defensive fetching patterns that gracefully handle missing fields instead of failing the entire request.
 
 ## Route Protection
 - **Decision**: Using `withAuth` HOC and NextAuth.js for route protection.
@@ -39,6 +41,8 @@
 - **Rationale**: To prevent application crashes (e.g., in the Content Creation module), components now include robust checks for null, undefined, or malformed data before attempting to render or process it.
 - **Decision**: Tabbed Admin UI Architecture using Radix Tabs.
 - **Rationale**: To improve scalability and user experience in the administrative area, a tabbed interface was implemented to clearly separate user management from system configuration. This modular approach allows for adding future administrative features without cluttering the interface.
+- **Decision**: Persistent modals (preventing closure on outside click).
+- **Rationale**: To protect user input and prevent accidental data loss, modals were made persistent, requiring an explicit click on a close button or action button to dismiss.
 
 ## User Onboarding & Invite System
 - **Decision**: Implemented a temporary password and invite link generation system for user onboarding in [`src/app/api/admin/invite/route.ts`](src/app/api/admin/invite/route.ts).
@@ -57,14 +61,14 @@
 - **Rationale**: Offloading parsing to the client reduces server load and allows for immediate validation of the CSV structure before sending data to the API.
 - **Decision**: Implemented bulk Airtable updates in chunks of 10 in [`src/lib/airtable.ts`](src/lib/airtable.ts:332).
 - **Rationale**: Airtable's API limits batch operations to 10 records per call. The `bulkCreateKeywords` function automatically handles chunking to ensure reliable imports of larger datasets while staying within API limits.
+- **Decision**: Resilient bulk creation with error collection.
+- **Rationale**: Instead of failing an entire batch if one record fails (e.g., due to a duplicate), the importer now skips problematic records, collects the errors, and continues with the rest of the batch.
 - **Decision**: Enforced mandatory "Keyword" and "Target_URL" fields for all data entry methods (manual and import).
 - **Rationale**: To ensure data integrity and prevent incomplete records in the planning workspace, these two fields are now strictly required. Manual entry forms and CSV import logic both validate for these fields before submission.
 - **Decision**: Implementation of a dedicated Blacklist view in the Planning module.
 - **Rationale**: To maintain content quality and focus, a separate management interface for excluded keywords was added, allowing users to explicitly mark and manage terms that should not be targeted.
 - **Decision**: Standardized table headers (left-aligned, uniform height) and removal of row-level actions.
 - **Rationale**: To create a cleaner, more professional UI, table headers were standardized. Row-level actions were replaced with bulk actions to reduce visual clutter and streamline the user experience.
-- **Decision**: Persistent modals (preventing closure on outside click).
-- **Rationale**: To protect user input and prevent accidental data loss, modals were made persistent, requiring an explicit click on a close button or action button to dismiss.
 - **Decision**: Centralized Configuration Store via Airtable `Config` table.
 - **Rationale**: To provide a flexible and user-friendly way to manage application-wide settings (e.g., API keys for external services) without requiring code changes or environment variable redeployments. This allows administrators to update system behavior directly through the Admin UI.
 - **Decision**: Enforcement of SEO Strategy Integrity Rules at the API/Airtable layer.
