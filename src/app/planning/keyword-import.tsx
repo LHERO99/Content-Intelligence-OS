@@ -126,10 +126,10 @@ export function KeywordImport() {
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
+          const workbook = XLSX.read(data, { type: "array", cellDates: true });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
           
           if (jsonData && jsonData.length > 0) {
             setFileData(jsonData);
@@ -166,9 +166,7 @@ export function KeywordImport() {
 
     try {
       const keywords = fileData.map((row: any) => {
-        const mappedRow: any = {
-          Status: "New", // Default status
-        };
+        const mappedRow: any = {};
 
         SYSTEM_COLUMNS.forEach(col => {
           const fileKey = mapping[col.id];
@@ -188,6 +186,11 @@ export function KeywordImport() {
             mappedRow[col.id] = value;
           }
         });
+
+        // Ensure Status is set if not mapped
+        if (!mappedRow.Status) {
+          mappedRow.Status = "Backlog";
+        }
 
         return mappedRow;
       }).filter(kw => kw.Keyword && kw.Target_URL);

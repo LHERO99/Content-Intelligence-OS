@@ -492,62 +492,17 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   },
   {
     accessorKey: "Keyword",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Keyword
-        {column.getIsSorted() === "asc" ? (
-          <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-        ) : column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        )}
-      </Button>
-    ),
+    header: "Keyword",
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Reason",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Grund
-        {column.getIsSorted() === "asc" ? (
-          <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-        ) : column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        )}
-      </Button>
-    ),
+    header: "Grund",
     cell: ({ row }) => <div>{row.getValue("Reason") || "-"}</div>,
   },
   {
     accessorKey: "Added_At",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Hinzugefügt am
-        {column.getIsSorted() === "asc" ? (
-          <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-        ) : column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        )}
-      </Button>
-    ),
+    header: "Hinzugefügt am",
     cell: ({ row }) => {
       const date = row.getValue("Added_At") as string;
       return <div>{date ? new Date(date).toLocaleDateString('de-DE') : "-"}</div>;
