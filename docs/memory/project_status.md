@@ -32,12 +32,16 @@ The SEO Content Tool is currently in active development, with core infrastructur
     - **"Add Entry" FAB**: Implemented a unified Floating Action Button ([`src/app/planning/add-entry-fab.tsx`](src/app/planning/add-entry-fab.tsx)) that serves as the central entry point for all planning data.
     - **Multi-Type Support**: The FAB supports adding Keywords, Trends, and Blacklist entries through a single, context-aware interface that automatically adapts to the active tab.
     - **Bulk Import**: Maintained the CSV/Excel import feature ([`src/app/planning/keyword-import.tsx`](src/app/planning/keyword-import.tsx)) for high-volume keyword uploads.
-  - **Data Integrity**: Enforced mandatory fields (e.g., "Keyword", "Target_URL", "Trend_Topic") across all entry types to ensure high-quality planning data.
+  - **Data Integrity**: Enforced strict validation rules across all entry types to ensure high-quality planning data:
+    - **Mandatory Fields**: Required fields like "Keyword", "Target_URL", and "Trend_Topic".
+    - **URL Constraints**: Exactly one "Main Keyword" permitted per URL.
+    - **Keyword Uniqueness**: Global uniqueness enforcement for "Main Keywords" to prevent duplicate targeting.
 - **Creation Module**: Features an AI Editor Workspace, Scoring Engine, and Reasoning Panel. Enhanced stability with defensive data validation to prevent frontend crashes.
 - **Monitoring Module**: Dashboard for tracking content performance.
 - **Admin Panel**: A comprehensive administrative interface ([`src/app/admin/page.tsx`](src/app/admin/page.tsx)) featuring:
   - **User Management**: A real-time list of all registered users with their roles, including advanced features to **Edit** and **Delete** users.
   - **Invite System**: Ability to invite new users by generating secure, temporary passwords and unique invite links, with the added capability to **Cancel** pending invitations.
+  - **System Configuration**: A dedicated **API-Keys** tab powered by the [`ApiKeysManagement`](src/app/admin/api-keys-management.tsx) component for managing external service credentials.
   - **Role-Based Access**: Strict enforcement of Admin-only access to management tools.
 - **API Stability**: Resolved 500, 405, and 401 errors by aligning API method handlers and ensuring robust session validation using `authOptions`.
 - **Sidebar & Navigation**:
@@ -49,7 +53,7 @@ The SEO Content Tool is currently in active development, with core infrastructur
 - **Airtable Integration**: Connection to Airtable for data storage and retrieval, including:
   - **Table Name Alignment**: All table names in the codebase are now explicitly aligned with the actual Airtable base structure using a centralized `TABLES` constant in [`src/lib/airtable.ts`](src/lib/airtable.ts:27).
   - **Security & Resilience**: Includes timeout handling, server-side security enforcement (`server-only`), and enhanced 403/401 error handling.
-- **n8n Integration**: Triggering workflows via API.
+- **n8n Integration**: Triggering workflows via a dedicated API endpoint ([`src/app/api/n8n/trigger/route.ts`](src/app/api/n8n/trigger/route.ts)) and a centralized helper utility ([`src/lib/n8n.ts`](src/lib/n8n.ts)).
 
 ## Recent Fixes
 - **API Method & Auth Stability**: Resolved 500, 405, and 401 errors across multiple routes by:

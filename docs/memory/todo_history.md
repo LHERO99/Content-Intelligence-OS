@@ -1,5 +1,19 @@
 # Todo History
 
+## Resolved Tasks - 2026-04-01
+
+### Admin & Configuration
+- [x] Developed API Key Management UI ([`src/app/admin/api-keys-management.tsx`](src/app/admin/api-keys-management.tsx)).
+- [x] Implemented Config API with GET/PATCH handlers ([`src/app/api/admin/config/route.ts`](src/app/api/admin/config/route.ts)).
+- [x] Refined Admin Navigation using Radix Tabs.
+
+### Data Integrity & Validation
+- [x] Implemented `AirtableValidationError` for granular error reporting.
+- [x] Enhanced `bulkCreateKeywords` with strict SEO validation (One Main Keyword per URL, Global Uniqueness).
+
+### Integrations
+- [x] Implemented n8n trigger API and helper library.
+
 ## Resolved Tasks - 2026-03-31
 
 ### Authentication & Security

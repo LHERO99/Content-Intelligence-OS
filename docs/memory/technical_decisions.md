@@ -37,6 +37,8 @@
 - **Rationale**: To align with the primary user base and the DocMorris brand context, the entire application interface has been localized to German.
 - **Decision**: Implementation of defensive data validation in frontend components.
 - **Rationale**: To prevent application crashes (e.g., in the Content Creation module), components now include robust checks for null, undefined, or malformed data before attempting to render or process it.
+- **Decision**: Tabbed Admin UI Architecture using Radix Tabs.
+- **Rationale**: To improve scalability and user experience in the administrative area, a tabbed interface was implemented to clearly separate user management from system configuration. This modular approach allows for adding future administrative features without cluttering the interface.
 
 ## User Onboarding & Invite System
 - **Decision**: Implemented a temporary password and invite link generation system for user onboarding in [`src/app/api/admin/invite/route.ts`](src/app/api/admin/invite/route.ts).
@@ -57,12 +59,18 @@
 - **Rationale**: Airtable's API limits batch operations to 10 records per call. The `bulkCreateKeywords` function automatically handles chunking to ensure reliable imports of larger datasets while staying within API limits.
 - **Decision**: Enforced mandatory "Keyword" and "Target_URL" fields for all data entry methods (manual and import).
 - **Rationale**: To ensure data integrity and prevent incomplete records in the planning workspace, these two fields are now strictly required. Manual entry forms and CSV import logic both validate for these fields before submission.
-  - **Decision**: Implementation of a dedicated Blacklist view in the Planning module.
-  - **Rationale**: To maintain content quality and focus, a separate management interface for excluded keywords was added, allowing users to explicitly mark and manage terms that should not be targeted.
-  - **Decision**: Standardized table headers (left-aligned, uniform height) and removal of row-level actions.
-  - **Rationale**: To create a cleaner, more professional UI, table headers were standardized. Row-level actions were replaced with bulk actions to reduce visual clutter and streamline the user experience.
-  - **Decision**: Persistent modals (preventing closure on outside click).
-  - **Rationale**: To protect user input and prevent accidental data loss, modals were made persistent, requiring an explicit click on a close button or action button to dismiss.
+- **Decision**: Implementation of a dedicated Blacklist view in the Planning module.
+- **Rationale**: To maintain content quality and focus, a separate management interface for excluded keywords was added, allowing users to explicitly mark and manage terms that should not be targeted.
+- **Decision**: Standardized table headers (left-aligned, uniform height) and removal of row-level actions.
+- **Rationale**: To create a cleaner, more professional UI, table headers were standardized. Row-level actions were replaced with bulk actions to reduce visual clutter and streamline the user experience.
+- **Decision**: Persistent modals (preventing closure on outside click).
+- **Rationale**: To protect user input and prevent accidental data loss, modals were made persistent, requiring an explicit click on a close button or action button to dismiss.
+- **Decision**: Centralized Configuration Store via Airtable `Config` table.
+- **Rationale**: To provide a flexible and user-friendly way to manage application-wide settings (e.g., API keys for external services) without requiring code changes or environment variable redeployments. This allows administrators to update system behavior directly through the Admin UI.
+- **Decision**: Enforcement of SEO Strategy Integrity Rules at the API/Airtable layer.
+- **Rationale**: To prevent strategy conflicts and ensure a clean SEO architecture, strict validation rules were implemented:
+    - **"One Main Keyword per URL" policy**: Prevents keyword cannibalization by ensuring each URL targets a unique primary keyword.
+    - **"Global Main Keyword Uniqueness"**: Ensures that the same main keyword isn't accidentally targeted across multiple URLs, maintaining a clear 1:1 mapping between keywords and landing pages.
 
 ## State Management
 - **Decision**: Leveraging React Context and Hooks for local and global state management (e.g., `AlertsProvider`, `AuthProvider`).
