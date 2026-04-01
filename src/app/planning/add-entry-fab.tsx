@@ -129,6 +129,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
       setOpen(false);
       resetForm();
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
+      window.dispatchEvent(new CustomEvent('refresh-blacklist-data'));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -137,8 +138,10 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) return; // Prevent closing via onOpenChange (outside click/escape)
     setOpen(newOpen);
+    if (!newOpen) {
+      resetForm();
+    }
   };
 
   const closeDialog = () => {
@@ -172,9 +175,9 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
           <div className="grid gap-6 py-6">
             {type === 'keyword' && (
               <>
-                {/* Row 1: Keyword, Suchvolumen, Main Keyword */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
+                {/* Row 1: Keyword (large) and Main Keyword */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="col-span-3 space-y-2">
                     <Label htmlFor="keyword" className="text-sm font-semibold">Keyword *</Label>
                     <Input
                       id="keyword"
@@ -186,6 +189,22 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="mainKeyword" className="text-sm font-semibold">Main *</Label>
+                    <Select value={mainKeyword} onValueChange={(v) => setMainKeyword(v as 'Y' | 'N')}>
+                      <SelectTrigger id="mainKeyword" className="h-11 text-base">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Y">Ja</SelectItem>
+                        <SelectItem value="N">Nein</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Row 2: Suchvolumen and Difficulty */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="volume" className="text-sm font-semibold">Suchvolumen</Label>
                     <Input
                       id="volume"
@@ -196,20 +215,20 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mainKeyword" className="text-sm font-semibold">Main Keyword *</Label>
-                    <Select value={mainKeyword} onValueChange={(v) => setMainKeyword(v as 'Y' | 'N')}>
-                      <SelectTrigger id="mainKeyword" className="h-11 text-base">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Y">Ja (Y)</SelectItem>
-                        <SelectItem value="N">Nein (N)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty (0-100)</Label>
+                    <Input
+                      id="difficulty"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={difficulty}
+                      onChange={(e) => setDifficulty(e.target.value)}
+                      className="h-11 text-base"
+                    />
                   </div>
                 </div>
 
-                {/* Row 2: Target URL */}
+                {/* Row 3: Target URL (Full width) */}
                 <div className="space-y-2">
                   <Label htmlFor="url" className="text-sm font-semibold">Target URL *</Label>
                   <Input
@@ -222,7 +241,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                   />
                 </div>
 
-                {/* Row 3: Produkt-Anzahl, Avg. Product-Value */}
+                {/* Row 4: Produkt-Anzahl and Avg. Product-Value */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="articleCount" className="text-sm font-semibold">Produkt-Anzahl</Label>
@@ -245,20 +264,6 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       className="h-11 text-base"
                     />
                   </div>
-                </div>
-
-                {/* Difficulty (Optional, keeping it as it was in the original code but not explicitly requested in the new layout rows) */}
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty (0-100)</Label>
-                  <Input
-                    id="difficulty"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value)}
-                    className="h-11 text-base"
-                  />
                 </div>
               </>
             )}
