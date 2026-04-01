@@ -417,6 +417,7 @@ interface EditKeywordModalProps {
 
 function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordModalProps) {
   const [loading, setLoading] = React.useState(false);
+  const [isAddingToPlan, setIsAddingToPlan] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   
   // Form states
@@ -433,9 +434,30 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
         Status: keyword.Status,
         Article_Count: keyword.Article_Count,
         Avg_Product_Value: keyword.Avg_Product_Value,
+        Editorial_Deadline: keyword.Editorial_Deadline,
       });
     }
   }, [keyword]);
+
+  const handleAddToContentPlan = async () => {
+    if (!keyword) return;
+    setIsAddingToPlan(true);
+    setError(null);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const updates: Partial<KeywordMap> = {
+        Editorial_Deadline: today,
+        Status: "In Progress"
+      };
+      await onSave(keyword.id, updates);
+      // Update local form state to reflect changes
+      setFormData(prev => ({ ...prev, ...updates }));
+    } catch (err: any) {
+      setError(err.message || "Fehler beim Hinzufügen zum Content-Plan");
+    } finally {
+      setIsAddingToPlan(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -546,9 +568,9 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Backlog">Backlog</SelectItem>
+                    <SelectItem value="Planned">Planned</SelectItem>
                     <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Review">Review</SelectItem>
-                    <SelectItem value="Done">Done</SelectItem>
+                    <SelectItem value="Published">Published</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -573,6 +595,43 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                   value={formData.Avg_Product_Value ?? ""}
                   onChange={(e) => setFormData({ ...formData, Avg_Product_Value: e.target.value ? Number(e.target.value) : undefined })}
                 />
+              </div>
+            </div>
+
+            <div className="border-t border-[#00463c]/10 pt-4 mt-2">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="text-sm font-semibold text-[#00463c]">Content-Plan Status</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog") ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                        Hinzugefügt
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
+                        Nicht im Plan
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                {!(formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog")) && formData.Main_Keyword === "Y" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                    onClick={handleAddToContentPlan}
+                    disabled={isAddingToPlan || loading}
+                  >
+                    {isAddingToPlan ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <Plus className="h-3 w-3 mr-1" />
+                    )}
+                    Zum Plan hinzufügen
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -661,7 +720,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
   },
   {
     id: "Content-Plan",
-    header: "Content-Plan",
+    header: () => <div className="text-center">Content-Plan</div>,
     enableColumnFilter: false,
     cell: ({ row, table }) => {
       const isMain = row.original.Main_Keyword === "Y";
@@ -672,7 +731,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
       if (isInEditorial) {
         return (
           <div className="flex justify-center">
-            <Badge variant="outline" className="text-green-600 border-green-600">Vorhanden</Badge>
+            <Badge variant="outline" className="text-green-600 border-green-600">Hinzugefügt</Badge>
           </div>
         );
       }

@@ -189,7 +189,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mainKeyword" className="text-sm font-semibold">Main *</Label>
+                    <Label htmlFor="mainKeyword" className="text-sm font-semibold">Main KW *</Label>
                     <Select value={mainKeyword} onValueChange={(v) => setMainKeyword(v as 'Y' | 'N')}>
                       <SelectTrigger id="mainKeyword" className="h-11 text-base">
                         <SelectValue />
