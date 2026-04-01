@@ -9,7 +9,8 @@ import {
   AuditLog, 
   UserRecord,
   BlacklistEntry,
-  ConfigRecord
+  ConfigRecord,
+  SkippedKeyword
 } from './airtable-types';
 
 export * from './airtable-types';
@@ -384,12 +385,12 @@ export async function deleteUser(id: string): Promise<boolean> {
   }
 }
 
-export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promise<{ created: KeywordMap[], skipped: Partial<KeywordMap>[] }> {
+export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promise<{ created: KeywordMap[], skipped: SkippedKeyword[] }> {
   try {
     console.log(`[Airtable] Bulk creating ${keywords.length} keywords`);
     
     const createdRecords: KeywordMap[] = [];
-    const skippedRecords: Partial<KeywordMap>[] = [];
+    const skippedRecords: SkippedKeyword[] = [];
     const validKeywords: Partial<KeywordMap>[] = [];
 
     // Pre-validation: Check for duplicates and skip them
@@ -403,7 +404,10 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
 
         if (existingKeywordUrl.length > 0) {
           console.log(`[Airtable] Skipping duplicate: ${kw.Keyword} for ${kw.Target_URL}`);
-          skippedRecords.push(kw);
+          skippedRecords.push({
+            ...kw,
+            reason: `Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.`
+          });
           continue;
         }
       }
@@ -417,22 +421,25 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
     }
 
     for (const chunk of chunks) {
+      const currentChunkValid: Partial<KeywordMap>[] = [];
+
       // Validation for bulk: Check if any of the keywords being imported as 'Y' already exist for that URL
       for (const kw of chunk) {
+        try {
           // 1. Check if URL already has a Main Keyword
-          if (kw.Target_URL) {
+          if (kw.Target_URL && kw.Main_Keyword === 'Y') {
             const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
               filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`,
               maxRecords: 1,
             }).firstPage();
 
             if (existingMainKeywords.length > 0) {
-              throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword. Import abgebrochen.`, 409);
+              throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
             }
           }
 
           // 2. Check if this Keyword is already a Main Keyword for ANY URL
-          if (kw.Keyword) {
+          if (kw.Keyword && kw.Main_Keyword === 'Y') {
             const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({
               filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`,
               maxRecords: 1,
@@ -442,27 +449,37 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
               throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
             }
           }
+          
+          currentChunkValid.push(kw);
+        } catch (error: any) {
+          console.log(`[Airtable] Skipping keyword due to validation error: ${kw.Keyword}`, error.message);
+          skippedRecords.push({
+            ...kw,
+            reason: error.message || 'Unbekannter Validierungsfehler'
+          });
         }
+      }
 
-        const records = await base(TABLES.KEYWORD_MAP).create(
-          chunk.map((kw) => ({
-            fields: {
-              Keyword: kw.Keyword,
-              Target_URL: kw.Target_URL,
-              Search_Volume: kw.Search_Volume,
-              Difficulty: kw.Difficulty,
-              Status: kw.Status || 'Backlog',
-              Editorial_Deadline: kw.Editorial_Deadline,
-              // Assigned_Editor is an array of record IDs
-              Assigned_Editor: kw.Assigned_Editor,
-              Main_Keyword: kw.Main_Keyword || 'N',
-              Article_Count: kw.Article_Count,
-              Avg_Product_Value: kw.Avg_Product_Value,
-            },
-          }))
-        );
+      if (currentChunkValid.length === 0) continue;
 
-        records.forEach((record) => {
+      const records = await base(TABLES.KEYWORD_MAP).create(
+        currentChunkValid.map((kw) => ({
+          fields: {
+            Keyword: kw.Keyword,
+            Target_URL: kw.Target_URL,
+            Search_Volume: kw.Search_Volume,
+            Difficulty: kw.Difficulty,
+            Status: kw.Status || 'Backlog',
+            Editorial_Deadline: kw.Editorial_Deadline,
+            // Assigned_Editor is an array of record IDs
+            Assigned_Editor: kw.Assigned_Editor,
+            Main_Keyword: kw.Main_Keyword || 'N',
+            Article_Count: kw.Article_Count,
+            Avg_Product_Value: kw.Avg_Product_Value,
+          },
+        }))
+      );
+records.forEach((record) => {
           createdRecords.push({
             id: record.id,
             Keyword: record.get('Keyword') as string,

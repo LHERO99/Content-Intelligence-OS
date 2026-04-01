@@ -371,19 +371,30 @@ export function KeywordImport() {
                     Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich übernommen.
                   </p>
                   {skippedCount > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
-                      <p className="text-sm text-amber-800 flex items-center justify-center gap-2">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left">
+                      <p className="text-sm text-amber-800 flex items-center gap-2 font-semibold mb-2">
                         <AlertCircle className="h-4 w-4" />
-                        {skippedCount} bereits existierende Einträge wurden übersprungen.
+                        {skippedCount} Einträge wurden übersprungen:
                       </p>
+                      
+                      <ScrollArea className="h-[120px] w-full rounded border border-amber-100 bg-white/50 p-2">
+                        <ul className="text-xs space-y-2">
+                          {skippedRecords.map((record, idx) => (
+                            <li key={idx} className="border-b border-amber-100 pb-1 last:border-0">
+                              <span className="font-bold text-amber-900">{record.Keyword || "Unbekannt"}</span>: {record.reason || "Bereits vorhanden"}
+                            </li>
+                          ))}
+                        </ul>
+                      </ScrollArea>
+
                       <Button 
                         variant="link" 
                         size="sm" 
-                        className="text-amber-900 font-bold mt-1 h-auto p-0"
+                        className="text-amber-900 font-bold mt-2 h-auto p-0"
                         onClick={downloadSkipped}
                       >
                         <Download className="h-3 w-3 mr-1" />
-                        Duplikate als Excel herunterladen
+                        Vollständige Liste als Excel herunterladen
                       </Button>
                     </div>
                   )}

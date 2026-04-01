@@ -14,6 +14,10 @@ export interface KeywordMap {
   Avg_Product_Value?: number;
 }
 
+export interface SkippedKeyword extends Partial<KeywordMap> {
+  reason: string;
+}
+
 export interface ContentLog {
   id: string;
   ID: number;
