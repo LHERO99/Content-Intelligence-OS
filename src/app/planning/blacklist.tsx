@@ -712,7 +712,7 @@ export function Blacklist() {
           <h3 className="text-xl font-semibold">Blacklist</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          Verwaltung von Keywords, die nicht für die Content-Erstellung berücksichtigt werden sollen.
+          Verwaltung von Keywords und URLs, die nicht für die Content-Erstellung berücksichtigt werden sollen.
         </p>
       </div>
 

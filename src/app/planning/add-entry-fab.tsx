@@ -48,6 +48,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
   const [trendTopic, setTrendTopic] = useState('');
   const [source, setSource] = useState<'GSC' | 'Sistrix'>('GSC');
   const [reason, setReason] = useState('');
+  const [blacklistType, setBlacklistType] = useState<'Keyword' | 'URL'>('Keyword');
 
   // Sync type with active tab
   useEffect(() => {
@@ -69,6 +70,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
     setTrendTopic('');
     setSource('GSC');
     setReason('');
+    setBlacklistType('Keyword');
     setError(null);
   };
 
@@ -107,6 +109,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
         endpoint = '/api/planning/blacklist';
         body = {
           Keyword: keyword,
+          Type: blacklistType,
           Reason: reason,
         };
       }
@@ -158,7 +161,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
               {type === 'keyword' && 'Neues Keyword hinzufügen'}
               {type === 'trend' && 'Neuen Trend hinzufügen'}
-              {type === 'blacklist' && 'Keyword blacklisten'}
+              {type === 'blacklist' && 'Keyword/URL blacklisten'}
               {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
             </DialogTitle>
             <DialogDescription className="text-base">
@@ -169,7 +172,8 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
           <div className="grid gap-6 py-6">
             {type === 'keyword' && (
               <>
-                <div className="grid grid-cols-2 gap-6">
+                {/* Row 1: Keyword, Suchvolumen, Main Keyword */}
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="keyword" className="text-sm font-semibold">Keyword *</Label>
                     <Input
@@ -182,19 +186,6 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="url" className="text-sm font-semibold">Target URL *</Label>
-                    <Input
-                      id="url"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="h-11 text-base"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
                     <Label htmlFor="volume" className="text-sm font-semibold">Suchvolumen</Label>
                     <Input
                       id="volume"
@@ -204,20 +195,6 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       className="h-11 text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty (0-100)</Label>
-                    <Input
-                      id="difficulty"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value)}
-                      className="h-11 text-base"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="mainKeyword" className="text-sm font-semibold">Main Keyword *</Label>
                     <Select value={mainKeyword} onValueChange={(v) => setMainKeyword(v as 'Y' | 'N')}>
@@ -230,6 +207,23 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Row 2: Target URL */}
+                <div className="space-y-2">
+                  <Label htmlFor="url" className="text-sm font-semibold">Target URL *</Label>
+                  <Input
+                    id="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="h-11 text-base"
+                    required
+                  />
+                </div>
+
+                {/* Row 3: Produkt-Anzahl, Avg. Product-Value */}
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="articleCount" className="text-sm font-semibold">Produkt-Anzahl</Label>
                     <Input
@@ -240,15 +234,29 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       className="h-11 text-base"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="avgProductValue" className="text-sm font-semibold">Avg. Product Value</Label>
+                    <Input
+                      id="avgProductValue"
+                      type="number"
+                      step="0.01"
+                      value={avgProductValue}
+                      onChange={(e) => setAvgProductValue(e.target.value)}
+                      className="h-11 text-base"
+                    />
+                  </div>
                 </div>
+
+                {/* Difficulty (Optional, keeping it as it was in the original code but not explicitly requested in the new layout rows) */}
                 <div className="space-y-2">
-                  <Label htmlFor="avgProductValue" className="text-sm font-semibold">Avg. Product Value</Label>
+                  <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty (0-100)</Label>
                   <Input
-                    id="avgProductValue"
+                    id="difficulty"
                     type="number"
-                    step="0.01"
-                    value={avgProductValue}
-                    onChange={(e) => setAvgProductValue(e.target.value)}
+                    min="0"
+                    max="100"
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(e.target.value)}
                     className="h-11 text-base"
                   />
                 </div>
@@ -286,12 +294,24 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             {type === 'blacklist' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="blKeyword" className="text-sm font-semibold">Keyword *</Label>
+                  <Label htmlFor="blType" className="text-sm font-semibold">Typ *</Label>
+                  <Select value={blacklistType} onValueChange={(v) => setBlacklistType(v as 'Keyword' | 'URL')}>
+                    <SelectTrigger id="blType" className="h-11 text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Keyword">Keyword</SelectItem>
+                      <SelectItem value="URL">URL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blKeyword" className="text-sm font-semibold">Keyword/URL *</Label>
                   <Input
                     id="blKeyword"
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
-                    placeholder="z.B. Konkurrenzmarke"
+                    placeholder={blacklistType === 'Keyword' ? "z.B. Konkurrenzmarke" : "https://..."}
                     className="h-11 text-base"
                     required
                   />
