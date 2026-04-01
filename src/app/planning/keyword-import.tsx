@@ -295,7 +295,7 @@ export function KeywordImport() {
                         </div>
                         <Select
                           value={mapping[col.id] || "none"}
-                          onValueChange={(val) => setMapping(prev => {
+                          onValueChange={(val: string) => setMapping(prev => {
                             const newMapping = { ...prev };
                             if (val === "none") {
                               delete newMapping[col.id];
