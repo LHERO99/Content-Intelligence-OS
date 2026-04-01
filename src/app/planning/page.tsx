@@ -11,7 +11,12 @@ import { Radar, Map, Calendar, ShieldAlert, Loader2 } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
 
 export default function PlanningPage() {
-  const [activeTab, setActiveTab] = useState("editorial");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('planning-active-tab') || "editorial";
+    }
+    return "editorial";
+  });
   const [data, setData] = useState<{ keywords: any[], trends: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +76,14 @@ export default function PlanningPage() {
         <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Planung</h1>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          setActiveTab(val);
+          localStorage.setItem('planning-active-tab', val);
+        }}
+        className="space-y-4"
+      >
         <TabsList className="bg-[#e7f3ee] border-[#00463c]/10">
           <TabsTrigger value="editorial" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
             <Calendar className="mr-2 h-4 w-4" />
