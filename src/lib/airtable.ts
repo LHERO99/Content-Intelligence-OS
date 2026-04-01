@@ -94,7 +94,7 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getKeywordMap');
+    return handleAirtableError(error,'getKeywordMap');
   }
 }
 
@@ -112,7 +112,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
       Created_At: record.get('Created_At') as string,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getContentLogs');
+    return handleAirtableError(error,'getContentLogs');
   }
 }
 
@@ -130,7 +130,7 @@ export async function getPerformanceData(): Promise<PerformanceData[]> {
       Position: record.get('Position') as number,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getPerformanceData');
+    return handleAirtableError(error,'getPerformanceData');
   }
 }
 
@@ -148,7 +148,7 @@ export async function getPotentialTrends(): Promise<PotentialTrend[]> {
       Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getPotentialTrends');
+    return handleAirtableError(error,'getPotentialTrends');
   }
 }
 
@@ -164,7 +164,7 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
       Raw_Payload: record.get('Raw_Payload') as string,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getAuditLogs');
+    return handleAirtableError(error,'getAuditLogs');
   }
 }
 
@@ -207,7 +207,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
     } catch (error: any) {
       const status = error.statusCode || error.status;
       if (status === 403 || status === 401) {
-        return handleAirtableError(error, 'getUserByEmail');
+    return handleAirtableError(error,'getUserByEmail');
       }
 
       console.error(`[Airtable] Error fetching user (Attempt ${attempt}):`, error.message || error);
@@ -235,7 +235,7 @@ export async function countUsers(): Promise<number> {
     console.log(`[Airtable] User count check returned ${records.length} records`);
     return records.length;
   } catch (error) {
-    return handleAirtableError(error, 'countUsers');
+    return handleAirtableError(error,'countUsers');
   }
 }
 
@@ -253,7 +253,7 @@ export async function getAllUsers(): Promise<UserRecord[]> {
       Password_Changed: record.get('Password_Changed') as boolean,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getAllUsers');
+    return handleAirtableError(error,'getAllUsers');
   }
 }
 
@@ -288,7 +288,7 @@ export async function createUser(userData: Partial<UserRecord>): Promise<UserRec
       Password_Changed: record.get('Password_Changed') as boolean,
     };
   } catch (error) {
-    return handleAirtableError(error, 'createUser');
+    return handleAirtableError(error,'createUser');
   }
 }
 
@@ -325,7 +325,7 @@ export async function updateUser(id: string, userData: Partial<UserRecord>): Pro
       Password_Changed: record.get('Password_Changed') as boolean,
     };
   } catch (error) {
-    return handleAirtableError(error, 'updateUser');
+    return handleAirtableError(error,'updateUser');
   }
 }
 
@@ -336,7 +336,7 @@ export async function deleteUser(id: string): Promise<boolean> {
     console.log(`[Airtable] User deleted successfully: ${id}`);
     return true;
   } catch (error) {
-    return handleAirtableError(error, 'deleteUser');
+    return handleAirtableError(error,'deleteUser');
   }
 }
 
@@ -399,47 +399,46 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
             }
           }
         }
-      }
 
-      const records = await base(TABLES.KEYWORD_MAP).create(
-        chunk.map((kw) => ({
-          fields: {
-            Keyword: kw.Keyword,
-            Target_URL: kw.Target_URL,
-            Search_Volume: kw.Search_Volume,
-            Difficulty: kw.Difficulty,
-            Status: kw.Status || 'Backlog',
-            Editorial_Deadline: kw.Editorial_Deadline,
-            // Assigned_Editor is an array of record IDs
-            Assigned_Editor: kw.Assigned_Editor,
-            Main_Keyword: kw.Main_Keyword || 'N',
-            Article_Count: kw.Article_Count,
-            Avg_Product_Value: kw.Avg_Product_Value,
-          },
-        }))
-      );
+        const records = await base(TABLES.KEYWORD_MAP).create(
+          chunk.map((kw) => ({
+            fields: {
+              Keyword: kw.Keyword,
+              Target_URL: kw.Target_URL,
+              Search_Volume: kw.Search_Volume,
+              Difficulty: kw.Difficulty,
+              Status: kw.Status || 'Backlog',
+              Editorial_Deadline: kw.Editorial_Deadline,
+              // Assigned_Editor is an array of record IDs
+              Assigned_Editor: kw.Assigned_Editor,
+              Main_Keyword: kw.Main_Keyword || 'N',
+              Article_Count: kw.Article_Count,
+              Avg_Product_Value: kw.Avg_Product_Value,
+            },
+          }))
+        );
 
-      records.forEach((record) => {
-        createdRecords.push({
-          id: record.id,
-          Keyword: record.get('Keyword') as string,
-          Target_URL: record.get('Target_URL') as string,
-          Search_Volume: record.get('Search_Volume') as number,
-          Difficulty: record.get('Difficulty') as number,
-          Status: record.get('Status') as KeywordStatus,
-          Editorial_Deadline: record.get('Editorial_Deadline') as string,
-          Assigned_Editor: record.get('Assigned_Editor') as string[],
-          Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
-          Article_Count: record.get('Article_Count') as number,
-          Avg_Product_Value: record.get('Avg_Product_Value') as number,
+        records.forEach((record) => {
+          createdRecords.push({
+            id: record.id,
+            Keyword: record.get('Keyword') as string,
+            Target_URL: record.get('Target_URL') as string,
+            Search_Volume: record.get('Search_Volume') as number,
+            Difficulty: record.get('Difficulty') as number,
+            Status: record.get('Status') as KeywordStatus,
+            Editorial_Deadline: record.get('Editorial_Deadline') as string,
+            Assigned_Editor: record.get('Assigned_Editor') as string[],
+            Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+            Article_Count: record.get('Article_Count') as number,
+            Avg_Product_Value: record.get('Avg_Product_Value') as number,
+          });
         });
-      });
-    }
+      }
 
     console.log(`[Airtable] Successfully created ${createdRecords.length} keywords, skipped ${skippedRecords.length}`);
     return { created: createdRecords, skipped: skippedRecords };
   } catch (error) {
-    return handleAirtableError(error, 'bulkCreateKeywords');
+    return handleAirtableError(error,'bulkCreateKeywords');
   }
 }
 
@@ -519,7 +518,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
     };
   } catch (error) {
-    return handleAirtableError(error, 'createKeyword');
+    return handleAirtableError(error,'createKeyword');
   }
 }
 
@@ -611,7 +610,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
     };
   } catch (error) {
-    return handleAirtableError(error, 'updateKeyword');
+    return handleAirtableError(error,'updateKeyword');
   }
 }
 
@@ -640,7 +639,7 @@ export async function createTrend(trend: Partial<PotentialTrend>): Promise<Poten
       Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
     };
   } catch (error) {
-    return handleAirtableError(error, 'createTrend');
+    return handleAirtableError(error,'createTrend');
   }
 }
 
@@ -667,7 +666,7 @@ export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<Bl
       Added_At: record.get('Added_At') as string,
     };
   } catch (error) {
-    return handleAirtableError(error, 'addToBlacklist');
+    return handleAirtableError(error,'addToBlacklist');
   }
 }
 
@@ -681,7 +680,7 @@ export async function getBlacklist(): Promise<BlacklistEntry[]> {
       Added_At: record.get('Added_At') as string,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getBlacklist');
+    return handleAirtableError(error,'getBlacklist');
   }
 }
 
@@ -696,7 +695,7 @@ export async function getConfig(): Promise<ConfigRecord[]> {
       Updated_At: record.get('Updated_At') as string,
     }));
   } catch (error) {
-    return handleAirtableError(error, 'getConfig');
+    return handleAirtableError(error,'getConfig');
   }
 }
 
@@ -751,7 +750,7 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
       Updated_At: record.get('Updated_At') as string,
     };
   } catch (error) {
-    return handleAirtableError(error, 'updateConfig');
+    return handleAirtableError(error,'updateConfig');
   }
 }
 
@@ -779,7 +778,7 @@ export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>
       Added_At: record.get('Added_At') as string,
     };
   } catch (error) {
-    return handleAirtableError(error, 'updateBlacklist');
+    return handleAirtableError(error,'updateBlacklist');
   }
 }
 
@@ -789,7 +788,7 @@ export async function deleteFromBlacklist(id: string): Promise<boolean> {
     await base(TABLES.BLACKLIST).destroy([id]);
     return true;
   } catch (error) {
-    return handleAirtableError(error, 'deleteFromBlacklist');
+    return handleAirtableError(error,'deleteFromBlacklist');
   }
 }
 
@@ -799,7 +798,7 @@ export async function deleteKeyword(id: string): Promise<boolean> {
     await base(TABLES.KEYWORD_MAP).destroy([id]);
     return true;
   } catch (error) {
-    return handleAirtableError(error, 'deleteKeyword');
+    return handleAirtableError(error,'deleteKeyword');
   }
 }
 
@@ -815,7 +814,7 @@ export async function bulkDeleteKeywords(ids: string[]): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    return handleAirtableError(error, 'bulkDeleteKeywords');
+    return handleAirtableError(error,'bulkDeleteKeywords');
   }
 }
 
@@ -831,6 +830,6 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    return handleAirtableError(error, 'bulkDeleteFromBlacklist');
+    return handleAirtableError(error,'bulkDeleteFromBlacklist');
   }
 }
