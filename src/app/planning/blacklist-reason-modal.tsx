@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAlerts } from '@/components/alerts-provider';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface BlacklistReasonModalProps {
   isOpen: boolean;
@@ -38,15 +39,13 @@ export function BlacklistReasonModal({
   const [reason, setReason] = React.useState('');
   const [type, setType] = React.useState<'Keyword' | 'URL'>('Keyword');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const { addAlert } = useAlerts();
 
   const handleSubmit = async () => {
+    setError(null);
     if (!reason.trim()) {
-      addAlert({
-        message: 'Fehler',
-        description: 'Bitte geben Sie einen Grund an.',
-        type: 'error',
-      });
+      setError('Bitte geben Sie einen Grund an.');
       return;
     }
 
@@ -77,22 +76,24 @@ export function BlacklistReasonModal({
       });
       
       setReason('');
+      setError(null);
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error('[BlacklistModal] Error:', error);
-      addAlert({
-        message: 'Fehler',
-        description: error.message || 'Ein unerwarteter Fehler ist aufgetreten.',
-        type: 'error',
-      });
+      setError(error.message || 'Ein unerwarteter Fehler ist aufgetreten.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setError(null);
+        onClose();
+      }
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Zur Blacklist hinzufügen</DialogTitle>
@@ -102,7 +103,7 @@ export function BlacklistReasonModal({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="type">Blacklist-Typ</Label>
+            <Label htmlFor="type">Blacklist-Typ *</Label>
             <Select value={type} onValueChange={(v: any) => setType(v)}>
               <SelectTrigger id="type">
                 <SelectValue placeholder="Typ wählen" />
@@ -114,14 +115,24 @@ export function BlacklistReasonModal({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="reason">Grund</Label>
+            <Label htmlFor="reason">Grund *</Label>
             <Input
               id="reason"
               placeholder="z.B. Nicht relevant für DocMorris, Markenrechtliche Bedenken..."
               value={reason}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReason(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setReason(e.target.value);
+                if (error) setError(null);
+              }}
+              className={error ? 'border-destructive' : ''}
             />
           </div>
+          {error && (
+            <Alert variant="destructive" className="py-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           {keywords.length > 0 && (
             <div className="text-sm text-muted-foreground">
               <p className="font-medium mb-1">

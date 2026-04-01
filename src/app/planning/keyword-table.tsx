@@ -720,24 +720,24 @@ export const columns: ColumnDef<KeywordMap>[] = [
   },
   {
     id: "Content-Plan",
-    header: () => <div className="text-center">Content-Plan</div>,
+    header: () => <div className="text-center w-full">Content-Plan</div>,
     enableColumnFilter: false,
     cell: ({ row, table }) => {
       const isMain = row.original.Main_Keyword === "Y";
-      if (!isMain) return null;
+      if (!isMain) return <div className="flex justify-center w-full">-</div>;
 
       const isInEditorial = row.original.Editorial_Deadline || row.original.Status !== "Backlog";
       
       if (isInEditorial) {
         return (
-          <div className="flex justify-center">
+          <div className="flex justify-center w-full">
             <Badge variant="outline" className="text-green-600 border-green-600">Hinzugefügt</Badge>
           </div>
         );
       }
 
       return (
-        <div className="flex justify-center">
+        <div className="flex justify-center w-full">
           <Button 
             size="sm" 
             variant="outline" 

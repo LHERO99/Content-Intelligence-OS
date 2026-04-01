@@ -105,7 +105,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
           Status: 'New',
         };
       } else if (type === 'blacklist') {
-        if (!keyword || !reason) throw new Error('Keyword und Grund sind erforderlich.');
+        if (!keyword || !reason) throw new Error('Keyword/URL und Grund sind erforderlich.');
         endpoint = '/api/planning/blacklist';
         body = {
           Keyword: keyword,
