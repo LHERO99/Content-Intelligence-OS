@@ -355,14 +355,14 @@ export function KeywordImport() {
                   Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich in das System übernommen.
                 </p>
               </div>
-              <Button 
+              <Button
                 className="bg-[#00463c] hover:bg-[#00332c] text-white px-8"
                 onClick={() => {
                   setIsOpen(false);
                   window.location.reload();
                 }}
               >
-                Fertigstellen
+                Import abschließen
               </Button>
             </div>
           )}
