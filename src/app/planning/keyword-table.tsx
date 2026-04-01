@@ -133,10 +133,8 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
     >
       <div className="flex items-center gap-2">
         {header.column.getCanSort() ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold flex items-center"
+          <div
+            className="-ml-3 h-8 text-[#00463c] font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
             onClick={header.column.getToggleSortingHandler()}
           >
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -147,7 +145,7 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
             ) : (
               <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />
             )}
-          </Button>
+          </div>
         ) : (
           <div className="h-8 flex items-center">
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -441,20 +439,9 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-                Keyword bearbeiten
-              </DialogTitle>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={closeDialog}
-                className="h-8 w-8 rounded-full"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              Keyword bearbeiten
+            </DialogTitle>
             <DialogDescription>
               Ändern Sie die Details für "{keyword?.Keyword}".
             </DialogDescription>
@@ -732,9 +719,35 @@ export function KeywordTable({ data }: KeywordTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(
-    columns.map((column) => column.id as string || (column as any).accessorKey as string)
-  );
+  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>([]);
+
+  // Load column order from localStorage on mount
+  React.useEffect(() => {
+    const savedOrder = localStorage.getItem("keyword-table-column-order");
+    const defaultOrder = columns.map((column) => column.id as string || (column as any).accessorKey as string);
+    
+    if (savedOrder) {
+      try {
+        const parsedOrder = JSON.parse(savedOrder) as string[];
+        // Filter out any columns that no longer exist and add any new columns
+        const existingColumns = parsedOrder.filter(id => defaultOrder.includes(id));
+        const newColumns = defaultOrder.filter(id => !parsedOrder.includes(id));
+        setColumnOrder([...existingColumns, ...newColumns]);
+      } catch (e) {
+        console.error("Failed to parse saved column order", e);
+        setColumnOrder(defaultOrder);
+      }
+    } else {
+      setColumnOrder(defaultOrder);
+    }
+  }, []);
+
+  // Save column order to localStorage whenever it changes
+  React.useEffect(() => {
+    if (columnOrder.length > 0) {
+      localStorage.setItem("keyword-table-column-order", JSON.stringify(columnOrder));
+    }
+  }, [columnOrder]);
 
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);

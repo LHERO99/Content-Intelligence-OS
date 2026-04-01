@@ -122,10 +122,8 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
     >
       <div className="flex items-center gap-2">
         {header.column.getCanSort() ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold flex items-center"
+          <div
+            className="-ml-3 h-8 text-[#00463c] font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
             onClick={header.column.getToggleSortingHandler()}
           >
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -136,7 +134,7 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
             ) : (
               <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />
             )}
-          </Button>
+          </div>
         ) : (
           <div className="h-8 flex items-center">
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -411,20 +409,9 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-                Planung bearbeiten
-              </DialogTitle>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => onOpenChange(false)}
-                className="h-8 w-8 rounded-full"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              Planung bearbeiten
+            </DialogTitle>
             <DialogDescription>
               Ändern Sie die Planungsdetails für "{keyword?.Keyword}".
             </DialogDescription>
@@ -526,72 +513,28 @@ export const columns: ColumnDef<KeywordMap>[] = [
   },
   {
     accessorKey: "Keyword",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Keyword
-        {column.getIsSorted() === "asc" ? (
-          <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-        ) : column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        )}
-      </Button>
-    ),
+    header: "Keyword",
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Status",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Status
-        {column.getIsSorted() === "asc" ? (
-          <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-        ) : column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        )}
-      </Button>
-    ),
+    header: "Status",
     cell: ({ row }) => (
-      <Badge className="bg-[#00463c] text-[#e7f3ee] hover:bg-[#00463c]/90">
+      <Badge variant="secondary">
         {row.getValue("Status")}
       </Badge>
     ),
   },
   {
     accessorKey: "Editorial_Deadline",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3 h-8 text-[#00463c] font-bold"
-      >
-        Deadline
-        {column.getIsSorted() === "asc" ? (
-          <ChevronDown className="ml-2 h-4 w-4 rotate-180" />
-        ) : column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
-        ) : (
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        )}
-      </Button>
-    ),
+    header: "Deadline",
     cell: ({ row }) => {
-      const deadline = row.getValue("Editorial_Deadline") as string;
+      const date = row.getValue("Editorial_Deadline") as string;
+      if (!date) return "-";
       return (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          {deadline ? new Date(deadline).toLocaleDateString('de-DE') : "Nicht gesetzt"}
+          {new Date(date).toLocaleDateString("de-DE")}
         </div>
       );
     },
@@ -680,6 +623,34 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     }
   };
 
+  // Load column order from localStorage on mount
+  React.useEffect(() => {
+    const savedOrder = localStorage.getItem("editorial-table-column-order");
+    const defaultOrder = columns.map((column) => column.id as string || (column as any).accessorKey as string);
+    
+    if (savedOrder) {
+      try {
+        const parsedOrder = JSON.parse(savedOrder) as string[];
+        // Filter out any columns that no longer exist and add any new columns
+        const existingColumns = parsedOrder.filter(id => defaultOrder.includes(id));
+        const newColumns = defaultOrder.filter(id => !parsedOrder.includes(id));
+        setColumnOrder([...existingColumns, ...newColumns]);
+      } catch (e) {
+        console.error("Failed to parse saved column order", e);
+        setColumnOrder(defaultOrder);
+      }
+    } else {
+      setColumnOrder(defaultOrder);
+    }
+  }, []);
+
+  // Save column order to localStorage whenever it changes
+  React.useEffect(() => {
+    if (columnOrder.length > 0) {
+      localStorage.setItem("editorial-table-column-order", JSON.stringify(columnOrder));
+    }
+  }, [columnOrder]);
+
   const table = useReactTable({
     data: plannedKeywords,
     columns,
@@ -705,13 +676,6 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       columnOrder,
     },
   });
-
-  // Initialize column order
-  React.useEffect(() => {
-    if (columnOrder.length === 0 && table.getAllLeafColumns().length > 0) {
-      setColumnOrder(table.getAllLeafColumns().map((d) => d.id));
-    }
-  }, [table, columnOrder.length]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

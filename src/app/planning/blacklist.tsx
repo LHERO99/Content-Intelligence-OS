@@ -120,10 +120,8 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
     >
       <div className="flex items-center gap-2">
         {header.column.getCanSort() ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent text-[#00463c] font-bold flex items-center"
+          <div
+            className="-ml-3 h-8 text-[#00463c] font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
             onClick={header.column.getToggleSortingHandler()}
           >
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -134,7 +132,7 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
             ) : (
               <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />
             )}
-          </Button>
+          </div>
         ) : (
           <div className="h-8 flex items-center">
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -192,20 +190,9 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-                Blacklist-Eintrag bearbeiten
-              </DialogTitle>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => onOpenChange(false)}
-                className="h-8 w-8 rounded-full"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              Blacklist-Eintrag bearbeiten
+            </DialogTitle>
             <DialogDescription>
               Passen Sie das Keyword oder den Grund für den Ausschluss an.
             </DialogDescription>
@@ -660,6 +647,34 @@ export function Blacklist() {
     }
   };
 
+  // Load column order from localStorage on mount
+  React.useEffect(() => {
+    const savedOrder = localStorage.getItem("blacklist-table-column-order");
+    const defaultOrder = columns.map((column) => column.id as string || (column as any).accessorKey as string);
+    
+    if (savedOrder) {
+      try {
+        const parsedOrder = JSON.parse(savedOrder) as string[];
+        // Filter out any columns that no longer exist and add any new columns
+        const existingColumns = parsedOrder.filter(id => defaultOrder.includes(id));
+        const newColumns = defaultOrder.filter(id => !parsedOrder.includes(id));
+        setColumnOrder([...existingColumns, ...newColumns]);
+      } catch (e) {
+        console.error("Failed to parse saved column order", e);
+        setColumnOrder(defaultOrder);
+      }
+    } else {
+      setColumnOrder(defaultOrder);
+    }
+  }, []);
+
+  // Save column order to localStorage whenever it changes
+  React.useEffect(() => {
+    if (columnOrder.length > 0) {
+      localStorage.setItem("blacklist-table-column-order", JSON.stringify(columnOrder));
+    }
+  }, [columnOrder]);
+
   const table = useReactTable({
     data,
     columns,
@@ -685,13 +700,6 @@ export function Blacklist() {
       columnOrder,
     },
   });
-
-  // Initialize column order
-  React.useEffect(() => {
-    if (columnOrder.length === 0 && table.getAllLeafColumns().length > 0) {
-      setColumnOrder(table.getAllLeafColumns().map((d) => d.id));
-    }
-  }, [table, columnOrder.length]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import React, { useRef, useState, useEffect } from "react";
+import { Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, FileText, ArrowRight } from "lucide-react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,67 +14,208 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Define the system columns that we want to map to
+const SYSTEM_COLUMNS = [
+  { id: "Keyword", label: "Keyword", required: true },
+  { id: "Target_URL", label: "Target URL", required: true },
+  { id: "Search_Volume", label: "Search Volume", required: false },
+  { id: "Difficulty", label: "Difficulty", required: false },
+  { id: "Main_Keyword", label: "Main Keyword (Y/N)", required: false },
+  { id: "Article_Count", label: "Article Count", required: false },
+  { id: "Avg_Product_Value", label: "Avg Product Value", required: false },
+  { id: "Cluster", label: "Cluster", required: false },
+  { id: "Status", label: "Status", required: false },
+];
+
+type Mapping = Record<string, string>;
 
 export function KeywordImport() {
-  const [isUploading, setIsUploading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<"upload" | "mapping" | "importing" | "success" | "error">("upload");
+  const [fileData, setFileData] = useState<any[]>([]);
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const [mapping, setMapping] = useState<Mapping>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [importCount, setImportCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setStep("upload");
+      setFileData([]);
+      setFileHeaders([]);
+      setFileName("");
+      setMapping({});
+      setError(null);
+      setImportCount(0);
+    }
+  }, [isOpen]);
+
+  const autoMapColumns = (headers: string[]) => {
+    const newMapping: Mapping = {};
+    headers.forEach(header => {
+      const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, "");
+      
+      SYSTEM_COLUMNS.forEach(sysCol => {
+        const normalizedSys = sysCol.id.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const normalizedLabel = sysCol.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+        
+        if (normalizedHeader === normalizedSys || normalizedHeader === normalizedLabel) {
+          newMapping[sysCol.id] = header;
+        }
+      });
+      
+      // Special cases
+      if (!newMapping["Keyword"] && (normalizedHeader === "name" || normalizedHeader === "term")) {
+        newMapping["Keyword"] = header;
+      }
+      if (!newMapping["Target_URL"] && (normalizedHeader === "url" || normalizedHeader === "link")) {
+        newMapping["Target_URL"] = header;
+      }
+      if (!newMapping["Search_Volume"] && (normalizedHeader === "volume" || normalizedHeader === "msv")) {
+        newMapping["Search_Volume"] = header;
+      }
+    });
+    setMapping(newMapping);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
+    setFileName(file.name);
+    const extension = file.name.split(".").pop()?.toLowerCase();
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        try {
-          const keywords = results.data.map((row: any) => ({
-            Keyword: row.Keyword || row.keyword || row.Name || row.name,
-            Target_URL: row.Target_URL || row.target_url || row.URL || row.url,
-            Search_Volume: parseInt(row.Search_Volume || row.search_volume || row.Volume || row.volume || "0"),
-            Difficulty: parseInt(row.Difficulty || row.difficulty || "0"),
-            Status: "New",
-            Main_Keyword: (row.Main_Keyword || row.main_keyword || "N").toUpperCase() === "Y" ? "Y" : "N",
-            Article_Count: row.Article_Count || row.article_count ? parseInt(row.Article_Count || row.article_count) : undefined,
-            Avg_Product_Value: row.Avg_Product_Value || row.avg_product_value ? parseFloat(row.Avg_Product_Value || row.avg_product_value) : undefined,
-          })).filter((kw: any) => kw.Keyword && kw.Target_URL);
-
-          if (keywords.length === 0) {
-            throw new Error("Keine gültigen Keywords mit Target_URL in der Datei gefunden.");
+    if (extension === "csv") {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (results.data && results.data.length > 0) {
+            setFileData(results.data);
+            const headers = Object.keys(results.data[0] as object);
+            setFileHeaders(headers);
+            autoMapColumns(headers);
+            setStep("mapping");
+          } else {
+            setError("Die Datei scheint leer zu sein.");
+            setStep("error");
           }
-
-          const response = await fetch("/api/planning/import", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ keywords }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Import fehlgeschlagen");
-          }
-
-          const data = await response.json();
-          alert(`Erfolgreich ${data.count} Keywords importiert.`);
-          setIsOpen(false);
-          window.location.reload(); // Refresh to show new data
-        } catch (error: any) {
-          console.error("Import error:", error);
-          alert(`Fehler beim Import: ${error.message}`);
-        } finally {
-          setIsUploading(false);
-          if (fileInputRef.current) fileInputRef.current.value = "";
+        },
+        error: (err) => {
+          setError(`Fehler beim Lesen der CSV: ${err.message}`);
+          setStep("error");
         }
-      },
-      error: (error) => {
-        console.error("Parse error:", error);
-        alert(`Fehler beim Lesen der Datei: ${error.message}`);
-        setIsUploading(false);
+      });
+    } else if (extension === "xlsx" || extension === "xls") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          if (jsonData && jsonData.length > 0) {
+            setFileData(jsonData);
+            const headers = Object.keys(jsonData[0] as object);
+            setFileHeaders(headers);
+            autoMapColumns(headers);
+            setStep("mapping");
+          } else {
+            setError("Die Excel-Datei scheint leer zu sein.");
+            setStep("error");
+          }
+        } catch (err: any) {
+          setError(`Fehler beim Lesen der Excel-Datei: ${err.message}`);
+          setStep("error");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      setError("Nicht unterstütztes Dateiformat. Bitte nutzen Sie CSV oder XLSX.");
+      setStep("error");
+    }
+  };
+
+  const handleImport = async () => {
+    // Validate required mappings
+    const missingRequired = SYSTEM_COLUMNS.filter(col => col.required && !mapping[col.id]);
+    if (missingRequired.length > 0) {
+      setError(`Bitte ordnen Sie die Pflichtfelder zu: ${missingRequired.map(c => c.label).join(", ")}`);
+      return;
+    }
+
+    setIsUploading(true);
+    setStep("importing");
+
+    try {
+      const keywords = fileData.map((row: any) => {
+        const mappedRow: any = {
+          Status: "New", // Default status
+        };
+
+        SYSTEM_COLUMNS.forEach(col => {
+          const fileKey = mapping[col.id];
+          if (fileKey) {
+            let value = row[fileKey];
+            
+            // Type conversions
+            if (col.id === "Search_Volume" || col.id === "Difficulty" || col.id === "Article_Count") {
+              value = parseInt(String(value).replace(/[^0-9]/g, "") || "0");
+            } else if (col.id === "Avg_Product_Value") {
+              value = parseFloat(String(value).replace(/[^0-9.]/g, "") || "0");
+            } else if (col.id === "Main_Keyword") {
+              const val = String(value).toLowerCase();
+              value = (val === "y" || val === "yes" || val === "ja" || val === "1" || val === "true") ? "Y" : "N";
+            }
+            
+            mappedRow[col.id] = value;
+          }
+        });
+
+        return mappedRow;
+      }).filter(kw => kw.Keyword && kw.Target_URL);
+
+      if (keywords.length === 0) {
+        throw new Error("Keine gültigen Datensätze nach dem Mapping gefunden.");
       }
-    });
+
+      const response = await fetch("/api/planning/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keywords }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Import fehlgeschlagen");
+      }
+
+      const data = await response.json();
+      setImportCount(data.count);
+      setStep("success");
+    } catch (err: any) {
+      setError(err.message);
+      setStep("error");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -84,45 +226,173 @@ export function KeywordImport() {
           Keywords importieren
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle>Keywords importieren</DialogTitle>
           <DialogDescription>
-            Laden Sie eine CSV-Datei hoch. Erwartete Spalten: Keyword (Pflicht), Target_URL (Pflicht), Search_Volume, Difficulty, Main_Keyword (Y/N), Produkt-Anzahl, Avg_Product_Value.
+            Importieren Sie Keywords aus CSV- oder Excel-Dateien mit flexiblem Spalten-Mapping.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div 
-            className="border-2 border-dashed border-[#00463c]/20 rounded-lg p-8 text-center hover:bg-[#e7f3ee]/50 cursor-pointer transition-colors"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
-                <p className="text-sm font-medium">Verarbeitung läuft...</p>
+
+        <div className="flex-1 overflow-hidden p-6">
+          {step === "upload" && (
+            <div 
+              className="border-2 border-dashed border-[#00463c]/20 rounded-xl p-12 text-center hover:bg-[#e7f3ee]/50 cursor-pointer transition-all group flex flex-col items-center justify-center gap-4 h-full min-h-[300px]"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="bg-[#e7f3ee] p-4 rounded-full group-hover:scale-110 transition-transform">
+                <Upload className="h-10 w-10 text-[#00463c]" />
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="h-8 w-8 text-[#00463c]/40" />
-                <p className="text-sm font-medium">Klicken oder Datei hierher ziehen</p>
-                <p className="text-xs text-muted-foreground">CSV oder Excel (via CSV Export)</p>
+              <div>
+                <p className="text-lg font-semibold text-[#00463c]">Datei auswählen</p>
+                <p className="text-sm text-muted-foreground mt-1">Klicken oder Datei hierher ziehen</p>
               </div>
-            )}
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".csv"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-            />
-          </div>
+              <div className="flex gap-4 mt-2">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                  <FileText className="h-3 w-3" /> CSV
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                  <FileSpreadsheet className="h-3 w-3" /> XLSX / XLS
+                </div>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileSelect}
+              />
+            </div>
+          )}
+
+          {step === "mapping" && (
+            <div className="flex flex-col h-full gap-4">
+              <div className="flex items-center justify-between bg-[#e7f3ee]/50 p-3 rounded-lg border border-[#00463c]/10">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-[#00463c]" />
+                  <span className="font-medium text-sm truncate max-w-[200px]">{fileName}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">{fileData.length} Zeilen gefunden</span>
+                <Button variant="ghost" size="sm" onClick={() => setStep("upload")} className="h-7 text-xs">
+                  Datei ändern
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-hidden border rounded-lg">
+                <ScrollArea className="h-[350px]">
+                  <div className="p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4 pb-2 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <div>System-Spalte</div>
+                      <div>Ihre Datei-Spalte</div>
+                    </div>
+                    {SYSTEM_COLUMNS.map((col) => (
+                      <div key={col.id} className="grid grid-cols-2 gap-4 items-center">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-medium">
+                            {col.label}
+                            {col.required && <span className="text-red-500 ml-1">*</span>}
+                          </Label>
+                        </div>
+                        <Select 
+                          value={mapping[col.id] || "none"} 
+                          onValueChange={(val) => setMapping(prev => ({ ...prev, [col.id]: val === "none" ? "" : val }))}
+                        >
+                          <SelectTrigger className={`h-9 ${mapping[col.id] ? 'border-[#00463c]/40 bg-[#e7f3ee]/20' : ''}`}>
+                            <SelectValue placeholder="Nicht zugeordnet" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nicht zugeordnet</SelectItem>
+                            {fileHeaders.map(header => (
+                              <SelectItem key={header} value={header}>{header}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          )}
+
+          {step === "importing" && (
+            <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[300px]">
+              <div className="relative">
+                <Loader2 className="h-16 w-16 animate-spin text-[#00463c]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Upload className="h-6 w-6 text-[#00463c]/40" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold">Import läuft...</p>
+                <p className="text-sm text-muted-foreground">Ihre Daten werden verarbeitet und gespeichert.</p>
+              </div>
+            </div>
+          )}
+
+          {step === "success" && (
+            <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[300px]">
+              <div className="bg-green-100 p-4 rounded-full">
+                <CheckCircle2 className="h-12 w-12 text-green-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-green-700">Import erfolgreich!</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich in das System übernommen.
+                </p>
+              </div>
+              <Button 
+                className="bg-[#00463c] hover:bg-[#00332c] text-white px-8"
+                onClick={() => {
+                  setIsOpen(false);
+                  window.location.reload();
+                }}
+              >
+                Fertigstellen
+              </Button>
+            </div>
+          )}
+
+          {step === "error" && (
+            <div className="flex flex-col h-full gap-4 min-h-[300px]">
+              <Alert variant="destructive" className="bg-red-50 border-red-200">
+                <AlertCircle className="h-5 w-5" />
+                <AlertTitle>Fehler beim Import</AlertTitle>
+                <AlertDescription className="text-sm">
+                  {error || "Ein unbekannter Fehler ist aufgetreten."}
+                </AlertDescription>
+              </Alert>
+              <div className="flex-1 flex items-center justify-center">
+                <Button variant="outline" onClick={() => setStep("upload")}>
+                  Erneut versuchen
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setIsOpen(false)} disabled={isUploading}>
-            Abbrechen
-          </Button>
-        </DialogFooter>
+
+        {step === "mapping" && (
+          <DialogFooter className="p-6 pt-0 border-t mt-auto">
+            <div className="flex justify-between w-full items-center">
+              <p className="text-xs text-muted-foreground italic">
+                * Pflichtfelder müssen zugeordnet werden
+              </p>
+              <div className="flex gap-3">
+                <Button variant="ghost" onClick={() => setIsOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button 
+                  className="bg-[#00463c] hover:bg-[#00332c] text-white"
+                  onClick={handleImport}
+                  disabled={!mapping["Keyword"] || !mapping["Target_URL"]}
+                >
+                  Import starten
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

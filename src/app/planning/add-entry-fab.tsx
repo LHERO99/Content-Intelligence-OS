@@ -159,23 +159,12 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-                {type === 'keyword' && 'Neues Keyword hinzufügen'}
-                {type === 'trend' && 'Neuen Trend hinzufügen'}
-                {type === 'blacklist' && 'Keyword blacklisten'}
-                {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
-              </DialogTitle>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={closeDialog}
-                className="h-8 w-8 rounded-full"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              {type === 'keyword' && 'Neues Keyword hinzufügen'}
+              {type === 'trend' && 'Neuen Trend hinzufügen'}
+              {type === 'blacklist' && 'Keyword blacklisten'}
+              {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
+            </DialogTitle>
             <DialogDescription className="text-base">
               Füllen Sie die erforderlichen Felder aus, um den Eintrag zu speichern.
             </DialogDescription>
