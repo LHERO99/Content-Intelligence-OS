@@ -295,15 +295,18 @@ export function KeywordImport() {
                         </div>
                         <Select
                           value={mapping[col.id] || "none"}
-                          onValueChange={(val: string) => setMapping(prev => {
-                            const newMapping = { ...prev };
-                            if (val === "none") {
-                              delete newMapping[col.id];
-                            } else {
-                              newMapping[col.id] = val;
-                            }
-                            return newMapping;
-                          })}
+                          onValueChange={(val) => {
+                            if (!val) return;
+                            setMapping(prev => {
+                              const newMapping = { ...prev };
+                              if (val === "none") {
+                                delete newMapping[col.id];
+                              } else {
+                                newMapping[col.id] = val;
+                              }
+                              return newMapping;
+                            });
+                          }}
                         >
                           <SelectTrigger className={`h-9 ${mapping[col.id] ? 'border-[#00463c]/40 bg-[#e7f3ee]/20' : ''}`}>
                             <SelectValue placeholder="Nicht zugeordnet" />
