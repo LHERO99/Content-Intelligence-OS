@@ -44,6 +44,7 @@ To enable authentication, ensure your `Users` table has the following fields:
 ## Table Schema: Blacklist
 
 - `Keyword`: Single line text (Primary)
+- `Type`: Single select (`Keyword`, `URL`) - **Required for URL blacklisting**
 - `Reason`: Long text
 - `Added_At`: Date (with time)
 

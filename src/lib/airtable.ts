@@ -80,14 +80,31 @@ async function handleAirtableError(error: any, operation: string): Promise<never
 export async function getKeywordMap(): Promise<KeywordMap[]> {
   try {
     // Fetch both Keyword-Map and Blacklist to filter out blacklisted keywords and URLs
-    const [keywordRecords, blacklistRecords] = await Promise.all([
-      base(TABLES.KEYWORD_MAP).select().all(),
-      base(TABLES.BLACKLIST).select({ fields: ['Keyword', 'Type'] }).all()
-    ]);
+    // We use a defensive approach for the Blacklist table because the 'Type' field might be missing
+    let blacklistRecords: readonly any[] = [];
+    try {
+      // Try fetching with 'Type' field first
+      blacklistRecords = await base(TABLES.BLACKLIST).select({ fields: ['Keyword', 'Type'] }).all();
+    } catch (error: any) {
+      // If 422 error (Unknown field name), try fetching without 'Type' field
+      if (error.statusCode === 422 && error.message?.includes('Type')) {
+        console.warn('[Airtable] "Type" field missing in Blacklist table, falling back to "Keyword" only');
+        blacklistRecords = await base(TABLES.BLACKLIST).select({ fields: ['Keyword'] }).all();
+      } else {
+        // For other errors, log and continue with empty blacklist to avoid crashing the whole app
+        console.error('[Airtable] Error fetching blacklist, continuing without filtering:', error);
+        blacklistRecords = [];
+      }
+    }
+
+    const keywordRecords = await base(TABLES.KEYWORD_MAP).select().all();
 
     const blacklistedKeywords = new Set(
       blacklistRecords
-        .filter(r => r.get('Type') === 'Keyword' || !r.get('Type'))
+        .filter(r => {
+          const type = r.get('Type');
+          return type === 'Keyword' || !type;
+        })
         .map(r => (r.get('Keyword') as string)?.toLowerCase())
     );
 
@@ -701,11 +718,22 @@ export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<Bl
 
 export async function getBlacklist(): Promise<BlacklistEntry[]> {
   try {
-    const records = await base(TABLES.BLACKLIST).select().all();
+    let records: readonly any[] = [];
+    try {
+      records = await base(TABLES.BLACKLIST).select().all();
+    } catch (error: any) {
+      // If 422 error (Unknown field name), try fetching without 'Type' field
+      if (error.statusCode === 422 && error.message?.includes('Type')) {
+        console.warn('[Airtable] "Type" field missing in Blacklist table, falling back to "Keyword" only');
+        records = await base(TABLES.BLACKLIST).select({ fields: ['Keyword', 'Reason', 'Added_At'] }).all();
+      } else {
+        throw error;
+      }
+    }
     return records.map((record) => ({
       id: record.id,
       Keyword: record.get('Keyword') as string,
-      Type: record.get('Type') as 'Keyword' | 'URL',
+      Type: (record.get('Type') as 'Keyword' | 'URL') || 'Keyword',
       Reason: record.get('Reason') as string,
       Added_At: record.get('Added_At') as string,
     }));
