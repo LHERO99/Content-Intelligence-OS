@@ -340,34 +340,41 @@ export async function deleteUser(id: string): Promise<boolean> {
   }
 }
 
-export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promise<KeywordMap[]> {
+export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promise<{ created: KeywordMap[], skipped: Partial<KeywordMap>[] }> {
   try {
     console.log(`[Airtable] Bulk creating ${keywords.length} keywords`);
     
-    // Airtable allows max 10 records per create call
-    const chunks = [];
-    for (let i = 0; i < keywords.length; i += 10) {
-      chunks.push(keywords.slice(i, i + 10));
+    const createdRecords: KeywordMap[] = [];
+    const skippedRecords: Partial<KeywordMap>[] = [];
+    const validKeywords: Partial<KeywordMap>[] = [];
+
+    // Pre-validation: Check for duplicates and skip them
+    for (const kw of keywords) {
+      if (kw.Target_URL && kw.Keyword) {
+        // Check for Keyword + URL uniqueness
+        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({
+          filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`,
+          maxRecords: 1,
+        }).firstPage();
+
+        if (existingKeywordUrl.length > 0) {
+          console.log(`[Airtable] Skipping duplicate: ${kw.Keyword} for ${kw.Target_URL}`);
+          skippedRecords.push(kw);
+          continue;
+        }
+      }
+      validKeywords.push(kw);
     }
 
-    const createdRecords: KeywordMap[] = [];
+    // Airtable allows max 10 records per create call
+    const chunks = [];
+    for (let i = 0; i < validKeywords.length; i += 10) {
+      chunks.push(validKeywords.slice(i, i + 10));
+    }
 
     for (const chunk of chunks) {
       // Validation for bulk: Check if any of the keywords being imported as 'Y' already exist for that URL
       for (const kw of chunk) {
-        if (kw.Target_URL && kw.Keyword) {
-          // Check for Keyword + URL uniqueness
-          const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({
-            filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`,
-            maxRecords: 1,
-          }).firstPage();
-
-          if (existingKeywordUrl.length > 0) {
-            throw new AirtableValidationError(`Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.`, 409);
-          }
-        }
-
-        if (kw.Main_Keyword === 'Y') {
           // 1. Check if URL already has a Main Keyword
           if (kw.Target_URL) {
             const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({
@@ -429,8 +436,8 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
       });
     }
 
-    console.log(`[Airtable] Successfully created ${createdRecords.length} keywords`);
-    return createdRecords;
+    console.log(`[Airtable] Successfully created ${createdRecords.length} keywords, skipped ${skippedRecords.length}`);
+    return { created: createdRecords, skipped: skippedRecords };
   } catch (error) {
     return handleAirtableError(error, 'bulkCreateKeywords');
   }

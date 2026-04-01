@@ -17,12 +17,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid keywords data' }, { status: 400 });
     }
 
-    const createdRecords = await bulkCreateKeywords(keywords);
+    const result = await bulkCreateKeywords(keywords);
 
-    return NextResponse.json({ 
-      success: true, 
-      count: createdRecords.length,
-      records: createdRecords 
+    return NextResponse.json({
+      success: true,
+      count: result.created.length,
+      skippedCount: result.skipped.length,
+      records: result.created,
+      skipped: result.skipped
     });
   } catch (error: any) {
     console.error('[API Import] Error:', error);

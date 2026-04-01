@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, FileText, ArrowRight } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, FileText, ArrowRight, Download } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,8 @@ export function KeywordImport() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importCount, setImportCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
+  const [skippedRecords, setSkippedRecords] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reset state when dialog opens/closes
@@ -62,6 +64,8 @@ export function KeywordImport() {
       setMapping({});
       setError(null);
       setImportCount(0);
+      setSkippedCount(0);
+      setSkippedRecords([]);
     }
   }, [isOpen]);
 
@@ -212,6 +216,8 @@ export function KeywordImport() {
 
       const data = await response.json();
       setImportCount(data.count);
+      setSkippedCount(data.skippedCount || 0);
+      setSkippedRecords(data.skipped || []);
       setStep("success");
     } catch (err: any) {
       setError(err.message);
@@ -219,6 +225,15 @@ export function KeywordImport() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const downloadSkipped = () => {
+    if (skippedRecords.length === 0) return;
+    
+    const worksheet = XLSX.utils.json_to_sheet(skippedRecords);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Duplikate");
+    XLSX.writeFile(workbook, "import_duplikate.xlsx");
   };
 
   return (
@@ -296,8 +311,8 @@ export function KeywordImport() {
                             {col.required && <span className="text-red-500 ml-1">*</span>}
                           </Label>
                         </div>
-                        <Select
-                          value={mapping[col.id] || "none"}
+                        <Select 
+                          value={mapping[col.id] || "none"} 
                           onValueChange={(val) => {
                             if (!val) return;
                             setMapping(prev => {
@@ -350,12 +365,31 @@ export function KeywordImport() {
                 <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold text-green-700">Import erfolgreich!</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich in das System übernommen.
-                </p>
+                <p className="text-xl font-bold text-green-700">Import abgeschlossen!</p>
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich übernommen.
+                  </p>
+                  {skippedCount > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
+                      <p className="text-sm text-amber-800 flex items-center justify-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        {skippedCount} bereits existierende Einträge wurden übersprungen.
+                      </p>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="text-amber-900 font-bold mt-1 h-auto p-0"
+                        onClick={downloadSkipped}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Duplikate als Excel herunterladen
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <Button
+              <Button 
                 className="bg-[#00463c] hover:bg-[#00332c] text-white px-8"
                 onClick={() => {
                   setIsOpen(false);
