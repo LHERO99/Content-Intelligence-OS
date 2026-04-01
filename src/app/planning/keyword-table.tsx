@@ -25,7 +25,8 @@ import {
   AlertCircle,
   Trash2,
   Filter,
-  X
+  X,
+  ShieldAlert
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { KeywordMap } from "@/lib/airtable-types";
 import { KeywordImport } from "./keyword-import";
+import { BlacklistReasonModal } from "./blacklist-reason-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAlerts } from "@/components/alerts-provider";
 import {
@@ -169,6 +171,7 @@ interface FilterBarProps {
 function FilterBar({ table, columns }: FilterBarProps) {
   const [selectedColumn, setSelectedColumn] = React.useState<string>("");
   const [filterValue, setFilterValue] = React.useState<string>("");
+  const [isBlacklistModalOpen, setIsBlacklistModalOpen] = React.useState(false);
 
   const columnFilters = table.getState().columnFilters;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -314,6 +317,32 @@ function FilterBar({ table, columns }: FilterBarProps) {
                 </div>
               </PopoverContent>
             </Popover>
+          )}
+
+          {selectedRows.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50 h-10 px-4"
+                onClick={() => setIsBlacklistModalOpen(true)}
+              >
+                <ShieldAlert className="h-4 w-4 mr-2" />
+                Blacklist
+              </Button>
+              <BlacklistReasonModal
+                isOpen={isBlacklistModalOpen}
+                onClose={() => setIsBlacklistModalOpen(false)}
+                onSuccess={() => {
+                  table.resetRowSelection();
+                  window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+                }}
+                keywords={selectedRows.map((r: any) => ({
+                  id: r.original.id,
+                  Keyword: r.original.Keyword,
+                  Target_URL: r.original.Target_URL
+                }))}
+              />
+            </>
           )}
           
           <KeywordImport />

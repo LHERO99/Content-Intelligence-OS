@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getBlacklist, addToBlacklist, updateBlacklist, deleteFromBlacklist, bulkDeleteFromBlacklist } from '@/lib/airtable';
+import { 
+  getBlacklist, 
+  addToBlacklist, 
+  updateBlacklist, 
+  deleteFromBlacklist, 
+  bulkDeleteFromBlacklist,
+  deleteKeyword,
+  bulkDeleteKeywords
+} from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -17,8 +25,52 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { Keyword, Reason } = body;
+    const { Keyword, Reason, Type, keywordId, keywordIds } = body;
 
+    // Case 1: Bulk move from Keyword-Map to Blacklist
+    if (keywordIds && Array.isArray(keywordIds) && Reason) {
+      const { keywords } = body; 
+      if (!keywords || !Array.isArray(keywords)) {
+        return NextResponse.json(
+          { error: 'Keywords (Array von {id, Keyword, Target_URL}) sind für Bulk-Aktionen erforderlich.' },
+          { status: 400 }
+        );
+      }
+
+      for (const kw of keywords) {
+        await addToBlacklist({
+          Keyword: Type === 'URL' ? kw.Target_URL : kw.Keyword,
+          Type: Type || 'Keyword',
+          Reason,
+        });
+      }
+
+      const idsToDelete = keywords.map((k: any) => k.id);
+      await bulkDeleteKeywords(idsToDelete);
+
+      return NextResponse.json({ success: true, movedCount: keywords.length });
+    }
+
+    // Case 2: Single move from Keyword-Map to Blacklist
+    if (keywordId && Keyword && Reason) {
+      const result = await addToBlacklist({
+        Keyword: Type === 'URL' ? body.Target_URL : Keyword,
+        Type: Type || 'Keyword',
+        Reason,
+      });
+
+      if (!result) {
+        return NextResponse.json(
+          { error: 'Fehler beim Hinzufügen zur Blacklist in Airtable.' },
+          { status: 500 }
+        );
+      }
+
+      await deleteKeyword(keywordId);
+      return NextResponse.json(result);
+    }
+
+    // Case 3: Direct add to Blacklist (existing logic)
     if (!Keyword || !Reason) {
       return NextResponse.json(
         { error: 'Keyword und Reason sind Pflichtfelder.' },
@@ -28,6 +80,7 @@ export async function POST(request: Request) {
 
     const result = await addToBlacklist({
       Keyword,
+      Type: Type || 'Keyword',
       Reason,
     });
 

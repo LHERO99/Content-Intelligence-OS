@@ -164,6 +164,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
     if (entry) {
       setFormData({
         Keyword: entry.Keyword,
+        Type: entry.Type,
         Reason: entry.Reason,
       });
     }
@@ -194,19 +195,34 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
               Blacklist-Eintrag bearbeiten
             </DialogTitle>
             <DialogDescription>
-              Passen Sie das Keyword oder den Grund für den Ausschluss an.
+              Passen Sie den Eintrag, den Typ oder den Grund für den Ausschluss an.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-keyword">Keyword *</Label>
+              <Label htmlFor="edit-keyword">Eintrag (Keyword/URL) *</Label>
               <Input
                 id="edit-keyword"
                 value={formData.Keyword || ""}
                 onChange={(e) => setFormData({ ...formData, Keyword: e.target.value })}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-type">Typ *</Label>
+              <Select 
+                value={formData.Type || "Keyword"} 
+                onValueChange={(v: any) => setFormData({ ...formData, Type: v })}
+              >
+                <SelectTrigger id="edit-type">
+                  <SelectValue placeholder="Typ wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Keyword">Keyword</SelectItem>
+                  <SelectItem value="URL">URL</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-reason">Grund *</Label>
@@ -492,8 +508,20 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   },
   {
     accessorKey: "Keyword",
-    header: "Keyword",
+    header: "Eintrag",
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
+  },
+  {
+    accessorKey: "Type",
+    header: "Typ",
+    cell: ({ row }) => {
+      const type = row.getValue("Type") as string;
+      return (
+        <Badge variant={type === 'URL' ? 'outline' : 'secondary'} className={type === 'URL' ? 'border-blue-200 text-blue-700 bg-blue-50' : ''}>
+          {type || 'Keyword'}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "Reason",

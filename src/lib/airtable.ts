@@ -79,8 +79,35 @@ async function handleAirtableError(error: any, operation: string): Promise<never
 
 export async function getKeywordMap(): Promise<KeywordMap[]> {
   try {
-    const records = await base(TABLES.KEYWORD_MAP).select().all();
-    return records.map((record) => ({
+    // Fetch both Keyword-Map and Blacklist to filter out blacklisted keywords and URLs
+    const [keywordRecords, blacklistRecords] = await Promise.all([
+      base(TABLES.KEYWORD_MAP).select().all(),
+      base(TABLES.BLACKLIST).select({ fields: ['Keyword', 'Type'] }).all()
+    ]);
+
+    const blacklistedKeywords = new Set(
+      blacklistRecords
+        .filter(r => r.get('Type') === 'Keyword' || !r.get('Type'))
+        .map(r => (r.get('Keyword') as string)?.toLowerCase())
+    );
+
+    const blacklistedURLs = new Set(
+      blacklistRecords
+        .filter(r => r.get('Type') === 'URL')
+        .map(r => (r.get('Keyword') as string)?.toLowerCase())
+    );
+
+    return keywordRecords
+      .filter(record => {
+        const kw = (record.get('Keyword') as string)?.toLowerCase();
+        const url = (record.get('Target_URL') as string)?.toLowerCase();
+        
+        if (kw && blacklistedKeywords.has(kw)) return false;
+        if (url && blacklistedURLs.has(url)) return false;
+        
+        return true;
+      })
+      .map((record) => ({
       id: record.id,
       Keyword: record.get('Keyword') as string,
       Target_URL: record.get('Target_URL') as string,
@@ -645,11 +672,12 @@ export async function createTrend(trend: Partial<PotentialTrend>): Promise<Poten
 
 export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
   try {
-    console.log(`[Airtable] Adding to blacklist: ${entry.Keyword}`);
+    console.log(`[Airtable] Adding to blacklist: ${entry.Keyword} (Type: ${entry.Type})`);
     const records = await base(TABLES.BLACKLIST).create([
       {
         fields: {
           Keyword: entry.Keyword,
+          Type: entry.Type || 'Keyword',
           Reason: entry.Reason,
           Added_At: new Date().toISOString(),
         },
@@ -662,6 +690,7 @@ export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<Bl
     return {
       id: record.id,
       Keyword: record.get('Keyword') as string,
+      Type: record.get('Type') as 'Keyword' | 'URL',
       Reason: record.get('Reason') as string,
       Added_At: record.get('Added_At') as string,
     };
@@ -676,6 +705,7 @@ export async function getBlacklist(): Promise<BlacklistEntry[]> {
     return records.map((record) => ({
       id: record.id,
       Keyword: record.get('Keyword') as string,
+      Type: record.get('Type') as 'Keyword' | 'URL',
       Reason: record.get('Reason') as string,
       Added_At: record.get('Added_At') as string,
     }));
@@ -759,6 +789,7 @@ export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>
     console.log(`[Airtable] Updating blacklist entry: ${id}`);
     const fields: any = {};
     if (entry.Keyword !== undefined) fields.Keyword = entry.Keyword;
+    if (entry.Type !== undefined) fields.Type = entry.Type;
     if (entry.Reason !== undefined) fields.Reason = entry.Reason;
 
     const records = await base(TABLES.BLACKLIST).update([
@@ -774,6 +805,7 @@ export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>
     return {
       id: record.id,
       Keyword: record.get('Keyword') as string,
+      Type: record.get('Type') as 'Keyword' | 'URL',
       Reason: record.get('Reason') as string,
       Added_At: record.get('Added_At') as string,
     };
