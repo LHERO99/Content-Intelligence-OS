@@ -137,6 +137,8 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
       Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
       Article_Count: record.get('Article_Count') as number,
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
+      Policy: record.get('Policy') as number,
+      Priority_Score: record.get('Priority_Score') as number,
     }));
   } catch (error) {
     return handleAirtableError(error,'getKeywordMap');
@@ -558,6 +560,8 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
           Main_Keyword: kw.Main_Keyword || 'N',
           Article_Count: kw.Article_Count,
           Avg_Product_Value: kw.Avg_Product_Value,
+          Policy: kw.Policy,
+          Priority_Score: kw.Priority_Score,
         },
       },
     ]);
@@ -577,6 +581,8 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
       Article_Count: record.get('Article_Count') as number,
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
+      Policy: record.get('Policy') as number,
+      Priority_Score: record.get('Priority_Score') as number,
     };
   } catch (error) {
     return handleAirtableError(error,'createKeyword');
@@ -646,6 +652,8 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     if (kw.Main_Keyword !== undefined) fields.Main_Keyword = kw.Main_Keyword;
     if (kw.Article_Count !== undefined) fields.Article_Count = kw.Article_Count;
     if (kw.Avg_Product_Value !== undefined) fields.Avg_Product_Value = kw.Avg_Product_Value;
+    if (kw.Policy !== undefined) fields.Policy = kw.Policy;
+    if (kw.Priority_Score !== undefined) fields.Priority_Score = kw.Priority_Score;
 
     const records = await base(TABLES.KEYWORD_MAP).update([
       {
@@ -669,6 +677,8 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
       Article_Count: record.get('Article_Count') as number,
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
+      Policy: record.get('Policy') as number,
+      Priority_Score: record.get('Priority_Score') as number,
     };
   } catch (error) {
     return handleAirtableError(error,'updateKeyword');

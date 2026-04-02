@@ -24,10 +24,13 @@ import {
   Filter,
   X,
   AlertCircle,
-  GripVertical
+  GripVertical,
+  Settings2
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { PrioritizationSettingsModal } from "./prioritization-settings-modal";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -54,6 +57,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { KeywordMap } from "@/lib/airtable-types";
+import { calculatePriorityScore, PrioritizationWeights } from "@/lib/prioritization-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAlerts } from "@/components/alerts-provider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -158,6 +162,7 @@ interface FilterBarProps {
 function FilterBar({ table, columns }: FilterBarProps) {
   const [selectedColumn, setSelectedColumn] = React.useState<string>("");
   const [filterValue, setFilterValue] = React.useState<string>("");
+  const [isPrioritizationModalOpen, setIsPrioritizationModalOpen] = React.useState(false);
 
   const columnFilters = table.getState().columnFilters;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -304,6 +309,15 @@ function FilterBar({ table, columns }: FilterBarProps) {
             </Popover>
           )}
           
+          <Button 
+            variant="outline" 
+            className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
+            onClick={() => setIsPrioritizationModalOpen(true)}
+          >
+            <Settings2 className="h-4 w-4 mr-2" />
+            Priorisierung
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger>
               <Button variant="outline" className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]">
@@ -361,6 +375,12 @@ function FilterBar({ table, columns }: FilterBarProps) {
           </Button>
         </div>
       )}
+
+      <PrioritizationSettingsModal 
+        isOpen={isPrioritizationModalOpen}
+        onClose={() => setIsPrioritizationModalOpen(false)}
+        onWeightsUpdated={() => window.dispatchEvent(new CustomEvent("refresh-planning-data"))}
+      />
     </div>
   );
 }
@@ -384,6 +404,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
         Status: keyword.Status,
         Editorial_Deadline: keyword.Editorial_Deadline,
         Assigned_Editor: keyword.Assigned_Editor,
+        Policy: keyword.Policy,
       });
     }
   }, [keyword]);
@@ -454,6 +475,26 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                   onChange={(e) => setFormData({ ...formData, Editorial_Deadline: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="edit-policy">Politik / Strategie Relevanz</Label>
+                <span className="text-sm font-medium text-[#00463c]">{formData.Policy || 0}%</span>
+              </div>
+              <Slider
+                id="edit-policy"
+                value={[formData.Policy || 0]}
+                onValueChange={(v: number | readonly number[]) => {
+                  const val = Array.isArray(v) ? v[0] : v;
+                  setFormData({ ...formData, Policy: val });
+                }}
+                max={100}
+                step={1}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Beeinflusst den Prioritätsscore basierend auf strategischer Wichtigkeit.
+              </p>
             </div>
 
             {error && (
@@ -552,6 +593,25 @@ export const columns: ColumnDef<KeywordMap>[] = [
       );
     },
   },
+  {
+    accessorKey: "Priority_Score",
+    header: "Priorität",
+    cell: ({ row }) => {
+      const score = row.getValue("Priority_Score") as number;
+      if (score === undefined || score === null) return "-";
+      
+      let color = "bg-slate-100 text-slate-700";
+      if (score >= 70) color = "bg-red-100 text-red-700 border-red-200";
+      else if (score >= 40) color = "bg-orange-100 text-orange-700 border-orange-200";
+      else if (score > 0) color = "bg-green-100 text-green-700 border-green-200";
+
+      return (
+        <Badge variant="outline" className={`${color} font-bold`}>
+          {score.toFixed(1)}
+        </Badge>
+      );
+    },
+  },
 ];
 
 interface EditorialPlanningProps {
@@ -568,11 +628,52 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
 
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [weights, setWeights] = React.useState<PrioritizationWeights | null>(null);
 
-  const plannedKeywords = React.useMemo(() => 
-    keywords.filter(kw => kw.Editorial_Deadline || kw.Status !== "Backlog"),
-    [keywords]
-  );
+  // Fetch weights on mount
+  React.useEffect(() => {
+    const fetchWeights = async () => {
+      try {
+        const response = await fetch("/api/admin/config");
+        if (!response.ok) return;
+        const config = await response.json();
+        
+        const newWeights: PrioritizationWeights = {
+          weight_search_volume: 20,
+          weight_difficulty: 20,
+          weight_article_count: 20,
+          weight_avg_value: 20,
+          weight_policy: 20,
+        };
+        
+        config.forEach((item: { key: string; value: any }) => {
+          if (item.key in newWeights) {
+            newWeights[item.key as keyof PrioritizationWeights] = Number(item.value) || 0;
+          }
+        });
+        setWeights(newWeights);
+      } catch (error) {
+        console.error("Error fetching weights in EditorialPlanning:", error);
+      }
+    };
+    fetchWeights();
+    
+    // Listen for refresh events to re-fetch weights
+    const handleRefresh = () => fetchWeights();
+    window.addEventListener("refresh-planning-data", handleRefresh);
+    return () => window.removeEventListener("refresh-planning-data", handleRefresh);
+  }, []);
+
+  const plannedKeywords = React.useMemo(() => {
+    const filtered = keywords.filter(kw => kw.Editorial_Deadline || kw.Status !== "Backlog");
+    
+    if (!weights) return filtered;
+
+    return filtered.map(kw => ({
+      ...kw,
+      Priority_Score: calculatePriorityScore(kw, weights)
+    }));
+  }, [keywords, weights]);
 
   const updateData = async (rowId: string, updates: any) => {
     try {
@@ -667,6 +768,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     meta: {
       updateData,
       deleteData,
+    },
+    initialState: {
+      sorting: [{ id: "Priority_Score", desc: true }],
     },
     state: {
       sorting,

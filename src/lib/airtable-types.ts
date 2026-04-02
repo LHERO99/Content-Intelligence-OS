@@ -12,6 +12,8 @@ export interface KeywordMap {
   Main_Keyword: 'Y' | 'N';
   Article_Count?: number;
   Avg_Product_Value?: number;
+  Policy?: number;
+  Priority_Score?: number;
 }
 
 export interface SkippedKeyword extends Partial<KeywordMap> {
