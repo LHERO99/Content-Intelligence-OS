@@ -31,7 +31,8 @@ import {
   Target,
   ShoppingBag,
   Euro,
-  ShieldCheck
+  ShieldCheck,
+  Zap
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -561,6 +562,8 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Backlog">Backlog</SelectItem>
+                        <SelectItem value="Planned">Planned</SelectItem>
+                        <SelectItem value="Beauftragt">Beauftragt</SelectItem>
                         <SelectItem value="In Progress">In Progress</SelectItem>
                         <SelectItem value="Review">Review</SelectItem>
                         <SelectItem value="Done">Done</SelectItem>
@@ -852,6 +855,38 @@ export const columns: ColumnDef<KeywordMap>[] = [
       );
     },
   },
+  {
+    id: "actions_commission",
+    header: "Aktion",
+    cell: ({ row, table }) => {
+      const status = row.getValue("Status") as string;
+      const id = (row.original as any).id;
+      const meta = table.options.meta as any;
+      const isCommissioning = meta?.isCommissioning === id;
+
+      if (status !== "Planned") return null;
+
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee] gap-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            meta?.handleCommissionContent(id);
+          }}
+          disabled={isCommissioning}
+        >
+          {isCommissioning ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Zap className="h-3 w-3 fill-current" />
+          )}
+          Beauftragen
+        </Button>
+      );
+    },
+  },
 ];
 
 interface EditorialPlanningProps {
@@ -875,6 +910,38 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [weights, setWeights] = React.useState<PrioritizationWeights | null>(null);
+  const [isCommissioning, setIsCommissioning] = React.useState<string | null>(null);
+
+  const handleCommissionContent = async (id: string) => {
+    try {
+      setIsCommissioning(id);
+      const response = await fetch("/api/planning/keywords", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, Status: "Beauftragt" }),
+      });
+
+      if (!response.ok) {
+        const resData = await response.json();
+        throw new Error(resData.error || "Commissioning failed");
+      }
+
+      addAlert({
+        title: "Erfolg",
+        message: "Content beauftragt. In wenigen Minuten im Tab 'Content-Erstellung' einsehbar.",
+        type: "success",
+      });
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error: any) {
+      addAlert({
+        title: "Fehler beim Beauftragen",
+        message: error.message,
+        type: "error",
+      });
+    } finally {
+      setIsCommissioning(null);
+    }
+  };
 
   // Fetch weights on mount
   React.useEffect(() => {
@@ -984,6 +1051,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       "Policy",
       "Search_Volume",
       "Target_URL",
+      "actions_commission",
     ];
     
     if (savedOrder) {
@@ -1031,6 +1099,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     meta: {
       updateData,
       deleteData,
+      handleCommissionContent,
+      isCommissioning,
     },
     initialState: {
       sorting: [{ id: "Priority_Score", desc: true }],

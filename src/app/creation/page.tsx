@@ -7,9 +7,13 @@ import { ScoringEngine } from './scoring-engine';
 import { ReasoningPanel } from './reasoning-panel';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, Loader2, Send } from 'lucide-react';
+import { CheckCircle2, Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { triggerN8nAction } from '@/lib/n8n';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function CreationPage() {
   const [keywords, setKeywords] = useState<KeywordMap[]>([]);
@@ -48,6 +52,12 @@ export default function CreationPage() {
   }, []);
 
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
+  
+  // Filter keywords for the "Aufträge" list
+  const commissionedKeywords = keywords.filter(kw => 
+    kw.Status === 'Beauftragt' || kw.Status === 'In Progress'
+  );
+
   const relevantLogs = contentLogs.filter((log) => 
     Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(selectedKeywordId)
   );
@@ -92,31 +102,16 @@ export default function CreationPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="flex flex-col h-[calc(100vh-120px)] space-y-6">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-[#00463c]">Content-Erstellung</h1>
           <p className="text-emerald-700">Überprüfen und verfeinern Sie KI-generierte Content-Vorschläge.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select 
-            value={selectedKeywordId} 
-            onValueChange={(val) => setSelectedKeywordId(val || '')}
-          >
-            <SelectTrigger className="w-[250px] bg-white border-emerald-200">
-              <SelectValue placeholder="Keyword auswählen" />
-            </SelectTrigger>
-            <SelectContent>
-              {keywords.map((kw) => (
-                <SelectItem key={kw.id} value={kw.id}>
-                  {kw.Keyword}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button 
             onClick={handleApprove} 
-            disabled={!selectedKeywordId || approving || loading}
+            disabled={!selectedKeywordId || approving || loading || !v2Content}
             className="bg-emerald-700 hover:bg-emerald-800 text-white"
           >
             {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
@@ -126,34 +121,115 @@ export default function CreationPage() {
       </header>
 
       {loading ? (
-        <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex flex-1 items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         </div>
-      ) : !selectedKeywordId ? (
-        <div className="flex flex-col items-center justify-center h-[60vh] border-2 border-dashed border-emerald-200 rounded-xl bg-white/50">
-          <Send className="w-12 h-12 text-emerald-300 mb-4" />
-          <h2 className="text-xl font-medium text-emerald-800">Wählen Sie ein Keyword aus, um mit der Bearbeitung zu beginnen</h2>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Main Editor Area */}
-          <div className="lg:col-span-8 space-y-6">
-            <AIEditorWorkspace v1Content={v1Content} v2Content={v2Content} />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+          {/* Left Side: Aufträge List */}
+          <Card className="lg:col-span-4 flex flex-col overflow-hidden border-emerald-100">
+            <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 py-4">
+              <CardTitle className="text-lg font-bold text-[#00463c] flex items-center gap-2">
+                <Zap className="h-5 w-5 fill-emerald-600 text-emerald-600" />
+                Aktive Aufträge
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
+                <Table>
+                  <TableHeader className="bg-emerald-50/30 sticky top-0 z-10">
+                    <TableRow>
+                      <TableHead className="text-[#00463c] font-bold">Keyword</TableHead>
+                      <TableHead className="text-[#00463c] font-bold">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commissionedKeywords.length > 0 ? (
+                      commissionedKeywords.map((kw) => (
+                        <TableRow 
+                          key={kw.id} 
+                          className={`cursor-pointer transition-colors hover:bg-emerald-50/50 ${selectedKeywordId === kw.id ? 'bg-emerald-50 border-l-4 border-l-emerald-600' : ''}`}
+                          onClick={() => setSelectedKeywordId(kw.id)}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span>{kw.Keyword}</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
+                                <Clock className="h-3 w-3" />
+                                {kw.Editorial_Deadline ? new Date(kw.Editorial_Deadline).toLocaleDateString('de-DE') : 'Keine Deadline'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="secondary" 
+                              className={kw.Status === 'Beauftragt' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}
+                            >
+                              {kw.Status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={2} className="h-32 text-center text-muted-foreground italic">
+                          Keine aktiven Aufträge gefunden.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-          {/* Sidebar Area */}
-          <div className="lg:col-span-4 space-y-6">
-            <ScoringEngine 
-              seoScore={seoScore}
-              brandScore={brandScore}
-              technicalScore={technicalScore}
-              onSeoChange={(v) => setSeoScore(Array.isArray(v) ? v[0] : (v as number))}
-              onBrandChange={(v) => setBrandScore(Array.isArray(v) ? v[0] : (v as number))}
-              onTechnicalChange={(v) => setTechnicalScore(Array.isArray(v) ? v[0] : (v as number))}
-            />
-            <div className="h-[400px]">
-              <ReasoningPanel reasoning={reasoning} />
-            </div>
+          {/* Right Side: Editor & Preview */}
+          <div className="lg:col-span-8 flex flex-col gap-6 overflow-hidden">
+            {!selectedKeywordId ? (
+              <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-emerald-200 rounded-xl bg-white/50">
+                <Send className="w-12 h-12 text-emerald-300 mb-4" />
+                <h2 className="text-xl font-medium text-emerald-800">Wählen Sie einen Auftrag aus der Liste</h2>
+              </div>
+            ) : (
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-6 pb-6">
+                  {/* Main Editor Area */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-[#00463c] flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Content-Vorschau: {selectedKeyword?.Keyword}
+                      </h3>
+                    </div>
+                    
+                    {!v2Content ? (
+                      <div className="flex flex-col items-center justify-center h-[400px] border rounded-lg bg-muted/10">
+                        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
+                        <p className="text-sm text-muted-foreground">KI generiert gerade den Content...</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 italic">Dies kann einige Minuten dauern.</p>
+                      </div>
+                    ) : (
+                      <AIEditorWorkspace v1Content={v1Content} v2Content={v2Content} />
+                    )}
+                  </div>
+
+                  {/* Sidebar Area (now below on mobile, or integrated) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ScoringEngine 
+                      seoScore={seoScore}
+                      brandScore={brandScore}
+                      technicalScore={technicalScore}
+                      onSeoChange={(v) => setSeoScore(Array.isArray(v) ? v[0] : (v as number))}
+                      onBrandChange={(v) => setBrandScore(Array.isArray(v) ? v[0] : (v as number))}
+                      onTechnicalChange={(v) => setTechnicalScore(Array.isArray(v) ? v[0] : (v as number))}
+                    />
+                    <div className="h-[400px]">
+                      <ReasoningPanel reasoning={reasoning} />
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            )}
           </div>
         </div>
       )}
