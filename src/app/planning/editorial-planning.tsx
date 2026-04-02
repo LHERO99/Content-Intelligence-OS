@@ -561,53 +561,6 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold text-[#00463c]">Aktion</Label>
-                    <div className="flex items-center h-10">
-                      {commissionedIds.has(keyword?.id || '') ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
-                          Beauftragt
-                        </Badge>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-10 gap-2 justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
-                          onClick={() => {
-                            if (keyword) {
-                              onCommission(keyword.id);
-                            }
-                          }}
-                          disabled={isCommissioning}
-                        >
-                          {isCommissioning ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Zap className="h-4 w-4 fill-current" />
-                          )}
-                          Content beauftragen
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-[#00463c]">Content-Plan Status</Label>
-                    <div className="flex items-center h-10">
-                      {formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog") ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
-                          Hinzugefügt
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
-                          Nicht im Plan
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
                     <Label htmlFor="edit-type" className="text-xs font-bold">Bearbeitungs-Typ</Label>
                     <Select 
                       value={formData.Action_Type} 
@@ -673,10 +626,48 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                 </div>
               </div>
 
-              <Separator className="bg-[#00463c]/10" />
+              <div className="border-t border-[#00463c]/10 pt-4 mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold text-[#00463c]">Content-Status</Label>
+                    <div className="flex items-center gap-2">
+                      {commissionedIds.has(keyword?.id || '') ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                          Beauftragt
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
+                          Noch nicht beauftragt
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {!commissionedIds.has(keyword?.id || '') && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                      onClick={() => {
+                        if (keyword) {
+                          onCommission(keyword.id);
+                        }
+                      }}
+                      disabled={isCommissioning}
+                    >
+                      {isCommissioning ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Zap className="h-3 w-3 mr-1 fill-current" />
+                      )}
+                      Content beauftragen
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-              {/* Content History Section */}
-              <div className="space-y-4">
+              <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5" />
@@ -705,36 +696,6 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                       Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
-
-                    {/* History List */}
-                    {history.filter(entry => entry.Action_Type || entry.Diff_Summary).length > 0 ? (
-                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                        {history
-                          .filter(entry => entry.Action_Type || entry.Diff_Summary)
-                          .map((entry) => (
-                            <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
-                              <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-xs font-bold truncate">{entry.Action_Type || '-'}</p>
-                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                    {new Date(entry.Created_At).toLocaleDateString('de-DE')}
-                                  </span>
-                                </div>
-                                {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
-                                  <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">
-                                    {entry.Diff_Summary}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 bg-muted/20 rounded-lg border border-dashed border-border">
-                        <p className="text-[10px] text-muted-foreground">Keine relevanten Einträge vorhanden</p>
-                      </div>
-                    )}
                 </div>
               ) : (
                   <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
