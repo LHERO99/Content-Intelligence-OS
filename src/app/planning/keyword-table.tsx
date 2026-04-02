@@ -728,7 +728,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
       const isMain = row.original.Main_Keyword === "Y";
       if (!isMain) return <div className="flex justify-center w-full">-</div>;
 
-      const isInEditorial = row.original.Editorial_Deadline || row.original.Status !== "Backlog";
+      const isInEditorial = (row.original.Editorial_Deadline || row.original.Status !== "Backlog") && row.original.Status !== "Backlog";
       
       if (isInEditorial) {
         return (

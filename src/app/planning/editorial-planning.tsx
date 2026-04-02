@@ -557,27 +557,31 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Status / Aktion</Label>
                     <div className="flex items-center h-10">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className={`w-full h-10 gap-2 justify-center ${commissionedIds.has(keyword?.id || '') ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
-                        onClick={() => {
-                          if (keyword && !commissionedIds.has(keyword.id)) {
-                            onCommission(keyword.id);
-                          }
-                        }}
-                        disabled={isCommissioning || commissionedIds.has(keyword?.id || '')}
-                      >
-                        {isCommissioning ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : commissionedIds.has(keyword?.id || '') ? (
-                          <ShieldCheck className="h-4 w-4" />
-                        ) : (
-                          <Zap className="h-4 w-4 fill-current" />
-                        )}
-                        {commissionedIds.has(keyword?.id || '') ? "Beauftragt" : "Content beauftragen"}
-                      </Button>
+                      {commissionedIds.has(keyword?.id || '') ? (
+                        <div className="flex justify-center w-full">
+                          <Badge variant="outline" className="text-green-600 border-green-600 h-10 px-8">Beauftragt</Badge>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-10 gap-2 justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                          onClick={() => {
+                            if (keyword) {
+                              onCommission(keyword.id);
+                            }
+                          }}
+                          disabled={isCommissioning}
+                        >
+                          {isCommissioning ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Zap className="h-4 w-4 fill-current" />
+                          )}
+                          Content beauftragen
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -812,25 +816,29 @@ export const columns: ColumnDef<KeywordMap>[] = [
 
       return (
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className={`h-7 text-xs gap-1 min-w-[110px] justify-center ${isCommissioned ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isCommissioned) meta?.handleCommissionContent(id);
-            }}
-            disabled={isCommissioning || isCommissioned}
-          >
-            {isCommissioning ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : isCommissioned ? (
-              <ShieldCheck className="h-3 w-3" />
+            {isCommissioned ? (
+              <div className="flex justify-center w-full">
+                <Badge variant="outline" className="text-green-600 border-green-600">Beauftragt</Badge>
+              </div>
             ) : (
-              <Zap className="h-3 w-3 fill-current" />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  meta?.handleCommissionContent(id);
+                }}
+                disabled={isCommissioning}
+              >
+                {isCommissioning ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Zap className="h-3 w-3 fill-current" />
+                )}
+                Beauftragen
+              </Button>
             )}
-            {isCommissioned ? "Beauftragt" : "Beauftragen"}
-          </Button>
         </div>
       );
     },

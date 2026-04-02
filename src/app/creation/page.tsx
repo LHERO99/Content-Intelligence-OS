@@ -49,6 +49,11 @@ export default function CreationPage() {
       }
     }
     fetchData();
+
+    // Listen for refresh events
+    const handleRefresh = () => fetchData();
+    window.addEventListener("refresh-planning-data", handleRefresh);
+    return () => window.removeEventListener("refresh-planning-data", handleRefresh);
   }, []);
 
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
