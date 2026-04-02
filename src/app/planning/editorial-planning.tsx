@@ -400,9 +400,11 @@ interface EditEditorialModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, updates: any) => Promise<void>;
+  onCommission: (id: string) => Promise<void>;
+  isCommissioning: boolean;
 }
 
-function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditorialModalProps) {
+function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission, isCommissioning }: EditEditorialModalProps) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
@@ -552,23 +554,30 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-status" className="text-xs font-bold">Status</Label>
-                    <Select 
-                      value={formData.Status} 
-                      onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
-                    >
-                      <SelectTrigger id="edit-status" className="h-10 border-[#00463c]/20 focus:ring-[#00463c]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Backlog">Backlog</SelectItem>
-                        <SelectItem value="Planned">Planned</SelectItem>
-                        <SelectItem value="Beauftragt">Beauftragt</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Review">Review</SelectItem>
-                        <SelectItem value="Done">Done</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-bold">Status / Aktion</Label>
+                    <div className="flex items-center h-10">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className={`w-full h-10 gap-2 justify-center ${keyword?.Status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
+                        onClick={() => {
+                          if (keyword && keyword.Status !== "Beauftragt") {
+                            onCommission(keyword.id);
+                          }
+                        }}
+                        disabled={isCommissioning || keyword?.Status === "Beauftragt"}
+                      >
+                        {isCommissioning ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : keyword?.Status === "Beauftragt" ? (
+                          <ShieldCheck className="h-4 w-4" />
+                        ) : (
+                          <Zap className="h-4 w-4 fill-current" />
+                        )}
+                        {keyword?.Status === "Beauftragt" ? "Beauftragt" : "Content beauftragen"}
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-deadline" className="text-xs font-bold">Deadline</Label>
@@ -805,7 +814,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
           <Button
             size="sm"
             variant="outline"
-            className={`h-8 gap-1 min-w-[110px] justify-center ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-[#00463c] text-white hover:bg-[#00332c] border-none"}`}
+            className={`h-7 text-xs gap-1 min-w-[110px] justify-center ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
             onClick={(e) => {
               e.stopPropagation();
               if (status !== "Beauftragt") meta?.handleCommissionContent(id);
@@ -1234,6 +1243,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         onSave={updateData}
+        onCommission={handleCommissionContent}
+        isCommissioning={!!isCommissioning}
       />
     </div>
   );
