@@ -402,9 +402,10 @@ interface EditEditorialModalProps {
   onSave: (id: string, updates: any) => Promise<void>;
   onCommission: (id: string) => Promise<void>;
   isCommissioning: boolean;
+  commissionedIds: Set<string>;
 }
 
-function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission, isCommissioning }: EditEditorialModalProps) {
+function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission, isCommissioning, commissionedIds }: EditEditorialModalProps) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
@@ -1310,6 +1311,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         onSave={updateData}
         onCommission={handleCommissionContent}
         isCommissioning={!!isCommissioning}
+        commissionedIds={commissionedIds}
       />
     </div>
   );
