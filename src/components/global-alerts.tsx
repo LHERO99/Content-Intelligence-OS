@@ -4,6 +4,7 @@ import { useAlerts } from "@/components/alerts-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { X, AlertCircle, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 
 const icons = {
   info: Info,
@@ -15,41 +16,56 @@ const icons = {
 export function GlobalAlerts() {
   const { alerts, removeAlert } = useAlerts();
 
-  if (alerts.length === 0) return null;
-
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-md">
-      {alerts.map((alert) => {
-        const Icon = icons[alert.type];
-        return (
-          <Alert key={alert.id} variant={alert.type === 'error' ? 'destructive' : 'default'} className="bg-background border shadow-lg">
-            <Icon className="h-4 w-4" />
-            <div className="flex-1">
-              <div className="flex items-start justify-between gap-2">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-md pointer-events-none">
+      <AnimatePresence mode="popLayout">
+        {alerts.map((alert) => {
+          const Icon = icons[alert.type];
+          return (
+            <motion.div
+              key={alert.id}
+              layout
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 50, scale: 0.95, transition: { duration: 0.2 } }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 30,
+                mass: 1
+              }}
+              className="pointer-events-auto"
+            >
+              <Alert variant={alert.type === 'error' ? 'destructive' : 'default'} className="bg-background border shadow-lg">
+                <Icon className="h-4 w-4" />
                 <div className="flex-1">
-                  {alert.title && (
-                    <AlertTitle className="capitalize mb-1">
-                      {alert.title}
-                    </AlertTitle>
-                  )}
-                  <AlertDescription>
-                    <div className="font-medium">{alert.message}</div>
-                    {alert.description && <div className="text-xs opacity-80 mt-1">{alert.description}</div>}
-                  </AlertDescription>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      {alert.title && (
+                        <AlertTitle className="capitalize mb-1">
+                          {alert.title}
+                        </AlertTitle>
+                      )}
+                      <AlertDescription>
+                        <div className="font-medium">{alert.message}</div>
+                        {alert.description && <div className="text-xs opacity-80 mt-1">{alert.description}</div>}
+                      </AlertDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0 hover:bg-transparent shrink-0"
+                      onClick={() => removeAlert(alert.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 p-0 hover:bg-transparent shrink-0"
-                  onClick={() => removeAlert(alert.id)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          </Alert>
-        );
-      })}
+              </Alert>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }
