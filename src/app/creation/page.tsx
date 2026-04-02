@@ -66,18 +66,17 @@ export default function CreationPage() {
   
   // Filter keywords for the "Aufträge" list
   const commissionedKeywords = keywords.filter(kw => {
-    const hasCommissionLog = contentLogs.some(l => 
+    // A keyword belongs in the "Aufträge" list if:
+    // 1. Its status is explicitly "Beauftragt" or "In Progress"
+    const hasCorrectStatus = kw.Status === 'Beauftragt' || kw.Status === 'In Progress';
+    
+    // 2. OR it has any history entry at all (meaning something was done with it in n8n or manually)
+    const hasAnyHistory = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
-      l.Keyword_ID.includes(kw.id) && 
-      (l.Diff_Summary === 'Content beauftragt' || l.Diff_Summary === 'KI-Generierung abgeschlossen (n8n callback)')
+      l.Keyword_ID.includes(kw.id)
     );
-    // Explicitly check for v2 content as well
-    const hasV2Content = contentLogs.some(l => 
-      Array.isArray(l.Keyword_ID) && 
-      l.Keyword_ID.includes(kw.id) && 
-      l.Version === 'v2'
-    );
-    return kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || hasCommissionLog || hasV2Content;
+
+    return hasCorrectStatus || hasAnyHistory;
   });
 
   const relevantLogs = contentLogs.filter((log) => 

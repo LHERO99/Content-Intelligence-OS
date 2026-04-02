@@ -27,28 +27,35 @@ export async function triggerN8nWorkflow(payload: N8nPayload) {
 
   // Use specific multi-agent webhook for commissioning
   if (payload.action === 'COMMISSION_CONTENT') {
-    n8nWebhookUrl = 'https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c';
+    const baseUrl = 'https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c';
+    const params = new URLSearchParams({
+      keywordId: payload.data.keywordId || '',
+      keyword: payload.data.keyword || '',
+      targetUrl: payload.data.targetUrl || '',
+      userId: payload.userId || 'unknown'
+    });
+    
+    const urlWithParams = `${baseUrl}?${params.toString()}`;
+    
+    const response = await fetch(urlWithParams, {
+      method: 'GET',
+      headers: {
+        'X-API-KEY': n8nApiKey || '',
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`n8n GET webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    // Try to parse JSON, but handle empty/text responses
+    try {
+      return await response.json();
+    } catch (e) {
+      return { status: 'ok', message: 'GET request successful' };
+    }
   }
-
-  if (!n8nWebhookUrl) {
-    throw new Error('N8N_WEBHOOK_URL is not defined in environment variables.');
-  }
-
-  const response = await fetch(n8nWebhookUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': n8nApiKey || '',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`n8n webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  return await response.json();
 }
 
 /**
