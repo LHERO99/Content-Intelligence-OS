@@ -26,7 +26,9 @@ import {
   Trash2,
   Filter,
   X,
-  ShieldAlert
+  ShieldAlert,
+  Calendar,
+  ExternalLink
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -58,7 +60,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap, ContentLog } from "@/lib/airtable-types";
+import Link from "next/link";
 import { KeywordImport } from "./keyword-import";
 import { BlacklistReasonModal } from "./blacklist-reason-modal";
 import { Card, CardContent } from "@/components/ui/card";
@@ -422,6 +425,8 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
   
   // Form states
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
+  const [history, setHistory] = React.useState<ContentLog[]>([]);
+  const [loadingHistory, setLoadingHistory] = React.useState(false);
 
   React.useEffect(() => {
     if (keyword) {
@@ -437,6 +442,28 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
         Avg_Product_Value: keyword.Avg_Product_Value,
         Editorial_Deadline: keyword.Editorial_Deadline,
       });
+
+      // Fetch history
+      const fetchHistory = async () => {
+        setLoadingHistory(true);
+        try {
+          const queryParam = keyword.Target_URL 
+            ? `url=${encodeURIComponent(keyword.Target_URL)}` 
+            : `keywordId=${keyword.id}`;
+          const response = await fetch(`/api/planning/history?${queryParam}`);
+          if (response.ok) {
+            const data = await response.json();
+            setHistory(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch history:", err);
+        } finally {
+          setLoadingHistory(false);
+        }
+      };
+      fetchHistory();
+    } else {
+      setHistory([]);
     }
   }, [keyword]);
 
@@ -653,6 +680,55 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
               </div>
             </div>
 
+            <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Content-Historie
+                </h4>
+                {keyword?.Target_URL && (
+                  <Link 
+                    href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
+                    className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
+                  >
+                    Vollständige Historie
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-[#00463c]/40" />
+                </div>
+              ) : history.length > 0 ? (
+                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                  {history.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border text-[11px]">
+                      <div className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold truncate">{entry.Action_Type}</p>
+                          <span className="text-muted-foreground whitespace-nowrap">
+                            {new Date(entry.Created_At).toLocaleDateString('de-DE')}
+                          </span>
+                        </div>
+                        {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
+                          <p className="text-muted-foreground line-clamp-1 mt-0.5 italic">
+                            {entry.Diff_Summary}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 bg-muted/20 rounded-lg border border-dashed border-border">
+                  <p className="text-[10px] text-muted-foreground">Keine Historie vorhanden</p>
+                </div>
+              )}
+            </div>
+
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -809,7 +885,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
     cell: ({ row }) => {
       const type = row.getValue("Action_Type") as string || "Erstellung";
       return (
-        <Badge variant="outline" className={type === "Erstellung" ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-slate-200 text-slate-600 bg-slate-50"}>
+        <Badge variant="outline" className="border-slate-200 text-slate-600 bg-slate-50 font-medium">
           {type}
         </Badge>
       );

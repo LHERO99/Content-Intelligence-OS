@@ -32,12 +32,11 @@ export async function POST(request: Request) {
     console.log(`[API] Received content from n8n for Keyword ID: ${keywordId}`);
 
     // 1. Update Keyword Status to "Erstellt" once content is received
-    // This provides immediate feedback in the UI that the generation is done
+    // Explicitly transition from "In Arbeit" / "In Progress" to "Erstellt"
     try {
-      await updateKeyword(keywordId, { Status: (status || 'Erstellt') as any });
+      await updateKeyword(keywordId, { Status: 'Erstellt' as any });
     } catch (err) {
-      console.error('[API] Error updating keyword status:', err);
-      // We continue even if status update fails, to save the content
+      console.error('[API] Error updating keyword status to Erstellt:', err);
     }
 
     // 2. Create Content-Log entry (v2 for AI suggestions)
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
       Action_Type: 'Erstellung',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',
-      Diff_Summary: 'KI-Generierung abgeschlossen (n8n callback)',
+      Diff_Summary: 'KI-Vorschlag erstellt',
     });
 
     return NextResponse.json({

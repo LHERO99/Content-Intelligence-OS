@@ -332,7 +332,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
                       </div>
                     </div>
 
-                    {log.Diff_Summary && (
+                    {log.Diff_Summary && !log.Diff_Summary.includes('n8n callback') && (
                       <div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-100 text-sm text-emerald-900 italic">
                         {log.Diff_Summary}
                       </div>

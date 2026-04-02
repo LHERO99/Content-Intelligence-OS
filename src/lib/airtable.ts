@@ -139,7 +139,7 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+      Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
     }));
   } catch (error) {
     return handleAirtableError(error,'getKeywordMap');
@@ -581,25 +581,26 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
 
       if (currentChunkValid.length === 0) continue;
 
-      const records = await base(TABLES.KEYWORD_MAP).create(
-        currentChunkValid.map((kw) => ({
-          fields: {
-            Keyword: kw.Keyword,
-            Target_URL: kw.Target_URL,
-            Search_Volume: kw.Search_Volume,
-            Difficulty: kw.Difficulty,
-            Status: kw.Status || 'Backlog',
-            Editorial_Deadline: kw.Editorial_Deadline,
-            // Assigned_Editor is an array of record IDs
-            Assigned_Editor: kw.Assigned_Editor,
-            Main_Keyword: kw.Main_Keyword || 'N',
-            Article_Count: kw.Article_Count,
-            Avg_Product_Value: kw.Avg_Product_Value,
-            Action_Type: kw.Action_Type || 'Erstellung',
-          },
-        }))
-      );
-records.forEach((record) => {
+      try {
+        const records = await base(TABLES.KEYWORD_MAP).create(
+          currentChunkValid.map((kw) => ({
+            fields: {
+              Keyword: kw.Keyword,
+              Target_URL: kw.Target_URL,
+              Search_Volume: kw.Search_Volume,
+              Difficulty: kw.Difficulty,
+              Status: kw.Status || 'Backlog',
+              Editorial_Deadline: kw.Editorial_Deadline,
+              // Assigned_Editor is an array of record IDs
+              Assigned_Editor: kw.Assigned_Editor,
+              Main_Keyword: kw.Main_Keyword || 'N',
+              Article_Count: kw.Article_Count,
+              Avg_Product_Value: kw.Avg_Product_Value,
+              Action_Type: kw.Action_Type || 'Erstellung',
+            },
+          }))
+        );
+        records.forEach((record) => {
           createdRecords.push({
             id: record.id,
             Keyword: record.get('Keyword') as string,
@@ -612,10 +613,50 @@ records.forEach((record) => {
             Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
             Article_Count: record.get('Article_Count') as number,
             Avg_Product_Value: record.get('Avg_Product_Value') as number,
-            Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+            Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
           });
         });
+      } catch (error: any) {
+        // If Action_Type is missing, retry this chunk without it
+        if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
+          console.warn('[Airtable] "Action_Type" field missing in bulk creation, retrying chunk without it');
+          const records = await base(TABLES.KEYWORD_MAP).create(
+            currentChunkValid.map((kw) => ({
+              fields: {
+                Keyword: kw.Keyword,
+                Target_URL: kw.Target_URL,
+                Search_Volume: kw.Search_Volume,
+                Difficulty: kw.Difficulty,
+                Status: kw.Status || 'Backlog',
+                Editorial_Deadline: kw.Editorial_Deadline,
+                Assigned_Editor: kw.Assigned_Editor,
+                Main_Keyword: kw.Main_Keyword || 'N',
+                Article_Count: kw.Article_Count,
+                Avg_Product_Value: kw.Avg_Product_Value,
+              },
+            }))
+          );
+          records.forEach((record) => {
+            createdRecords.push({
+              id: record.id,
+              Keyword: record.get('Keyword') as string,
+              Target_URL: record.get('Target_URL') as string,
+              Search_Volume: record.get('Search_Volume') as number,
+              Difficulty: record.get('Difficulty') as number,
+              Status: record.get('Status') as KeywordStatus,
+              Editorial_Deadline: record.get('Editorial_Deadline') as string,
+              Assigned_Editor: record.get('Assigned_Editor') as string[],
+              Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+              Article_Count: record.get('Article_Count') as number,
+              Avg_Product_Value: record.get('Avg_Product_Value') as number,
+              Action_Type: 'Erstellung'
+            });
+          });
+        } else {
+          throw error;
+        }
       }
+    }
 
     console.log(`[Airtable] Successfully created ${createdRecords.length} keywords, skipped ${skippedRecords.length}`);
     return { created: createdRecords, skipped: skippedRecords };
@@ -703,9 +744,46 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+      Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
     };
-  } catch (error) {
+  } catch (error: any) {
+    // Retry without Action_Type if missing in Airtable
+    if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
+      console.warn('[Airtable] "Action_Type" field missing in Keyword-Map, retrying creation without it');
+      const fields: any = {
+        Keyword: kw.Keyword,
+        Target_URL: kw.Target_URL,
+        Search_Volume: kw.Search_Volume,
+        Difficulty: kw.Difficulty,
+        Status: kw.Status || 'Backlog',
+        Editorial_Deadline: kw.Editorial_Deadline,
+        Assigned_Editor: kw.Assigned_Editor,
+        Main_Keyword: kw.Main_Keyword || 'N',
+        Article_Count: kw.Article_Count,
+        Avg_Product_Value: kw.Avg_Product_Value,
+        Policy: kw.Policy,
+        Priority_Score: kw.Priority_Score,
+      };
+      const records = await base(TABLES.KEYWORD_MAP).create([{ fields }]);
+      if (records.length === 0) return null;
+      const record = records[0];
+      return {
+        id: record.id,
+        Keyword: record.get('Keyword') as string,
+        Target_URL: record.get('Target_URL') as string,
+        Search_Volume: record.get('Search_Volume') as number,
+        Difficulty: record.get('Difficulty') as number,
+        Status: record.get('Status') as KeywordStatus,
+        Editorial_Deadline: record.get('Editorial_Deadline') as string,
+        Assigned_Editor: record.get('Assigned_Editor') as string[],
+        Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+        Article_Count: record.get('Article_Count') as number,
+        Avg_Product_Value: record.get('Avg_Product_Value') as number,
+        Policy: record.get('Policy') as number,
+        Priority_Score: record.get('Priority_Score') as number,
+        Action_Type: 'Erstellung'
+      };
+    }
     return handleAirtableError(error,'createKeyword');
   }
 }
@@ -777,14 +855,31 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     if (kw.Priority_Score !== undefined) fields.Priority_Score = kw.Priority_Score;
     if (kw.Action_Type !== undefined) fields.Action_Type = kw.Action_Type;
 
-    const records = await base(TABLES.KEYWORD_MAP).update([
-      {
-        id,
-        fields,
-      },
-    ]);
+    let records;
+    try {
+      records = await base(TABLES.KEYWORD_MAP).update([
+        {
+          id,
+          fields,
+        },
+      ]);
+    } catch (error: any) {
+      // If Action_Type field is missing in Airtable, retry without it
+      if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
+        console.warn(`[Airtable] "Action_Type" field missing in Keyword-Map, retrying update without it for record ${id}`);
+        delete fields.Action_Type;
+        records = await base(TABLES.KEYWORD_MAP).update([
+          {
+            id,
+            fields,
+          },
+        ]);
+      } else {
+        throw error;
+      }
+    }
 
-    if (records.length === 0) return null;
+    if (!records || records.length === 0) return null;
 
     const record = records[0];
     return {
@@ -801,7 +896,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       Avg_Product_Value: record.get('Avg_Product_Value') as number,
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+      Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
     };
   } catch (error) {
     return handleAirtableError(error,'updateKeyword');

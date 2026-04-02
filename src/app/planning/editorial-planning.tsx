@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { KeywordMap, ContentLog } from "@/lib/airtable-types";
+import Link from "next/link";
 import { calculatePriorityScore, PrioritizationWeights } from "@/lib/prioritization-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAlerts } from "@/components/alerts-provider";
@@ -668,49 +669,53 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     <Calendar className="h-3.5 w-3.5" />
                     Content-Historie
                   </h4>
-                  {history.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] border-[#00463c]/20 text-[#00463c]">
-                      {history.length} Einträge
-                    </Badge>
-                  )}
+                  {keyword?.Target_URL && (
+                  <Link 
+                    href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
+                    className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
+                  >
+                    Vollständige Historie
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
                 </div>
-
-                {loadingHistory ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
+              ) : history.length > 0 ? (
+                <div className="space-y-3">
+                  {/* Latest Action Highlight */}
+                  <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
+                    <p className="text-xs font-medium text-[#00463c]">
+                      Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
-                ) : history.length > 0 ? (
-                  <div className="space-y-3">
-                    {/* Latest Action Highlight */}
-                    <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
-                      <p className="text-xs font-medium text-[#00463c]">
-                        Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
 
-                    {/* History List */}
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                      {history.map((entry) => (
-                        <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
-                          <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-bold truncate">{entry.Action_Type}</p>
-                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                {new Date(entry.Created_At).toLocaleDateString('de-DE')}
-                              </span>
-                            </div>
-                            {entry.Diff_Summary && (
-                              <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">
-                                {entry.Diff_Summary}
-                              </p>
-                            )}
+                  {/* History List */}
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                    {history.map((entry) => (
+                      <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
+                        <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-bold truncate">{entry.Action_Type}</p>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {new Date(entry.Created_At).toLocaleDateString('de-DE')}
+                            </span>
                           </div>
+                          {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
+                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">
+                              {entry.Diff_Summary}
+                            </p>
+                          )}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ) : (
+                </div>
+              ) : (
                   <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
                     <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
                   </div>
@@ -871,7 +876,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
     cell: ({ row }) => {
       const type = row.getValue("Action_Type") as string || "Erstellung";
       return (
-        <Badge variant="outline" className={type === "Erstellung" ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-slate-200 text-slate-600 bg-slate-50"}>
+        <Badge variant="outline" className="border-slate-200 text-slate-600 bg-slate-50 font-medium">
           {type}
         </Badge>
       );

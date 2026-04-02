@@ -199,13 +199,17 @@ export default function CreationPage() {
                                     </Badge>
                                   );
                                 })()}
-                                <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
-                                  <Zap className="h-3 w-3" />
-                                  {(() => {
-                                    const log = [...contentLogs]
-                                      .filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id))
-                                      .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
-                                    return log ? new Date(log.Created_At).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+                                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Beauftragt: {(() => {
+                                    const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                    const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+                                    return firstLog ? new Date(firstLog.Created_At).toLocaleString('de-DE', { 
+                                      day: '2-digit', 
+                                      month: '2-digit', 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    }) : '-';
                                   })()}
                                 </span>
                               </div>
