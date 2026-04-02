@@ -31,14 +31,13 @@ export async function POST(request: Request) {
 
     console.log(`[API] Received content from n8n for Keyword ID: ${keywordId}`);
 
-    // 1. Update Keyword Status if provided (e.g. "In Progress")
-    if (status) {
-      try {
-        await updateKeyword(keywordId, { Status: status as any });
-      } catch (err) {
-        console.error('[API] Error updating keyword status:', err);
-        // We continue even if status update fails, to save the content
-      }
+    // 1. Update Keyword Status to "Erstellt" once content is received
+    // This provides immediate feedback in the UI that the generation is done
+    try {
+      await updateKeyword(keywordId, { Status: (status || 'Erstellt') as any });
+    } catch (err) {
+      console.error('[API] Error updating keyword status:', err);
+      // We continue even if status update fails, to save the content
     }
 
     // 2. Create Content-Log entry (v2 for AI suggestions)

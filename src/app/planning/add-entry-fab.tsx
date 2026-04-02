@@ -42,6 +42,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
   const [url, setUrl] = useState('');
   const [volume, setVolume] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [actionType, setActionType] = useState<'Erstellung' | 'Optimierung'>('Erstellung');
   const [mainKeyword, setMainKeyword] = useState<'Y' | 'N'>('N');
   const [articleCount, setArticleCount] = useState('');
   const [avgProductValue, setAvgProductValue] = useState('');
@@ -64,6 +65,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
     setUrl('');
     setVolume('');
     setDifficulty('');
+    setActionType('Erstellung');
     setMainKeyword('N');
     setArticleCount('');
     setAvgProductValue('');
@@ -95,6 +97,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
           Main_Keyword: mainKeyword,
           Article_Count: articleCount ? Number(articleCount) : undefined,
           Avg_Product_Value: avgProductValue ? Number(avgProductValue) : undefined,
+          Action_Type: actionType,
         };
       } else if (type === 'trend') {
         if (!trendTopic || !source) throw new Error('Trend-Thema und Quelle sind erforderlich.');
@@ -202,8 +205,8 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                   </div>
                 </div>
 
-                {/* Row 2: Suchvolumen and Difficulty */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Row 2: Suchvolumen, Difficulty, Typ */}
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="volume" className="text-sm font-semibold">Suchvolumen</Label>
                     <Input
@@ -215,7 +218,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty (0-100)</Label>
+                    <Label htmlFor="difficulty" className="text-sm font-semibold">Difficulty</Label>
                     <Input
                       id="difficulty"
                       type="number"
@@ -225,6 +228,18 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                       onChange={(e) => setDifficulty(e.target.value)}
                       className="h-11 text-base"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="actionType" className="text-sm font-semibold">Typ *</Label>
+                    <Select value={actionType} onValueChange={(v) => setActionType(v as 'Erstellung' | 'Optimierung')}>
+                      <SelectTrigger id="actionType" className="h-11 text-base">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Erstellung">Erstellung</SelectItem>
+                        <SelectItem value="Optimierung">Optimierung</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

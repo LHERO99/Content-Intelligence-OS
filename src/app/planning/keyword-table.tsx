@@ -432,6 +432,7 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
         Difficulty: keyword.Difficulty,
         Main_Keyword: keyword.Main_Keyword,
         Status: keyword.Status,
+        Action_Type: keyword.Action_Type || 'Erstellung',
         Article_Count: keyword.Article_Count,
         Avg_Product_Value: keyword.Avg_Product_Value,
         Editorial_Deadline: keyword.Editorial_Deadline,
@@ -527,8 +528,8 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
               </div>
             </div>
 
-            {/* Row 2: Suchvolumen, Difficulty, Status */}
-            <div className="grid grid-cols-3 gap-4">
+            {/* Row 2: Suchvolumen, Difficulty, Status, Typ */}
+            <div className="grid grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-volume">Suchvolumen</Label>
                 <Input
@@ -561,6 +562,21 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                     <SelectItem value="Planned">Planned</SelectItem>
                     <SelectItem value="In Progress">In Progress</SelectItem>
                     <SelectItem value="Published">Published</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Typ</Label>
+                <Select 
+                  value={formData.Action_Type} 
+                  onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
+                >
+                  <SelectTrigger id="edit-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Erstellung">Erstellung</SelectItem>
+                    <SelectItem value="Optimierung">Optimierung</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -788,6 +804,18 @@ export const columns: ColumnDef<KeywordMap>[] = [
     ),
   },
   {
+    accessorKey: "Action_Type",
+    header: "Typ",
+    cell: ({ row }) => {
+      const type = row.getValue("Action_Type") as string || "Erstellung";
+      return (
+        <Badge variant="outline" className={type === "Erstellung" ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-slate-200 text-slate-600 bg-slate-50"}>
+          {type}
+        </Badge>
+      );
+    },
+  },
+  {
     accessorKey: "Article_Count",
     header: "Product-Count",
     cell: ({ row }) => <div>{row.getValue("Article_Count") || "-"}</div>,
@@ -814,7 +842,7 @@ export function KeywordTable({ data }: KeywordTableProps) {
   // Load column order from localStorage on mount
   React.useEffect(() => {
     const savedOrder = localStorage.getItem("keyword-table-column-order");
-    const defaultOrder = columns.map((column) => column.id as string || (column as any).accessorKey as string);
+    const defaultOrder = ["select", "Keyword", "Status", "Action_Type", "Content-Plan", "Main_Keyword", "Search_Volume", "Difficulty", "Article_Count", "Avg_Product_Value"];
     
     if (savedOrder) {
       try {

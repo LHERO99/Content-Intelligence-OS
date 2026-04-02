@@ -418,6 +418,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
       setFormData({
         Keyword: keyword.Keyword,
         Status: keyword.Status,
+        Action_Type: keyword.Action_Type || 'Erstellung',
         Editorial_Deadline: keyword.Editorial_Deadline,
         Assigned_Editor: keyword.Assigned_Editor,
         Policy: keyword.Policy,
@@ -589,6 +590,24 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     </div>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="edit-type" className="text-xs font-bold">Bearbeitungs-Typ</Label>
+                    <Select 
+                      value={formData.Action_Type} 
+                      onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
+                    >
+                      <SelectTrigger id="edit-type" className="h-10 border-[#00463c]/20 focus:ring-[#00463c]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Erstellung">Erstellung</SelectItem>
+                        <SelectItem value="Optimierung">Optimierung</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="edit-deadline" className="text-xs font-bold">Deadline</Label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -601,19 +620,18 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                       />
                     </div>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-editor" className="text-xs font-bold">Editor</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      id="edit-editor"
-                      placeholder="Editor Name..."
-                      className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
-                      value={formData.Assigned_Editor?.[0] || ""}
-                      onChange={(e) => setFormData({ ...formData, Assigned_Editor: e.target.value ? [e.target.value] : [] })}
-                    />
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-editor" className="text-xs font-bold">Editor</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        id="edit-editor"
+                        placeholder="Editor Name..."
+                        className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
+                        value={formData.Assigned_Editor?.[0] || ""}
+                        onChange={(e) => setFormData({ ...formData, Assigned_Editor: e.target.value ? [e.target.value] : [] })}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -844,6 +862,18 @@ export const columns: ColumnDef<KeywordMap>[] = [
               </Button>
             )}
         </div>
+      );
+    },
+  },
+  {
+    accessorKey: "Action_Type",
+    header: "Typ",
+    cell: ({ row }) => {
+      const type = row.getValue("Action_Type") as string || "Erstellung";
+      return (
+        <Badge variant="outline" className={type === "Erstellung" ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-slate-200 text-slate-600 bg-slate-50"}>
+          {type}
+        </Badge>
       );
     },
   },
@@ -1099,6 +1129,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       "select",
       "Keyword",
       "Status",
+      "Action_Type",
       "Editorial_Deadline",
       "Assigned_Editor",
       "Priority_Score",

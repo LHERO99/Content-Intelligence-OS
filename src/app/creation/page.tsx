@@ -64,7 +64,7 @@ export default function CreationPage() {
   const commissionedKeywords = keywords.filter(kw => {
     // A keyword belongs in the "Aufträge" list if:
     // 1. Its status is part of the creation pipeline
-    const pipelineStatuses = ['Beauftragt', 'In Progress', 'In Arbeit', 'Review', 'Optimierung'];
+    const pipelineStatuses = ['Beauftragt', 'In Progress', 'In Arbeit', 'Erstellt', 'Review', 'Optimierung'];
     const hasCorrectStatus = pipelineStatuses.includes(kw.Status);
     
     // 2. OR it has any history entry at all (meaning something was done with it in n8n or manually)
@@ -192,8 +192,8 @@ export default function CreationPage() {
                                   return (
                                     <Badge variant="outline" className={`text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold ${
                                       type === 'Erstellung' 
-                                        ? 'border-blue-200 text-blue-600 bg-blue-50/50' 
-                                        : 'border-purple-200 text-purple-600 bg-purple-50/50'
+                                        ? 'border-emerald-200 text-emerald-700 bg-emerald-50/50' 
+                                        : 'border-slate-200 text-slate-600 bg-slate-50/50'
                                     }`}>
                                       {type}
                                     </Badge>
@@ -216,14 +216,16 @@ export default function CreationPage() {
                               variant="secondary" 
                               className={
                                 kw.Status === 'Beauftragt' 
-                                  ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                                  ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                   : kw.Status === 'In Progress' || kw.Status === 'In Arbeit' 
-                                  ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                                  ? 'bg-blue-100 text-blue-700 border-blue-200' 
+                                  : kw.Status === 'Erstellt'
+                                  ? 'bg-[#00463c] text-white border-[#00463c]'
                                   : kw.Status === 'Review' 
-                                  ? 'bg-purple-50 text-purple-600 border-purple-200'
+                                  ? 'bg-purple-100 text-purple-700 border-purple-200'
                                   : kw.Status === 'Optimierung'
-                                  ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
-                                  : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                  ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                                  : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                               }
                             >
                               {kw.Status === 'In Progress' || kw.Status === 'In Arbeit' ? 'In Arbeit' : kw.Status}

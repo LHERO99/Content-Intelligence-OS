@@ -1,4 +1,4 @@
-export type KeywordStatus = 'Backlog' | 'Planned' | 'Beauftragt' | 'In Progress' | 'In Arbeit' | 'Review' | 'Optimierung' | 'Published';
+export type KeywordStatus = 'Backlog' | 'Planned' | 'Beauftragt' | 'In Progress' | 'In Arbeit' | 'Erstellt' | 'Review' | 'Optimierung' | 'Published';
 
 export interface KeywordMap {
   id: string;
@@ -14,6 +14,7 @@ export interface KeywordMap {
   Avg_Product_Value?: number;
   Policy?: number;
   Priority_Score?: number;
+  Action_Type?: 'Erstellung' | 'Optimierung';
 }
 
 export interface SkippedKeyword extends Partial<KeywordMap> {
