@@ -148,18 +148,19 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
 export async function getContentLogs(): Promise<ContentLog[]> {
   try {
     const records = await base(TABLES.CONTENT_LOG).select({
-      sort: [{ field: 'Created_At', direction: 'desc' }]
+      sort: [{ field: 'Time_Created', direction: 'desc' }],
+      maxRecords: 100
     }).all();
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+      Action_Type: record.get('Action_Type') as any,
       Version: record.get('Version') as 'v1' | 'v2',
       Content_Body: record.get('Content_Body') as string,
       Diff_Summary: record.get('Diff_Summary') as string,
       Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
+      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     }));
   } catch (error) {
@@ -169,30 +170,21 @@ export async function getContentLogs(): Promise<ContentLog[]> {
 
 export async function getContentHistoryByKeyword(keywordId: string): Promise<ContentLog[]> {
   try {
-    // We use a defensive approach for the sort field because 'Created_At' might be missing or named differently
-    let records;
-    try {
-      records = await base(TABLES.CONTENT_LOG).select({
-        filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
-        sort: [{ field: 'Created_At', direction: 'desc' }]
-      }).all();
-    } catch (sortError: any) {
-      console.warn('[Airtable] Sort by "Created_At" failed, falling back to unsorted:', sortError.message);
-      records = await base(TABLES.CONTENT_LOG).select({
-        filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
-      }).all();
-    }
+    const records = await base(TABLES.CONTENT_LOG).select({
+      filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
+      sort: [{ field: 'Time_Created', direction: 'desc' }]
+    }).all();
     
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+      Action_Type: record.get('Action_Type') as any,
       Version: record.get('Version') as 'v1' | 'v2',
       Content_Body: record.get('Content_Body') as string,
       Diff_Summary: record.get('Diff_Summary') as string,
       Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Created_At') || record.get('Timestamp') || new Date().toISOString()) as string,
+      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     }));
   } catch (error) {
@@ -202,19 +194,15 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
 
 export async function createContentLog(log: Partial<ContentLog>): Promise<ContentLog | null> {
   try {
-    const records = await base(TABLES.CONTENT_LOG).create([
-      {
-        fields: {
-          Keyword_ID: log.Keyword_ID,
-          Action_Type: log.Action_Type,
-          Version: log.Version || 'v1',
-          Content_Body: log.Content_Body,
-          Diff_Summary: log.Diff_Summary,
-          Reasoning_Chain: log.Reasoning_Chain,
-          Editor: log.Editor,
-        },
-      },
-    ]);
+    const fields: any = {
+      Keyword_ID: log.Keyword_ID,
+      Version: log.Version || 'v1',
+      Content_Body: log.Content_Body,
+      Diff_Summary: log.Diff_Summary,
+      Reasoning_Chain: log.Reasoning_Chain,
+    };
+
+    const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
 
     if (records.length === 0) return null;
     const record = records[0];
@@ -222,12 +210,12 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
-      Version: record.get('Version') as 'v1' | 'v2',
+      Action_Type: record.get('Action_Type') as any,
+      Version: record.get('Version') as any,
       Content_Body: record.get('Content_Body') as string,
       Diff_Summary: record.get('Diff_Summary') as string,
       Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
+      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     };
   } catch (error) {
@@ -237,33 +225,23 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
 
 export async function getAllContentHistory(): Promise<ContentLog[]> {
   try {
-    let records;
-    try {
-      records = await base(TABLES.CONTENT_LOG)
-        .select({
-          sort: [{ field: 'Created_At', direction: 'desc' }],
-          maxRecords: 100,
-        })
-        .all();
-    } catch (sortError: any) {
-      console.warn('[Airtable] Sort by "Created_At" failed in getAllContentHistory:', sortError.message);
-      records = await base(TABLES.CONTENT_LOG)
-        .select({
-          maxRecords: 100,
-        })
-        .all();
-    }
+    const records = await base(TABLES.CONTENT_LOG)
+      .select({
+        sort: [{ field: 'Time_Created', direction: 'desc' }],
+        maxRecords: 100,
+      })
+      .all();
 
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
-      Version: record.get('Version') as 'v1' | 'v2',
+      Action_Type: record.get('Action_Type') as any,
+      Version: record.get('Version') as any,
       Content_Body: record.get('Content_Body') as string,
       Diff_Summary: record.get('Diff_Summary') as string,
       Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Created_At') || record.get('Timestamp') || new Date().toISOString()) as string,
+      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     }));
   } catch (error) {
