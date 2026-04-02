@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteKeywords, AirtableValidationError } from '@/lib/airtable';
+import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteKeywords, AirtableValidationError, createContentLog } from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -50,6 +50,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Automatically log "Planung" if keyword is created directly in Planned status
+    if (result.Status === 'Planned') {
+      await createContentLog({
+        Keyword_ID: [result.id],
+        Target_URL: result.Target_URL,
+        Action_Type: 'Planung' as any,
+        Diff_Summary: 'Keyword direkt in Planung erstellt',
+      });
+    }
+
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API] Error creating keyword:', error);
@@ -80,7 +90,11 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Convert numeric fields if they exist in updates
+    // 1. Fetch current record to check for status transitions
+    const currentKeywords = await getKeywordMap();
+    const currentKeyword = currentKeywords.find(k => k.id === id);
+
+    // 2. Convert numeric fields if they exist in updates
     if (updates.Search_Volume !== undefined) updates.Search_Volume = Number(updates.Search_Volume);
     if (updates.Difficulty !== undefined) updates.Difficulty = Number(updates.Difficulty);
     if (updates.Article_Count !== undefined) updates.Article_Count = Number(updates.Article_Count);
@@ -93,6 +107,19 @@ export async function PATCH(request: Request) {
         { error: 'Fehler beim Aktualisieren des Keywords in Airtable.' },
         { status: 500 }
       );
+    }
+
+    // 3. Log History for specific transitions
+    if (currentKeyword && updates.Status) {
+      // Transition from Backlog to Planned -> Log "Planung"
+      if (currentKeyword.Status === 'Backlog' && updates.Status === 'Planned') {
+        await createContentLog({
+          Keyword_ID: [id],
+          Target_URL: result.Target_URL,
+          Action_Type: 'Planung' as any,
+          Diff_Summary: 'Keyword in Redaktions-Planung aufgenommen',
+        });
+      }
     }
 
     return NextResponse.json(result);

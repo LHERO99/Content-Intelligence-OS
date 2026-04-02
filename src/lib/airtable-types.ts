@@ -25,7 +25,7 @@ export interface ContentLog {
   ID: number;
   Keyword_ID: string[]; // Link to Keyword-Map
   Target_URL?: string; // New field for URL-based history
-  Action_Type: 'Erstellung' | 'Optimierung';
+  Action_Type: 'Planung' | 'Erstellung' | 'Optimierung';
   Version: 'v1' | 'v2';
   Content_Body?: string;
   Diff_Summary?: string;
