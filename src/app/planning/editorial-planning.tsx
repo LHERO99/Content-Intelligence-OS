@@ -928,6 +928,19 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         throw new Error(resData.error || "Commissioning failed");
       }
 
+      // Create an initial log entry to record the commissioning timestamp
+      await fetch('/api/planning/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywordId: id,
+          actionType: 'Erstellung',
+          contentBody: '',
+          diffSummary: 'Content beauftragt',
+          version: 'v1'
+        })
+      });
+
       addAlert({
         title: "Erfolg",
         message: "Content beauftragt. In wenigen Minuten im Tab 'Content-Erstellung' einsehbar.",
@@ -980,7 +993,12 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   }, []);
 
   const plannedKeywords = React.useMemo(() => {
-    const filtered = keywords.filter(kw => kw.Editorial_Deadline || kw.Status !== "Backlog");
+    // Only show keywords that are in planning (have a deadline or status other than Backlog)
+    // AND are not in status "Backlog" (which is where they go after "soft delete")
+    const filtered = keywords.filter(kw => 
+      (kw.Editorial_Deadline || kw.Status !== "Backlog") && 
+      kw.Status !== "Backlog"
+    );
     
     if (!weights) return filtered;
 
