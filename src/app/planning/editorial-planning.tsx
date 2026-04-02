@@ -954,23 +954,20 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         })
       });
 
-      // Trigger n8n Multi-Agent Workflow
+      // Update local state immediately for instant UI feedback
+      setCommissionedIds(prev => new Set([...Array.from(prev), id]));
+
+      // Trigger n8n Multi-Agent Workflow via GET request
       try {
-        await fetch('/api/n8n/trigger', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'COMMISSION_CONTENT',
-            data: {
-              keywordId: id,
-              keyword: keyword?.Keyword,
-              targetUrl: keyword?.Target_URL,
-            }
-          }),
-        });
+        const n8nUrl = new URL('https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c');
+        n8nUrl.searchParams.append('keywordId', id);
+        n8nUrl.searchParams.append('keyword', keyword?.Keyword || '');
+        n8nUrl.searchParams.append('targetUrl', keyword?.Target_URL || '');
+        n8nUrl.searchParams.append('action', 'COMMISSION_CONTENT');
+        
+        await fetch(n8nUrl.toString(), { method: 'GET' });
       } catch (n8nError) {
         console.error("Failed to trigger n8n workflow:", n8nError);
-        // We don't throw here because the Airtable update was successful
       }
 
       addAlert({
