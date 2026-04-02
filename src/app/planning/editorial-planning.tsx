@@ -25,7 +25,13 @@ import {
   X,
   AlertCircle,
   GripVertical,
-  Settings2
+  Settings2,
+  ExternalLink,
+  BarChart3,
+  Target,
+  ShoppingBag,
+  Euro,
+  ShieldCheck
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -76,6 +82,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // DND Kit Imports
 import {
@@ -425,92 +433,184 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
     }
   };
 
+  const MetricItem = ({ icon: Icon, label, value, subValue }: { icon: any, label: string, value: string | number | undefined, subValue?: string }) => (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+      <div className="mt-0.5 p-1.5 rounded-md bg-white border border-border shadow-sm">
+        <Icon className="h-4 w-4 text-[#00463c]" />
+      </div>
+      <div className="space-y-0.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="flex items-baseline gap-2">
+          <p className="text-sm font-semibold text-[#00463c]">{value ?? "-"}</p>
+          {subValue && <span className="text-[10px] text-muted-foreground">{subValue}</span>}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
-              Planung bearbeiten
-            </DialogTitle>
-            <DialogDescription>
-              Ändern Sie die Planungsdetails für "{keyword?.Keyword}".
-            </DialogDescription>
+      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-6 pb-4 bg-[#00463c]/5 border-b border-[#00463c]/10">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <DialogTitle className="text-[#00463c] font-bold text-2xl flex items-center gap-2">
+                  {keyword?.Keyword}
+                </DialogTitle>
+                <DialogDescription className="flex items-center gap-2">
+                  {keyword?.Target_URL ? (
+                    <a 
+                      href={keyword.Target_URL} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#00463c] hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {keyword.Target_URL}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">Keine URL hinterlegt</span>
+                  )}
+                </DialogDescription>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Priority Score</p>
+                <Badge variant="outline" className="bg-[#00463c] text-white border-none text-lg px-3 py-1 font-bold">
+                  {keyword?.Priority_Score?.toFixed(1) || "0.0"}
+                </Badge>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-keyword">Keyword</Label>
-              <Input
-                id="edit-keyword"
-                value={formData.Keyword || ""}
-                disabled
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select 
-                  value={formData.Status} 
-                  onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Backlog">Backlog</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Review">Review</SelectItem>
-                    <SelectItem value="Done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
+          <ScrollArea className="flex-1">
+            <div className="p-6 space-y-6">
+              {/* SEO Metrics Section */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  SEO Metriken (Read-only)
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <MetricItem 
+                    icon={Target} 
+                    label="Suchvolumen" 
+                    value={keyword?.Search_Volume?.toLocaleString("de-DE")} 
+                  />
+                  <MetricItem 
+                    icon={ShieldCheck} 
+                    label="Difficulty" 
+                    value={keyword?.Difficulty} 
+                    subValue="/ 100"
+                  />
+                  <MetricItem 
+                    icon={ShoppingBag} 
+                    label="Produkte" 
+                    value={keyword?.Article_Count} 
+                  />
+                  <MetricItem 
+                    icon={Euro} 
+                    label="Ø Produktwert" 
+                    value={keyword?.Avg_Product_Value ? `${keyword.Avg_Product_Value.toFixed(2)}€` : undefined} 
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-deadline">Deadline</Label>
-                <Input
-                  id="edit-deadline"
-                  type="date"
-                  value={formData.Editorial_Deadline || ""}
-                  onChange={(e) => setFormData({ ...formData, Editorial_Deadline: e.target.value })}
-                />
+
+              <Separator className="bg-[#00463c]/10" />
+
+              {/* Editable Fields Section */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Planungs-Details
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-status" className="text-xs font-bold">Status</Label>
+                    <Select 
+                      value={formData.Status} 
+                      onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
+                    >
+                      <SelectTrigger id="edit-status" className="h-10 border-[#00463c]/20 focus:ring-[#00463c]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Backlog">Backlog</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Review">Review</SelectItem>
+                        <SelectItem value="Done">Done</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-deadline" className="text-xs font-bold">Deadline</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        id="edit-deadline"
+                        type="date"
+                        className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
+                        value={formData.Editorial_Deadline || ""}
+                        onChange={(e) => setFormData({ ...formData, Editorial_Deadline: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-editor" className="text-xs font-bold">Editor</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="edit-editor"
+                      placeholder="Editor Name..."
+                      className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
+                      value={formData.Assigned_Editor?.[0] || ""}
+                      onChange={(e) => setFormData({ ...formData, Assigned_Editor: e.target.value ? [e.target.value] : [] })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="edit-policy" className="text-xs font-bold">Politik / Strategie Relevanz</Label>
+                    <Badge variant="secondary" className="bg-[#00463c]/10 text-[#00463c] font-bold">
+                      {formData.Policy || 0}%
+                    </Badge>
+                  </div>
+                  <Slider
+                    id="edit-policy"
+                    value={[formData.Policy || 0]}
+                    onValueChange={(v: number | readonly number[]) => {
+                      const val = Array.isArray(v) ? v[0] : v;
+                      setFormData({ ...formData, Policy: val });
+                    }}
+                    max={100}
+                    step={1}
+                    className="py-2"
+                  />
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Beeinflusst den Prioritätsscore basierend auf strategischer Wichtigkeit.
+                  </p>
+                </div>
               </div>
+
+              {error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Fehler</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
+          </ScrollArea>
 
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label htmlFor="edit-policy">Politik / Strategie Relevanz</Label>
-                <span className="text-sm font-medium text-[#00463c]">{formData.Policy || 0}%</span>
-              </div>
-              <Slider
-                id="edit-policy"
-                value={[formData.Policy || 0]}
-                onValueChange={(v: number | readonly number[]) => {
-                  const val = Array.isArray(v) ? v[0] : v;
-                  setFormData({ ...formData, Policy: val });
-                }}
-                max={100}
-                step={1}
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Beeinflusst den Prioritätsscore basierend auf strategischer Wichtigkeit.
-              </p>
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Fehler</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <DialogFooter className="p-6 bg-muted/30 border-t border-border">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
               Abbrechen
             </Button>
-            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
+            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c] min-w-[120px]">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Speichern
             </Button>
@@ -558,6 +658,55 @@ export const columns: ColumnDef<KeywordMap>[] = [
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
+    accessorKey: "Target_URL",
+    header: "URL",
+    cell: ({ row }) => {
+      const url = row.getValue("Target_URL") as string;
+      if (!url) return "-";
+      return (
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-[#00463c] hover:underline flex items-center gap-1 max-w-[200px] truncate"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" />
+          {url.replace(/^https?:\/\/(www\.)?/, '')}
+        </a>
+      );
+    },
+  },
+  {
+    accessorKey: "Search_Volume",
+    header: "Suchvolumen",
+    cell: ({ row }) => {
+      const vol = row.getValue("Search_Volume") as number;
+      return vol ? vol.toLocaleString("de-DE") : "-";
+    },
+  },
+  {
+    accessorKey: "Difficulty",
+    header: "Difficulty",
+    cell: ({ row }) => {
+      const diff = row.getValue("Difficulty") as number;
+      return diff ?? "-";
+    },
+  },
+  {
+    accessorKey: "Article_Count",
+    header: "Produkt-Anzahl",
+    cell: ({ row }) => row.getValue("Article_Count") ?? "-",
+  },
+  {
+    accessorKey: "Avg_Product_Value",
+    header: "Produkt-Value",
+    cell: ({ row }) => {
+      const val = row.getValue("Avg_Product_Value") as number;
+      return val ? `${val.toFixed(2)}€` : "-";
+    },
+  },
+  {
     accessorKey: "Status",
     header: "Status",
     cell: ({ row }) => (
@@ -588,9 +737,18 @@ export const columns: ColumnDef<KeywordMap>[] = [
       return (
         <div className="flex items-center gap-2 text-sm">
           <User className="h-4 w-4 text-muted-foreground" />
-          {editor && editor.length > 0 ? "Zugewiesen" : "Offen"}
+          {editor && editor.length > 0 ? (typeof editor[0] === 'string' ? editor[0] : "Zugewiesen") : "Offen"}
         </div>
       );
+    },
+  },
+  {
+    accessorKey: "Policy",
+    header: "Politik",
+    cell: ({ row }) => {
+      const policy = row.getValue("Policy") as number;
+      if (policy === undefined || policy === null) return "-";
+      return `${policy}%`;
     },
   },
   {
@@ -622,7 +780,11 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const { addAlert } = useAlerts();
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    Article_Count: false,
+    Avg_Product_Value: false,
+    Difficulty: false,
+  });
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>([]);
 
