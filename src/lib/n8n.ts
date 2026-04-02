@@ -7,7 +7,8 @@ export type N8nActionType =
   | 'CLAIM_TREND' 
   | 'GENERATE_DRAFT' 
   | 'APPROVE_PROPOSAL' 
-  | 'BLACKLIST_TREND';
+  | 'BLACKLIST_TREND'
+  | 'COMMISSION_CONTENT';
 
 export interface N8nPayload {
   action: N8nActionType;
@@ -21,8 +22,13 @@ export interface N8nPayload {
  * This is intended to be called from the server-side (API routes).
  */
 export async function triggerN8nWorkflow(payload: N8nPayload) {
-  const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+  let n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
   const n8nApiKey = process.env.N8N_API_KEY;
+
+  // Use specific multi-agent webhook for commissioning
+  if (payload.action === 'COMMISSION_CONTENT') {
+    n8nWebhookUrl = 'https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c';
+  }
 
   if (!n8nWebhookUrl) {
     throw new Error('N8N_WEBHOOK_URL is not defined in environment variables.');

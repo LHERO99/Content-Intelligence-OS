@@ -174,9 +174,9 @@ export default function CreationPage() {
                           <TableCell>
                             <Badge 
                               variant="secondary" 
-                              className={kw.Status === 'Beauftragt' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}
+                              className={kw.Status === 'Beauftragt' || kw.Status === 'In Progress' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
                             >
-                              {kw.Status}
+                              {kw.Status === 'In Progress' ? 'In Arbeit' : kw.Status}
                             </Badge>
                           </TableCell>
                         </TableRow>

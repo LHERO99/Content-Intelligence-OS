@@ -129,7 +129,8 @@ export async function DELETE(request: Request) {
             await updateKeyword(recordId, {
               Status: 'Backlog',
               Editorial_Deadline: undefined,
-              Assigned_Editor: [],
+              // Use undefined instead of empty array for link fields if empty
+              Assigned_Editor: undefined,
             });
           }
           return NextResponse.json({ success: true });
@@ -159,7 +160,7 @@ export async function DELETE(request: Request) {
         await updateKeyword(id, {
           Status: 'Backlog',
           Editorial_Deadline: undefined,
-          Assigned_Editor: [],
+          Assigned_Editor: undefined,
         });
         return NextResponse.json({ success: true });
       } catch (error: any) {

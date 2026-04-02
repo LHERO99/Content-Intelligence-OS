@@ -560,22 +560,22 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                         type="button"
                         size="sm"
                         variant="outline"
-                        className={`w-full h-10 gap-2 justify-center ${keyword?.Status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
+                        className={`w-full h-10 gap-2 justify-center ${commissionedIds.has(keyword?.id || '') ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
                         onClick={() => {
-                          if (keyword && keyword.Status !== "Beauftragt") {
+                          if (keyword && !commissionedIds.has(keyword.id)) {
                             onCommission(keyword.id);
                           }
                         }}
-                        disabled={isCommissioning || keyword?.Status === "Beauftragt"}
+                        disabled={isCommissioning || commissionedIds.has(keyword?.id || '')}
                       >
                         {isCommissioning ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : keyword?.Status === "Beauftragt" ? (
+                        ) : commissionedIds.has(keyword?.id || '') ? (
                           <ShieldCheck className="h-4 w-4" />
                         ) : (
                           <Zap className="h-4 w-4 fill-current" />
                         )}
-                        {keyword?.Status === "Beauftragt" ? "Beauftragt" : "Content beauftragen"}
+                        {commissionedIds.has(keyword?.id || '') ? "Beauftragt" : "Content beauftragen"}
                       </Button>
                     </div>
                   </div>
@@ -804,31 +804,31 @@ export const columns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Status",
     header: "Status",
     cell: ({ row, table }) => {
-      const status = row.getValue("Status") as string;
       const id = (row.original as any).id;
       const meta = table.options.meta as any;
       const isCommissioning = meta?.isCommissioning === id;
+      const isCommissioned = meta?.commissionedIds?.has(id);
 
       return (
         <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="outline"
-            className={`h-7 text-xs gap-1 min-w-[110px] justify-center ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
+            className={`h-7 text-xs gap-1 min-w-[110px] justify-center ${isCommissioned ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"}`}
             onClick={(e) => {
               e.stopPropagation();
-              if (status !== "Beauftragt") meta?.handleCommissionContent(id);
+              if (!isCommissioned) meta?.handleCommissionContent(id);
             }}
-            disabled={isCommissioning || status === "Beauftragt"}
+            disabled={isCommissioning || isCommissioned}
           >
             {isCommissioning ? (
               <Loader2 className="h-3 w-3 animate-spin" />
-            ) : status === "Beauftragt" ? (
+            ) : isCommissioned ? (
               <ShieldCheck className="h-3 w-3" />
             ) : (
               <Zap className="h-3 w-3 fill-current" />
             )}
-            {status === "Beauftragt" ? "Beauftragt" : "Beauftragen"}
+            {isCommissioned ? "Beauftragt" : "Beauftragen"}
           </Button>
         </div>
       );
@@ -917,10 +917,14 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const handleCommissionContent = async (id: string) => {
     try {
       setIsCommissioning(id);
+      
+      const keyword = keywords.find(k => k.id === id);
+
+      // Use "In Progress" as the status for commissioning to avoid Airtable select option errors
       const response = await fetch("/api/planning/keywords", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, Status: "Beauftragt" }),
+        body: JSON.stringify({ id, Status: "In Progress" }),
       });
 
       if (!response.ok) {
@@ -940,6 +944,25 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
           version: 'v1'
         })
       });
+
+      // Trigger n8n Multi-Agent Workflow
+      try {
+        await fetch('/api/n8n/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'COMMISSION_CONTENT',
+            data: {
+              keywordId: id,
+              keyword: keyword?.Keyword,
+              targetUrl: keyword?.Target_URL,
+            }
+          }),
+        });
+      } catch (n8nError) {
+        console.error("Failed to trigger n8n workflow:", n8nError);
+        // We don't throw here because the Airtable update was successful
+      }
 
       addAlert({
         title: "Erfolg",
@@ -1007,6 +1030,29 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       Priority_Score: calculatePriorityScore(kw, weights)
     }));
   }, [keywords, weights]);
+
+  // Helper to check if a keyword has been commissioned based on history
+  const [commissionedIds, setCommissionedIds] = React.useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    const fetchGlobalHistory = async () => {
+      try {
+        const response = await fetch('/api/planning/history');
+        if (response.ok) {
+          const logs: ContentLog[] = await response.json();
+          const ids = new Set(logs.map(l => l.Keyword_ID?.[0]).filter(Boolean));
+          setCommissionedIds(ids as Set<string>);
+        }
+      } catch (err) {
+        console.error("Failed to fetch global history:", err);
+      }
+    };
+    fetchGlobalHistory();
+    
+    const handleRefresh = () => fetchGlobalHistory();
+    window.addEventListener("refresh-planning-data", handleRefresh);
+    return () => window.removeEventListener("refresh-planning-data", handleRefresh);
+  }, []);
 
   const updateData = async (rowId: string, updates: any) => {
     try {
@@ -1119,6 +1165,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       deleteData,
       handleCommissionContent,
       isCommissioning,
+      commissionedIds,
     },
     initialState: {
       sorting: [{ id: "Priority_Score", desc: true }],
