@@ -127,7 +127,7 @@ export async function DELETE(request: Request) {
         for (const recordId of ids) {
           await updateKeyword(recordId, {
             Status: 'Backlog',
-            Editorial_Deadline: null,
+            Editorial_Deadline: undefined,
             Assigned_Editor: [],
           });
         }
@@ -148,7 +148,7 @@ export async function DELETE(request: Request) {
       // Soft delete: Reset planning fields
       await updateKeyword(id, {
         Status: 'Backlog',
-        Editorial_Deadline: null,
+        Editorial_Deadline: undefined,
         Assigned_Editor: [],
       });
     } else {
