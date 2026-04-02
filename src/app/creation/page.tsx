@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { KeywordMap, ContentLog } from '@/lib/airtable-types';
 import { AIEditorWorkspace } from './ai-editor-workspace';
-import { ScoringEngine } from './scoring-engine';
 import { ReasoningPanel } from './reasoning-panel';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,11 +20,6 @@ export default function CreationPage() {
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
-
-  // Scoring state
-  const [seoScore, setSeoScore] = useState(75);
-  const [brandScore, setBrandScore] = useState(85);
-  const [technicalScore, setTechnicalScore] = useState(90);
 
   useEffect(() => {
     async function fetchData() {
@@ -91,6 +85,13 @@ export default function CreationPage() {
   const v2Content = v2Log?.Content_Body || '';
   const reasoning = v2Log?.Reasoning_Chain || '';
 
+  // Determine the mode (Erstellung or Optimierung) based on the log entries
+  const latestLogWithAction = [...relevantLogs].sort((a, b) => 
+    new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime()
+  ).find(log => log.Action_Type === 'Erstellung' || log.Action_Type === 'Optimierung');
+  
+  const creationMode = latestLogWithAction?.Action_Type || 'Erstellung';
+
   const handleApprove = async () => {
     if (!selectedKeywordId) return;
     setApproving(true);
@@ -98,8 +99,7 @@ export default function CreationPage() {
       await triggerN8nAction('APPROVE_PROPOSAL', {
         keywordId: selectedKeywordId,
         keyword: selectedKeyword?.Keyword,
-        v2Content,
-        scores: { seoScore, brandScore, technicalScore }
+        v2Content
       });
       
       // Log the action in Content-Log
@@ -110,7 +110,7 @@ export default function CreationPage() {
           keywordId: selectedKeywordId,
           actionType: 'Optimierung',
           contentBody: v2Content,
-          Diff_Summary: `Approved AI proposal with scores: SEO ${seoScore}, Brand ${brandScore}, Tech ${technicalScore}`,
+          Diff_Summary: `Approved AI proposal`,
           reasoningChain: reasoning,
           version: 'v2'
         })
@@ -184,10 +184,24 @@ export default function CreationPage() {
                                   <span className="truncate">{kw.Target_URL.replace(/^https?:\/\/(www\.)?/, '')}</span>
                                 </div>
                               )}
-                              <div className="flex flex-col gap-0.5 mt-1">
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {(() => {
+                                  const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                  const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())[0];
+                                  const type = latestLog?.Action_Type || 'Erstellung';
+                                  return (
+                                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold ${
+                                      type === 'Erstellung' 
+                                        ? 'border-blue-200 text-blue-600 bg-blue-50/50' 
+                                        : 'border-purple-200 text-purple-600 bg-purple-50/50'
+                                    }`}>
+                                      {type}
+                                    </Badge>
+                                  );
+                                })()}
                                 <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
                                   <Zap className="h-3 w-3" />
-                                  Beauftragt: {(() => {
+                                  {(() => {
                                     const log = [...contentLogs]
                                       .filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id))
                                       .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
@@ -256,20 +270,16 @@ export default function CreationPage() {
                         <p className="text-[10px] text-muted-foreground mt-1 italic">Dies kann einige Minuten dauern.</p>
                       </div>
                     ) : (
-                      <AIEditorWorkspace v1Content={v1Content} v2Content={v2Content} />
+                      <AIEditorWorkspace 
+                        v1Content={v1Content} 
+                        v2Content={v2Content} 
+                        mode={creationMode as any}
+                      />
                     )}
                   </div>
 
                   {/* Sidebar Area (now below on mobile, or integrated) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ScoringEngine 
-                      seoScore={seoScore}
-                      brandScore={brandScore}
-                      technicalScore={technicalScore}
-                      onSeoChange={(v) => setSeoScore(Array.isArray(v) ? v[0] : (v as number))}
-                      onBrandChange={(v) => setBrandScore(Array.isArray(v) ? v[0] : (v as number))}
-                      onTechnicalChange={(v) => setTechnicalScore(Array.isArray(v) ? v[0] : (v as number))}
-                    />
+                  <div className="grid grid-cols-1 gap-6">
                     <div className="h-[400px]">
                       <ReasoningPanel reasoning={reasoning} />
                     </div>
