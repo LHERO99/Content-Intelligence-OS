@@ -191,7 +191,8 @@ function FilterBar({ table, columns }: FilterBarProps) {
   const bulkDelete = async (ids: string[]) => {
     try {
       setIsBulkDeleting(true);
-      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}`, {
+      // Use soft delete to only remove from planning, not from Keyword-Map
+      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}&soft=true`, {
         method: "DELETE",
       });
       
@@ -201,14 +202,14 @@ function FilterBar({ table, columns }: FilterBarProps) {
       }
 
       addAlert({
-        message: `${ids.length} Einträge wurden erfolgreich gelöscht.`,
+        message: `${ids.length} Einträge wurden aus der Planung entfernt.`,
         type: "success",
       });
       table.resetRowSelection();
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        title: "Fehler beim Bulk-Löschen",
+        title: "Fehler beim Entfernen",
         message: error.message,
         type: "error",
       });
@@ -946,7 +947,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
 
   const deleteData = async (id: string) => {
     try {
-      const response = await fetch(`/api/planning/keywords?id=${id}`, {
+      // Use soft delete to only remove from planning, not from Keyword-Map
+      const response = await fetch(`/api/planning/keywords?id=${id}&soft=true`, {
         method: "DELETE",
       });
       
@@ -956,13 +958,13 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       }
 
       addAlert({
-        message: "Eintrag wurde erfolgreich gelöscht.",
+        message: "Eintrag wurde aus der Planung entfernt.",
         type: "success",
       });
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        title: "Fehler beim Löschen",
+        title: "Fehler beim Entfernen",
         message: error.message,
         type: "error",
       });
@@ -990,7 +992,13 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         // Filter out any columns that no longer exist and add any new columns
         const existingColumns = parsedOrder.filter(id => defaultOrder.includes(id));
         const newColumns = defaultOrder.filter(id => !parsedOrder.includes(id));
-        setColumnOrder([...existingColumns, ...newColumns]);
+        
+        // Force "select" to be at the beginning if it exists in defaultOrder
+        let finalOrder = [...existingColumns, ...newColumns];
+        if (finalOrder.includes("select")) {
+          finalOrder = ["select", ...finalOrder.filter(id => id !== "select")];
+        }
+        setColumnOrder(finalOrder);
       } catch (e) {
         console.error("Failed to parse saved column order", e);
         setColumnOrder(defaultOrder);

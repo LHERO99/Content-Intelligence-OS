@@ -118,10 +118,22 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const idsParam = searchParams.get('ids');
+    const softDelete = searchParams.get('soft') === 'true';
 
     if (idsParam) {
       const ids = idsParam.split(',');
-      await bulkDeleteKeywords(ids);
+      if (softDelete) {
+        // Soft delete: Reset planning fields instead of deleting the record
+        for (const recordId of ids) {
+          await updateKeyword(recordId, {
+            Status: 'Backlog',
+            Editorial_Deadline: null,
+            Assigned_Editor: [],
+          });
+        }
+      } else {
+        await bulkDeleteKeywords(ids);
+      }
       return NextResponse.json({ success: true });
     }
 
@@ -132,7 +144,16 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteKeyword(id);
+    if (softDelete) {
+      // Soft delete: Reset planning fields
+      await updateKeyword(id, {
+        Status: 'Backlog',
+        Editorial_Deadline: null,
+        Assigned_Editor: [],
+      });
+    } else {
+      await deleteKeyword(id);
+    }
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[API] Error deleting keyword:', error);
