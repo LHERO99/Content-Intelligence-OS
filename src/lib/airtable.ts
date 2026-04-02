@@ -155,7 +155,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: record.get('Target_URL') as string,
+      Target_URL: Array.isArray(record.get('Target_URL')) ? (record.get('Target_URL') as string[])[0] : (record.get('Target_URL') as string),
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1', // Derived from content presence
       Content_Body: record.get('Content_Body') as string,
