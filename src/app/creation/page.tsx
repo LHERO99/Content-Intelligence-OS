@@ -102,11 +102,11 @@ export default function CreationPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] space-y-6">
+    <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 text-[#00463c]">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-[#00463c]">Content-Erstellung</h1>
-          <p className="text-emerald-700">Überprüfen und verfeinern Sie KI-generierte Content-Vorschläge.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Content-Erstellung</h1>
+          <p className="text-muted-foreground">Überprüfen und verfeinern Sie KI-generierte Content-Vorschläge.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button 
@@ -131,7 +131,7 @@ export default function CreationPage() {
             <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 py-4">
               <CardTitle className="text-lg font-bold text-[#00463c] flex items-center gap-2">
                 <Zap className="h-5 w-5 fill-emerald-600 text-emerald-600" />
-                Aktive Aufträge
+                Aufträge
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-hidden">
@@ -154,10 +154,21 @@ export default function CreationPage() {
                           <TableCell className="font-medium">
                             <div className="flex flex-col">
                               <span>{kw.Keyword}</span>
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
-                                <Clock className="h-3 w-3" />
-                                {kw.Editorial_Deadline ? new Date(kw.Editorial_Deadline).toLocaleDateString('de-DE') : 'Keine Deadline'}
-                              </span>
+                              <div className="flex flex-col gap-0.5 mt-1">
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Deadline: {kw.Editorial_Deadline ? new Date(kw.Editorial_Deadline).toLocaleDateString('de-DE') : 'Keine'}
+                                </span>
+                                <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  Beauftragt: {(() => {
+                                    const log = [...contentLogs]
+                                      .filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id))
+                                      .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+                                    return log ? new Date(log.Created_At).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                                  })()}
+                                </span>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
