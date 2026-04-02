@@ -46,6 +46,16 @@ export function PrioritizationSettingsModal({
   const fetchWeights = async () => {
     setIsLoading(true);
     try {
+      // Try to load from localStorage first for immediate UI update
+      const savedWeights = localStorage.getItem("prioritization-weights");
+      if (savedWeights) {
+        try {
+          setWeights(JSON.parse(savedWeights));
+        } catch (e) {
+          console.error("Failed to parse saved weights from localStorage", e);
+        }
+      }
+
       const response = await fetch("/api/admin/config");
       if (!response.ok) throw new Error("Fehler beim Laden der Konfiguration");
       const config = await response.json();
@@ -62,6 +72,8 @@ export function PrioritizationSettingsModal({
 
       if (foundAny) {
         setWeights(newWeights);
+        // Update localStorage with fresh data from server
+        localStorage.setItem("prioritization-weights", JSON.stringify(newWeights));
       }
     } catch (error) {
       console.error("Error fetching weights:", error);
@@ -78,6 +90,7 @@ export function PrioritizationSettingsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Save to Airtable
       const response = await fetch("/api/admin/config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -88,6 +101,9 @@ export function PrioritizationSettingsModal({
         const errorData = await response.json();
         throw new Error(errorData.error || "Fehler beim Speichern der Konfiguration");
       }
+
+      // Also save to localStorage as a fallback/cache
+      localStorage.setItem("prioritization-weights", JSON.stringify(weights));
 
       addAlert({
         message: "Priorisierungseinstellungen wurden erfolgreich gespeichert.",

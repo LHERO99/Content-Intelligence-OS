@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
@@ -40,6 +40,11 @@ const items = [
     title: "Content-Monitoring",
     url: "/monitoring",
     icon: Activity,
+  },
+  {
+    title: "Content-Historie",
+    url: "/history",
+    icon: History,
   },
 ]
 

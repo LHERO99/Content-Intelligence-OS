@@ -973,6 +973,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   React.useEffect(() => {
     const savedOrder = localStorage.getItem("editorial-table-column-order");
     const defaultOrder = [
+      "select",
       "Keyword",
       "Status",
       "Editorial_Deadline",
