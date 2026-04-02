@@ -6,6 +6,14 @@
 - **Decision**: Simplified middleware redirection logic to prevent infinite loops.
 - **Rationale**: Authenticated users are now correctly redirected away from the sign-in page, and unauthenticated users are redirected to sign-in for protected routes, resolving a bug where valid sessions were being ignored by the middleware.
 
+## Data Flow & External Systems
+- **Decision**: Webhook-based asynchronous content generation (Next.js <-> n8n).
+- **Rationale**: Long-running AI generation tasks are offloaded to n8n to prevent Vercel/Next.js function timeouts. The system uses a callback pattern (`/api/n8n/callback`) to finalize records.
+- **Decision**: Content Versioning via `Content-Log` Junction Table.
+- **Rationale**: Instead of overwriting the main keyword record, each AI generation or human edit creates a new entry in `Content-Log`. This enables the "Time Machine" feature and protects against data loss.
+- **Decision**: Polling vs. WebSockets for Creation UI.
+- **Rationale**: To maintain simplicity and avoid the overhead of a WebSocket server (like Socket.io) in a serverless environment, the Creation module uses a short-interval polling (5s) strategy to check for n8n callback completions.
+
 ## Airtable Query Handling
 - **Decision**: Implemented explicit timeouts for all Airtable queries in [`src/lib/airtable.ts`](src/lib/airtable.ts).
 - **Rationale**: Prevents long-running requests from blocking the application and improves overall responsiveness.

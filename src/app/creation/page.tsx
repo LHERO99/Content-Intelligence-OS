@@ -67,8 +67,9 @@ export default function CreationPage() {
   // Filter keywords for the "Aufträge" list
   const commissionedKeywords = keywords.filter(kw => {
     // A keyword belongs in the "Aufträge" list if:
-    // 1. Its status is explicitly "Beauftragt" or "In Progress"
-    const hasCorrectStatus = kw.Status === 'Beauftragt' || kw.Status === 'In Progress';
+    // 1. Its status is part of the creation pipeline
+    const pipelineStatuses = ['Beauftragt', 'In Progress', 'In Arbeit', 'Review', 'Optimierung'];
+    const hasCorrectStatus = pipelineStatuses.includes(kw.Status);
     
     // 2. OR it has any history entry at all (meaning something was done with it in n8n or manually)
     const hasAnyHistory = contentLogs.some(l => 
@@ -197,9 +198,15 @@ export default function CreationPage() {
                           <TableCell>
                             <Badge 
                               variant="secondary" 
-                              className={kw.Status === 'Beauftragt' || kw.Status === 'In Progress' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
+                              className={
+                                kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || kw.Status === 'In Arbeit' 
+                                  ? 'bg-amber-100 text-amber-700' 
+                                  : kw.Status === 'Review' || kw.Status === 'Optimierung'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }
                             >
-                              {kw.Status === 'In Progress' ? 'In Arbeit' : kw.Status}
+                              {kw.Status === 'In Progress' || kw.Status === 'In Arbeit' ? 'In Arbeit' : kw.Status}
                             </Badge>
                           </TableCell>
                         </TableRow>

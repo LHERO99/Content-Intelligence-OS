@@ -1,38 +1,33 @@
-# Project Status - 2026-04-02
+# Project Status - 2026-04-02 (Aktualisiert)
 
 ## Current State
-The SEO Content Tool has reached a significant milestone with the implementation of the Content History system and the Multi-Agent n8n integration. The workflow from planning to AI-driven creation is now fully automated and traceable.
+The SEO Content Tool has achieved full functional integration of the end-to-end content workflow. The system now seamlessly connects editorial planning, AI-driven content generation via n8n Multi-Agent workflows, and automated history tracking.
 
-- **Content Creation & n8n Callback**:
-  - **Asynchronous Workflow**: Fully automated the loop between commissioning content (n8n Multi-Agent) and receiving results via a new `/api/n8n/callback` endpoint.
-  - **Schema Alignment**: Successfully synchronized the `Content-Log` logic with the live Airtable structure, including the new `Time_Created` timestamp field.
-  - **High-Frequency Polling**: Reduced the refresh interval in the Creation module to 5 seconds, ensuring near-instant visibility of AI-generated content.
-- **Airtable Resilience**:
-  - Implemented a multi-field fallback for timestamps (`Time_Created` -> `Timestamp` -> `Created_At`) to prevent API crashes and ensure correct sorting regardless of field naming variations.
-- **Content History System**:
-  - **Traceability**: Full version history for every keyword, tracking creations and optimizations.
-  - **Global Feed**: A new "Content-Historie" tab on the dashboard and a dedicated page ([`src/app/history/page.tsx`](src/app/history/page.tsx)) providing a global audit trail.
-  - **Detail Integration**: History logs are accessible directly within the editorial planning modal.
-- **Multi-Agent n8n Integration**:
-  - **Automated Commissioning**: A one-click "Beauftragen" action that triggers a complex n8n Multi-Agent workflow via a GET webhook.
-  - **Real-time Status**: Commissioned items are immediately tracked as "In Arbeit" with precise timestamps.
-- **Refactored Creation Module**:
-  - **Split-Screen Workflow**: A new two-column layout in [`src/app/creation/page.tsx`](src/app/creation/page.tsx) allowing editors to browse active commissions on the left and review/edit AI-generated content on the right.
-  - **Instant Updates**: Real-time UI synchronization between the planning and creation modules.
-- **Planning Module Enhancements**:
-  - **Streamlined Redaktions-Planung**: Integrated commissioning actions directly into the status column for a cleaner, more actionable interface.
-  - **Soft Delete Logic**: Deleting items from the planning view now resets their status to `Backlog` instead of deleting the master keyword record.
-  - **Optimized Data Density**: Disabled pagination for Redaktions-Planung and increased Keyword-Map page size to 100 entries.
-- **German Localization**: The entire application UI has been fully localized to German.
-- **Authentication Flow**: Robust NextAuth.js integration with mandatory password changes for new users.
-- **Admin Panel**: Comprehensive user management and system configuration (API Keys).
-- **Airtable Integration**: Centralized, resilient connection with defensive fetching to handle schema variations.
+- **Automated n8n Lifecycle**:
+  - **Asynchronous Loop**: Implementation of a robust `/api/n8n/callback` endpoint that receives AI-generated content, updates keyword statuses, and logs versioned history entries automatically.
+  - **Commissioning Logic**: A one-click "Beauftragen" trigger in the UI that sets records to "In Progress" and initiates the n8n Multi-Agent chain.
+- **Advanced Content History**:
+  - **Version Control**: Full traceability for content iterations (v1, v2, etc.) using the `Content-Log` table.
+  - **Global & Contextual History**: Dedicated global history feed ([`/history`](src/app/history/page.tsx)) and integrated history views within planning modals.
+  - **Diff Tracking**: Capability to track changes and reasoning chains for each content generation step.
+- **Enhanced Creation Workspace**:
+  - **Split-Screen Editor**: A new dual-pane layout in the Creation module for managing active commissions and editing received content in real-time.
+  - **Live Polling**: Optimized UI synchronization with a 5-second polling interval to reflect n8n callback updates immediately.
+- **Planning & Data Integrity**:
+  - **Soft Delete/Reset**: Deleting from the editorial plan now resets status to "Backlog" instead of record deletion.
+  - **Airtable Resilience**: Multi-field fallback for timestamps (`Time_Created`, `Timestamp`) and defensive fetching for schema variations.
+  - **Performance Optimization**: Increased data density (100+ rows) and disabled pagination in key planning views for better overview.
+- **Security & Administration**:
+  - **NextAuth integration**: Secure authentication with mandatory password changes for new invites.
+  - **Admin Control**: Centralized management of users, invites, and system-wide API keys/Config via Airtable.
+- **Technology Stack**:
+  - **Framework**: Next.js 16 (App Router), React 19.
+  - **Styling/UI**: Tailwind CSS 4, Radix UI, shadcn/ui.
+  - **Data**: Airtable (server-only logic), n8n (Multi-Agent workflows).
 
 ## Recent Fixes
-- **Airtable Schema Resilience**: Implemented fallbacks for missing or renamed fields (e.g., `Created_At` in Content-Log) to prevent API crashes.
-- **TypeScript & Build Stability**: Resolved multiple type errors related to null assignments and missing props, ensuring clean production builds.
-- **UI/UX Refinements**:
-  - Fixed horizontal overflow in modals for long URLs using truncation and line-clamping.
-  - Aligned button styles across all modules for a unified visual language.
-  - Resolved race conditions in UI updates by implementing strategic delays and local state synchronization.
-- **Airtable Permission Handling**: Adjusted status update logic to use existing select options (`In Progress`), avoiding permission errors when attempting to create new options via API.
+- **Timestamp Normalization**: Resolved inconsistencies in Airtable timestamp fields by implementing a fallback chain in the backend.
+- **Race Condition Prevention**: Added strategic delays and optimistic UI updates to prevent "stale data" flickers during status transitions.
+- **TypeScript Alignment**: Extensive refactoring to resolve null/undefined type errors across the data fetching layer.
+- **Horizontal Layout Fixes**: Implemented CSS truncation for long URLs in modals to prevent layout breakage.
+- **Airtable 403/422 Handling**: Enhanced error logging with specific troubleshooting steps for permission and schema mismatches.

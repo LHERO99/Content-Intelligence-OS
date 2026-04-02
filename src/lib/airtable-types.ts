@@ -1,4 +1,4 @@
-export type KeywordStatus = 'Backlog' | 'Planned' | 'Beauftragt' | 'In Progress' | 'Published';
+export type KeywordStatus = 'Backlog' | 'Planned' | 'Beauftragt' | 'In Progress' | 'In Arbeit' | 'Review' | 'Optimierung' | 'Published';
 
 export interface KeywordMap {
   id: string;
