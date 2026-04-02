@@ -50,18 +50,29 @@ export default function CreationPage() {
     }
     fetchData();
 
+    // Poll for updates every 10 seconds to catch n8n results
+    const interval = setInterval(fetchData, 10000);
+
     // Listen for refresh events
     const handleRefresh = () => fetchData();
     window.addEventListener("refresh-planning-data", handleRefresh);
-    return () => window.removeEventListener("refresh-planning-data", handleRefresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("refresh-planning-data", handleRefresh);
+    };
   }, []);
 
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
   
   // Filter keywords for the "Aufträge" list
-  const commissionedKeywords = keywords.filter(kw => 
-    kw.Status === 'Beauftragt' || kw.Status === 'In Progress'
-  );
+  const commissionedKeywords = keywords.filter(kw => {
+    const hasCommissionLog = contentLogs.some(l => 
+      Array.isArray(l.Keyword_ID) && 
+      l.Keyword_ID.includes(kw.id) && 
+      l.diffSummary === 'Content beauftragt'
+    );
+    return kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || hasCommissionLog;
+  });
 
   const relevantLogs = contentLogs.filter((log) => 
     Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(selectedKeywordId)

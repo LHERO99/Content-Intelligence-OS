@@ -942,6 +942,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       }
 
       // Create an initial log entry to record the commissioning timestamp
+      // This is CRITICAL as it's used to determine the "Beauftragt" state
       await fetch('/api/planning/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -975,7 +976,11 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         message: "Content beauftragt. In wenigen Minuten im Tab 'Content-Erstellung' einsehbar.",
         type: "success",
       });
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+      
+      // We wait a bit before refreshing to ensure Airtable has processed the history entry
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+      }, 1000);
     } catch (error: any) {
       addAlert({
         title: "Fehler beim Beauftragen",

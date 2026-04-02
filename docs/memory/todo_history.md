@@ -1,5 +1,36 @@
 # Todo History
 
+## Resolved Tasks - 2026-04-02
+
+### Content History & Traceability
+- [x] Implemented `ContentLog` data model and Airtable integration.
+- [x] Developed `getContentHistoryByKeyword` and `getAllContentHistory` with defensive fetching.
+- [x] Created global history feed component ([`src/app/content-history-table.tsx`](src/app/content-history-table.tsx)).
+- [x] Integrated history view into the Editorial Planning modal.
+- [x] Added a dedicated "Content-Historie" page and sidebar navigation.
+
+### Multi-Agent n8n Integration
+- [x] Configured n8n utility to support `COMMISSION_CONTENT` action.
+- [x] Implemented GET-based webhook trigger for the Multi-Agent system.
+- [x] Automated history logging upon commissioning to track timestamps.
+
+### Creation Module Refactor
+- [x] Transformed [`src/app/creation/page.tsx`](src/app/creation/page.tsx) into a split-screen layout.
+- [x] Implemented real-time "Aufträge" list with commissioning timestamps.
+- [x] Added loading states for active AI generation.
+- [x] Aligned styling with the Monitoring module.
+
+### Planning Module Refinements
+- [x] Integrated commissioning buttons directly into the Status column.
+- [x] Implemented "Soft Delete" logic (reset to Backlog) for Redaktions-Planung.
+- [x] Optimized table performance by disabling pagination for planning and increasing Keyword-Map page size.
+- [x] Fixed modal layout issues (URL wrapping/truncation).
+
+### Stability & Bug Fixes
+- [x] Resolved Airtable schema errors (missing `Created_At` field).
+- [x] Fixed TypeScript build errors (null assignments, missing props).
+- [x] Addressed race conditions in UI updates with strategic delays.
+
 ## Resolved Tasks - 2026-04-01
 
 ### Airtable & Backend

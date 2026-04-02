@@ -28,13 +28,21 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    // Check for API Key or Session
+    const apiKey = request.headers.get('X-API-KEY');
+    const isInternal = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
+    
+    let session = null;
+    if (!isInternal) {
+      session = await getServerSession(authOptions);
+    }
+
+    if (!isInternal && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { keywordId, actionType, contentBody, diffSummary, reasoningChain, version } = body;
+    const { keywordId, actionType, contentBody, diffSummary, reasoningChain, version, editor } = body;
 
     if (!keywordId || !actionType) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -47,7 +55,7 @@ export async function POST(request: Request) {
       Diff_Summary: diffSummary,
       Reasoning_Chain: reasoningChain,
       Version: version || 'v2',
-      Editor: session.user?.email ? [session.user.email] : undefined,
+      Editor: editor || (session?.user?.email ? [session.user.email] : undefined),
     });
 
     return NextResponse.json(newLog);
