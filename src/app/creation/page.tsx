@@ -33,11 +33,11 @@ export default function CreationPage() {
         // Using placeholder API routes to avoid client-side Airtable imports
         const [kwRes, logRes] = await Promise.all([
           fetch('/api/test-airtable'),
-          fetch('/api/debug/airtable?table=Content-Log')
+          fetch('/api/planning/history') // Changed from /api/debug/airtable to ensure proper schema
         ]);
         
         const kwData = await kwRes.json();
-        const logData = logRes.ok ? (await logRes.json()).records || [] : [];
+        const logData = await logRes.json();
         
         setKeywords(Array.isArray(kwData) ? kwData : []);
         setContentLogs(Array.isArray(logData) ? logData : []);
@@ -50,8 +50,8 @@ export default function CreationPage() {
     }
     fetchData();
 
-    // Poll for updates every 10 seconds to catch n8n results
-    const interval = setInterval(fetchData, 10000);
+    // Poll for updates every 5 seconds to catch n8n results faster
+    const interval = setInterval(fetchData, 5000);
 
     // Listen for refresh events
     const handleRefresh = () => fetchData();
