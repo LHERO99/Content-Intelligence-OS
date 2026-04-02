@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { 
   PerformanceData,
   PotentialTrend,
-  AuditLog
+  AuditLog,
+  ContentLog
 } from "@/lib/airtable-types";
 import { 
   Card, 
@@ -27,11 +28,14 @@ import {
   MousePointer2, 
   AlertCircle, 
   Activity,
-  RefreshCw
+  RefreshCw,
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAlerts } from "@/components/alerts-provider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ContentHistoryTable } from "./content-history-table";
 
 // --- Helper Components ---
 
@@ -73,6 +77,7 @@ export default function DashboardPage() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [potentialTrends, setPotentialTrends] = useState<PotentialTrend[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [contentHistory, setContentHistory] = useState<ContentLog[]>([]);
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -80,15 +85,17 @@ export default function DashboardPage() {
 
     try {
       // Using placeholder API routes to avoid client-side Airtable imports
-      const [perfRes, trendsRes, logsRes] = await Promise.all([
+      const [perfRes, trendsRes, logsRes, historyRes] = await Promise.all([
         fetch('/api/debug/airtable?table=Performance-Data'),
         fetch('/api/debug/airtable?table=Potential-Trends'),
         fetch('/api/debug/airtable?table=Audit-Logs'),
+        fetch('/api/planning/history'),
       ]);
       
       const perf = perfRes.ok ? (await perfRes.json()).records || [] : [];
       const trends = trendsRes.ok ? (await trendsRes.json()).records || [] : [];
       const logs = logsRes.ok ? (await logsRes.json()).records || [] : [];
+      const history = historyRes.ok ? await historyRes.json() : [];
 
       // Check for new diagnostic alerts since last fetch
       const diagnosticAlerts = logs.filter((log: AuditLog) => 
@@ -110,6 +117,7 @@ export default function DashboardPage() {
       setPerformanceData(perf);
       setPotentialTrends(trends);
       setAuditLogs(logs);
+      setContentHistory(history);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -215,88 +223,112 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-7">
-        {/* Performance Chart */}
-        <Card className="col-span-4 bg-white border-mint-mist/20">
-          <CardHeader>
-            <CardTitle className="text-deep-forest">Sichtbarkeitsindex Trend</CardTitle>
-            <CardDescription>Historische Performance über alle Keywords</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <div className="h-[350px] w-full">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7f3ee" />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#00463c" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false}
-                      tickFormatter={(value) => new Date(value).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
-                    />
-                    <YAxis 
-                      stroke="#00463c" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(value) => `${value}`}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
-                      labelStyle={{ color: '#00463c', fontWeight: 'bold' }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="vi" 
-                      stroke="#00463c" 
-                      strokeWidth={2} 
-                      dot={{ r: 4, fill: '#00463c' }} 
-                      activeDot={{ r: 6 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  Keine Performance-Daten verfügbar
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="performance" className="space-y-4">
+        <TabsList className="bg-white border border-mint-mist/20">
+          <TabsTrigger value="performance" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">Performance</TabsTrigger>
+          <TabsTrigger value="history" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+            <History className="h-4 w-4 mr-2" />
+            Content-Historie
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Alerts Feed */}
-        <Card className="col-span-3 bg-white border-mint-mist/20">
-          <CardHeader>
-            <CardTitle className="text-deep-forest">Aktuelle Warnmeldungen</CardTitle>
-            <CardDescription>Closed Loop Diagnosen & Systemaktionen</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {alerts.length > 0 ? (
-                alerts.map((log) => (
-                  <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-mint-mist/10 hover:bg-mint-mist/5'}`}>
-                    <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-deep-forest'}`} />
-                    <div className="flex-1 space-y-1">
-                      <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-deep-forest'}`}>
-                        {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Aktion'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {log.Timestamp ? new Date(log.Timestamp).toLocaleString('de-DE') : 'Unbekanntes Datum'}
-                      </p>
+        <TabsContent value="performance" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-7">
+            {/* Performance Chart */}
+            <Card className="col-span-4 bg-white border-mint-mist/20">
+              <CardHeader>
+                <CardTitle className="text-deep-forest">Sichtbarkeitsindex Trend</CardTitle>
+                <CardDescription>Historische Performance über alle Keywords</CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <div className="h-[350px] w-full">
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7f3ee" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#00463c" 
+                          fontSize={12} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                        />
+                        <YAxis 
+                          stroke="#00463c" 
+                          fontSize={12} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          tickFormatter={(value) => `${value}`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
+                          labelStyle={{ color: '#00463c', fontWeight: 'bold' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="vi" 
+                          stroke="#00463c" 
+                          strokeWidth={2} 
+                          dot={{ r: 4, fill: '#00463c' }} 
+                          activeDot={{ r: 6 }} 
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      Keine Performance-Daten verfügbar
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Keine aktuellen Warnmeldungen gefunden
+                  )}
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+
+            {/* Alerts Feed */}
+            <Card className="col-span-3 bg-white border-mint-mist/20">
+              <CardHeader>
+                <CardTitle className="text-deep-forest">Aktuelle Warnmeldungen</CardTitle>
+                <CardDescription>Closed Loop Diagnosen & Systemaktionen</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {alerts.length > 0 ? (
+                    alerts.map((log) => (
+                      <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-mint-mist/10 hover:bg-mint-mist/5'}`}>
+                        <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-deep-forest'}`} />
+                        <div className="flex-1 space-y-1">
+                          <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-deep-forest'}`}>
+                            {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Aktion'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {log.Timestamp ? new Date(log.Timestamp).toLocaleString('de-DE') : 'Unbekanntes Datum'}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Keine aktuellen Warnmeldungen gefunden
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card className="bg-white border-mint-mist/20">
+            <CardHeader>
+              <CardTitle className="text-deep-forest">Globale Content-Historie</CardTitle>
+              <CardDescription>Letzte Erstellungen und Optimierungen über alle URLs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ContentHistoryTable logs={contentHistory} loading={refreshing} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

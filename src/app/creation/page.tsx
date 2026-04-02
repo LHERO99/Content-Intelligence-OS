@@ -68,6 +68,20 @@ export default function CreationPage() {
         scores: { seoScore, brandScore, technicalScore }
       });
       
+      // Log the action in Content-Log
+      await fetch('/api/planning/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywordId: selectedKeywordId,
+          actionType: 'Optimierung',
+          contentBody: v2Content,
+          diffSummary: `Approved AI proposal with scores: SEO ${seoScore}, Brand ${brandScore}, Tech ${technicalScore}`,
+          reasoningChain: reasoning,
+          version: 'v2'
+        })
+      });
+      
       toast.success('AI Proposal approved and sent to n8n!');
     } catch (error: any) {
       console.error('Approval failed', error);

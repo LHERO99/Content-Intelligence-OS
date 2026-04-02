@@ -537,17 +537,6 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          {selectedRows.length === 1 && (
-            <Button 
-              variant="outline" 
-              className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
-              onClick={onRestoreClick}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Wiederherstellen
-            </Button>
-          )}
-
           {selectedRows.length > 0 && (
             <Popover>
               <PopoverTrigger>
@@ -573,6 +562,17 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                 </div>
               </PopoverContent>
             </Popover>
+          )}
+
+          {selectedRows.length === 1 && (
+            <Button 
+              variant="outline" 
+              className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
+              onClick={onRestoreClick}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Wiederherstellen
+            </Button>
           )}
           
           <DropdownMenu>

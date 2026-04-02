@@ -62,7 +62,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap, ContentLog } from "@/lib/airtable-types";
 import { calculatePriorityScore, PrioritizationWeights } from "@/lib/prioritization-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAlerts } from "@/components/alerts-provider";
@@ -404,6 +404,8 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
+  const [history, setHistory] = React.useState<ContentLog[]>([]);
+  const [loadingHistory, setLoadingHistory] = React.useState(false);
 
   React.useEffect(() => {
     if (keyword) {
@@ -414,6 +416,25 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
         Assigned_Editor: keyword.Assigned_Editor,
         Policy: keyword.Policy,
       });
+      
+      // Fetch history
+      const fetchHistory = async () => {
+        setLoadingHistory(true);
+        try {
+          const response = await fetch(`/api/planning/history?keywordId=${keyword.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setHistory(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch history:", err);
+        } finally {
+          setLoadingHistory(false);
+        }
+      };
+      fetchHistory();
+    } else {
+      setHistory([]);
     }
   }, [keyword]);
 
@@ -596,6 +617,64 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                     Beeinflusst den Prioritätsscore basierend auf strategischer Wichtigkeit.
                   </p>
                 </div>
+              </div>
+
+              <Separator className="bg-[#00463c]/10" />
+
+              {/* Content History Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Content-Historie
+                  </h4>
+                  {history.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-[#00463c]/20 text-[#00463c]">
+                      {history.length} Einträge
+                    </Badge>
+                  )}
+                </div>
+
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
+                  </div>
+                ) : history.length > 0 ? (
+                  <div className="space-y-3">
+                    {/* Latest Action Highlight */}
+                    <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
+                      <p className="text-xs font-medium text-[#00463c]">
+                        Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+
+                    {/* History List */}
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                      {history.map((entry) => (
+                        <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
+                          <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold truncate">{entry.Action_Type}</p>
+                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                {new Date(entry.Created_At).toLocaleDateString('de-DE')}
+                              </span>
+                            </div>
+                            {entry.Diff_Summary && (
+                              <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">
+                                {entry.Diff_Summary}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
+                    <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
+                  </div>
+                )}
               </div>
 
               {error && (

@@ -24,11 +24,13 @@ export interface ContentLog {
   id: string;
   ID: number;
   Keyword_ID: string[]; // Link to Keyword-Map
+  Action_Type: 'Erstellung' | 'Optimierung';
   Version: 'v1' | 'v2';
   Content_Body?: string;
   Diff_Summary?: string;
   Reasoning_Chain?: string;
   Created_At: string;
+  Editor?: string[]; // Link to Users
 }
 
 export interface PerformanceData {
