@@ -124,12 +124,21 @@ export async function DELETE(request: Request) {
       const ids = idsParam.split(',');
       if (softDelete) {
         // Soft delete: Reset planning fields instead of deleting the record
-        for (const recordId of ids) {
-          await updateKeyword(recordId, {
-            Status: 'Backlog',
-            Editorial_Deadline: undefined,
-            Assigned_Editor: [],
-          });
+        try {
+          for (const recordId of ids) {
+            await updateKeyword(recordId, {
+              Status: 'Backlog',
+              Editorial_Deadline: undefined,
+              Assigned_Editor: [],
+            });
+          }
+          return NextResponse.json({ success: true });
+        } catch (error: any) {
+          console.error('[API] Error bulk soft-deleting keywords:', error);
+          return NextResponse.json(
+            { error: 'Fehler beim Entfernen der Einträge aus der Planung', details: error.message },
+            { status: 500 }
+          );
         }
       } else {
         await bulkDeleteKeywords(ids);
@@ -146,11 +155,20 @@ export async function DELETE(request: Request) {
 
     if (softDelete) {
       // Soft delete: Reset planning fields
-      await updateKeyword(id, {
-        Status: 'Backlog',
-        Editorial_Deadline: undefined,
-        Assigned_Editor: [],
-      });
+      try {
+        await updateKeyword(id, {
+          Status: 'Backlog',
+          Editorial_Deadline: undefined,
+          Assigned_Editor: [],
+        });
+        return NextResponse.json({ success: true });
+      } catch (error: any) {
+        console.error('[API] Error soft-deleting keyword:', error);
+        return NextResponse.json(
+          { error: 'Fehler beim Entfernen aus der Planung', details: error.message },
+          { status: 500 }
+        );
+      }
     } else {
       await deleteKeyword(id);
     }

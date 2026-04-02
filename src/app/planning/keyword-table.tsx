@@ -941,6 +941,11 @@ export function KeywordTable({ data }: KeywordTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onColumnOrderChange: setColumnOrder,
+    initialState: {
+      pagination: {
+        pageSize: 100,
+      },
+    },
     meta: {
       updateData,
       deleteData,
