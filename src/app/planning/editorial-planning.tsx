@@ -481,16 +481,16 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                 <DialogTitle className="text-[#00463c] font-bold text-2xl flex items-center gap-2">
                   {keyword?.Keyword}
                 </DialogTitle>
-                <DialogDescription className="flex items-center gap-2 overflow-hidden">
+                <DialogDescription className="flex items-center gap-2">
                   {keyword?.Target_URL ? (
                     <a 
                       href={keyword.Target_URL} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs text-[#00463c] hover:underline flex items-center gap-1 truncate"
+                      className="text-xs text-[#00463c] hover:underline flex items-center gap-1"
                     >
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{keyword.Target_URL}</span>
+                      <ExternalLink className="h-3 w-3" />
+                      {keyword.Target_URL}
                     </a>
                   ) : (
                     <span className="text-xs text-muted-foreground italic">Keine URL hinterlegt</span>
@@ -867,25 +867,27 @@ export const columns: ColumnDef<KeywordMap>[] = [
       if (status !== "Planned" && status !== "Beauftragt") return null;
 
       return (
-        <Button
-          size="sm"
-          variant="outline"
-          className={`h-8 gap-1 ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee]"}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (status === "Planned") meta?.handleCommissionContent(id);
-          }}
-          disabled={isCommissioning || status === "Beauftragt"}
-        >
-          {isCommissioning ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : status === "Beauftragt" ? (
-            <ShieldCheck className="h-3 w-3" />
-          ) : (
-            <Zap className="h-3 w-3 fill-current" />
-          )}
-          {status === "Beauftragt" ? "Beauftragt" : "Beauftragen"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className={`h-8 gap-1 ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-[#00463c] text-white hover:bg-[#00332c] border-none"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (status === "Planned") meta?.handleCommissionContent(id);
+            }}
+            disabled={isCommissioning || status === "Beauftragt"}
+          >
+            {isCommissioning ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : status === "Beauftragt" ? (
+              <ShieldCheck className="h-3 w-3" />
+            ) : (
+              <Zap className="h-3 w-3 fill-current" />
+            )}
+            {status === "Beauftragt" ? "Beauftragt" : "Beauftragen"}
+          </Button>
+        </div>
       );
     },
   },

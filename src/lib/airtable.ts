@@ -169,10 +169,19 @@ export async function getContentLogs(): Promise<ContentLog[]> {
 
 export async function getContentHistoryByKeyword(keywordId: string): Promise<ContentLog[]> {
   try {
-    const records = await base(TABLES.CONTENT_LOG).select({
-      filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
-      sort: [{ field: 'Created_At', direction: 'desc' }]
-    }).all();
+    // We use a defensive approach for the sort field because 'Created_At' might be missing or named differently
+    let records;
+    try {
+      records = await base(TABLES.CONTENT_LOG).select({
+        filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
+        sort: [{ field: 'Created_At', direction: 'desc' }]
+      }).all();
+    } catch (sortError: any) {
+      console.warn('[Airtable] Sort by "Created_At" failed, falling back to unsorted:', sortError.message);
+      records = await base(TABLES.CONTENT_LOG).select({
+        filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
+      }).all();
+    }
     
     return records.map((record) => ({
       id: record.id,
@@ -183,7 +192,7 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
       Content_Body: record.get('Content_Body') as string,
       Diff_Summary: record.get('Diff_Summary') as string,
       Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
+      Created_At: (record.get('Created_At') || record.get('Timestamp') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     }));
   } catch (error) {
@@ -228,12 +237,22 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
 
 export async function getAllContentHistory(): Promise<ContentLog[]> {
   try {
-    const records = await base(TABLES.CONTENT_LOG)
-      .select({
-        sort: [{ field: 'Created_At', direction: 'desc' }],
-        maxRecords: 100,
-      })
-      .all();
+    let records;
+    try {
+      records = await base(TABLES.CONTENT_LOG)
+        .select({
+          sort: [{ field: 'Created_At', direction: 'desc' }],
+          maxRecords: 100,
+        })
+        .all();
+    } catch (sortError: any) {
+      console.warn('[Airtable] Sort by "Created_At" failed in getAllContentHistory:', sortError.message);
+      records = await base(TABLES.CONTENT_LOG)
+        .select({
+          maxRecords: 100,
+        })
+        .all();
+    }
 
     return records.map((record) => ({
       id: record.id,
@@ -244,7 +263,7 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
       Content_Body: record.get('Content_Body') as string,
       Diff_Summary: record.get('Diff_Summary') as string,
       Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
+      Created_At: (record.get('Created_At') || record.get('Timestamp') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     }));
   } catch (error) {
