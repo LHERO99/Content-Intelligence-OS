@@ -100,8 +100,9 @@ export default function DashboardPage() {
         diagnosticAlerts.forEach((alert: AuditLog) => {
           addAlert({
             type: 'warning',
-            message: alert.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unknown diagnostic alert',
-            description: 'A new system diagnostic alert has been detected in the logs.'
+            title: 'System-Diagnose',
+            message: alert.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Diagnose-Warnung',
+            description: 'Eine neue System-Diagnose-Warnung wurde in den Logs erkannt.'
           });
         });
       }

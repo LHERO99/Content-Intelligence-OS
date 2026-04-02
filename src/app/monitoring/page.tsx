@@ -166,7 +166,7 @@ export default function MonitoringPage() {
                 if (res.ok) {
                   addAlert({
                     type: 'success',
-                    message: 'Vollständiges System-Audit gestartet',
+                    message: 'Vollständiges System-Audit wurde erfolgreich gestartet.',
                     description: 'n8n führt nun einen Tiefenscan der GSC- und Sistrix-Daten durch.'
                   });
                 } else {
@@ -175,8 +175,8 @@ export default function MonitoringPage() {
               } catch (err) {
                 addAlert({
                   type: 'error',
-                  message: 'Audit-Trigger fehlgeschlagen',
-                  description: 'Verbindung zur n8n-Orchestrierungs-Engine fehlgeschlagen.'
+                  title: 'Audit-Trigger fehlgeschlagen',
+                  message: 'Verbindung zur n8n-Orchestrierungs-Engine fehlgeschlagen.'
                 });
               } finally {
                 setIsAuditing(false);

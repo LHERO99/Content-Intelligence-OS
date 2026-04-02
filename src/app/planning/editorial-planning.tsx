@@ -201,15 +201,15 @@ function FilterBar({ table, columns }: FilterBarProps) {
       }
 
       addAlert({
-        message: `${ids.length} Einträge gelöscht`,
+        message: `${ids.length} Einträge wurden erfolgreich gelöscht.`,
         type: "success",
       });
       table.resetRowSelection();
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Bulk-Löschen",
-        description: error.message,
+        title: "Fehler beim Bulk-Löschen",
+        message: error.message,
         type: "error",
       });
     } finally {
@@ -453,7 +453,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
           <DialogHeader className="p-6 pb-4 bg-[#00463c]/5 border-b border-[#00463c]/10">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pr-8">
               <div className="space-y-1">
                 <DialogTitle className="text-[#00463c] font-bold text-2xl flex items-center gap-2">
                   {keyword?.Keyword}
@@ -474,12 +474,6 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                   )}
                 </DialogDescription>
               </div>
-              <div className="flex flex-col items-center justify-center bg-[#00463c] text-white px-4 py-2 rounded-xl shadow-sm border border-[#00463c]/20">
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Priority Score</p>
-                <span className="text-3xl font-black tabular-nums">
-                  {keyword?.Priority_Score?.toFixed(1) || "0.0"}
-                </span>
-              </div>
             </div>
           </DialogHeader>
 
@@ -487,10 +481,18 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
             <div className="p-6 space-y-6">
               {/* SEO Metrics Section */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Metriken
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    Metriken
+                  </h4>
+                  <div className="flex flex-col items-center justify-center bg-[#00463c] text-white px-4 py-1.5 rounded-xl shadow-sm border border-[#00463c]/20">
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Priority Score</p>
+                    <span className="text-2xl font-black tabular-nums leading-none">
+                      {keyword?.Priority_Score?.toFixed(1) || "0.0"}
+                    </span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <MetricItem 
                     icon={Target} 
@@ -855,8 +857,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Aktualisieren",
-        description: error.message,
+        title: "Fehler beim Aktualisieren",
+        message: error.message,
         type: "error",
       });
       throw error;
@@ -875,14 +877,14 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       }
 
       addAlert({
-        message: "Eintrag gelöscht",
+        message: "Eintrag wurde erfolgreich gelöscht.",
         type: "success",
       });
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Löschen",
-        description: error.message,
+        title: "Fehler beim Löschen",
+        message: error.message,
         type: "error",
       });
     }

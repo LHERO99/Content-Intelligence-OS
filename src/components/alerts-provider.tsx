@@ -7,6 +7,7 @@ export type AlertType = 'info' | 'warning' | 'error' | 'success';
 export interface Alert {
   id: string;
   type: AlertType;
+  title?: string;
   message: string;
   description?: string;
   timestamp: Date;

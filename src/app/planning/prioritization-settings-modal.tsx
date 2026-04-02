@@ -66,8 +66,8 @@ export function PrioritizationSettingsModal({
     } catch (error) {
       console.error("Error fetching weights:", error);
       addAlert({
-        message: "Fehler",
-        description: "Die Priorisierungseinstellungen konnten nicht geladen werden.",
+        title: "Fehler",
+        message: "Die Priorisierungseinstellungen konnten nicht geladen werden.",
         type: "error",
       });
     } finally {
@@ -90,8 +90,7 @@ export function PrioritizationSettingsModal({
       }
 
       addAlert({
-        message: "Erfolg",
-        description: "Priorisierungseinstellungen wurden gespeichert.",
+        message: "Priorisierungseinstellungen wurden erfolgreich gespeichert.",
         type: "success",
       });
       onWeightsUpdated();
@@ -99,8 +98,8 @@ export function PrioritizationSettingsModal({
     } catch (error: any) {
       console.error("Error saving weights:", error);
       addAlert({
-        message: "Fehler",
-        description: error.message || "Die Einstellungen konnten nicht vollständig gespeichert werden.",
+        title: "Fehler",
+        message: error.message || "Die Einstellungen konnten nicht vollständig gespeichert werden.",
         type: "error",
       });
     } finally {

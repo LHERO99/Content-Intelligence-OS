@@ -202,15 +202,15 @@ function FilterBar({ table, columns }: FilterBarProps) {
       }
 
       addAlert({
-        message: `${ids.length} Keywords gelöscht`,
+        message: `${ids.length} Keywords wurden erfolgreich gelöscht.`,
         type: "success",
       });
       table.resetRowSelection();
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Bulk-Löschen",
-        description: error.message,
+        title: "Fehler beim Bulk-Löschen",
+        message: error.message,
         type: "error",
       });
     } finally {
@@ -577,10 +577,10 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
               />
             </div>
 
-            {/* Row 4: Product-Count and Ø Produktwert */}
+            {/* Row 4: Produkt-Count and Ø Produktwert */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-articles">Product-Count</Label>
+                <Label htmlFor="edit-articles">Produkt-Count</Label>
                 <Input
                   id="edit-articles"
                   type="number"
@@ -866,8 +866,8 @@ export function KeywordTable({ data }: KeywordTableProps) {
     } catch (error: any) {
       console.error("Error updating keyword:", error);
       addAlert({
-        message: "Fehler beim Aktualisieren",
-        description: error.message,
+        title: "Fehler beim Aktualisieren",
+        message: error.message,
         type: "error",
       });
       throw error;
@@ -886,14 +886,14 @@ export function KeywordTable({ data }: KeywordTableProps) {
       }
 
       addAlert({
-        message: "Keyword gelöscht",
+        message: "Keyword wurde erfolgreich gelöscht.",
         type: "success",
       });
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Löschen",
-        description: error.message,
+        title: "Fehler beim Löschen",
+        message: error.message,
         type: "error",
       });
     }
@@ -912,15 +912,15 @@ export function KeywordTable({ data }: KeywordTableProps) {
       }
 
       addAlert({
-        message: `${ids.length} Keywords gelöscht`,
+        message: `${ids.length} Keywords wurden erfolgreich gelöscht.`,
         type: "success",
       });
       setRowSelection({});
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Bulk-Löschen",
-        description: error.message,
+        title: "Fehler beim Bulk-Löschen",
+        message: error.message,
         type: "error",
       });
     } finally {

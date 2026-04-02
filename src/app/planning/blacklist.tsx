@@ -274,6 +274,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
     Target_URL: "",
     Search_Volume: "",
     Difficulty: "",
+    Main_Keyword: "N" as "Y" | "N",
   });
 
   React.useEffect(() => {
@@ -283,6 +284,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
         Target_URL: entry.Type === "URL" ? entry.Keyword : "",
         Search_Volume: "",
         Difficulty: "",
+        Main_Keyword: "N",
       });
       setError(null);
     }
@@ -292,8 +294,8 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
     e.preventDefault();
     if (!entry) return;
 
-    if (!formData.Keyword || !formData.Target_URL) {
-      setError("Keyword und Target URL sind Pflichtfelder.");
+    if (!formData.Keyword || !formData.Target_URL || !formData.Main_Keyword) {
+      setError("Keyword, Target URL und Main Keyword sind Pflichtfelder.");
       return;
     }
 
@@ -342,6 +344,23 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
                 placeholder="z.B. /de-de/p/vitamin-c-serum"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="restore-main">Main Keyword *</Label>
+              <Select 
+                value={formData.Main_Keyword} 
+                onValueChange={(v: "Y" | "N" | null) => {
+                  if (v) setFormData({ ...formData, Main_Keyword: v });
+                }}
+              >
+                <SelectTrigger id="restore-main">
+                  <SelectValue placeholder="Main Keyword?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Y">Ja (Y)</SelectItem>
+                  <SelectItem value="N">Nein (N)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -429,15 +448,15 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
       }
 
       addAlert({
-        message: `${ids.length} Einträge gelöscht`,
+        message: `${ids.length} Einträge wurden erfolgreich gelöscht.`,
         type: "success",
       });
       table.resetRowSelection();
       window.dispatchEvent(new CustomEvent("refresh-blacklist-data"));
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Bulk-Löschen",
-        description: error.message,
+        title: "Fehler beim Bulk-Löschen",
+        message: error.message,
         type: "error",
       });
     } finally {
@@ -736,14 +755,14 @@ export function Blacklist() {
       }
 
       addAlert({
-        message: "Erfolgreich aktualisiert",
+        message: "Eintrag wurde erfolgreich aktualisiert.",
         type: "success",
       });
       fetchData();
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Aktualisieren",
-        description: error.message,
+        title: "Fehler beim Aktualisieren",
+        message: error.message,
         type: "error",
       });
       throw error;
@@ -762,14 +781,14 @@ export function Blacklist() {
       }
 
       addAlert({
-        message: "Eintrag gelöscht",
+        message: "Eintrag wurde erfolgreich gelöscht.",
         type: "success",
       });
       fetchData();
     } catch (error: any) {
       addAlert({
-        message: "Fehler beim Löschen",
-        description: error.message,
+        title: "Fehler beim Löschen",
+        message: error.message,
         type: "error",
       });
     }
@@ -778,6 +797,10 @@ export function Blacklist() {
   const restoreEntry = async (entry: BlacklistEntry, formData: any) => {
     try {
       // 1. Create in Keyword-Map
+      // The API /api/planning/keywords already implements:
+      // - Duplicate check (Keyword + Target_URL)
+      // - SEO Rule: Only one 'Y' (Main Keyword) per URL
+      // - SEO Rule: A Keyword can only be a 'Y' (Main Keyword) once globally
       const createResponse = await fetch("/api/planning/keywords", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -786,6 +809,7 @@ export function Blacklist() {
 
       if (!createResponse.ok) {
         const resData = await createResponse.json();
+        // If it's a 409 Conflict or other validation error, the message from the API is displayed
         throw new Error(resData.error || "Fehler beim Erstellen des Keywords");
       }
 
@@ -800,7 +824,7 @@ export function Blacklist() {
       }
 
       addAlert({
-        message: "Eintrag erfolgreich in Keyword-Map wiederhergestellt",
+        message: "Eintrag wurde erfolgreich in die Keyword-Map wiederhergestellt.",
         type: "success",
       });
 
@@ -811,11 +835,7 @@ export function Blacklist() {
       // Trigger global refresh for planning data
       window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
-      addAlert({
-        message: "Fehler bei der Wiederherstellung",
-        description: error.message,
-        type: "error",
-      });
+      // The error is caught here and re-thrown to be handled by the modal's handleSubmit
       throw error;
     }
   };

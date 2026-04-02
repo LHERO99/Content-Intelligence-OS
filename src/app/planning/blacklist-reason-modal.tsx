@@ -70,8 +70,7 @@ export function BlacklistReasonModal({
       }
 
       addAlert({
-        message: 'Erfolg',
-        description: `${keywords.length} ${type === 'Keyword' ? 'Keyword(s)' : 'URL(s)'} wurden zur Blacklist hinzugefügt.`,
+        message: `${keywords.length} ${type === 'Keyword' ? 'Keyword(s)' : 'URL(s)'} wurden erfolgreich zur Blacklist hinzugefügt.`,
         type: 'success',
       });
       
