@@ -32,14 +32,16 @@ export default function CreationPage() {
       try {
         // Using placeholder API routes to avoid client-side Airtable imports
         const [kwRes, logRes] = await Promise.all([
-          fetch('/api/test-airtable'),
+          fetch('/api/planning/keywords'),
           fetch('/api/planning/history') // Changed from /api/debug/airtable to ensure proper schema
         ]);
         
         const kwData = await kwRes.json();
         const logData = await logRes.json();
         
-        setKeywords(Array.isArray(kwData) ? kwData : []);
+        // Ensure kwData is an array, handle wrapper from test-airtable if it still persists
+        const keywordsArray = Array.isArray(kwData) ? kwData : (kwData?.sampleRecords || []);
+        setKeywords(keywordsArray);
         setContentLogs(Array.isArray(logData) ? logData : []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -199,11 +201,15 @@ export default function CreationPage() {
                             <Badge 
                               variant="secondary" 
                               className={
-                                kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || kw.Status === 'In Arbeit' 
-                                  ? 'bg-amber-100 text-amber-700' 
-                                  : kw.Status === 'Review' || kw.Status === 'Optimierung'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-emerald-100 text-emerald-700'
+                                kw.Status === 'Beauftragt' 
+                                  ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                                  : kw.Status === 'In Progress' || kw.Status === 'In Arbeit' 
+                                  ? 'bg-blue-50 text-blue-600 border-blue-200' 
+                                  : kw.Status === 'Review' 
+                                  ? 'bg-purple-50 text-purple-600 border-purple-200'
+                                  : kw.Status === 'Optimierung'
+                                  ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+                                  : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                               }
                             >
                               {kw.Status === 'In Progress' || kw.Status === 'In Arbeit' ? 'In Arbeit' : kw.Status}
