@@ -226,6 +226,32 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
   }
 }
 
+export async function getAllContentHistory(): Promise<ContentLog[]> {
+  try {
+    const records = await base(TABLES.CONTENT_LOG)
+      .select({
+        sort: [{ field: 'Created_At', direction: 'desc' }],
+        maxRecords: 100,
+      })
+      .all();
+
+    return records.map((record) => ({
+      id: record.id,
+      ID: record.get('ID') as number,
+      Keyword_ID: record.get('Keyword_ID') as string[],
+      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
+      Version: record.get('Version') as 'v1' | 'v2',
+      Content_Body: record.get('Content_Body') as string,
+      Diff_Summary: record.get('Diff_Summary') as string,
+      Reasoning_Chain: record.get('Reasoning_Chain') as string,
+      Created_At: record.get('Created_At') as string,
+      Editor: record.get('Editor') as string[],
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getAllContentHistory');
+  }
+}
+
 export async function getPerformanceData(): Promise<PerformanceData[]> {
   try {
     const records = await base(TABLES.PERFORMANCE_DATA).select().all();
@@ -981,85 +1007,5 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
     return true;
   } catch (error) {
     return handleAirtableError(error,'bulkDeleteFromBlacklist');
-  }
-}
-
-export async function getContentHistoryByKeyword(keywordId: string): Promise<ContentLog[]> {
-  try {
-    const records = await base(TABLES.CONTENT_LOG)
-      .select({
-        filterByFormula: `SEARCH('${keywordId}', ARRAYJOIN({Keyword_ID}))`,
-        sort: [{ field: 'Created_At', direction: 'desc' }],
-      })
-      .all();
-
-    return records.map((record) => ({
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
-      Version: record.get('Version') as 'v1' | 'v2',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
-      Editor: record.get('Editor') as string[],
-    }));
-  } catch (error) {
-    return handleAirtableError(error, 'getContentHistoryByKeyword');
-  }
-}
-
-export async function getAllContentHistory(): Promise<ContentLog[]> {
-  try {
-    const records = await base(TABLES.CONTENT_LOG)
-      .select({
-        sort: [{ field: 'Created_At', direction: 'desc' }],
-        maxRecords: 100,
-      })
-      .all();
-
-    return records.map((record) => ({
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
-      Version: record.get('Version') as 'v1' | 'v2',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
-      Editor: record.get('Editor') as string[],
-    }));
-  } catch (error) {
-    return handleAirtableError(error, 'getAllContentHistory');
-  }
-}
-
-export async function createContentLog(data: Omit<ContentLog, 'id' | 'ID' | 'Created_At'>): Promise<ContentLog> {
-  try {
-    const records = await base(TABLES.CONTENT_LOG).create([
-      {
-        fields: {
-          ...data,
-        },
-      },
-    ]);
-
-    const record = records[0];
-    return {
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Action_Type: record.get('Action_Type') as 'Erstellung' | 'Optimierung',
-      Version: record.get('Version') as 'v1' | 'v2',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: record.get('Created_At') as string,
-      Editor: record.get('Editor') as string[],
-    };
-  } catch (error) {
-    return handleAirtableError(error, 'createContentLog');
   }
 }
