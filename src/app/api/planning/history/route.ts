@@ -38,18 +38,31 @@ export async function POST(request: Request) {
     }
 
     if (!isInternal && !session) {
+      console.warn('[API] Unauthorized POST request to /api/planning/history');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
+    
+    // Detailed logging for debugging
+    console.log('[API] POST /api/planning/history - Request Body:', JSON.stringify(body, null, 2));
+    console.log('[API] POST /api/planning/history - Auth Type:', isInternal ? 'API Key' : 'Session');
+    if (isInternal) {
+      console.log('[API] POST /api/planning/history - API Key used (last 4 chars):', apiKey?.slice(-4));
+    }
+
     const { keywordId, actionType, contentBody, diffSummary, reasoningChain, version, editor } = body;
 
     if (!keywordId || !actionType) {
+      console.error('[API] Missing required fields:', { keywordId, actionType });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Ensure keywordId is an array for Airtable Link field
+    const keywordIds = Array.isArray(keywordId) ? keywordId : [keywordId];
+
     const newLog = await createContentLog({
-      Keyword_ID: [keywordId],
+      Keyword_ID: keywordIds,
       Action_Type: actionType,
       Content_Body: contentBody,
       Diff_Summary: diffSummary,

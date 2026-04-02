@@ -54,6 +54,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { triggerN8nAction } from "@/lib/n8n";
 import {
   Table,
   TableBody,
@@ -958,15 +959,13 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       // Update local state immediately for instant UI feedback
       setCommissionedIds(prev => new Set([...Array.from(prev), id]));
 
-      // Trigger n8n Multi-Agent Workflow via GET request
+      // Trigger n8n Multi-Agent Workflow via internal proxy
       try {
-        const n8nUrl = new URL('https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c');
-        n8nUrl.searchParams.append('keywordId', id);
-        n8nUrl.searchParams.append('keyword', keyword?.Keyword || '');
-        n8nUrl.searchParams.append('targetUrl', keyword?.Target_URL || '');
-        n8nUrl.searchParams.append('action', 'COMMISSION_CONTENT');
-        
-        await fetch(n8nUrl.toString(), { method: 'GET' });
+        await triggerN8nAction('COMMISSION_CONTENT', {
+          keywordId: id,
+          keyword: keyword?.Keyword || '',
+          targetUrl: keyword?.Target_URL || '',
+        });
       } catch (n8nError) {
         console.error("Failed to trigger n8n workflow:", n8nError);
       }
