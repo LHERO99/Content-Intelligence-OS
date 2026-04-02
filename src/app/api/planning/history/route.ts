@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getContentHistoryByKeyword, getAllContentHistory, createContentLog } from '@/lib/airtable';
+import { getContentHistoryByKeyword, getAllContentHistory, createContentLog, getContentHistoryByUrl } from '@/lib/airtable';
 
 export async function GET(request: Request) {
   try {
@@ -12,6 +12,12 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const keywordId = searchParams.get('keywordId');
+    const url = searchParams.get('url');
+
+    if (url) {
+      const history = await getContentHistoryByUrl(url);
+      return NextResponse.json(history);
+    }
 
     if (keywordId) {
       const history = await getContentHistoryByKeyword(keywordId);
@@ -51,7 +57,7 @@ export async function POST(request: Request) {
       console.log('[API] POST /api/planning/history - API Key used (last 4 chars):', apiKey?.slice(-4));
     }
 
-    const { keywordId, actionType, contentBody, diffSummary, reasoningChain, version, editor } = body;
+    const { keywordId, url, actionType, contentBody, diffSummary, reasoningChain, editor } = body;
 
     if (!keywordId || !actionType) {
       console.error('[API] Missing required fields:', { keywordId, actionType });
@@ -63,11 +69,11 @@ export async function POST(request: Request) {
 
     const newLog = await createContentLog({
       Keyword_ID: keywordIds,
+      Target_URL: url,
       Action_Type: actionType,
       Content_Body: contentBody,
       Diff_Summary: diffSummary,
       Reasoning_Chain: reasoningChain,
-      Version: version || 'v2',
       Editor: editor || (session?.user?.email ? [session.user.email] : undefined),
     });
 

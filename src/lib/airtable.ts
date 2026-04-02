@@ -155,6 +155,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1', // Derived from content presence
       Content_Body: record.get('Content_Body') as string,
@@ -169,6 +170,31 @@ export async function getContentLogs(): Promise<ContentLog[]> {
   }
 }
 
+export async function getContentHistoryByUrl(targetUrl: string): Promise<ContentLog[]> {
+  try {
+    const records = await base(TABLES.CONTENT_LOG).select({
+      filterByFormula: `{Target_URL} = '${targetUrl}'`,
+      sort: [{ field: 'Time_Created', direction: 'desc' }]
+    }).all();
+    
+    return records.map((record) => ({
+      id: record.id,
+      ID: record.get('ID') as number,
+      Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
+      Action_Type: record.get('Action_Type') as any,
+      Version: record.get('Content_Body') ? 'v2' : 'v1',
+      Content_Body: record.get('Content_Body') as string,
+      Diff_Summary: record.get('Diff_Summary') as string,
+      Reasoning_Chain: record.get('Reasoning_Chain') as string,
+      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+      Editor: record.get('Editor') as string[],
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getContentHistoryByUrl');
+  }
+}
+
 export async function getContentHistoryByKeyword(keywordId: string): Promise<ContentLog[]> {
   try {
     const records = await base(TABLES.CONTENT_LOG).select({
@@ -180,6 +206,7 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,
@@ -197,6 +224,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
   try {
     const fields: any = {
       Keyword_ID: log.Keyword_ID,
+      Target_URL: log.Target_URL,
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,
@@ -210,6 +238,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,
@@ -236,6 +265,7 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,

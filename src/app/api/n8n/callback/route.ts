@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     // 2. Create Content-Log entry (v2 for AI suggestions)
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
+      Target_URL: body.url || body.targetUrl, // Support passing URL from n8n for better grouping
       Action_Type: 'Erstellung',
-      Version: 'v2',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',
       Diff_Summary: 'KI-Generierung abgeschlossen (n8n callback)',

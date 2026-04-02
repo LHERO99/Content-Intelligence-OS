@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
         // Create initial history entry
         await createContentLog({
           Keyword_ID: [data.keywordId],
+          Target_URL: data.targetUrl, // Include Target_URL for history grouping
           Action_Type: 'Erstellung',
-          Version: 'v1',
           Content_Body: '',
           Diff_Summary: 'Content beauftragt',
           Editor: session.user?.email ? [session.user.email] : undefined

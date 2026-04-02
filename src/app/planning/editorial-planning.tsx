@@ -427,7 +427,10 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
       const fetchHistory = async () => {
         setLoadingHistory(true);
         try {
-          const response = await fetch(`/api/planning/history?keywordId=${keyword.id}`);
+          const queryParam = keyword.Target_URL 
+            ? `url=${encodeURIComponent(keyword.Target_URL)}` 
+            : `keywordId=${keyword.id}`;
+          const response = await fetch(`/api/planning/history?${queryParam}`);
           if (response.ok) {
             const data = await response.json();
             setHistory(data);
