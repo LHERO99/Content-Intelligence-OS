@@ -4,11 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { KeywordMap, ContentLog } from '@/lib/airtable-types';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { ReasoningPanel } from './reasoning-panel';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
+import { Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { triggerN8nAction } from '@/lib/n8n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +17,6 @@ export default function CreationPage() {
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>('');
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -92,55 +89,12 @@ export default function CreationPage() {
   
   const creationMode = latestLogWithAction?.Action_Type || 'Erstellung';
 
-  const handleApprove = async () => {
-    if (!selectedKeywordId) return;
-    setApproving(true);
-    try {
-      await triggerN8nAction('APPROVE_PROPOSAL', {
-        keywordId: selectedKeywordId,
-        keyword: selectedKeyword?.Keyword,
-        v2Content
-      });
-      
-      // Log the action in Content-Log
-      await fetch('/api/planning/history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywordId: selectedKeywordId,
-          actionType: 'Optimierung',
-          contentBody: v2Content,
-          Diff_Summary: `Approved AI proposal`,
-          reasoningChain: reasoning,
-          version: 'v2'
-        })
-      });
-      
-      toast.success('AI Proposal approved and sent to n8n!');
-    } catch (error: any) {
-      console.error('Approval failed', error);
-      toast.error(error.message || 'Failed to send approval to n8n');
-    } finally {
-      setApproving(false);
-    }
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 text-[#00463c]">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Content-Erstellung</h1>
           <p className="text-muted-foreground">Überprüfen und verfeinern Sie KI-generierte Content-Vorschläge.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            onClick={handleApprove} 
-            disabled={!selectedKeywordId || approving || loading || !v2Content}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white"
-          >
-            {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-            KI-Vorschlag freigeben
-          </Button>
         </div>
       </header>
 

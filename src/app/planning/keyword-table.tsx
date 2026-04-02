@@ -701,30 +701,32 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-5 w-5 animate-spin text-[#00463c]/40" />
                 </div>
-              ) : history.length > 0 ? (
+              ) : history.filter(entry => entry.Action_Type || entry.Diff_Summary).length > 0 ? (
                 <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
-                  {history.map((entry) => (
-                    <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border text-[11px]">
-                      <div className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-bold truncate">{entry.Action_Type}</p>
-                          <span className="text-muted-foreground whitespace-nowrap">
-                            {new Date(entry.Created_At).toLocaleDateString('de-DE')}
-                          </span>
+                  {history
+                    .filter(entry => entry.Action_Type || entry.Diff_Summary)
+                    .map((entry) => (
+                      <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border text-[11px]">
+                        <div className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold truncate">{entry.Action_Type || '-'}</p>
+                            <span className="text-muted-foreground whitespace-nowrap">
+                              {new Date(entry.Created_At).toLocaleDateString('de-DE')}
+                            </span>
+                          </div>
+                          {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
+                            <p className="text-muted-foreground line-clamp-1 mt-0.5 italic">
+                              {entry.Diff_Summary}
+                            </p>
+                          )}
                         </div>
-                        {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
-                          <p className="text-muted-foreground line-clamp-1 mt-0.5 italic">
-                            {entry.Diff_Summary}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               ) : (
                 <div className="text-center py-4 bg-muted/20 rounded-lg border border-dashed border-border">
-                  <p className="text-[10px] text-muted-foreground">Keine Historie vorhanden</p>
+                  <p className="text-[10px] text-muted-foreground">Keine relevanten Einträge vorhanden</p>
                 </div>
               )}
             </div>

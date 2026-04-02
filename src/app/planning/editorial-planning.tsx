@@ -561,12 +561,12 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold">Status / Aktion</Label>
+                    <Label className="text-xs font-bold text-[#00463c]">Aktion</Label>
                     <div className="flex items-center h-10">
                       {commissionedIds.has(keyword?.id || '') ? (
-                        <div className="flex justify-center w-full">
-                          <Badge variant="outline" className="text-green-600 border-green-600 h-10 px-8">Beauftragt</Badge>
-                        </div>
+                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                          Beauftragt
+                        </Badge>
                       ) : (
                         <Button
                           type="button"
@@ -591,6 +591,23 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     </div>
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-xs font-bold text-[#00463c]">Content-Plan Status</Label>
+                    <div className="flex items-center h-10">
+                      {formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog") ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                          Hinzugefügt
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
+                          Nicht im Plan
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="edit-type" className="text-xs font-bold">Bearbeitungs-Typ</Label>
                     <Select 
                       value={formData.Action_Type} 
@@ -605,9 +622,6 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-deadline" className="text-xs font-bold">Deadline</Label>
                     <div className="relative">
@@ -621,6 +635,9 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-editor" className="text-xs font-bold">Editor</Label>
                     <div className="relative">
@@ -634,29 +651,25 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                       />
                     </div>
                   </div>
-                </div>
-
-                <div className="space-y-3 pt-2">
-                  <div className="flex justify-between items-center">
+                  <div className="space-y-2">
                     <Label htmlFor="edit-policy" className="text-xs font-bold">Politik / Strategie Relevanz</Label>
-                    <Badge variant="secondary" className="bg-[#00463c]/10 text-[#00463c] font-bold">
-                      {formData.Policy || 0}%
-                    </Badge>
+                    <div className="flex items-center gap-3 h-10">
+                      <Slider
+                        id="edit-policy"
+                        value={[formData.Policy || 0]}
+                        onValueChange={(v: number | readonly number[]) => {
+                          const val = Array.isArray(v) ? v[0] : v;
+                          setFormData({ ...formData, Policy: val });
+                        }}
+                        max={100}
+                        step={1}
+                        className="flex-1"
+                      />
+                      <Badge variant="secondary" className="bg-[#00463c]/10 text-[#00463c] font-bold min-w-[45px] justify-center">
+                        {formData.Policy || 0}%
+                      </Badge>
+                    </div>
                   </div>
-                  <Slider
-                    id="edit-policy"
-                    value={[formData.Policy || 0]}
-                    onValueChange={(v: number | readonly number[]) => {
-                      const val = Array.isArray(v) ? v[0] : v;
-                      setFormData({ ...formData, Policy: val });
-                    }}
-                    max={100}
-                    step={1}
-                    className="py-2"
-                  />
-                  <p className="text-[10px] text-muted-foreground italic">
-                    Beeinflusst den Prioritätsscore basierend auf strategischer Wichtigkeit.
-                  </p>
                 </div>
               </div>
 
@@ -693,27 +706,35 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     </p>
                   </div>
 
-                  {/* History List */}
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                    {history.map((entry) => (
-                      <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
-                        <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-bold truncate">{entry.Action_Type}</p>
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                              {new Date(entry.Created_At).toLocaleDateString('de-DE')}
-                            </span>
-                          </div>
-                          {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
-                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">
-                              {entry.Diff_Summary}
-                            </p>
-                          )}
-                        </div>
+                    {/* History List */}
+                    {history.filter(entry => entry.Action_Type || entry.Diff_Summary).length > 0 ? (
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                        {history
+                          .filter(entry => entry.Action_Type || entry.Diff_Summary)
+                          .map((entry) => (
+                            <div key={entry.id} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
+                              <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${entry.Action_Type === 'Erstellung' ? 'bg-blue-500' : 'bg-green-500'}`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-bold truncate">{entry.Action_Type || '-'}</p>
+                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                    {new Date(entry.Created_At).toLocaleDateString('de-DE')}
+                                  </span>
+                                </div>
+                                {entry.Diff_Summary && !entry.Diff_Summary.includes('n8n callback') && (
+                                  <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 italic">
+                                    {entry.Diff_Summary}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      <div className="text-center py-4 bg-muted/20 rounded-lg border border-dashed border-border">
+                        <p className="text-[10px] text-muted-foreground">Keine relevanten Einträge vorhanden</p>
+                      </div>
+                    )}
                 </div>
               ) : (
                   <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
