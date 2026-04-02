@@ -69,7 +69,7 @@ export default function CreationPage() {
     const hasCommissionLog = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
       l.Keyword_ID.includes(kw.id) && 
-      l.diffSummary === 'Content beauftragt'
+      l.Diff_Summary === 'Content beauftragt'
     );
     return kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || hasCommissionLog;
   });
@@ -102,7 +102,7 @@ export default function CreationPage() {
           keywordId: selectedKeywordId,
           actionType: 'Optimierung',
           contentBody: v2Content,
-          diffSummary: `Approved AI proposal with scores: SEO ${seoScore}, Brand ${brandScore}, Tech ${technicalScore}`,
+          Diff_Summary: `Approved AI proposal with scores: SEO ${seoScore}, Brand ${brandScore}, Tech ${technicalScore}`,
           reasoningChain: reasoning,
           version: 'v2'
         })
