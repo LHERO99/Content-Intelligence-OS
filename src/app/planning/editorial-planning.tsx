@@ -930,35 +930,6 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       
       const keyword = keywords.find(k => k.id === id);
 
-      // Use "In Progress" as the status for commissioning to avoid Airtable select option errors
-      const response = await fetch("/api/planning/keywords", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, Status: "In Progress" }),
-      });
-
-      if (!response.ok) {
-        const resData = await response.json();
-        throw new Error(resData.error || "Commissioning failed");
-      }
-
-      // Create an initial log entry to record the commissioning timestamp
-      // This is CRITICAL as it's used to determine the "Beauftragt" state
-      await fetch('/api/planning/history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywordId: id,
-          actionType: 'Erstellung',
-          contentBody: '',
-          diffSummary: 'Content beauftragt',
-          version: 'v1'
-        })
-      });
-
-      // Update local state immediately for instant UI feedback
-      setCommissionedIds(prev => new Set([...Array.from(prev), id]));
-
       // Trigger n8n Multi-Agent Workflow via internal proxy
       try {
         await triggerN8nAction('COMMISSION_CONTENT', {
@@ -970,6 +941,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         console.error("Failed to trigger n8n workflow:", n8nError);
       }
 
+      // Update local state immediately for instant UI feedback
+      setCommissionedIds(prev => new Set([...Array.from(prev), id]));
+
       addAlert({
         title: "Erfolg",
         message: "Content beauftragt. In wenigen Minuten im Tab 'Content-Erstellung' einsehbar.",
@@ -979,7 +953,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       // We wait a bit before refreshing to ensure Airtable has processed the history entry
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("refresh-planning-data"));
-      }, 1000);
+      }, 1500);
     } catch (error: any) {
       addAlert({
         title: "Fehler beim Beauftragen",
@@ -1050,8 +1024,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         const response = await fetch('/api/planning/history');
         if (response.ok) {
           const logs: ContentLog[] = await response.json();
-          const ids = new Set(logs.map(l => l.Keyword_ID?.[0]).filter(Boolean));
-          setCommissionedIds(ids as Set<string>);
+          // Find all keywords that have AT LEAST ONE entry in Content-Log
+          const ids = new Set(logs.flatMap(l => l.Keyword_ID || []).filter(Boolean));
+          setCommissionedIds(ids);
         }
       } catch (err) {
         console.error("Failed to fetch global history:", err);

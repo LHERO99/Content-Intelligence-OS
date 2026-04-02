@@ -21,9 +21,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    console.log('[API] n8n callback received body:', JSON.stringify(body));
     const { keywordId, content, reasoning, status } = body;
 
     if (!keywordId || !content) {
+      console.error('[API] n8n callback missing fields:', { keywordId, content: !!content });
       return NextResponse.json({ error: 'Missing keywordId or content' }, { status: 400 });
     }
 

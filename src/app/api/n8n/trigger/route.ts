@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
+import { createContentLog, updateKeyword } from '@/lib/airtable';
 
 /**
  * API Route to trigger n8n workflows.
@@ -23,7 +24,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing action or data' }, { status: 400 });
     }
 
-    // 3. Trigger n8n Workflow
+    // 3. Special handling for COMMISSION_CONTENT: Update status and log history
+    if (action === 'COMMISSION_CONTENT' && data.keywordId) {
+      try {
+        // Update status to "In Progress"
+        await updateKeyword(data.keywordId, { Status: 'In Progress' });
+        
+        // Create initial history entry
+        await createContentLog({
+          Keyword_ID: [data.keywordId],
+          Action_Type: 'Erstellung',
+          Version: 'v1',
+          Content_Body: '',
+          Diff_Summary: 'Content beauftragt',
+          Editor: session.user?.email ? [session.user.email] : undefined
+        });
+      } catch (logError) {
+        console.error('Failed to update status or log history during commissioning:', logError);
+      }
+    }
+
+    // 4. Trigger n8n Workflow
     const result = await triggerN8nWorkflow({
       action,
       data,

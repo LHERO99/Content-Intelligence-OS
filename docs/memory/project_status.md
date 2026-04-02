@@ -3,7 +3,12 @@
 ## Current State
 The SEO Content Tool has reached a significant milestone with the implementation of the Content History system and the Multi-Agent n8n integration. The workflow from planning to AI-driven creation is now fully automated and traceable.
 
-## Key Features Implemented
+- **Content Creation & n8n Callback**:
+  - **Asynchronous Workflow**: Fully automated the loop between commissioning content (n8n Multi-Agent) and receiving results via a new `/api/n8n/callback` endpoint.
+  - **Schema Alignment**: Successfully synchronized the `Content-Log` logic with the live Airtable structure, including the new `Time_Created` timestamp field.
+  - **High-Frequency Polling**: Reduced the refresh interval in the Creation module to 5 seconds, ensuring near-instant visibility of AI-generated content.
+- **Airtable Resilience**:
+  - Implemented a multi-field fallback for timestamps (`Time_Created` -> `Timestamp` -> `Created_At`) to prevent API crashes and ensure correct sorting regardless of field naming variations.
 - **Content History System**:
   - **Traceability**: Full version history for every keyword, tracking creations and optimizations.
   - **Global Feed**: A new "Content-Historie" tab on the dashboard and a dedicated page ([`src/app/history/page.tsx`](src/app/history/page.tsx)) providing a global audit trail.

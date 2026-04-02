@@ -69,9 +69,15 @@ export default function CreationPage() {
     const hasCommissionLog = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
       l.Keyword_ID.includes(kw.id) && 
-      l.Diff_Summary === 'Content beauftragt'
+      (l.Diff_Summary === 'Content beauftragt' || l.Diff_Summary === 'KI-Generierung abgeschlossen (n8n callback)')
     );
-    return kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || hasCommissionLog;
+    // Explicitly check for v2 content as well
+    const hasV2Content = contentLogs.some(l => 
+      Array.isArray(l.Keyword_ID) && 
+      l.Keyword_ID.includes(kw.id) && 
+      l.Version === 'v2'
+    );
+    return kw.Status === 'Beauftragt' || kw.Status === 'In Progress' || hasCommissionLog || hasV2Content;
   });
 
   const relevantLogs = contentLogs.filter((log) => 

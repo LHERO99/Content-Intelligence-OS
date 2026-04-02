@@ -2,6 +2,13 @@
 
 ## Resolved Tasks - 2026-04-02
 
+### Content Creation & n8n Callback Integration
+- [x] Implemented n8n callback endpoint at `/api/n8n/callback` to receive generated content.
+- [x] Automated status updates and history logging (Version v2) upon n8n callback.
+- [x] Optimized `src/app/creation/page.tsx` with a 5-second polling interval for faster UI updates.
+- [x] Enhanced `src/lib/airtable.ts` with a multi-field fallback strategy for timestamps (`Time_Created` -> `Timestamp` -> `Created_At`).
+- [x] Aligned `Content-Log` operations with the current Airtable schema (ID, Keyword ID, Version, Content_Body, Diff_Summary, Reasoning_Chain, Time_Created).
+
 ### Content History & Traceability
 - [x] Implemented `ContentLog` data model and Airtable integration.
 - [x] Developed `getContentHistoryByKeyword` and `getAllContentHistory` with defensive fetching.

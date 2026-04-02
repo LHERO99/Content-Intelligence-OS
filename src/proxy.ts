@@ -17,10 +17,16 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
+        
         // Public paths
-        if (path.startsWith("/auth/signin") || path.startsWith("/api/auth")) {
+        if (
+          path.startsWith("/auth/signin") || 
+          path.startsWith("/api/auth") ||
+          path.startsWith("/api/n8n/callback")
+        ) {
           return true;
         }
+        
         // Require authentication for all other matched paths
         return !!token;
       },
