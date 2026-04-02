@@ -481,15 +481,15 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                 <DialogTitle className="text-[#00463c] font-bold text-2xl flex items-center gap-2">
                   {keyword?.Keyword}
                 </DialogTitle>
-                <DialogDescription className="flex items-center gap-2">
+                <DialogDescription className="flex items-start gap-2">
                   {keyword?.Target_URL ? (
                     <a 
                       href={keyword.Target_URL} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs text-[#00463c] hover:underline flex items-center gap-1"
+                      className="text-xs text-[#00463c] hover:underline flex items-start gap-1 break-all line-clamp-3"
                     >
-                      <ExternalLink className="h-3 w-3" />
+                      <ExternalLink className="h-3 w-3 mt-0.5 shrink-0" />
                       {keyword.Target_URL}
                     </a>
                   ) : (
@@ -794,11 +794,36 @@ export const columns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Status",
     header: "Status",
-    cell: ({ row }) => (
-      <Badge variant="secondary">
-        {row.getValue("Status")}
-      </Badge>
-    ),
+    cell: ({ row, table }) => {
+      const status = row.getValue("Status") as string;
+      const id = (row.original as any).id;
+      const meta = table.options.meta as any;
+      const isCommissioning = meta?.isCommissioning === id;
+
+      return (
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className={`h-8 gap-1 min-w-[110px] justify-center ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-[#00463c] text-white hover:bg-[#00332c] border-none"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (status !== "Beauftragt") meta?.handleCommissionContent(id);
+            }}
+            disabled={isCommissioning || status === "Beauftragt"}
+          >
+            {isCommissioning ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : status === "Beauftragt" ? (
+              <ShieldCheck className="h-3 w-3" />
+            ) : (
+              <Zap className="h-3 w-3 fill-current" />
+            )}
+            {status === "Beauftragt" ? "Beauftragt" : "Beauftragen"}
+          </Button>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "Editorial_Deadline",
@@ -852,42 +877,6 @@ export const columns: ColumnDef<KeywordMap>[] = [
         <Badge variant="outline" className={`${color} font-bold`}>
           {score.toFixed(1)}
         </Badge>
-      );
-    },
-  },
-  {
-    id: "actions_commission",
-    header: "Aktion",
-    cell: ({ row, table }) => {
-      const status = row.getValue("Status") as string;
-      const id = (row.original as any).id;
-      const meta = table.options.meta as any;
-      const isCommissioning = meta?.isCommissioning === id;
-
-      if (status !== "Planned" && status !== "Beauftragt") return null;
-
-      return (
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className={`h-8 gap-1 ${status === "Beauftragt" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-[#00463c] text-white hover:bg-[#00332c] border-none"}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (status === "Planned") meta?.handleCommissionContent(id);
-            }}
-            disabled={isCommissioning || status === "Beauftragt"}
-          >
-            {isCommissioning ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : status === "Beauftragt" ? (
-              <ShieldCheck className="h-3 w-3" />
-            ) : (
-              <Zap className="h-3 w-3 fill-current" />
-            )}
-            {status === "Beauftragt" ? "Beauftragt" : "Beauftragen"}
-          </Button>
-        </div>
       );
     },
   },
@@ -1055,7 +1044,6 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       "Policy",
       "Search_Volume",
       "Target_URL",
-      "actions_commission",
     ];
     
     if (savedOrder) {
