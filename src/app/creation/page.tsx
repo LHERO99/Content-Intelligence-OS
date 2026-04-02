@@ -173,20 +173,22 @@ export default function CreationPage() {
                           onClick={() => setSelectedKeywordId(kw.id)}
                         >
                           <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                              <span>{kw.Keyword}</span>
+                            <div className="flex flex-col gap-1 py-1">
+                              <span className="text-sm font-bold leading-tight">{kw.Keyword}</span>
+                              {kw.Target_URL && (
+                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
+                                  <FileText className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{kw.Target_URL.replace(/^https?:\/\/(www\.)?/, '')}</span>
+                                </div>
+                              )}
                               <div className="flex flex-col gap-0.5 mt-1">
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Deadline: {kw.Editorial_Deadline ? new Date(kw.Editorial_Deadline).toLocaleDateString('de-DE') : 'Keine'}
-                                </span>
                                 <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
                                   <Zap className="h-3 w-3" />
                                   Beauftragt: {(() => {
                                     const log = [...contentLogs]
                                       .filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id))
                                       .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
-                                    return log ? new Date(log.Created_At).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                                    return log ? new Date(log.Created_At).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
                                   })()}
                                 </span>
                               </div>
