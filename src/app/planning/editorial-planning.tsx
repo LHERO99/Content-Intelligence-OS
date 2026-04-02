@@ -486,14 +486,14 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                     <BarChart3 className="h-3.5 w-3.5" />
                     Metriken
                   </h4>
-                  <div className="flex flex-col items-center justify-center bg-[#00463c] text-white px-4 py-1.5 rounded-xl shadow-sm border border-[#00463c]/20">
-                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Priority Score</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="flex flex-col items-center justify-center bg-[#00463c] text-white p-3 rounded-lg shadow-sm border border-[#00463c]/20">
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-1">Priority Score</p>
                     <span className="text-2xl font-black tabular-nums leading-none">
                       {keyword?.Priority_Score?.toFixed(1) || "0.0"}
                     </span>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <MetricItem 
                     icon={Target} 
                     label="Suchvolumen" 
