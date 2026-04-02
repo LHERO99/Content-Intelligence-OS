@@ -78,13 +78,15 @@ export function PrioritizationSettingsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      for (const [key, value] of Object.entries(weights)) {
-        const response = await fetch("/api/admin/config", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key, value: String(value) }),
-        });
-        if (!response.ok) throw new Error(`Fehler beim Speichern von ${key}`);
+      const response = await fetch("/api/admin/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weights }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Fehler beim Speichern der Konfiguration");
       }
 
       addAlert({
@@ -94,11 +96,11 @@ export function PrioritizationSettingsModal({
       });
       onWeightsUpdated();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving weights:", error);
       addAlert({
         message: "Fehler",
-        description: "Die Einstellungen konnten nicht vollständig gespeichert werden.",
+        description: error.message || "Die Einstellungen konnten nicht vollständig gespeichert werden.",
         type: "error",
       });
     } finally {

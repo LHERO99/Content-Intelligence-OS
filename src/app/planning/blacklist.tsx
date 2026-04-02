@@ -23,7 +23,8 @@ import {
   Trash2,
   Filter,
   X,
-  GripVertical
+  GripVertical,
+  RefreshCw
 } from 'lucide-react';
 import { BlacklistEntry } from '@/lib/airtable-types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -258,14 +259,144 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
   );
 }
 
+interface RestoreEntryModalProps {
+  entry: BlacklistEntry | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRestore: (entry: BlacklistEntry, formData: any) => Promise<void>;
+}
+
+function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntryModalProps) {
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [formData, setFormData] = React.useState({
+    Keyword: "",
+    Target_URL: "",
+    Search_Volume: "",
+    Difficulty: "",
+  });
+
+  React.useEffect(() => {
+    if (entry && open) {
+      setFormData({
+        Keyword: entry.Type === "Keyword" ? entry.Keyword : "",
+        Target_URL: entry.Type === "URL" ? entry.Keyword : "",
+        Search_Volume: "",
+        Difficulty: "",
+      });
+      setError(null);
+    }
+  }, [entry, open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!entry) return;
+
+    if (!formData.Keyword || !formData.Target_URL) {
+      setError("Keyword und Target URL sind Pflichtfelder.");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      await onRestore(entry, formData);
+      onOpenChange(false);
+    } catch (err: any) {
+      setError(err.message || "Fehler bei der Wiederherstellung");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+              Eintrag wiederherstellen
+            </DialogTitle>
+            <DialogDescription>
+              Verschieben Sie diesen Eintrag zurück in die Keyword-Map.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="restore-keyword">Keyword *</Label>
+              <Input
+                id="restore-keyword"
+                value={formData.Keyword}
+                onChange={(e) => setFormData({ ...formData, Keyword: e.target.value })}
+                placeholder="z.B. Vitamin C Serum"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="restore-url">Target URL *</Label>
+              <Input
+                id="restore-url"
+                value={formData.Target_URL}
+                onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
+                placeholder="z.B. /de-de/p/vitamin-c-serum"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="restore-sv">Search Volume</Label>
+                <Input
+                  id="restore-sv"
+                  type="number"
+                  value={formData.Search_Volume}
+                  onChange={(e) => setFormData({ ...formData, Search_Volume: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="restore-diff">Difficulty</Label>
+                <Input
+                  id="restore-diff"
+                  type="number"
+                  value={formData.Difficulty}
+                  onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Fehler</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Abbrechen
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Wiederherstellen
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Filter Bar Component ---
 
 interface FilterBarProps {
   table: any;
   columns: ColumnDef<any>[];
+  onRestoreClick?: () => void;
 }
 
-function FilterBar({ table, columns }: FilterBarProps) {
+function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
   const [selectedColumn, setSelectedColumn] = React.useState<string>("");
   const [filterValue, setFilterValue] = React.useState<string>("");
 
@@ -387,6 +518,17 @@ function FilterBar({ table, columns }: FilterBarProps) {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
+          {selectedRows.length === 1 && (
+            <Button 
+              variant="outline" 
+              className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
+              onClick={onRestoreClick}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Wiederherstellen
+            </Button>
+          )}
+
           {selectedRows.length > 0 && (
             <Popover>
               <PopoverTrigger>
@@ -555,6 +697,9 @@ export function Blacklist() {
   const [editingEntry, setEditingEntry] = React.useState<BlacklistEntry | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
+  const [restoringEntry, setRestoringEntry] = React.useState<BlacklistEntry | null>(null);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = React.useState(false);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -627,6 +772,51 @@ export function Blacklist() {
         description: error.message,
         type: "error",
       });
+    }
+  };
+
+  const restoreEntry = async (entry: BlacklistEntry, formData: any) => {
+    try {
+      // 1. Create in Keyword-Map
+      const createResponse = await fetch("/api/planning/keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!createResponse.ok) {
+        const resData = await createResponse.json();
+        throw new Error(resData.error || "Fehler beim Erstellen des Keywords");
+      }
+
+      // 2. Delete from Blacklist
+      const deleteResponse = await fetch(`/api/planning/blacklist?id=${entry.id}`, {
+        method: "DELETE",
+      });
+
+      if (!deleteResponse.ok) {
+        const resData = await deleteResponse.json();
+        throw new Error(resData.error || "Fehler beim Löschen aus der Blacklist");
+      }
+
+      addAlert({
+        message: "Eintrag erfolgreich in Keyword-Map wiederhergestellt",
+        type: "success",
+      });
+
+      // 3. Refresh data
+      fetchData();
+      table.resetRowSelection();
+      
+      // Trigger global refresh for planning data
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error: any) {
+      addAlert({
+        message: "Fehler bei der Wiederherstellung",
+        description: error.message,
+        type: "error",
+      });
+      throw error;
     }
   };
 
@@ -716,7 +906,17 @@ export function Blacklist() {
         </p>
       </div>
 
-      <FilterBar table={table} columns={columns} />
+      <FilterBar 
+        table={table} 
+        columns={columns} 
+        onRestoreClick={() => {
+          const selectedRows = table.getFilteredSelectedRowModel().rows;
+          if (selectedRows.length === 1) {
+            setRestoringEntry(selectedRows[0].original);
+            setIsRestoreModalOpen(true);
+          }
+        }}
+      />
 
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardContent className="p-0">
@@ -819,6 +1019,13 @@ export function Blacklist() {
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         onSave={updateData}
+      />
+
+      <RestoreEntryModal
+        entry={restoringEntry}
+        open={isRestoreModalOpen}
+        onOpenChange={setIsRestoreModalOpen}
+        onRestore={restoreEntry}
       />
     </div>
   );

@@ -25,9 +25,22 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { key, value } = await request.json();
+    const body = await request.json();
+    
+    // Handle bulk weights update
+    if (body.weights) {
+      const results = [];
+      for (const [key, value] of Object.entries(body.weights)) {
+        const updated = await updateConfig(key, String(value));
+        results.push(updated);
+      }
+      return NextResponse.json({ success: true, results });
+    }
+
+    // Handle single key update (legacy/other)
+    const { key, value } = body;
     if (!key) {
-      return NextResponse.json({ error: 'Key is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Key or weights is required' }, { status: 400 });
     }
 
     const updated = await updateConfig(key, value);

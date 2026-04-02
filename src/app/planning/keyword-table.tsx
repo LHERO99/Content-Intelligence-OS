@@ -577,10 +577,10 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
               />
             </div>
 
-            {/* Row 4: Produkt-Anzahl and Avg. Value */}
+            {/* Row 4: Product-Count and Ø Produktwert */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-articles">Produkt-Anzahl</Label>
+                <Label htmlFor="edit-articles">Product-Count</Label>
                 <Input
                   id="edit-articles"
                   type="number"
@@ -589,7 +589,7 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-value">Avg. Value</Label>
+                <Label htmlFor="edit-value">Ø Produktwert</Label>
                 <Input
                   id="edit-value"
                   type="number"
@@ -789,12 +789,12 @@ export const columns: ColumnDef<KeywordMap>[] = [
   },
   {
     accessorKey: "Article_Count",
-    header: "Produkt-Anzahl",
+    header: "Product-Count",
     cell: ({ row }) => <div>{row.getValue("Article_Count") || "-"}</div>,
   },
   {
     accessorKey: "Avg_Product_Value",
-    header: "Avg. Value",
+    header: "Ø Produktwert",
     cell: ({ row }) => <div>{row.getValue<number>("Avg_Product_Value")?.toFixed(2) || "-"} €</div>,
   },
 ];

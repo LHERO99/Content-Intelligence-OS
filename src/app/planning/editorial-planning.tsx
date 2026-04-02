@@ -474,11 +474,11 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                   )}
                 </DialogDescription>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Priority Score</p>
-                <Badge variant="outline" className="bg-[#00463c] text-white border-none text-lg px-3 py-1 font-bold">
+              <div className="flex flex-col items-center justify-center bg-[#00463c] text-white px-4 py-2 rounded-xl shadow-sm border border-[#00463c]/20">
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Priority Score</p>
+                <span className="text-3xl font-black tabular-nums">
                   {keyword?.Priority_Score?.toFixed(1) || "0.0"}
-                </Badge>
+                </span>
               </div>
             </div>
           </DialogHeader>
@@ -489,7 +489,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 className="h-3.5 w-3.5" />
-                  SEO Metriken (Read-only)
+                  Metriken
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <MetricItem 
@@ -505,7 +505,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave }: EditEditori
                   />
                   <MetricItem 
                     icon={ShoppingBag} 
-                    label="Produkte" 
+                    label="Produkt-Count" 
                     value={keyword?.Article_Count} 
                   />
                   <MetricItem 
@@ -777,7 +777,9 @@ interface EditorialPlanningProps {
 }
 
 export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "Priority_Score", desc: true },
+  ]);
   const { addAlert } = useAlerts();
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
@@ -889,7 +891,16 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   // Load column order from localStorage on mount
   React.useEffect(() => {
     const savedOrder = localStorage.getItem("editorial-table-column-order");
-    const defaultOrder = columns.map((column) => column.id as string || (column as any).accessorKey as string);
+    const defaultOrder = [
+      "Keyword",
+      "Status",
+      "Editorial_Deadline",
+      "Assigned_Editor",
+      "Priority_Score",
+      "Policy",
+      "Search_Volume",
+      "Target_URL",
+    ];
     
     if (savedOrder) {
       try {
