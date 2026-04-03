@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { KeywordMap, ContentLog } from '@/lib/airtable-types';
 import { AIEditorWorkspace } from './ai-editor-workspace';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,16 +20,14 @@ export default function CreationPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Using placeholder API routes to avoid client-side Airtable imports
         const [kwRes, logRes] = await Promise.all([
           fetch('/api/planning/keywords'),
-          fetch('/api/planning/history') // Changed from /api/debug/airtable to ensure proper schema
+          fetch('/api/planning/history')
         ]);
         
         const kwData = await kwRes.json();
         const logData = await logRes.json();
         
-        // Ensure kwData is an array, handle wrapper from test-airtable if it still persists
         const keywordsArray = Array.isArray(kwData) ? kwData : (kwData?.sampleRecords || []);
         setKeywords(keywordsArray);
         setContentLogs(Array.isArray(logData) ? logData : []);
@@ -43,10 +40,7 @@ export default function CreationPage() {
     }
     fetchData();
 
-    // Poll for updates every 5 seconds to catch n8n results faster
     const interval = setInterval(fetchData, 5000);
-
-    // Listen for refresh events
     const handleRefresh = () => fetchData();
     window.addEventListener("refresh-planning-data", handleRefresh);
     return () => {
@@ -57,19 +51,13 @@ export default function CreationPage() {
 
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
   
-  // Filter keywords for the "Aufträge" list
   const commissionedKeywords = keywords.filter(kw => {
-    // A keyword belongs in the "Aufträge" list if:
-    // 1. Its status is part of the creation pipeline
     const pipelineStatuses = ['Beauftragt', 'In Progress', 'In Arbeit', 'Erstellt', 'Review', 'Optimierung'];
     const hasCorrectStatus = pipelineStatuses.includes(kw.Status);
-    
-    // 2. OR it has any history entry at all (meaning something was done with it in n8n or manually)
     const hasAnyHistory = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
       l.Keyword_ID.includes(kw.id)
     );
-
     return hasCorrectStatus || hasAnyHistory;
   });
 
@@ -80,9 +68,7 @@ export default function CreationPage() {
   const v1Content = relevantLogs.find((log) => log.Version === 'v1')?.Content_Body || '';
   const v2Log = relevantLogs.find((log) => log.Version === 'v2');
   const v2Content = v2Log?.Content_Body || '';
-  const reasoning = v2Log?.Reasoning_Chain || '';
-
-  // Determine the mode (Erstellung or Optimierung) based on the log entries
+  
   const latestLogWithAction = [...relevantLogs].sort((a, b) => 
     new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime()
   ).find(log => log.Action_Type === 'Erstellung' || log.Action_Type === 'Optimierung');
@@ -105,8 +91,8 @@ export default function CreationPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
           {/* Left Side: Aufträge List */}
-          <Card className="lg:col-span-4 flex flex-col overflow-hidden border-emerald-100">
-            <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 py-4">
+          <Card className="lg:col-span-4 flex flex-col overflow-hidden border-emerald-100 h-full">
+            <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 py-4 shrink-0">
               <CardTitle className="text-lg font-bold text-[#00463c] flex items-center gap-2">
                 <Zap className="h-5 w-5 fill-emerald-600 text-emerald-600" />
                 Aufträge
@@ -118,7 +104,7 @@ export default function CreationPage() {
                   <TableHeader className="bg-emerald-50/30 sticky top-0 z-10">
                     <TableRow>
                       <TableHead className="text-[#00463c] font-bold">Keyword</TableHead>
-                      <TableHead className="text-[#00463c] font-bold">Status</TableHead>
+                      <TableHead className="text-[#00463c] font-bold text-right">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -126,10 +112,12 @@ export default function CreationPage() {
                       commissionedKeywords.map((kw) => (
                         <TableRow 
                           key={kw.id} 
-                            className={cn(
-                              "cursor-pointer transition-colors hover:bg-emerald-50/50",
-                              selectedKeywordId === kw.id && "bg-emerald-50 !border-l-emerald-600 !border-l-4 shadow-[inset_4px_0_0_0_#059669] !bg-emerald-50"
-                            )}
+                          className={cn(
+                            "cursor-pointer transition-all hover:bg-emerald-50/50 relative",
+                            selectedKeywordId === kw.id 
+                              ? "bg-emerald-50/80 !bg-emerald-50 border-l-4 border-l-emerald-600 shadow-[inset_4px_0_0_0_#059669]" 
+                              : "border-l-4 border-l-transparent"
+                          )}
                           onClick={() => setSelectedKeywordId(kw.id)}
                         >
                           <TableCell className="font-medium">
@@ -141,50 +129,41 @@ export default function CreationPage() {
                                   <span className="truncate">{kw.Target_URL.replace(/^https?:\/\/(www\.)?/, '')}</span>
                                 </div>
                               )}
-                                  <div className="flex items-center gap-1.5 mt-1">
-                                    {(() => {
-                                      const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                      const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())[0];
-                                      const type = latestLog?.Action_Type || 'Erstellung';
-                                      return (
-                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50">
-                                          {type}
-                                        </Badge>
-                                      );
-                                    })()}
-                                    <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-                                      <Clock className="h-3 w-3 text-slate-400" />
-                                      Beauftragt: {(() => {
-                                        const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                        // Sort to find the very first log entry (the commissioning entry)
-                                        const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
-                                        
-                                        const timestamp = firstLog?.Created_At;
-                                        
-                                        if (timestamp) {
-                                          const date = new Date(timestamp);
-                                          return date.toLocaleDateString('de-DE', { 
-                                            day: '2-digit', 
-                                            month: '2-digit', 
-                                            year: 'numeric'
-                                          }) + ', ' + date.toLocaleTimeString('de-DE', { 
-                                            hour: '2-digit', 
-                                            minute: '2-digit' 
-                                          });
-                                        }
-                                        return 'Wird geladen...';
-                                      })()}
-                                    </span>
-                                  </div>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {(() => {
+                                  const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                  const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())[0];
+                                  const type = latestLog?.Action_Type || 'Erstellung';
+                                  return (
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50">
+                                      {type}
+                                    </Badge>
+                                  );
+                                })()}
+                                <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                  <Clock className="h-3 w-3 text-slate-400" />
+                                  Beauftragt: {(() => {
+                                    const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                    const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+                                    const timestamp = firstLog?.Created_At;
+                                    if (timestamp) {
+                                      const date = new Date(timestamp);
+                                      return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                    }
+                                    return new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                  })()}
+                                </span>
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-right">
                             <Badge 
                               variant="secondary" 
-                              className={
+                              className={cn(
+                                "whitespace-nowrap",
                                 kw.Status === 'Beauftragt' 
                                   ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                                  : kw.Status === 'In Progress' || kw.Status === 'In Arbeit' 
+                                  : (kw.Status === 'In Progress' || kw.Status === 'In Arbeit')
                                   ? 'bg-blue-100 text-blue-700 border-blue-200' 
                                   : kw.Status === 'Erstellt'
                                   ? 'bg-[#00463c] text-white border-[#00463c]'
@@ -193,7 +172,7 @@ export default function CreationPage() {
                                   : kw.Status === 'Optimierung'
                                   ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
                                   : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                              }
+                              )}
                             >
                               {kw.Status === 'In Progress' || kw.Status === 'In Arbeit' ? 'In Arbeit' : kw.Status}
                             </Badge>
@@ -214,42 +193,39 @@ export default function CreationPage() {
           </Card>
 
           {/* Right Side: Editor & Preview */}
-          <div className="lg:col-span-8 flex flex-col gap-6 overflow-hidden">
+          <div className="lg:col-span-8 flex flex-col gap-4 overflow-hidden h-full">
             {!selectedKeywordId ? (
               <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-emerald-200 rounded-xl bg-white/50">
                 <Send className="w-12 h-12 text-emerald-300 mb-4" />
                 <h2 className="text-xl font-medium text-emerald-800">Wählen Sie einen Auftrag aus der Liste</h2>
               </div>
             ) : (
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-6 pb-6">
-                  {/* Main Editor Area */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-[#00463c] flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        Content-Vorschau: {selectedKeyword?.Keyword}
-                      </h3>
-                    </div>
-                    
-                    {!v2Content ? (
-                      <div className="flex flex-col items-center justify-center h-[400px] border rounded-lg bg-muted/10">
-                        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
-                        <p className="text-sm text-muted-foreground">KI generiert gerade den Content...</p>
-                        <p className="text-[10px] text-muted-foreground mt-1 italic">Dies kann einige Minuten dauern.</p>
-                      </div>
-                    ) : (
-                      <AIEditorWorkspace 
-                        v1Content={v1Content} 
-                        v2Content={v2Content} 
-                        mode={creationMode as any}
-                        keywordId={selectedKeywordId}
-                        keyword={selectedKeyword?.Keyword || ''}
-                      />
-                    )}
-                  </div>
+              <div className="flex flex-col gap-4 flex-1 min-h-0 h-full">
+                <div className="flex items-center justify-between shrink-0">
+                  <h3 className="text-lg font-bold text-[#00463c] flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Content-Vorschau: {selectedKeyword?.Keyword}
+                  </h3>
                 </div>
-              </ScrollArea>
+                
+                <div className="flex-1 min-h-0">
+                  {!v2Content ? (
+                    <div className="flex flex-col items-center justify-center h-full border rounded-lg bg-muted/10">
+                      <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
+                      <p className="text-sm text-muted-foreground">KI generiert gerade den Content...</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 italic">Dies kann einige Minuten dauern.</p>
+                    </div>
+                  ) : (
+                    <AIEditorWorkspace 
+                      v1Content={v1Content} 
+                      v2Content={v2Content} 
+                      mode={creationMode as any}
+                      keywordId={selectedKeywordId}
+                      keyword={selectedKeyword?.Keyword || ''}
+                    />
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

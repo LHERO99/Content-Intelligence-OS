@@ -84,9 +84,9 @@ export function AIEditorWorkspace({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-full">
       {/* Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-lg border border-emerald-100 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-lg border border-emerald-100 shadow-sm shrink-0">
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md">
           <Button
             variant="ghost"
@@ -136,21 +136,31 @@ export function AIEditorWorkspace({
       </div>
 
       {/* Main Workspace Area */}
-      <div className="min-h-[500px]">
+      <div className="flex-1 min-h-0">
         {activeMode === 'preview' && (
-          <div className="rounded-md border bg-white overflow-hidden animate-in fade-in duration-300">
+          <div className="rounded-md border bg-white overflow-hidden animate-in fade-in duration-300 h-full flex flex-col">
             {mode === 'Erstellung' ? (
               <>
-                <div className="border-b bg-emerald-50/50 p-3 text-sm font-bold text-[#00463c] flex items-center gap-2">
+                <div className="border-b bg-emerald-50/50 p-3 text-sm font-bold text-[#00463c] flex items-center gap-2 shrink-0">
                   <FileText className="h-4 w-4" />
                   Neu erstellter Content
                 </div>
-                <div className="p-3 overflow-auto max-h-[600px] bg-white">
+                <div className="p-3 overflow-auto bg-white flex-1 min-h-0">
                   <style jsx global>{`
+                    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+                    
                     .preview-content {
                       all: initial;
                       display: block;
                       font-family: 'Poppins', sans-serif !important;
+                      color: #334155;
+                    }
+                    .preview-content h1, .preview-content h2, .preview-content h3 {
+                      color: #00463c !important;
+                      font-family: 'Poppins', sans-serif !important;
+                      display: block !important;
+                      visibility: visible !important;
+                      opacity: 1 !important;
                     }
                     .preview-content h1 {
                       font-size: 2.25rem !important;
@@ -158,10 +168,6 @@ export function AIEditorWorkspace({
                       font-weight: 800 !important;
                       margin-top: 0 !important;
                       margin-bottom: 0.5rem !important;
-                      color: #00463c !important;
-                      display: block !important;
-                      visibility: visible !important;
-                      font-family: 'Poppins', sans-serif !important;
                     }
                     .preview-content h2 {
                       font-size: 1.875rem !important;
@@ -169,10 +175,6 @@ export function AIEditorWorkspace({
                       font-weight: 700 !important;
                       margin-top: 1.25rem !important;
                       margin-bottom: 0.5rem !important;
-                      color: #00463c !important;
-                      display: block !important;
-                      visibility: visible !important;
-                      font-family: 'Poppins', sans-serif !important;
                     }
                     .preview-content h3 {
                       font-size: 1.5rem !important;
@@ -180,10 +182,6 @@ export function AIEditorWorkspace({
                       font-weight: 600 !important;
                       margin-top: 1.25rem !important;
                       margin-bottom: 0.5rem !important;
-                      color: #00463c !important;
-                      display: block !important;
-                      visibility: visible !important;
-                      font-family: 'Poppins', sans-serif !important;
                     }
                     .preview-content p {
                       margin-top: 0.5rem !important;
@@ -217,7 +215,7 @@ export function AIEditorWorkspace({
                       font-family: 'Poppins', sans-serif !important;
                     }
                     .preview-content strong {
-                      font-weight: bold !important;
+                      font-weight: 700 !important;
                     }
                     .preview-content em {
                       font-style: italic !important;
@@ -235,7 +233,7 @@ export function AIEditorWorkspace({
               </>
             ) : (
               <>
-                <div className="grid grid-cols-2 border-b bg-muted/50 text-sm font-bold text-slate-600">
+                <div className="grid grid-cols-2 border-b bg-muted/50 text-sm font-bold text-slate-600 shrink-0">
                   <div className="p-3 border-r flex items-center gap-2">
                     <Layout className="h-4 w-4" />
                     v1 (Aktuell)
@@ -245,7 +243,7 @@ export function AIEditorWorkspace({
                     v2 (KI Vorschlag / Edit)
                   </div>
                 </div>
-                <div className="overflow-auto max-h-[600px]">
+                <div className="overflow-auto flex-1 min-h-0">
                   <ReactDiffViewer
                     oldValue={v1Content}
                     newValue={workingContent}
@@ -270,7 +268,7 @@ export function AIEditorWorkspace({
         )}
 
         {activeMode === 'edit' && (
-          <div className="animate-in slide-in-from-bottom-2 duration-300">
+          <div className="animate-in slide-in-from-bottom-2 duration-300 h-full">
             <RichTextEditor 
               content={workingContent} 
               onSave={handleSaveContent} 
@@ -280,13 +278,13 @@ export function AIEditorWorkspace({
         )}
 
         {activeMode === 'ai-chat' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)] animate-in zoom-in-95 duration-300">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full animate-in zoom-in-95 duration-300">
             <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed h-full">
               <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
                 <FileText className="h-3.5 w-3.5" />
                 Aktueller Arbeitsstand
               </div>
-              <div className="flex-1 overflow-y-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar min-h-0">
                 <style jsx global>{`
                   .ai-chat-preview h1 {
                     font-size: 2.25rem !important;

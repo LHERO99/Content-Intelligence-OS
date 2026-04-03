@@ -370,18 +370,18 @@ export function KeywordImport() {
                   <p className="text-sm text-muted-foreground">
                     Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich übernommen.
                   </p>
-                      {skippedCount > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left mx-6 overflow-hidden">
+                  {skippedCount > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left mx-6 overflow-hidden flex flex-col shrink-0">
                       <p className="text-sm text-amber-800 flex items-center gap-2 font-semibold mb-2">
                         <AlertCircle className="h-4 w-4 shrink-0" />
                         {skippedCount} Einträge wurden übersprungen:
                       </p>
                       
-                      <div className="w-full rounded border border-amber-100 bg-white/50 p-2">
+                      <div className="w-full rounded border border-amber-100 bg-white/50 p-2 min-h-0 flex flex-col overflow-hidden">
                         <ScrollArea className="h-[120px] w-full">
                           <ul className="text-xs space-y-2 pr-2">
                             {skippedRecords.map((record, idx) => (
-                              <li key={idx} className="border-b border-amber-100 pb-1 last:border-0 truncate">
+                              <li key={idx} className="border-b border-amber-100 pb-1 last:border-0 truncate max-w-full">
                                 <span className="font-bold text-amber-900">{record.Keyword || "Unbekannt"}</span>: {record.reason || "Bereits vorhanden"}
                               </li>
                             ))}
@@ -392,7 +392,7 @@ export function KeywordImport() {
                       <Button 
                         variant="link" 
                         size="sm" 
-                        className="text-amber-900 font-bold mt-2 h-auto p-0"
+                        className="text-amber-900 font-bold mt-2 h-auto p-0 justify-start w-fit"
                         onClick={downloadSkipped}
                       >
                         <Download className="h-3 w-3 mr-1" />

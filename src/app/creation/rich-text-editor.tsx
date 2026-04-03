@@ -20,7 +20,6 @@ import {
   Save,
   Code,
   Type,
-  Type as TextIcon,
   Pilcrow
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -212,7 +211,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
     content: content,
     editorProps: {
       attributes: {
-        class: 'focus:outline-none p-8 min-h-[500px] prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-[#00463c] prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-emerald-600 prose-emerald',
+        class: 'focus:outline-none p-8 min-h-[500px] prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-[#00463c] prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-emerald-600 prose-emerald font-poppins',
       },
     },
   });
@@ -242,29 +241,32 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
   }, [showCode, editor]);
 
   return (
-    <div className="rounded-md border bg-white flex flex-col overflow-hidden">
+    <div className="rounded-md border bg-white flex flex-col overflow-hidden h-full">
       <MenuBar editor={editor} showCode={showCode} setShowCode={setShowCode} />
-      <div className="flex-1 overflow-auto max-h-[600px] custom-scrollbar">
+      <div className="flex-1 overflow-auto custom-scrollbar min-h-0">
         {showCode ? (
           <textarea
             value={codeContent}
             onChange={(e) => setCodeContent(e.target.value)}
-            className="w-full h-[500px] p-8 font-mono text-sm bg-slate-950 text-emerald-400 focus:outline-none resize-none"
+            className="w-full h-full p-8 font-mono text-sm bg-slate-950 text-emerald-400 focus:outline-none resize-none"
             spellCheck={false}
           />
         ) : (
-          <div className="editor-container">
+          <div className="editor-container h-full">
             <style jsx global>{`
+              @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
               .ProseMirror {
                 padding: 0.75rem 2rem !important;
-                min-height: 500px;
+                min-height: 100%;
                 outline: none;
+                font-family: 'Poppins', sans-serif !important;
               }
               .ProseMirror h1 {
                 font-size: 2.25rem !important;
                 line-height: 1.2 !important;
                 font-weight: 800 !important;
-                margin-top: 1.25rem !important;
+                margin-top: 0 !important;
                 margin-bottom: 0.5rem !important;
                 color: #00463c !important;
                 display: block !important;
@@ -299,6 +301,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 margin-bottom: 0.5rem !important;
                 padding-left: 1.5rem !important;
                 list-style-type: disc !important;
+                display: block !important;
               }
               .ProseMirror ol {
                 list-style-type: decimal !important;
@@ -307,9 +310,10 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 margin-top: 0.25rem !important;
                 margin-bottom: 0.25rem !important;
                 line-height: 1.2 !important;
+                display: list-item !important;
               }
             `}</style>
-            <EditorContent editor={editor} />
+            <EditorContent editor={editor} className="h-full" />
           </div>
         )}
       </div>

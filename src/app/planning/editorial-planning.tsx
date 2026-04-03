@@ -632,17 +632,18 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     <Label className="text-sm font-semibold text-[#00463c]">Content-Status</Label>
                     <div className="flex items-center gap-2">
                       {commissionedIds.has(keyword?.id || '') || 
-                       keyword?.Status === 'In Progress' || 
                        keyword?.Status === 'Beauftragt' || 
+                       keyword?.Status === 'In Progress' || 
                        keyword?.Status === 'In Arbeit' ||
                        keyword?.Status === 'Erstellt' ||
                        keyword?.Status === 'Review' ||
-                       keyword?.Status === 'Optimierung' ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                       keyword?.Status === 'Optimierung' ||
+                       keyword?.Status === 'Published' ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 font-bold">
                           Beauftragt
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
+                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20 font-bold">
                           Noch nicht beauftragt
                         </Badge>
                       )}
@@ -650,12 +651,13 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                   </div>
                   
                   {!(commissionedIds.has(keyword?.id || '') || 
-                     keyword?.Status === 'In Progress' || 
                      keyword?.Status === 'Beauftragt' || 
+                     keyword?.Status === 'In Progress' || 
                      keyword?.Status === 'In Arbeit' ||
                      keyword?.Status === 'Erstellt' ||
                      keyword?.Status === 'Review' ||
-                     keyword?.Status === 'Optimierung') && (
+                     keyword?.Status === 'Optimierung' ||
+                     keyword?.Status === 'Published') && (
                     <Button
                       type="button"
                       size="sm"
@@ -840,18 +842,19 @@ export const columns: ColumnDef<KeywordMap>[] = [
       const isCommissioned = meta?.commissionedIds?.has(id);
       const currentStatus = row.original.Status;
       const isAlreadyInWorkflow = isCommissioned || 
-                                 currentStatus === 'In Progress' || 
                                  currentStatus === 'Beauftragt' || 
+                                 currentStatus === 'In Progress' || 
                                  currentStatus === 'In Arbeit' ||
                                  currentStatus === 'Erstellt' ||
                                  currentStatus === 'Review' ||
-                                 currentStatus === 'Optimierung';
+                                 currentStatus === 'Optimierung' ||
+                                 currentStatus === 'Published';
 
       return (
         <div className="flex items-center gap-2">
             {isAlreadyInWorkflow ? (
               <div className="flex justify-center w-full">
-                <Badge variant="outline" className="text-green-600 border-green-600">Beauftragt</Badge>
+                <Badge variant="outline" className="text-green-600 border-green-600 font-bold bg-green-50/50">Beauftragt</Badge>
               </div>
             ) : (
               <Button
