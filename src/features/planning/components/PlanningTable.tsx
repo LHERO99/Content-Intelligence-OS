@@ -26,7 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 
-import { DraggableTableHeader } from "@/features/shared/components/DraggableTableHeader";
+import { DraggableTableHeader } from "@/features/shared/components";
 
 interface PlanningTableProps<TData> {
   table: TableInstance<TData>;
