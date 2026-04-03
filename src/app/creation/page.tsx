@@ -128,7 +128,7 @@ export default function CreationPage() {
                           key={kw.id} 
                           className={cn(
                             "cursor-pointer transition-colors hover:bg-emerald-50/50",
-                            selectedKeywordId === kw.id && "bg-emerald-50 border-l-4 border-l-emerald-600"
+                            selectedKeywordId === kw.id && "bg-emerald-50 border-l-4 border-l-emerald-600 !bg-emerald-50"
                           )}
                           onClick={() => setSelectedKeywordId(kw.id)}
                         >
@@ -156,10 +156,10 @@ export default function CreationPage() {
                                       <Clock className="h-3 w-3 text-slate-400" />
                                       Beauftragt: {(() => {
                                         const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                        // Sort to find the very first log entry (the commissioning entry)
                                         const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
                                         
-                                        // Use log timestamp if available, otherwise use keyword timestamp from Airtable
-                                        const timestamp = firstLog?.Created_At || (kw as any).Created_At || (kw as any).Time_Created;
+                                        const timestamp = firstLog?.Created_At;
                                         
                                         if (timestamp) {
                                           const date = new Date(timestamp);
@@ -172,14 +172,7 @@ export default function CreationPage() {
                                             minute: '2-digit' 
                                           });
                                         }
-                                        return new Date().toLocaleDateString('de-DE', { 
-                                          day: '2-digit', 
-                                          month: '2-digit', 
-                                          year: 'numeric'
-                                        }) + ', ' + new Date().toLocaleTimeString('de-DE', { 
-                                          hour: '2-digit', 
-                                          minute: '2-digit' 
-                                        });
+                                        return 'Wird geladen...';
                                       })()}
                                     </span>
                                   </div>

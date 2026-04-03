@@ -262,7 +262,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
               }
               .ProseMirror h1 {
                 font-size: 2.25rem !important;
-                line-height: 2.5rem !important;
+                line-height: 1.2 !important;
                 font-weight: 800 !important;
                 margin-top: 2rem !important;
                 margin-bottom: 1.5rem !important;
@@ -271,7 +271,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
               }
               .ProseMirror h2 {
                 font-size: 1.875rem !important;
-                line-height: 2.25rem !important;
+                line-height: 1.2 !important;
                 font-weight: 700 !important;
                 margin-top: 1.75rem !important;
                 margin-bottom: 1.25rem !important;
@@ -280,7 +280,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
               }
               .ProseMirror h3 {
                 font-size: 1.5rem !important;
-                line-height: 2rem !important;
+                line-height: 1.2 !important;
                 font-weight: 600 !important;
                 margin-top: 1.5rem !important;
                 margin-bottom: 1rem !important;

@@ -27,8 +27,12 @@ export async function POST(req: NextRequest) {
     // 3. Special handling for COMMISSION_CONTENT: Update status and log history
     if (action === 'COMMISSION_CONTENT' && data.keywordId) {
       try {
+        const commissionTime = new Date().toISOString();
+        
         // Update status to "In Progress"
-        await updateKeyword(data.keywordId, { Status: 'In Progress' });
+        await updateKeyword(data.keywordId, { 
+          Status: 'In Progress'
+        });
         
         // Create initial history entry
         await createContentLog({
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest) {
           Action_Type: 'Erstellung',
           Content_Body: '',
           Diff_Summary: 'Content beauftragt',
-          Created_At: new Date().toISOString(),
+          Created_At: commissionTime,
           Editor: session.user?.email ? [session.user.email] : undefined
         });
       } catch (logError) {

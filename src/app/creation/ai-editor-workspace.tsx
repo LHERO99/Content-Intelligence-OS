@@ -64,6 +64,10 @@ export function AIEditorWorkspace({
       
       setWorkingContent(html);
       toast.success('Änderungen erfolgreich gespeichert');
+      
+      // Trigger a global refresh to update polling/parent data
+      window.dispatchEvent(new CustomEvent('refresh-planning-data'));
+      
       setActiveMode('preview');
     } catch (error) {
       toast.error('Fehler beim Speichern des Contents');
