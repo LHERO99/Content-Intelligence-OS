@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { KeywordMap, ContentLog } from '@/lib/airtable-types';
 import { AIEditorWorkspace } from './ai-editor-workspace';
-import { ReasoningPanel } from './reasoning-panel';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
@@ -164,6 +163,7 @@ export default function CreationPage() {
                                       return new Date(firstLog.Created_At).toLocaleString('de-DE', { 
                                         day: '2-digit', 
                                         month: '2-digit', 
+                                        year: 'numeric',
                                         hour: '2-digit', 
                                         minute: '2-digit' 
                                       });
@@ -246,13 +246,6 @@ export default function CreationPage() {
                         keyword={selectedKeyword?.Keyword || ''}
                       />
                     )}
-                  </div>
-
-                  {/* Sidebar Area (now below on mobile, or integrated) */}
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="h-[400px]">
-                      <ReasoningPanel reasoning={reasoning} />
-                    </div>
                   </div>
                 </div>
               </ScrollArea>

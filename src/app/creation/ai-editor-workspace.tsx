@@ -195,18 +195,20 @@ export function AIEditorWorkspace({
         )}
 
         {activeMode === 'ai-chat' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px] animate-in zoom-in-95 duration-300">
-            <div className="lg:col-span-2 rounded-md border bg-slate-50/50 p-6 overflow-auto prose prose-emerald max-w-none border-dashed">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                <FileText className="h-3 w-3" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[650px] animate-in zoom-in-95 duration-300">
+            <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed">
+              <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
+                <FileText className="h-3.5 w-3.5" />
                 Aktueller Arbeitsstand
-              </h4>
-              <div 
-                className="font-sans text-sm leading-relaxed text-slate-600 opacity-80"
-                dangerouslySetInnerHTML={{ __html: workingContent }}
-              />
+              </div>
+              <div className="flex-1 overflow-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar">
+                <div 
+                  className="font-sans text-sm leading-relaxed text-slate-600"
+                  dangerouslySetInnerHTML={{ __html: workingContent }}
+                />
+              </div>
             </div>
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 h-full">
               <AIChatPanel 
                 currentContent={workingContent} 
                 onApplyChanges={(newContent) => setWorkingContent(newContent)}
