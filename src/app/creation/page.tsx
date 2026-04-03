@@ -137,41 +137,41 @@ export default function CreationPage() {
                                   <span className="truncate">{kw.Target_URL.replace(/^https?:\/\/(www\.)?/, '')}</span>
                                 </div>
                               )}
-                              <div className="flex items-center gap-1.5 mt-1">
-                                {(() => {
-                                  const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                  const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())[0];
-                                  const type = latestLog?.Action_Type || 'Erstellung';
-                                  return (
-                                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold ${
-                                      type === 'Erstellung' 
-                                        ? 'border-emerald-200 text-emerald-700 bg-emerald-50/50' 
-                                        : 'border-slate-200 text-slate-600 bg-slate-50/50'
-                                    }`}>
-                                      {type}
-                                    </Badge>
-                                  );
-                                })()}
-                                  <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Beauftragt: {(() => {
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    {(() => {
                                       const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                      const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
-                                      
-                                      if (firstLog) {
-                                        return new Date(firstLog.Created_At).toLocaleDateString('de-DE', { 
-                                          day: '2-digit', 
-                                          month: '2-digit', 
-                                          year: 'numeric'
-                                        }) + ', ' + new Date(firstLog.Created_At).toLocaleTimeString('de-DE', { 
-                                          hour: '2-digit', 
-                                          minute: '2-digit' 
-                                        });
-                                      }
-                                      return 'gerade eben...';
+                                      const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())[0];
+                                      const type = latestLog?.Action_Type || 'Erstellung';
+                                      return (
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50">
+                                          {type}
+                                        </Badge>
+                                      );
                                     })()}
-                                  </span>
-                              </div>
+                                    <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                      <Clock className="h-3 w-3 text-slate-400" />
+                                      Beauftragt: {(() => {
+                                        const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                        const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+                                        
+                                        // Use log timestamp if available, otherwise use keyword timestamp from Airtable
+                                        const timestamp = firstLog?.Created_At || (kw as any).Created_At || (kw as any).Time_Created;
+                                        
+                                        if (timestamp) {
+                                          const date = new Date(timestamp);
+                                          return date.toLocaleDateString('de-DE', { 
+                                            day: '2-digit', 
+                                            month: '2-digit', 
+                                            year: 'numeric'
+                                          }) + ', ' + date.toLocaleTimeString('de-DE', { 
+                                            hour: '2-digit', 
+                                            minute: '2-digit' 
+                                          });
+                                        }
+                                        return 'Wird geladen...';
+                                      })()}
+                                    </span>
+                                  </div>
                             </div>
                           </TableCell>
                           <TableCell>

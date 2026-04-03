@@ -35,7 +35,6 @@ export function AIEditorWorkspace({
   keyword
 }: AIEditorWorkspaceProps) {
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
-  const [showHtml, setShowHtml] = useState(false);
   const [workingContent, setWorkingContent] = useState(v2Content);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -88,26 +87,14 @@ export function AIEditorWorkspace({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setActiveMode('preview'); setShowHtml(false); }}
+            onClick={() => setActiveMode('preview')}
             className={cn(
               "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'preview' && !showHtml ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+              activeMode === 'preview' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
             <Eye className="h-3.5 w-3.5" />
             Vorschau
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setActiveMode('preview'); setShowHtml(true); }}
-            className={cn(
-              "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'preview' && showHtml ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            HTML-Ansicht
           </Button>
           <Button
             variant="ghost"
@@ -148,17 +135,7 @@ export function AIEditorWorkspace({
       <div className="min-h-[500px]">
         {activeMode === 'preview' && (
           <div className="rounded-md border bg-white overflow-hidden animate-in fade-in duration-300">
-            {showHtml ? (
-              <>
-                <div className="border-b bg-emerald-50/50 p-3 text-sm font-bold text-[#00463c] flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  HTML-Quellcode
-                </div>
-                <div className="p-8 overflow-auto max-h-[600px] bg-slate-950 text-emerald-400 font-mono text-xs rounded-b-md">
-                  <pre>{workingContent}</pre>
-                </div>
-              </>
-            ) : mode === 'Erstellung' ? (
+            {mode === 'Erstellung' ? (
               <>
                 <div className="border-b bg-emerald-50/50 p-3 text-sm font-bold text-[#00463c] flex items-center gap-2">
                   <FileText className="h-4 w-4" />

@@ -16,7 +16,9 @@ import {
   Link as LinkIcon, 
   Undo, 
   Redo,
-  Save
+  Save,
+  Code,
+  Type
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -27,7 +29,7 @@ interface RichTextEditorProps {
   isSaving?: boolean;
 }
 
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boolean, setShowCode: (show: boolean) => void }) => {
   if (!editor) {
     return null;
   }
@@ -161,11 +163,25 @@ const MenuBar = ({ editor }: { editor: any }) => {
       >
         <Redo className="h-4 w-4" />
       </Button>
+      <div className="flex-1" />
+      <Button
+        variant="ghost"
+        size="sm"
+        type="button"
+        onClick={(e) => { e.preventDefault(); setShowCode(!showCode); }}
+        className={cn('h-8 gap-2 px-3 transition-all', showCode ? 'bg-[#00463c] text-white' : 'text-slate-500 hover:bg-slate-200')}
+      >
+        {showCode ? <Type className="h-4 w-4" /> : <Code className="h-4 w-4" />}
+        <span className="text-xs font-bold">{showCode ? 'Editor' : 'Code'}</span>
+      </Button>
     </div>
   );
 };
 
 export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProps) {
+  const [showCode, setShowCode] = React.useState(false);
+  const [codeContent, setCodeContent] = React.useState(content);
+  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -187,15 +203,87 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
     },
   });
 
+  // Update code content when editor changes
+  React.useEffect(() => {
+    if (editor && !showCode) {
+      setCodeContent(editor.getHTML());
+    }
+  }, [editor?.getHTML(), showCode]);
+
+  // Update editor when code content changes and we switch back
+  React.useEffect(() => {
+    if (editor && !showCode && editor.getHTML() !== codeContent) {
+      editor.commands.setContent(codeContent);
+    }
+  }, [showCode, editor]);
+
   return (
     <div className="rounded-md border bg-white flex flex-col overflow-hidden">
-      <MenuBar editor={editor} />
+      <MenuBar editor={editor} showCode={showCode} setShowCode={setShowCode} />
       <div className="flex-1 overflow-auto max-h-[600px] custom-scrollbar">
-        <EditorContent editor={editor} />
+        {showCode ? (
+          <textarea
+            value={codeContent}
+            onChange={(e) => setCodeContent(e.target.value)}
+            className="w-full h-[500px] p-8 font-mono text-sm bg-slate-950 text-emerald-400 focus:outline-none resize-none"
+            spellCheck={false}
+          />
+        ) : (
+          <div className="editor-container">
+            <style jsx global>{`
+              .ProseMirror {
+                padding: 2rem !important;
+                min-height: 500px;
+                outline: none;
+              }
+              .ProseMirror h1 {
+                font-size: 2.25rem !important;
+                line-height: 2.5rem !important;
+                font-weight: 800 !important;
+                margin-top: 2rem !important;
+                margin-bottom: 1.5rem !important;
+                color: #00463c !important;
+                display: block !important;
+              }
+              .ProseMirror h2 {
+                font-size: 1.875rem !important;
+                line-height: 2.25rem !important;
+                font-weight: 700 !important;
+                margin-top: 1.75rem !important;
+                margin-bottom: 1.25rem !important;
+                color: #00463c !important;
+                display: block !important;
+              }
+              .ProseMirror h3 {
+                font-size: 1.5rem !important;
+                line-height: 2rem !important;
+                font-weight: 600 !important;
+                margin-top: 1.5rem !important;
+                margin-bottom: 1rem !important;
+                color: #00463c !important;
+                display: block !important;
+              }
+              .ProseMirror p {
+                margin-top: 1.25rem !important;
+                margin-bottom: 1.25rem !important;
+                line-height: 1.75 !important;
+                color: #334155 !important;
+                display: block !important;
+              }
+            `}</style>
+            <EditorContent editor={editor} />
+          </div>
+        )}
       </div>
       <div className="border-t p-3 bg-muted/10 flex justify-end">
         <Button 
-          onClick={() => editor && onSave(editor.getHTML())} 
+          onClick={() => {
+            if (showCode) {
+              onSave(codeContent);
+            } else if (editor) {
+              onSave(editor.getHTML());
+            }
+          }} 
           disabled={isSaving}
           className="bg-[#00463c] hover:bg-[#00332c] text-white gap-2 h-9"
         >
