@@ -83,7 +83,7 @@ export function AIEditorWorkspace({
     try {
       await PlanningService.updateKeyword(keywordId, {
         Status: "Published",
-        Last_Published: new Date().toISOString()
+        Last_Published: new Date().toISOString().split('T')[0]
       });
 
       setIsPublished(true);
