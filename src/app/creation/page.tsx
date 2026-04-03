@@ -152,28 +152,25 @@ export default function CreationPage() {
                                     </Badge>
                                   );
                                 })()}
-                                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Beauftragt: {(() => {
-                                    // Try to find the timestamp from contentLogs first
-                                    const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                    const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
-                                    
-                                    if (firstLog) {
-                                      return new Date(firstLog.Created_At).toLocaleString('de-DE', { 
-                                        day: '2-digit', 
-                                        month: '2-digit', 
-                                        year: 'numeric',
-                                        hour: '2-digit', 
-                                        minute: '2-digit' 
-                                      });
-                                    }
-
-                                    // Fallback: If no log exists (e.g., n8n trigger just happened but Airtable delay), 
-                                    // we show "jetzt" or similar since the commissioning is active.
-                                    return 'gerade eben...';
-                                  })()}
-                                </span>
+                                  <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Beauftragt: {(() => {
+                                      const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
+                                      const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+                                      
+                                      if (firstLog) {
+                                        return new Date(firstLog.Created_At).toLocaleDateString('de-DE', { 
+                                          day: '2-digit', 
+                                          month: '2-digit', 
+                                          year: 'numeric'
+                                        }) + ', ' + new Date(firstLog.Created_At).toLocaleTimeString('de-DE', { 
+                                          hour: '2-digit', 
+                                          minute: '2-digit' 
+                                        });
+                                      }
+                                      return 'gerade eben...';
+                                    })()}
+                                  </span>
                               </div>
                             </div>
                           </TableCell>

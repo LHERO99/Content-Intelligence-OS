@@ -1,5 +1,26 @@
 # Todo History
 
+## Resolved Tasks - 2026-04-03
+
+### Content Editor & AI Interaction
+- [x] Integrated Tiptap HTML Editor for manual content refinement.
+- [x] Developed AIChatPanel for interactive content optimization with n8n context.
+- [x] Implemented "An Pharma senden" branded action button.
+- [x] Added "Preview/Edit/AI Chat" mode switching in Creation Workspace.
+- [x] Refactored editor button logic to prevent focus loss and ensure formatting reliability.
+
+### Planning & Schema Refinements
+- [x] Added "Action_Type" (Erstellung/Optimierung) to planning tables and modals.
+- [x] Implemented defensive Airtable logic to handle missing "Action_Type" fields gracefully.
+- [x] Unified "Content-Status" UI between Keyword-Map and Editorial Planning modals.
+- [x] Standardized commissioning timestamp format to `DD.MM.YYYY, HH:MM`.
+
+### UI/UX Clean-up
+- [x] Removed "Reasoning Chain" panel to declutter the creation view.
+- [x] Fixed chat window height issues for improved usability.
+- [x] Configured "Typ" column to be hidden by default in Keyword-Map.
+- [x] Cleaned up Content-Log summaries (removed technical suffixes like "n8n callback").
+
 ## Resolved Tasks - 2026-04-02
 
 ### Content Creation & n8n Callback Integration

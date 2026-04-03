@@ -40,6 +40,13 @@
 - **Decision**: Mandatory use of `authOptions` in `getServerSession` within API routes.
 - **Rationale**: NextAuth requires the configuration object (`authOptions`) to be passed to `getServerSession` in API routes to correctly retrieve the session. Omitting it often leads to 401 Unauthorized errors even when a valid session exists.
 
+- **Decision**: Automatic transition to "Erstellt" status after content generation.
+- **Rationale**: To provide immediate visual feedback that AI content is ready for review, the `n8n/callback` route now automatically sets the keyword status to "Erstellt" instead of leaving it in "In Arbeit".
+- **Decision**: Hybrid Content Editing Environment (Manual + AI).
+- **Rationale**: Combining a Tiptap-based HTML editor with a contextual AI Chat panel provides the best of both worlds: precise manual control for final polish and powerful AI assistance for structural changes.
+- **Decision**: Defensive Schema Retry Logic for Airtable.
+- **Rationale**: To allow code deployments ahead of Airtable schema changes, the database layer now catches 422 errors for specific new fields (like `Action_Type`) and automatically retries the operation without the field, ensuring application stability.
+
 ## UI Framework
 - **Decision**: Using Tailwind CSS and Radix UI (via shadcn/ui) for the component library.
 - **Rationale**: Enables rapid development of accessible and responsive UI components with a consistent design language.
