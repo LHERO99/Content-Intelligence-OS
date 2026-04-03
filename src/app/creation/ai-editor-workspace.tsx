@@ -147,31 +147,32 @@ export function AIEditorWorkspace({
                 </div>
                 <div className="p-8 overflow-auto max-h-[600px] bg-white">
                   <style jsx>{`
-                    .preview-content h1, .preview-content h2, .preview-content h3 {
-                      color: #00463c !important;
-                      font-weight: 800 !important;
-                      display: block !important;
-                      visibility: visible !important;
-                      opacity: 1 !important;
-                      font-family: sans-serif !important;
-                    }
                     .preview-content h1 {
                       font-size: 2.25rem !important;
                       line-height: 1.2 !important;
+                      font-weight: 800 !important;
                       margin-top: 1.25rem !important;
                       margin-bottom: 0.5rem !important;
+                      color: #00463c !important;
+                      display: block !important;
                     }
                     .preview-content h2 {
                       font-size: 1.875rem !important;
                       line-height: 1.2 !important;
+                      font-weight: 700 !important;
                       margin-top: 1.25rem !important;
                       margin-bottom: 0.5rem !important;
+                      color: #00463c !important;
+                      display: block !important;
                     }
                     .preview-content h3 {
                       font-size: 1.5rem !important;
                       line-height: 1.2 !important;
+                      font-weight: 600 !important;
                       margin-top: 1.25rem !important;
                       margin-bottom: 0.5rem !important;
+                      color: #00463c !important;
+                      display: block !important;
                     }
                     .preview-content p {
                       margin-top: 0.5rem !important;
@@ -180,23 +181,35 @@ export function AIEditorWorkspace({
                       color: #334155 !important;
                       display: block !important;
                     }
-                    .preview-content ul, .preview-content ol {
+                    .preview-content ul {
+                      list-style-type: disc !important;
                       margin-top: 0.5rem !important;
                       margin-bottom: 0.5rem !important;
                       padding-left: 1.5rem !important;
                       display: block !important;
                     }
-                    .preview-content ul {
-                      list-style-type: disc !important;
-                    }
                     .preview-content ol {
                       list-style-type: decimal !important;
+                      margin-top: 0.5rem !important;
+                      margin-bottom: 0.5rem !important;
+                      padding-left: 1.5rem !important;
+                      display: block !important;
                     }
                     .preview-content li {
                       margin-top: 0.25rem !important;
                       margin-bottom: 0.25rem !important;
                       line-height: 1.2 !important;
                       display: list-item !important;
+                    }
+                    .preview-content strong {
+                      font-weight: bold !important;
+                    }
+                    .preview-content em {
+                      font-style: italic !important;
+                    }
+                    .preview-content a {
+                      color: #059669 !important;
+                      text-decoration: underline !important;
                     }
                   `}</style>
                   <div 
