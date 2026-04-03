@@ -153,7 +153,7 @@ export function AIEditorWorkspace({
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <div className="inline-block">
                   <Button
                     onClick={handlePublish}
