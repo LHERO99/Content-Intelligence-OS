@@ -31,6 +31,7 @@ const SYSTEM_COLUMNS = [
   { id: "Target_URL", label: "Target URL", required: true },
   { id: "Search_Volume", label: "Search Volume", required: false },
   { id: "Difficulty", label: "Difficulty", required: false },
+  { id: "Ranking", label: "Ranking", required: false },
   { id: "Main_Keyword", label: "Main Keyword (Y/N)", required: false },
   { id: "Article_Count", label: "Article Count", required: false },
   { id: "Avg_Product_Value", label: "Avg Product Value", required: false },
@@ -178,7 +179,7 @@ export function KeywordImport() {
             let value = row[fileKey];
             
             // Type conversions
-            if (col.id === "Search_Volume" || col.id === "Difficulty" || col.id === "Article_Count") {
+            if (col.id === "Search_Volume" || col.id === "Difficulty" || col.id === "Article_Count" || col.id === "Ranking") {
               value = parseInt(String(value).replace(/[^0-9]/g, "") || "0");
             } else if (col.id === "Avg_Product_Value") {
               value = parseFloat(String(value).replace(/[^0-9.]/g, "") || "0");
@@ -238,7 +239,7 @@ export function KeywordImport() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant="outline" className="border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee] h-10 px-4">
           <Upload className="mr-2 h-4 w-4" />
           Keywords importieren

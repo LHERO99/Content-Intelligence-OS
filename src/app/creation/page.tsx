@@ -229,6 +229,7 @@ export default function CreationPage() {
                       mode={creationMode as any}
                       keywordId={selectedKeywordId}
                       keyword={selectedKeyword?.Keyword || ''}
+                      currentStatus={selectedKeyword?.Status || 'Beauftragt'}
                     />
                   )}
                 </div>

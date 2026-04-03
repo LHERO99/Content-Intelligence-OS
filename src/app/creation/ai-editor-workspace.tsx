@@ -17,6 +17,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { KeywordStatus } from '@/lib/airtable-types';
 
 import { PlanningService } from "@/features/planning/services/planning-service";
 interface AIEditorWorkspaceProps {
@@ -25,6 +32,7 @@ interface AIEditorWorkspaceProps {
   mode?: 'Erstellung' | 'Optimierung' | 'Planung';
   keywordId: string;
   keyword: string;
+  currentStatus: KeywordStatus;
 }
 
 type WorkspaceMode = 'preview' | 'edit' | 'ai-chat';
@@ -34,7 +42,8 @@ export function AIEditorWorkspace({
   v2Content, 
   mode = 'Optimierung',
   keywordId,
-  keyword
+  keyword,
+  currentStatus
 }: AIEditorWorkspaceProps) {
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
   const [workingContent, setWorkingContent] = useState(v2Content);
@@ -142,28 +151,43 @@ export function AIEditorWorkspace({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            onClick={handlePublish}
-            disabled={isSaving || isPublished}
-            className={cn(
-              "gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider transition-all",
-              isPublished 
-                ? "bg-green-600 hover:bg-green-700 text-white" 
-                : "bg-[#00463c] hover:bg-[#00332c] text-white"
-            )}
-          >
-            {isPublished ? (
-              <>
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Veröffentlicht
-              </>
-            ) : (
-              <>
-                <Send className="h-3.5 w-3.5" />
-                Als veröffentlicht markieren
-              </>
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-block">
+                  <Button
+                    onClick={handlePublish}
+                    disabled={isSaving || isPublished || currentStatus !== 'Angeliefert'}
+                    className={cn(
+                      "gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider transition-all",
+                      isPublished 
+                        ? "bg-green-600 hover:bg-green-700 text-white" 
+                        : currentStatus === 'Angeliefert'
+                        ? "bg-[#00463c] hover:bg-[#00332c] text-white"
+                        : "bg-slate-300 text-slate-500 cursor-not-allowed border-slate-200"
+                    )}
+                  >
+                    {isPublished ? (
+                      <>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Veröffentlicht
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-3.5 w-3.5" />
+                        Als veröffentlicht markieren
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {currentStatus !== 'Angeliefert' && !isPublished && (
+                <TooltipContent>
+                  Status muss "Angeliefert" sein (Aktuell: {currentStatus})
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 

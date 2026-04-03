@@ -49,6 +49,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
         Target_URL: keyword.Target_URL,
         Search_Volume: keyword.Search_Volume,
         Difficulty: keyword.Difficulty,
+        Ranking: keyword.Ranking,
         Main_Keyword: keyword.Main_Keyword,
         Status: keyword.Status,
         Action_Type: keyword.Action_Type || 'Erstellung',
@@ -141,7 +142,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                 </div>
               </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-volume">Suchvolumen</Label>
                     <Input
@@ -158,6 +159,15 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                       type="number"
                       value={formData.Difficulty ?? ""}
                       onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-ranking">Ranking</Label>
+                    <Input
+                      id="edit-ranking"
+                      type="number"
+                      value={formData.Ranking ?? ""}
+                      onChange={(e) => setFormData({ ...formData, Ranking: e.target.value ? Number(e.target.value) : undefined })}
                     />
                   </div>
                 </div>

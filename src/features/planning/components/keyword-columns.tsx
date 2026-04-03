@@ -72,6 +72,14 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     ),
   },
   {
+    accessorKey: "Ranking",
+    header: "Ranking",
+    cell: ({ row }) => {
+      const val = row.getValue("Ranking") as number;
+      return val ?? "-";
+    },
+  },
+  {
     accessorKey: "Search_Volume",
     header: "Volumen",
     cell: ({ row }) => {

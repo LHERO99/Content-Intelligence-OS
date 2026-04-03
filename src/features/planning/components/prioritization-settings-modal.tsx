@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useAlerts } from "@/components/alerts-provider";
 import { Loader2, Settings2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PrioritizationSettingsModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function PrioritizationSettingsModal({
     weight_avg_value: 20,
     weight_policy: 20,
     weight_recency: 20,
+    weight_ranking: 20,
   });
 
   React.useEffect(() => {
@@ -147,85 +149,100 @@ export function PrioritizationSettingsModal({
             <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
           </div>
         ) : (
-          <div className="grid gap-6 py-4">
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Suchvolumen</Label>
-                <span className="text-sm font-medium text-[#00463c]">{weights.weight_search_volume}%</span>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="grid gap-6 py-4">
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Suchvolumen</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_search_volume}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_search_volume]}
+                  onValueChange={(v) => updateWeight("weight_search_volume", v)}
+                  max={100}
+                  step={1}
+                />
               </div>
-              <Slider
-                value={[weights.weight_search_volume]}
-                onValueChange={(v) => updateWeight("weight_search_volume", v)}
-                max={100}
-                step={1}
-              />
-            </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Schwierigkeit (Invertiert)</Label>
-                <span className="text-sm font-medium text-[#00463c]">{weights.weight_difficulty}%</span>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Schwierigkeit (Invertiert)</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_difficulty}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_difficulty]}
+                  onValueChange={(v) => updateWeight("weight_difficulty", v)}
+                  max={100}
+                  step={1}
+                />
               </div>
-              <Slider
-                value={[weights.weight_difficulty]}
-                onValueChange={(v) => updateWeight("weight_difficulty", v)}
-                max={100}
-                step={1}
-              />
-            </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Anzahl Artikel</Label>
-                <span className="text-sm font-medium text-[#00463c]">{weights.weight_article_count}%</span>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Ranking (Striking Distance)</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_ranking}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_ranking]}
+                  onValueChange={(v) => updateWeight("weight_ranking", v)}
+                  max={100}
+                  step={1}
+                />
               </div>
-              <Slider
-                value={[weights.weight_article_count]}
-                onValueChange={(v) => updateWeight("weight_article_count", v)}
-                max={100}
-                step={1}
-              />
-            </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Durchschn. Artikelwert</Label>
-                <span className="text-sm font-medium text-[#00463c]">{weights.weight_avg_value}%</span>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Anzahl Artikel</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_article_count}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_article_count]}
+                  onValueChange={(v) => updateWeight("weight_article_count", v)}
+                  max={100}
+                  step={1}
+                />
               </div>
-              <Slider
-                value={[weights.weight_avg_value]}
-                onValueChange={(v) => updateWeight("weight_avg_value", v)}
-                max={100}
-                step={1}
-              />
-            </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Politik / Strategie</Label>
-                <span className="text-sm font-medium text-[#00463c]">{weights.weight_policy}%</span>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Durchschn. Artikelwert</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_avg_value}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_avg_value]}
+                  onValueChange={(v) => updateWeight("weight_avg_value", v)}
+                  max={100}
+                  step={1}
+                />
               </div>
-              <Slider
-                value={[weights.weight_policy]}
-                onValueChange={(v) => updateWeight("weight_policy", v)}
-                max={100}
-                step={1}
-              />
-            </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Aktualität (Recency)</Label>
-                <span className="text-sm font-medium text-[#00463c]">{weights.weight_recency}%</span>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Politik / Strategie</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_policy}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_policy]}
+                  onValueChange={(v) => updateWeight("weight_policy", v)}
+                  max={100}
+                  step={1}
+                />
               </div>
-              <Slider
-                value={[weights.weight_recency]}
-                onValueChange={(v) => updateWeight("weight_recency", v)}
-                max={100}
-                step={1}
-              />
+
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Aktualität (Recency)</Label>
+                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_recency}%</span>
+                </div>
+                <Slider
+                  value={[weights.weight_recency]}
+                  onValueChange={(v) => updateWeight("weight_recency", v)}
+                  max={100}
+                  step={1}
+                />
+              </div>
             </div>
-          </div>
+          </ScrollArea>
         )}
 
         <DialogFooter>

@@ -1,0 +1,10 @@
+--- src/app/creation/page.tsx
++++ src/app/creation/page.tsx
+@@ -229,6 +229,7 @@
+                       mode={creationMode as any}
+                       keywordId={selectedKeywordId}
+                       keyword={selectedKeyword?.Keyword || ''}
++                      currentStatus={selectedKeyword?.Status || 'Beauftragt'}
+                     />
+                   )}
+                 </div>

@@ -77,6 +77,11 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
     },
   },
   {
+    accessorKey: "Ranking",
+    header: "Ranking",
+    cell: ({ row }) => row.getValue("Ranking") ?? "-",
+  },
+  {
     accessorKey: "Article_Count",
     header: "Produkt-Anzahl",
     cell: ({ row }) => row.getValue("Article_Count") ?? "-",

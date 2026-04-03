@@ -7,6 +7,7 @@ export interface PrioritizationWeights {
   weight_avg_value: number;
   weight_policy: number;
   weight_recency: number;
+  weight_ranking: number;
 }
 
 /**
@@ -49,6 +50,21 @@ export function calculatePriorityScore(
     if (diffMonths < 1) r = 0;
   }
 
+  // 7. Ranking (Striking Distance)
+  // Logic: 
+  // 1-3: 10 (Already ranking)
+  // 4-10: 40 (Good, but could be better)
+  // 11-30: 100 (Striking distance - High Priority for Optimization)
+  // 31-100: 60 (Moderate)
+  // > 100 or 0: 30 (Far away or New)
+  let rankScore = 30;
+  if (keyword.Ranking && keyword.Ranking > 0) {
+    if (keyword.Ranking <= 3) rankScore = 10;
+    else if (keyword.Ranking <= 10) rankScore = 40;
+    else if (keyword.Ranking <= 30) rankScore = 100;
+    else if (keyword.Ranking <= 100) rankScore = 60;
+  }
+
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
   
   if (totalWeight === 0) return 0;
@@ -59,7 +75,8 @@ export function calculatePriorityScore(
     (ac * weights.weight_article_count) +
     (av * weights.weight_avg_value) +
     (p * weights.weight_policy) +
-    (r * weights.weight_recency)
+    (r * weights.weight_recency) +
+    (rankScore * weights.weight_ranking)
   ) / totalWeight;
 
   return Math.round(score * 10) / 10; // Round to 1 decimal place

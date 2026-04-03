@@ -67,6 +67,14 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     },
   },
   {
+    accessorKey: "Ranking",
+    header: "Ranking",
+    cell: ({ row }) => {
+      const val = row.getValue("Ranking") as number;
+      return val ?? "-";
+    },
+  },
+  {
     id: "Action",
     header: () => <div className="text-center w-full">Aktion</div>,
     enableColumnFilter: false,

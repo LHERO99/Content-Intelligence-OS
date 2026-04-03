@@ -14,6 +14,7 @@ export interface KeywordMap {
   Avg_Product_Value?: number;
   Policy?: number;
   Priority_Score?: number;
+  Ranking?: number;
   Action_Type?: 'Erstellung' | 'Optimierung';
   Last_Published?: string; // ISO Date String
 }

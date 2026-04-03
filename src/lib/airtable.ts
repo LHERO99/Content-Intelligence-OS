@@ -140,6 +140,7 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Ranking: record.get('Ranking') as number,
       Last_Published: record.get('Last_Published') as string,
     }));
   } catch (error) {
@@ -597,6 +598,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
               Article_Count: kw.Article_Count,
               Avg_Product_Value: kw.Avg_Product_Value,
               Action_Type: kw.Action_Type || 'Erstellung',
+              Ranking: kw.Ranking,
             },
           }))
         );
@@ -614,6 +616,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
             Article_Count: record.get('Article_Count') as number,
             Avg_Product_Value: record.get('Avg_Product_Value') as number,
             Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+            Ranking: record.get('Ranking') as number,
           });
         });
       } catch (error: any) {
@@ -633,6 +636,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
                 Main_Keyword: kw.Main_Keyword || 'N',
                 Article_Count: kw.Article_Count,
                 Avg_Product_Value: kw.Avg_Product_Value,
+                Ranking: kw.Ranking,
               },
             }))
           );
@@ -649,7 +653,8 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
               Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
               Article_Count: record.get('Article_Count') as number,
               Avg_Product_Value: record.get('Avg_Product_Value') as number,
-              Action_Type: 'Erstellung'
+              Action_Type: 'Erstellung',
+              Ranking: record.get('Ranking') as number,
             });
           });
         } else {
@@ -723,6 +728,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
           Policy: kw.Policy,
           Priority_Score: kw.Priority_Score,
           Action_Type: kw.Action_Type || 'Erstellung',
+          Ranking: kw.Ranking,
         },
       },
     ]);
@@ -745,6 +751,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Ranking: record.get('Ranking') as number,
     };
   } catch (error: any) {
     // Retry without Action_Type if missing in Airtable
@@ -763,6 +770,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
         Avg_Product_Value: kw.Avg_Product_Value,
         Policy: kw.Policy,
         Priority_Score: kw.Priority_Score,
+        Ranking: kw.Ranking,
       };
       const records = await base(TABLES.KEYWORD_MAP).create([{ fields }]);
       if (records.length === 0) return null;
@@ -781,7 +789,8 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
         Avg_Product_Value: record.get('Avg_Product_Value') as number,
         Policy: record.get('Policy') as number,
         Priority_Score: record.get('Priority_Score') as number,
-        Action_Type: 'Erstellung'
+        Action_Type: 'Erstellung',
+        Ranking: record.get('Ranking') as number,
       };
     }
     return handleAirtableError(error,'createKeyword');
@@ -855,6 +864,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     if (kw.Priority_Score !== undefined) fields.Priority_Score = kw.Priority_Score;
     if (kw.Action_Type !== undefined) fields.Action_Type = kw.Action_Type;
     if (kw.Last_Published !== undefined) fields.Last_Published = kw.Last_Published;
+    if (kw.Ranking !== undefined) fields.Ranking = kw.Ranking;
 
     let records;
     try {
@@ -898,6 +908,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Ranking: record.get('Ranking') as number,
       Last_Published: record.get('Last_Published') as string,
     };
   } catch (error) {
