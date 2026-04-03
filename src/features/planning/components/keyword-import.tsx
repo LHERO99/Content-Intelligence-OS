@@ -239,7 +239,7 @@ export function KeywordImport() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button variant="outline" className="border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee] h-10 px-4">
           <Upload className="mr-2 h-4 w-4" />
           Keywords importieren

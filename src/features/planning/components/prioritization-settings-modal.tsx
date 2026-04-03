@@ -112,37 +112,37 @@ export function PrioritizationSettingsModal({
         message: "Priorisierungseinstellungen wurden erfolgreich gespeichert.",
         type: "success",
       });
-      onWeightsUpdated();
-      onClose();
-    } catch (error: any) {
-      console.error("Error saving weights:", error);
-      addAlert({
-        title: "Fehler",
-        message: error.message || "Die Einstellungen konnten nicht vollständig gespeichert werden.",
-        type: "error",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    onWeightsUpdated();
+    onClose();
+  } catch (error: any) {
+    console.error("Error saving weights:", error);
+    addAlert({
+      title: "Fehler",
+      message: error.message || "Die Einstellungen konnten nicht vollständig gespeichert werden.",
+      type: "error",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
-  const updateWeight = (key: keyof typeof weights, value: number | readonly number[]) => {
-    const val = Array.isArray(value) ? value[0] : value;
-    setWeights((prev) => ({ ...prev, [key]: val }));
-  };
+const updateWeight = (key: keyof typeof weights, value: number | readonly number[]) => {
+  const val = Array.isArray(value) ? value[0] : value;
+  setWeights((prev) => ({ ...prev, [key]: val }));
+};
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-[#00463c]" />
-            Priorisierungseinstellungen
-          </DialogTitle>
-          <DialogDescription>
-            Passen Sie die Gewichtung der Metriken für die automatische Themen-Priorisierung an (0-100%).
-          </DialogDescription>
-        </DialogHeader>
+return (
+  <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <Settings2 className="h-5 w-5 text-[#00463c]" />
+          Priorisierungseinstellungen
+        </DialogTitle>
+        <DialogDescription>
+          Passen Sie die Gewichtung der Metriken für die automatische Themen-Priorisierung an (0-100%).
+        </DialogDescription>
+      </DialogHeader>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
