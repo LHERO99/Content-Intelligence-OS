@@ -225,7 +225,6 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
   try {
     const fields: any = {
       Keyword_ID: log.Keyword_ID,
-      Target_URL: log.Target_URL,
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,

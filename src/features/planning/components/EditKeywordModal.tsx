@@ -141,81 +141,49 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-volume">Suchvolumen</Label>
-                  <Input
-                    id="edit-volume"
-                    type="number"
-                    value={formData.Search_Volume ?? ""}
-                    onChange={(e) => setFormData({ ...formData, Search_Volume: e.target.value ? Number(e.target.value) : undefined })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-volume">Suchvolumen</Label>
+                    <Input
+                      id="edit-volume"
+                      type="number"
+                      value={formData.Search_Volume ?? ""}
+                      onChange={(e) => setFormData({ ...formData, Search_Volume: e.target.value ? Number(e.target.value) : undefined })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-difficulty">Difficulty</Label>
+                    <Input
+                      id="edit-difficulty"
+                      type="number"
+                      value={formData.Difficulty ?? ""}
+                      onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-difficulty">Difficulty</Label>
-                  <Input
-                    id="edit-difficulty"
-                    type="number"
-                    value={formData.Difficulty ?? ""}
-                    onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-status">Status</Label>
-                  <Select 
-                    value={formData.Status} 
-                    onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
-                  >
-                    <SelectTrigger id="edit-status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Backlog">Backlog</SelectItem>
-                      <SelectItem value="Planned">Planned</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Published">Published</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-type">Typ</Label>
-                  <Select 
-                    value={formData.Action_Type} 
-                    onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
-                  >
-                    <SelectTrigger id="edit-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Erstellung">Erstellung</SelectItem>
-                      <SelectItem value="Optimierung">Optimierung</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-url">Target URL *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="edit-url"
-                    value={formData.Target_URL || ""}
-                    onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
-                    required
-                  />
-                  {formData.Target_URL && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="icon" 
-                      className="shrink-0"
-                      onClick={() => window.open(formData.Target_URL, '_blank', 'noopener,noreferrer')}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  )}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-url">Target URL *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="edit-url"
+                      value={formData.Target_URL || ""}
+                      onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
+                      required
+                    />
+                    {formData.Target_URL && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        className="shrink-0"
+                        onClick={() => window.open(formData.Target_URL, '_blank', 'noopener,noreferrer')}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
