@@ -70,6 +70,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
       await onSave(keyword.id, updates);
       setFormData(prev => ({ ...prev, ...updates }));
     } catch (err: any) {
+      console.error("Error adding to plan:", err);
       setError(err.message || "Fehler beim Hinzufügen zum Content-Plan");
     } finally {
       setIsAddingToPlan(false);
@@ -195,12 +196,25 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
 
               <div className="space-y-2">
                 <Label htmlFor="edit-url">Target URL *</Label>
-                <Input
-                  id="edit-url"
-                  value={formData.Target_URL || ""}
-                  onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-url"
+                    value={formData.Target_URL || ""}
+                    onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
+                    required
+                  />
+                  {formData.Target_URL && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon" 
+                      className="shrink-0"
+                      onClick={() => window.open(formData.Target_URL, '_blank', 'noopener,noreferrer')}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

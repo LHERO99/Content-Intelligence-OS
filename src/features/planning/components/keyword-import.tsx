@@ -360,7 +360,7 @@ export function KeywordImport() {
           )}
 
           {step === "success" && (
-            <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[300px]">
+            <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[300px] px-6">
               <div className="bg-green-100 p-4 rounded-full">
                 <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
