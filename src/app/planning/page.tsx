@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getKeywordMap, getPotentialTrends } from "@/lib/airtable";
 import { KeywordTable } from "./keyword-table";
 import { TrendRadar } from "./trend-radar";
 import { EditorialPlanning } from "./editorial-planning";
@@ -9,6 +8,7 @@ import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Radar, Map, Calendar, ShieldAlert, Loader2 } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
+import { KeywordMap, PotentialTrend } from "@/lib/airtable-types";
 
 export default function PlanningPage() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -17,7 +17,7 @@ export default function PlanningPage() {
     }
     return "editorial";
   });
-  const [data, setData] = useState<{ keywords: any[], trends: any[] } | null>(null);
+  const [data, setData] = useState<{ keywords: KeywordMap[], trends: PotentialTrend[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +108,7 @@ export default function PlanningPage() {
         </TabsContent>
 
         <TabsContent value="keyword-map" className="space-y-4">
-          <KeywordTable data={data.keywords} />
+          <KeywordTable keywords={data.keywords} />
         </TabsContent>
 
         <TabsContent value="trend-radar" className="space-y-4">

@@ -15,78 +15,27 @@ import {
   ColumnOrderState,
 } from "@tanstack/react-table";
 import { 
-  ArrowUpDown, 
-  ChevronDown, 
   Calendar, 
   User,
   Loader2, 
-  Trash2,
-  Filter,
-  X,
-  AlertCircle,
-  GripVertical,
-  Settings2,
   ExternalLink,
-  BarChart3,
-  Target,
-  ShoppingBag,
-  Euro,
-  ShieldCheck,
   Zap
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { PrioritizationSettingsModal } from "./prioritization-settings-modal";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { triggerN8nAction } from "@/lib/n8n";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { KeywordMap, ContentLog } from "@/lib/airtable-types";
-import Link from "next/link";
-import { calculatePriorityScore, PrioritizationWeights } from "@/lib/prioritization-utils";
-import { Card, CardContent } from "@/components/ui/card";
+import { KeywordMap } from "@/lib/airtable-types";
 import { useAlerts } from "@/components/alerts-provider";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 
 // DND Kit Imports
 import {
@@ -102,650 +51,15 @@ import {
   arrayMove,
   SortableContext,
   horizontalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 
-// --- Components ---
-
-const DraggableTableHeader = ({ header }: { header: any }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: header.column.id,
-  });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    zIndex: isDragging ? 1 : 0,
-    opacity: isDragging ? 0.8 : 1,
-    position: "relative",
-  };
-
-  return (
-    <TableHead
-      ref={setNodeRef}
-      style={style}
-      className="text-[#00463c] font-bold whitespace-nowrap pb-2"
-    >
-      <div className="flex items-center gap-2">
-        {header.column.getCanSort() ? (
-          <div
-            className="-ml-3 h-8 text-[#00463c] font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
-            onClick={header.column.getToggleSortingHandler()}
-          >
-            {flexRender(header.column.columnDef.header, header.getContext())}
-            {header.column.getIsSorted() === "asc" ? (
-              <ChevronDown className="ml-2 h-4 w-4 rotate-180 shrink-0" />
-            ) : header.column.getIsSorted() === "desc" ? (
-              <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
-            ) : (
-              <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />
-            )}
-          </div>
-        ) : (
-          <div className="h-8 flex items-center">
-            {flexRender(header.column.columnDef.header, header.getContext())}
-          </div>
-        )}
-        {header.column.id !== "select" && header.column.id !== "actions" && (
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
-        )}
-      </div>
-    </TableHead>
-  );
-};
-
-interface FilterBarProps {
-  table: any;
-  columns: ColumnDef<any>[];
-}
-
-function FilterBar({ table, columns }: FilterBarProps) {
-  const [selectedColumn, setSelectedColumn] = React.useState<string>("");
-  const [filterValue, setFilterValue] = React.useState<string>("");
-  const [isPrioritizationModalOpen, setIsPrioritizationModalOpen] = React.useState(false);
-
-  const columnFilters = table.getState().columnFilters;
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
-  const { addAlert } = useAlerts();
-
-  const addFilter = () => {
-    if (!selectedColumn || !filterValue) return;
-    table.getColumn(selectedColumn)?.setFilterValue(filterValue);
-    setSelectedColumn("");
-    setFilterValue("");
-  };
-
-  const removeFilter = (columnId: string) => {
-    table.getColumn(columnId)?.setFilterValue(undefined);
-  };
-
-  const bulkDelete = async (ids: string[]) => {
-    try {
-      setIsBulkDeleting(true);
-      // Use soft delete to only remove from planning, not from Keyword-Map
-      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}&soft=true`, {
-        method: "DELETE",
-      });
-      
-      if (!response.ok) {
-        const resData = await response.json();
-        throw new Error(resData.error || "Bulk delete failed");
-      }
-
-      addAlert({
-        message: `${ids.length} Einträge wurden aus der Planung entfernt.`,
-        type: "success",
-      });
-      table.resetRowSelection();
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
-    } catch (error: any) {
-      addAlert({
-        title: "Fehler beim Entfernen",
-        message: error.message,
-        type: "error",
-      });
-    } finally {
-      setIsBulkDeleting(false);
-    }
-  };
-
-  const filterableColumns = columns.filter(
-    (col) => col.id !== "select" && col.id !== "actions" && (col as any).accessorKey
-  );
-
-  const suggestions = React.useMemo(() => {
-    if (!selectedColumn) return [];
-    const allData = table.getCoreRowModel().flatRows.map((row: any) => row.original[selectedColumn]);
-    const uniqueValues = Array.from(new Set(allData))
-      .filter(val => val !== null && val !== undefined && val !== "")
-      .sort();
-    return uniqueValues;
-  }, [selectedColumn, table]);
-
-  return (
-    <div className="flex flex-col gap-4 py-4 border-b border-[#00463c]/10">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border border-[#00463c]/10">
-          <Select value={selectedColumn} onValueChange={(v) => {
-            setSelectedColumn(v || "");
-            setFilterValue("");
-          }}>
-            <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
-              <Filter className="h-4 w-4 mr-2 text-[#00463c]" />
-              <SelectValue placeholder="Spalte" />
-            </SelectTrigger>
-            <SelectContent>
-              {filterableColumns.map((col) => (
-                <SelectItem key={col.id || (col as any).accessorKey} value={col.id || (col as any).accessorKey}>
-                  {typeof col.header === 'string' ? col.header : (col.id || (col as any).accessorKey)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="h-4 w-[1px] bg-[#00463c]/20 mx-1" />
-
-          {suggestions.length > 0 ? (
-            <Select value={filterValue} onValueChange={(v) => setFilterValue(v || "")}>
-              <SelectTrigger className="w-[200px] h-9 border-none bg-transparent focus:ring-0">
-                <SelectValue placeholder="Wert wählen..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Vorschläge</SelectLabel>
-                  {suggestions.map((val: any) => (
-                    <SelectItem key={String(val)} value={String(val)}>
-                      {String(val)}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              placeholder="Filterwert..."
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              className="w-[200px] h-9 border-none bg-transparent focus-visible:ring-0"
-              onKeyDown={(e) => e.key === "Enter" && addFilter()}
-            />
-          )}
-          
-          <Button 
-            onClick={addFilter} 
-            size="sm" 
-            className="bg-[#00463c] hover:bg-[#00332c] h-8 px-3 ml-1"
-            disabled={!selectedColumn || !filterValue}
-          >
-            Anwenden
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto">
-          {selectedRows.length > 0 && (
-            <Popover>
-              <PopoverTrigger>
-                <Button variant="destructive" className="bg-red-600 hover:bg-red-700 text-white h-10 px-4">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {selectedRows.length} löschen
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-4">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">Möchten Sie {selectedRows.length} Einträge wirklich löschen?</p>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
-                      disabled={isBulkDeleting}
-                      onClick={() => bulkDelete(selectedRows.map((r: any) => r.original.id))}
-                    >
-                      {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, löschen"}
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-          
-          <Button 
-            variant="outline" 
-            className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
-            onClick={() => setIsPrioritizationModalOpen(true)}
-          >
-            <Settings2 className="h-4 w-4 mr-2" />
-            Priorisierung
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="outline" className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]">
-                Spalten <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column: any) => column.getCanHide())
-                .map((column: any) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id.replace(/_/g, " ")}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      
-      {columnFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Aktive Filter:</span>
-          {columnFilters.map((filter: any) => {
-            const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
-            const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
-            return (
-              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-[#00463c]/10 text-[#00463c] border-[#00463c]/20">
-                <span className="font-semibold">{label}:</span> {filter.value}
-                <button 
-                  onClick={() => removeFilter(filter.id)}
-                  className="ml-1 hover:bg-[#00463c]/20 rounded-full p-0.5 transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            );
-          })}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => table.resetColumnFilters()}
-            className="h-7 text-xs text-muted-foreground hover:text-[#00463c]"
-          >
-            Alle löschen
-          </Button>
-        </div>
-      )}
-
-      <PrioritizationSettingsModal 
-        isOpen={isPrioritizationModalOpen}
-        onClose={() => setIsPrioritizationModalOpen(false)}
-        onWeightsUpdated={() => window.dispatchEvent(new CustomEvent("refresh-planning-data"))}
-      />
-    </div>
-  );
-}
-
-interface EditEditorialModalProps {
-  keyword: KeywordMap | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (id: string, updates: any) => Promise<void>;
-  onCommission: (id: string) => Promise<void>;
-  isCommissioning: boolean;
-  commissionedIds: Set<string>;
-}
-
-function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission, isCommissioning, commissionedIds }: EditEditorialModalProps) {
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
-  const [history, setHistory] = React.useState<ContentLog[]>([]);
-  const [loadingHistory, setLoadingHistory] = React.useState(false);
-
-  React.useEffect(() => {
-    if (keyword) {
-      setFormData({
-        Keyword: keyword.Keyword,
-        Status: keyword.Status,
-        Action_Type: keyword.Action_Type || 'Erstellung',
-        Editorial_Deadline: keyword.Editorial_Deadline,
-        Assigned_Editor: keyword.Assigned_Editor,
-        Policy: keyword.Policy,
-      });
-      
-      // Fetch history
-      const fetchHistory = async () => {
-        setLoadingHistory(true);
-        try {
-          const queryParam = keyword.Target_URL 
-            ? `url=${encodeURIComponent(keyword.Target_URL)}` 
-            : `keywordId=${keyword.id}`;
-          const response = await fetch(`/api/planning/history?${queryParam}`);
-          if (response.ok) {
-            const data = await response.json();
-            setHistory(data);
-          }
-        } catch (err) {
-          console.error("Failed to fetch history:", err);
-        } finally {
-          setLoadingHistory(false);
-        }
-      };
-      fetchHistory();
-    } else {
-      setHistory([]);
-    }
-  }, [keyword]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!keyword) return;
-    
-    setError(null);
-    setLoading(true);
-    try {
-      await onSave(keyword.id, formData);
-      onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || "Fehler beim Speichern");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const MetricItem = ({ icon: Icon, label, value, subValue }: { icon: any, label: string, value: string | number | undefined, subValue?: string }) => (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-      <div className="mt-0.5 p-1.5 rounded-md bg-white border border-border shadow-sm">
-        <Icon className="h-4 w-4 text-[#00463c]" />
-      </div>
-      <div className="space-y-0.5">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-        <div className="flex items-baseline gap-2">
-          <p className="text-sm font-semibold text-[#00463c]">{value ?? "-"}</p>
-          {subValue && <span className="text-[10px] text-muted-foreground">{subValue}</span>}
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
-        <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-6 pb-4 bg-[#00463c]/5 border-b border-[#00463c]/10">
-            <div className="flex items-center justify-between pr-8">
-              <div className="space-y-1">
-                <DialogTitle className="text-[#00463c] font-bold text-2xl flex items-center gap-2">
-                  {keyword?.Keyword}
-                </DialogTitle>
-                <DialogDescription className="flex items-start gap-2">
-                  {keyword?.Target_URL ? (
-                    <a 
-                      href={keyword.Target_URL} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-xs text-[#00463c] hover:underline flex items-start gap-1 break-all line-clamp-3"
-                    >
-                      <ExternalLink className="h-3 w-3 mt-0.5 shrink-0" />
-                      {keyword.Target_URL}
-                    </a>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">Keine URL hinterlegt</span>
-                  )}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <ScrollArea className="flex-1">
-            <div className="p-6 space-y-6">
-              {/* SEO Metrics Section */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
-                    <BarChart3 className="h-3.5 w-3.5" />
-                    Metriken
-                  </h4>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="flex flex-col items-center justify-center bg-[#00463c] text-white p-3 rounded-lg shadow-sm border border-[#00463c]/20">
-                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-1">Priority Score</p>
-                    <span className="text-2xl font-black tabular-nums leading-none">
-                      {keyword?.Priority_Score?.toFixed(1) || "0.0"}
-                    </span>
-                  </div>
-                  <MetricItem 
-                    icon={Target} 
-                    label="Suchvolumen" 
-                    value={keyword?.Search_Volume?.toLocaleString("de-DE")} 
-                  />
-                  <MetricItem 
-                    icon={ShieldCheck} 
-                    label="Difficulty" 
-                    value={keyword?.Difficulty} 
-                    subValue="/ 100"
-                  />
-                  <MetricItem 
-                    icon={ShoppingBag} 
-                    label="Produkt-Count" 
-                    value={keyword?.Article_Count} 
-                  />
-                  <MetricItem 
-                    icon={Euro} 
-                    label="Ø Produktwert" 
-                    value={keyword?.Avg_Product_Value ? `${keyword.Avg_Product_Value.toFixed(2)}€` : undefined} 
-                  />
-                </div>
-              </div>
-
-              <Separator className="bg-[#00463c]/10" />
-
-              {/* Editable Fields Section */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
-                  <Settings2 className="h-3.5 w-3.5" />
-                  Planungs-Details
-                </h4>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-type" className="text-xs font-bold">Bearbeitungs-Typ</Label>
-                    <Select 
-                      value={formData.Action_Type} 
-                      onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
-                    >
-                      <SelectTrigger id="edit-type" className="h-10 border-[#00463c]/20 focus:ring-[#00463c]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Erstellung">Erstellung</SelectItem>
-                        <SelectItem value="Optimierung">Optimierung</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-deadline" className="text-xs font-bold">Deadline</Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="edit-deadline"
-                        type="date"
-                        className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
-                        value={formData.Editorial_Deadline || ""}
-                        onChange={(e) => setFormData({ ...formData, Editorial_Deadline: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-editor" className="text-xs font-bold">Editor</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="edit-editor"
-                        placeholder="Editor Name..."
-                        className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
-                        value={formData.Assigned_Editor?.[0] || ""}
-                        onChange={(e) => setFormData({ ...formData, Assigned_Editor: e.target.value ? [e.target.value] : [] })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-policy" className="text-xs font-bold">Politik / Strategie Relevanz</Label>
-                    <div className="flex items-center gap-3 h-10">
-                      <Slider
-                        id="edit-policy"
-                        value={[formData.Policy || 0]}
-                        onValueChange={(v: number | readonly number[]) => {
-                          const val = Array.isArray(v) ? v[0] : v;
-                          setFormData({ ...formData, Policy: val });
-                        }}
-                        max={100}
-                        step={1}
-                        className="flex-1"
-                      />
-                      <Badge variant="secondary" className="bg-[#00463c]/10 text-[#00463c] font-bold min-w-[45px] justify-center">
-                        {formData.Policy || 0}%
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-[#00463c]/10 pt-4 mt-2">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-semibold text-[#00463c]">Content-Status</Label>
-                    <div className="flex items-center gap-2">
-                      {commissionedIds.has(keyword?.id || '') || 
-                       keyword?.Status === 'Beauftragt' || 
-                       (keyword?.Status === 'In Progress' && commissionedIds.has(keyword?.id || '')) || 
-                       keyword?.Status === 'In Arbeit' ||
-                       keyword?.Status === 'Erstellt' ||
-                       keyword?.Status === 'Review' ||
-                       keyword?.Status === 'Optimierung' ||
-                       keyword?.Status === 'Published' ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 font-bold">
-                          Beauftragt
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20 font-bold">
-                          Noch nicht beauftragt
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {!(commissionedIds.has(keyword?.id || '') || 
-                     keyword?.Status === 'Beauftragt' || 
-                     (keyword?.Status === 'In Progress' && commissionedIds.has(keyword?.id || '')) || 
-                     keyword?.Status === 'In Arbeit' ||
-                     keyword?.Status === 'Erstellt' ||
-                     keyword?.Status === 'Review' ||
-                     keyword?.Status === 'Optimierung' ||
-                     keyword?.Status === 'Published') && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
-                      onClick={() => {
-                        if (keyword) {
-                          onCommission(keyword.id);
-                        }
-                      }}
-                      disabled={isCommissioning}
-                    >
-                      {isCommissioning ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      ) : (
-                        <Zap className="h-3 w-3 mr-1 fill-current" />
-                      )}
-                      Content beauftragen
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Content-Historie
-                  </h4>
-                  {keyword?.Target_URL && (
-                  <Link 
-                    href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
-                    className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
-                  >
-                    Vollständige Historie
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
-                )}
-              </div>
-
-              {loadingHistory ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
-                </div>
-              ) : history.length > 0 ? (
-                <div className="space-y-3">
-                  {/* Latest Action Highlight */}
-                  <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
-                    <p className="text-xs font-medium text-[#00463c]">
-                      Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                  <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
-                    <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
-                  </div>
-                )}
-              </div>
-
-              {error && (
-                <Alert variant="destructive" className="mt-4 overflow-hidden border-red-200">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <div className="flex-1 overflow-hidden">
-                    <AlertTitle>Fehler</AlertTitle>
-                    <AlertDescription className="break-words text-sm">
-                      {error}
-                    </AlertDescription>
-                  </div>
-                </Alert>
-              )}
-            </div>
-          </ScrollArea>
-
-          <DialogFooter className="p-6 bg-muted/30 border-t border-border">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
-              Abbrechen
-            </Button>
-            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c] min-w-[120px]">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Speichern
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// Feature Imports
+import { 
+  EditEditorialModal, 
+  EditorialFilterBar 
+} from "@/features/planning/components";
+import { DraggableTableHeader } from "@/features/shared/components/DraggableTableHeader";
 
 // --- Table Definition ---
 
@@ -968,8 +282,66 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
 
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
-  const [weights, setWeights] = React.useState<PrioritizationWeights | null>(null);
   const [isCommissioning, setIsCommissioning] = React.useState<string | null>(null);
+  const [commissionedIds, setCommissionedIds] = React.useState<Set<string>>(new Set());
+
+  // Local filtered state for the table
+  const plannedKeywords = React.useMemo(() => {
+    return keywords.filter(k => k.Editorial_Deadline || (k.Status && k.Status !== 'Backlog'));
+  }, [keywords]);
+
+  const updateData = async (id: string, updates: any) => {
+    try {
+      const response = await fetch(`/api/planning/keywords?id=${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error("Update failed");
+      }
+
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+      addAlert({
+        title: "Erfolg",
+        message: "Eintrag wurde aktualisiert.",
+        type: "success",
+      });
+    } catch (error) {
+      addAlert({
+        title: "Fehler",
+        message: "Fehler beim Aktualisieren des Eintrags.",
+        type: "error",
+      });
+      throw error;
+    }
+  };
+
+  const deleteData = async (id: string) => {
+    try {
+      // Use soft delete to only remove from planning, not from Keyword-Map
+      const response = await fetch(`/api/planning/keywords?ids=${id}&soft=true`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Delete failed");
+      }
+
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+      addAlert({
+        title: "Erfolg",
+        message: "Eintrag wurde aus der Planung entfernt.",
+        type: "success",
+      });
+    } catch (error) {
+      addAlert({
+        title: "Fehler",
+        message: "Fehler beim Entfernen des Eintrags.",
+        type: "error",
+      });
+    }
+  };
 
   const handleCommissionContent = async (id: string) => {
     try {
@@ -997,142 +369,16 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         type: "success",
       });
       
-      // We wait a bit before refreshing to ensure Airtable has processed the history entry
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent("refresh-planning-data"));
-      }, 1500);
-    } catch (error: any) {
+      // Still refresh to get latest status from Airtable
+      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+    } catch (error) {
       addAlert({
-        title: "Fehler beim Beauftragen",
-        message: error.message,
+        title: "Fehler",
+        message: "Fehler beim Beauftragen des Contents.",
         type: "error",
       });
     } finally {
       setIsCommissioning(null);
-    }
-  };
-
-  // Fetch weights on mount
-  React.useEffect(() => {
-    const fetchWeights = async () => {
-      try {
-        const response = await fetch("/api/admin/config");
-        if (!response.ok) return;
-        const config = await response.json();
-        
-        const newWeights: PrioritizationWeights = {
-          weight_search_volume: 20,
-          weight_difficulty: 20,
-          weight_article_count: 20,
-          weight_avg_value: 20,
-          weight_policy: 20,
-        };
-        
-        config.forEach((item: { key: string; value: any }) => {
-          if (item.key in newWeights) {
-            newWeights[item.key as keyof PrioritizationWeights] = Number(item.value) || 0;
-          }
-        });
-        setWeights(newWeights);
-      } catch (error) {
-        console.error("Error fetching weights in EditorialPlanning:", error);
-      }
-    };
-    fetchWeights();
-    
-    // Listen for refresh events to re-fetch weights
-    const handleRefresh = () => fetchWeights();
-    window.addEventListener("refresh-planning-data", handleRefresh);
-    return () => window.removeEventListener("refresh-planning-data", handleRefresh);
-  }, []);
-
-  const plannedKeywords = React.useMemo(() => {
-    // Only show keywords that are in planning (have a deadline or status other than Backlog)
-    // AND are not in status "Backlog" (which is where they go after "soft delete")
-    const filtered = keywords.filter(kw => 
-      (kw.Editorial_Deadline || kw.Status !== "Backlog") && 
-      kw.Status !== "Backlog"
-    );
-    
-    if (!weights) return filtered;
-
-    return filtered.map(kw => ({
-      ...kw,
-      Priority_Score: calculatePriorityScore(kw, weights)
-    }));
-  }, [keywords, weights]);
-
-  // Helper to check if a keyword has been commissioned based on history
-  const [commissionedIds, setCommissionedIds] = React.useState<Set<string>>(new Set());
-
-  React.useEffect(() => {
-    const fetchGlobalHistory = async () => {
-      try {
-        const response = await fetch('/api/planning/history');
-        if (response.ok) {
-          const logs: ContentLog[] = await response.json();
-          // Find all keywords that have AT LEAST ONE entry in Content-Log
-          const ids = new Set(logs.flatMap(l => l.Keyword_ID || []).filter(Boolean));
-          setCommissionedIds(ids);
-        }
-      } catch (err) {
-        console.error("Failed to fetch global history:", err);
-      }
-    };
-    fetchGlobalHistory();
-    
-    const handleRefresh = () => fetchGlobalHistory();
-    window.addEventListener("refresh-planning-data", handleRefresh);
-    return () => window.removeEventListener("refresh-planning-data", handleRefresh);
-  }, []);
-
-  const updateData = async (rowId: string, updates: any) => {
-    try {
-      const response = await fetch("/api/planning/keywords", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: rowId, ...updates }),
-      });
-      
-      if (!response.ok) {
-        const resData = await response.json();
-        throw new Error(resData.error || "Update failed");
-      }
-
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
-    } catch (error: any) {
-      addAlert({
-        title: "Fehler beim Aktualisieren",
-        message: error.message,
-        type: "error",
-      });
-      throw error;
-    }
-  };
-
-  const deleteData = async (id: string) => {
-    try {
-      // Use soft delete to only remove from planning, not from Keyword-Map
-      const response = await fetch(`/api/planning/keywords?id=${id}&soft=true`, {
-        method: "DELETE",
-      });
-      
-      if (!response.ok) {
-        const resData = await response.json();
-        throw new Error(resData.error || "Delete failed");
-      }
-
-      addAlert({
-        message: "Eintrag wurde aus der Planung entfernt.",
-        type: "success",
-      });
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
-    } catch (error: any) {
-      addAlert({
-        title: "Fehler beim Entfernen",
-        message: error.message,
-        type: "error",
-      });
     }
   };
 
@@ -1142,11 +388,14 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     const defaultOrder = [
       "select",
       "Keyword",
+      "Priority_Score",
       "Status",
       "Action_Type",
       "Editorial_Deadline",
       "Assigned_Editor",
-      "Priority_Score",
+      "Article_Count",
+      "Avg_Product_Value",
+      "Difficulty",
       "Policy",
       "Search_Volume",
       "Target_URL",
@@ -1155,11 +404,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder) as string[];
-        // Filter out any columns that no longer exist and add any new columns
         const existingColumns = parsedOrder.filter(id => defaultOrder.includes(id));
         const newColumns = defaultOrder.filter(id => !parsedOrder.includes(id));
         
-        // Force "select" to be at the beginning if it exists in defaultOrder
         let finalOrder = [...existingColumns, ...newColumns];
         if (finalOrder.includes("select")) {
           finalOrder = ["select", ...finalOrder.filter(id => id !== "select")];
@@ -1193,6 +440,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onColumnOrderChange: setColumnOrder,
+    getPaginationRowModel: getPaginationRowModel(),
     meta: {
       updateData,
       deleteData,
@@ -1202,6 +450,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     },
     initialState: {
       sorting: [{ id: "Priority_Score", desc: true }],
+      pagination: {
+        pageSize: 10,
+      },
     },
     state: {
       sorting,
@@ -1244,7 +495,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         </p>
       </div>
 
-      <FilterBar table={table} columns={columns} />
+      <EditorialFilterBar table={table} columns={columns} />
 
       <Card className="border-[#00463c]/10 overflow-hidden">
         <CardContent className="p-0">
