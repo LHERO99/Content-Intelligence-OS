@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       try {
         const commissionTime = new Date().toISOString();
         
-        // Update status to "In Progress"
+        // Update status to "Beauftragt"
         await updateKeyword(data.keywordId, { 
-          Status: 'In Progress'
+          Status: 'Beauftragt'
         });
         
         // Create initial history entry

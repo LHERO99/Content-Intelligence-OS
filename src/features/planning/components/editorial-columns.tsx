@@ -100,9 +100,8 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
       const currentStatus = row.original.Status;
       const isAlreadyInWorkflow = isCommissioned || 
                                  currentStatus === 'Beauftragt' || 
-                                 (currentStatus === 'In Progress' && isCommissioned) || 
                                  currentStatus === 'In Arbeit' ||
-                                 currentStatus === 'Erstellt' ||
+                                 currentStatus === 'Angeliefert' ||
                                  currentStatus === 'Review' ||
                                  currentStatus === 'Optimierung' ||
                                  currentStatus === 'Published';

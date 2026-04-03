@@ -76,6 +76,33 @@ export function AIEditorWorkspace({
     }
   };
 
+  const handlePublish = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/planning/keywords`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: keywordId,
+          fields: {
+            Status: 'Published'
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error('Veröffentlichung fehlgeschlagen');
+      
+      toast.success('Content erfolgreich veröffentlicht');
+      
+      // Trigger a global refresh to update polling/parent data
+      window.dispatchEvent(new CustomEvent('refresh-planning-data'));
+    } catch (error) {
+      toast.error('Fehler bei der Veröffentlichung');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleForwardToPharma = () => {
     toast.info('Schnittstelle zu Pharma wird in einer späteren Phase implementiert.', {
       description: 'Der aktuelle Content wurde für den Export vorgemerkt.',
@@ -126,13 +153,24 @@ export function AIEditorWorkspace({
           </Button>
         </div>
 
-        <Button
-          onClick={handleForwardToPharma}
-          className="bg-[#00463c] hover:bg-[#00332c] text-white gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider"
-        >
-          <Send className="h-3.5 w-3.5" />
-          An Pharma senden
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleForwardToPharma}
+            className="border-emerald-200 text-[#00463c] hover:bg-emerald-50 gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider"
+          >
+            <Send className="h-3.5 w-3.5" />
+            An Pharma senden
+          </Button>
+          <Button
+            onClick={handlePublish}
+            disabled={isSaving}
+            className="bg-[#00463c] hover:bg-[#00332c] text-white gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Veröffentlichen
+          </Button>
+        </div>
       </div>
 
       {/* Main Workspace Area */}

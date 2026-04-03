@@ -1,6 +1,7 @@
 # TODO Historie
 
 ## Erledigt
+- [x] Airtable 422 Error in `createContentLog` behoben (Computed Field `Target_URL` entfernt).
 - [x] Kommissionierungs-Zeitstempel fixen & Formatierung anpassen.
 - [x] HTML-Ansicht in "Bearbeiten"-Tab integrieren.
 - [x] Visualisierung von Headlines (H1-H3) und Absätzen im Editor/Vorschau fixen.

@@ -15,9 +15,13 @@ const AddToEditorialButton = ({ row }: { row: any }) => {
     e.stopPropagation();
     setLoading(true);
     try {
-      // Set status to "Planned" to add it to the editorial plan
+      const isPublished = row.original.Status === "Published";
+      
+      // Update status to "Planned"
+      // If previously published, set Action_Type to "Optimierung", else "Erstellung"
       await PlanningService.updateKeyword(row.original.id, { 
-        Status: "Planned" 
+        Status: "Planned",
+        Action_Type: isPublished ? "Optimierung" : "Erstellung"
       });
     } catch (error) {
       console.error("Failed to add to editorial:", error);
@@ -111,9 +115,10 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
       const isMain = row.original.Main_Keyword === "Y";
       if (!isMain) return <div className="flex justify-center w-full">-</div>;
 
-      const isInEditorial = (row.original.Editorial_Deadline || row.original.Status !== "Backlog") && row.original.Status !== "Backlog";
+      const status = row.original.Status;
+      const isAdded = status !== "Backlog" && status !== "Published";
       
-      if (isInEditorial) {
+      if (isAdded) {
         return (
           <div className="flex justify-center w-full">
             <Badge variant="outline" className="text-green-600 border-green-600 font-bold bg-green-50/50">Hinzugefügt</Badge>

@@ -52,7 +52,7 @@ export default function CreationPage() {
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
   
   const commissionedKeywords = keywords.filter(kw => {
-    const pipelineStatuses = ['Beauftragt', 'In Progress', 'In Arbeit', 'Erstellt', 'Review', 'Optimierung'];
+    const pipelineStatuses = ['Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung'];
     const hasCorrectStatus = pipelineStatuses.includes(kw.Status);
     const hasAnyHistory = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
@@ -161,11 +161,9 @@ export default function CreationPage() {
                               variant="secondary" 
                               className={cn(
                                 "whitespace-nowrap",
-                                kw.Status === 'Beauftragt' 
+                                (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
                                   ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                                  : (kw.Status === 'In Progress' || kw.Status === 'In Arbeit')
-                                  ? 'bg-blue-100 text-blue-700 border-blue-200' 
-                                  : kw.Status === 'Erstellt'
+                                  : kw.Status === 'Angeliefert'
                                   ? 'bg-[#00463c] text-white border-[#00463c]'
                                   : kw.Status === 'Review' 
                                   ? 'bg-purple-100 text-purple-700 border-purple-200'
@@ -174,7 +172,7 @@ export default function CreationPage() {
                                   : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                               )}
                             >
-                              {kw.Status === 'In Progress' || kw.Status === 'In Arbeit' ? 'In Arbeit' : kw.Status}
+                              {(kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit') ? 'In Arbeit' : kw.Status}
                             </Badge>
                           </TableCell>
                         </TableRow>

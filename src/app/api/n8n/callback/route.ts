@@ -31,12 +31,12 @@ export async function POST(request: Request) {
 
     console.log(`[API] Received content from n8n for Keyword ID: ${keywordId}`);
 
-    // 1. Update Keyword Status to "Erstellt" once content is received
-    // Explicitly transition from "In Arbeit" / "In Progress" to "Erstellt"
+    // 1. Update Keyword Status to "Angeliefert" once content is received
+    // Explicitly transition from "Beauftragt" to "Angeliefert"
     try {
-      await updateKeyword(keywordId, { Status: 'Erstellt' as any });
+      await updateKeyword(keywordId, { Status: 'Angeliefert' });
     } catch (err) {
-      console.error('[API] Error updating keyword status to Erstellt:', err);
+      console.error('[API] Error updating keyword status to Angeliefert:', err);
     }
 
     // 2. Create Content-Log entry (v2 for AI suggestions)
