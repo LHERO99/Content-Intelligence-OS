@@ -60,7 +60,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const [commissionedIds, setCommissionedIds] = React.useState<Set<string>>(new Set());
 
   const plannedKeywords = React.useMemo(() => {
-    return keywords.filter(k => k.Editorial_Deadline || (k.Status && k.Status !== 'Backlog'));
+    // Show active planning workflow, but exclude Backlog and Published
+    return keywords.filter(k => k.Status && ['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung'].includes(k.Status));
   }, [keywords]);
 
   const updateData = async (id: string, updates: any) => {

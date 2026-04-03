@@ -124,14 +124,7 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
         title="Vorschläge" 
         description="Vorschläge für neue Inhalte oder zur Optimierung bestehender Inhalte basierend auf SEO-Metriken." 
       />
-      <PlanningTable 
-        table={table} 
-        columnOrder={columnOrder} 
-        sensors={sensors} 
-        onDragEnd={handleDragEnd} 
-        onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
-      />
-      <div className="flex justify-between items-center py-4">
+      <div className="flex justify-between items-center">
         <KeywordFilterBar table={table} columns={columns} />
         <div className="flex items-center space-x-2">
           <div className="text-sm text-muted-foreground mr-4">
@@ -141,6 +134,13 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
           <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Weiter</Button>
         </div>
       </div>
+      <PlanningTable 
+        table={table} 
+        columnOrder={columnOrder} 
+        sensors={sensors} 
+        onDragEnd={handleDragEnd} 
+        onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
+      />
       <EditKeywordModal 
         keyword={editingKeyword} 
         open={isEditModalOpen} 

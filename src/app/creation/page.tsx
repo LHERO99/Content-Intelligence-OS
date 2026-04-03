@@ -52,8 +52,17 @@ export default function CreationPage() {
   const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
   
   const commissionedKeywords = keywords.filter(kw => {
-    const pipelineStatuses = ['Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung'];
+    // Only show records that have been commissioned (Beauftragt, In Arbeit, Angeliefert, Review, Optimierung)
+    // EXCLUDE Planned, Backlog from this view.
+    const pipelineStatuses = ['Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung', 'Published'];
     const hasCorrectStatus = pipelineStatuses.includes(kw.Status);
+    
+    // Explicitly exclude statuses that shouldn't be in the commissioned list
+    // Records that are just 'Planned' stay in the Editorial Plan
+    if (['Planned', 'Backlog'].includes(kw.Status)) {
+      return false;
+    }
+
     const hasAnyHistory = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
       l.Keyword_ID.includes(kw.id)
