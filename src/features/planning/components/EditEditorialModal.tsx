@@ -92,9 +92,8 @@ export function EditEditorialModal({
     if (!keyword) return false;
     return commissionedIds.has(keyword.id) || 
            keyword.Status === 'Beauftragt' || 
-           (keyword.Status === 'In Progress' && commissionedIds.has(keyword.id)) || 
            keyword.Status === 'In Arbeit' ||
-           keyword.Status === 'Erstellt' ||
+           keyword.Status === 'Angeliefert' ||
            keyword.Status === 'Review' ||
            keyword.Status === 'Optimierung' ||
            keyword.Status === 'Published';
