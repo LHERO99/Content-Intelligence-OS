@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import { html as beautifyHtml } from 'js-beautify';
 import { 
   Bold, 
   Italic, 
@@ -18,7 +19,9 @@ import {
   Redo,
   Save,
   Code,
-  Type
+  Type,
+  Type as TextIcon,
+  Pilcrow
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -87,6 +90,17 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 3 }) ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
       >
         <Heading3 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => handleAction(e, () => editor.chain().focus().setParagraph().run())}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('paragraph') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        title="In Text umwandeln"
+      >
+        <Pilcrow className="h-4 w-4" />
       </Button>
       <div className="w-[1px] h-4 bg-slate-300 mx-1" />
       <Button
@@ -203,17 +217,27 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
     },
   });
 
-  // Update code content when editor changes
+  // When switching to Code mode, format the current editor content
+  React.useEffect(() => {
+    if (editor && showCode) {
+      const html = editor.getHTML();
+      const formatted = beautifyHtml(html, {
+        indent_size: 2,
+        wrap_line_length: 80,
+        preserve_newlines: true,
+        unformatted: ['code', 'pre', 'em', 'strong', 'span']
+      });
+      setCodeContent(formatted);
+    }
+  }, [showCode, editor]);
+
+  // When switching back to Editor mode, update Tiptap content
   React.useEffect(() => {
     if (editor && !showCode) {
-      setCodeContent(editor.getHTML());
-    }
-  }, [editor?.getHTML(), showCode]);
-
-  // Update editor when code content changes and we switch back
-  React.useEffect(() => {
-    if (editor && !showCode && editor.getHTML() !== codeContent) {
-      editor.commands.setContent(codeContent);
+      const currentEditorHtml = editor.getHTML();
+      if (currentEditorHtml !== codeContent) {
+        editor.commands.setContent(codeContent, { emitUpdate: false });
+      }
     }
   }, [showCode, editor]);
 
