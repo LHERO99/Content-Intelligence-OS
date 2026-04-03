@@ -5,3 +5,7 @@ export * from "./KeywordFilterBar";
 export * from "./prioritization-settings-modal";
 export * from "./blacklist-reason-modal";
 export * from "./keyword-import";
+export * from "./PlanningTable";
+export * from "./PlanningHeader";
+export * from "./editorial-columns";
+export * from "./keyword-columns";
