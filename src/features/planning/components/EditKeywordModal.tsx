@@ -207,43 +207,6 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                 </div>
               </div>
 
-              <div className="border-t border-[#00463c]/10 pt-4 mt-2">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-semibold text-[#00463c]">Content-Plan Status</Label>
-                    <div className="flex items-center gap-2">
-                      {isInContentPlan ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
-                          Hinzugefügt
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
-                          Nicht im Plan
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {!isInContentPlan && formData.Main_Keyword === "Y" && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
-                      onClick={handleAddToContentPlan}
-                      disabled={isAddingToPlan || loading}
-                    >
-                      {isAddingToPlan ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Zap className="h-3 w-3 fill-current" />
-                      )}
-                      Hinzufügen
-                    </Button>
-                  )}
-                </div>
-              </div>
-
               <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">

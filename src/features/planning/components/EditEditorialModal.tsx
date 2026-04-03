@@ -243,31 +243,14 @@ export function EditEditorialModal({
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="border-t border-[#00463c]/10 pt-4 mt-2">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-semibold text-[#00463c]">Content-Status</Label>
-                    <div className="flex items-center gap-2">
-                      {isAlreadyCommissioned ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 font-bold">
-                          Beauftragt
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20 font-bold">
-                          Noch nicht beauftragt
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  
+                
+                <div className="pt-2">
                   {!isAlreadyCommissioned && (
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                      className="w-full border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
                       onClick={() => {
                         if (keyword) {
                           onCommission(keyword.id);

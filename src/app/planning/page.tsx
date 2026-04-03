@@ -3,20 +3,19 @@
 import { useState, useEffect } from "react";
 import { KeywordTable } from "./keyword-table";
 import { SuggestionsTable } from "./suggestions-table";
-import { TrendRadar } from "./trend-radar";
 import { EditorialPlanning } from "./editorial-planning";
 import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Radar, Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
+import { Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
 import { KeywordMap, PotentialTrend } from "@/lib/airtable-types";
 
 export default function PlanningPage() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('planning-active-tab') || "suggestions";
+      return localStorage.getItem('planning-active-tab') || "editorial";
     }
-    return "suggestions";
+    return "editorial";
   });
   const [data, setData] = useState<{ keywords: KeywordMap[], trends: PotentialTrend[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,21 +85,17 @@ export default function PlanningPage() {
         className="space-y-4"
       >
         <TabsList className="bg-[#e7f3ee] border-[#00463c]/10">
-          <TabsTrigger value="suggestions" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
-            <Sparkles className="mr-2 h-4 w-4" />
-            Vorschläge
-          </TabsTrigger>
           <TabsTrigger value="editorial" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
             <Calendar className="mr-2 h-4 w-4" />
             Redaktions-Planung
           </TabsTrigger>
+          <TabsTrigger value="suggestions" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Vorschläge
+          </TabsTrigger>
           <TabsTrigger value="keyword-map" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
             <Map className="mr-2 h-4 w-4" />
             Keyword-Map
-          </TabsTrigger>
-          <TabsTrigger value="trend-radar" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
-            <Radar className="mr-2 h-4 w-4" />
-            Trend-Radar
           </TabsTrigger>
           <TabsTrigger value="blacklist" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
             <ShieldAlert className="mr-2 h-4 w-4" />
@@ -118,10 +113,6 @@ export default function PlanningPage() {
 
         <TabsContent value="keyword-map" className="space-y-4">
           <KeywordTable keywords={data.keywords} />
-        </TabsContent>
-
-        <TabsContent value="trend-radar" className="space-y-4">
-          <TrendRadar trends={data.trends} />
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4">

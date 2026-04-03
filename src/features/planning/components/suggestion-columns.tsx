@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, ExternalLink } from "lucide-react";
 import { PlanningService } from "../services/planning-service";
 
 const AddToEditorialButton = ({ row }: { row: any }) => {
@@ -16,14 +16,10 @@ const AddToEditorialButton = ({ row }: { row: any }) => {
     setLoading(true);
     try {
       const isPublished = row.original.Status === "Published";
-      
-      // Update status to "Planned"
       await PlanningService.updateKeyword(row.original.id, { 
         Status: "Planned",
         Action_Type: isPublished ? "Optimierung" : "Erstellung"
       });
-      
-      // Trigger a global refresh to update polling/parent data
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
     } catch (error) {
       console.error("Failed to add to editorial:", error);
@@ -54,58 +50,19 @@ const AddToEditorialButton = ({ row }: { row: any }) => {
 
 export const suggestionColumns: ColumnDef<KeywordMap>[] = [
   {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center h-8">
-        <Checkbox
-          checked={
-            (table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")) as any
-          }
-          onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div onClick={(e) => e.stopPropagation()}>
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value: any) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-    enableColumnFilter: false,
-  },
-  {
     accessorKey: "Keyword",
     header: "Keyword",
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
-    accessorKey: "Target_URL",
-    header: "Target URL",
+    accessorKey: "Action_Type",
+    header: "Typ",
     cell: ({ row }) => {
-      const url = row.getValue("Target_URL") as string;
+      const type = row.getValue("Action_Type") as string || "Erstellung";
       return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <div className="max-w-[200px] truncate text-muted-foreground text-xs">
-                {url}
-              </div>
-            </TooltipTrigger>
-            {url && (
-              <TooltipContent className="max-w-md break-all">
-                <p>{url}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        <Badge variant="outline" className="border-slate-200 text-slate-600 bg-slate-50 font-medium">
+          {type}
+        </Badge>
       );
     },
   },
@@ -125,12 +82,10 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     cell: ({ row }) => {
       const score = row.getValue("Priority_Score") as number;
       if (score === undefined || score === null) return "-";
-      
       let color = "bg-slate-100 text-slate-700";
       if (score >= 70) color = "bg-red-100 text-red-700 border-red-200";
       else if (score >= 40) color = "bg-orange-100 text-orange-700 border-orange-200";
       else if (score > 0) color = "bg-green-100 text-green-700 border-green-200";
-
       return (
         <Badge variant="outline" className={`${color} font-bold`}>
           {score.toFixed(1)}
@@ -140,25 +95,15 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
   },
   {
     accessorKey: "Search_Volume",
-    header: "Volumen",
+    header: "Suchvolumen",
     cell: ({ row }) => {
       const val = row.getValue("Search_Volume") as number;
       return val ? val.toLocaleString("de-DE") : "-";
     },
   },
   {
-    accessorKey: "Difficulty",
-    header: "Diff.",
-    cell: ({ row }) => row.getValue("Difficulty") ?? "-",
-  },
-  {
-    accessorKey: "Article_Count",
-    header: "Produkte",
-    cell: ({ row }) => row.getValue("Article_Count") ?? "-",
-  },
-  {
     accessorKey: "Last_Published",
-    header: "Zuletzt",
+    header: "Letzte Änderung",
     cell: ({ row }) => {
       const date = row.getValue("Last_Published") as string;
       if (!date) return <span className="text-muted-foreground italic text-[10px]">Neu</span>;
@@ -166,6 +111,26 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
         <span className="text-[10px] text-muted-foreground">
           {new Date(date).toLocaleDateString("de-DE")}
         </span>
+      );
+    },
+  },
+  {
+    accessorKey: "Target_URL",
+    header: "URL",
+    cell: ({ row }) => {
+      const url = row.getValue("Target_URL") as string;
+      if (!url) return "-";
+      return (
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-[#00463c] hover:underline flex items-center gap-1 max-w-[200px] truncate"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" />
+          {url.replace(/^https?:\/\/(www\.)?/, '')}
+        </a>
       );
     },
   },
