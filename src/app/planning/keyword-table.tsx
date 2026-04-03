@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import * as React from "react";
 import {
@@ -17,7 +17,6 @@ import {
 import { 
   ArrowUpDown, 
   ChevronDown, 
-  MoreHorizontal, 
   Map, 
   Loader2, 
   GripVertical,
@@ -36,9 +35,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -66,12 +62,6 @@ import { KeywordImport } from "./keyword-import";
 import { BlacklistReasonModal } from "./blacklist-reason-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAlerts } from "@/components/alerts-provider";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -88,6 +78,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // DND Kit Imports
 import {
@@ -422,8 +419,6 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
   const [loading, setLoading] = React.useState(false);
   const [isAddingToPlan, setIsAddingToPlan] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  
-  // Form states
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
   const [history, setHistory] = React.useState<ContentLog[]>([]);
   const [loadingHistory, setLoadingHistory] = React.useState(false);
@@ -443,7 +438,6 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
         Editorial_Deadline: keyword.Editorial_Deadline,
       });
 
-      // Fetch history
       const fetchHistory = async () => {
         setLoadingHistory(true);
         try {
@@ -478,7 +472,6 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
         Status: "In Progress"
       };
       await onSave(keyword.id, updates);
-      // Update local form state to reflect changes
       setFormData(prev => ({ ...prev, ...updates }));
     } catch (err: any) {
       setError(err.message || "Fehler beim Hinzufügen zum Content-Plan");
@@ -503,21 +496,13 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
     }
   };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    // Only allow closing if it's not from an outside click or escape key
-    // In many Dialog implementations, onOpenChange(false) is called for all close actions.
-    // If we want to allow the "X" button but not outside click, we need to check the source.
-    // However, with standard Shadcn/Radix, onOpenChange doesn't provide the event.
-    onOpenChange(newOpen);
-  };
-
   const closeDialog = () => onOpenChange(false);
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
               Keyword bearbeiten
             </DialogTitle>
@@ -526,206 +511,208 @@ function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordMo
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {/* Row 1: Keyword and Main Keyword */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="edit-keyword">Keyword *</Label>
+          <ScrollArea className="flex-1 px-6 pb-6">
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="edit-keyword">Keyword *</Label>
+                  <Input
+                    id="edit-keyword"
+                    value={formData.Keyword || ""}
+                    onChange={(e) => setFormData({ ...formData, Keyword: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-main">Main Keyword</Label>
+                  <Select 
+                    value={formData.Main_Keyword} 
+                    onValueChange={(v) => setFormData({ ...formData, Main_Keyword: v as 'Y' | 'N' })}
+                  >
+                    <SelectTrigger id="edit-main">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Y">Ja (Y)</SelectItem>
+                      <SelectItem value="N">Nein (N)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-volume">Suchvolumen</Label>
+                  <Input
+                    id="edit-volume"
+                    type="number"
+                    value={formData.Search_Volume ?? ""}
+                    onChange={(e) => setFormData({ ...formData, Search_Volume: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-difficulty">Difficulty</Label>
+                  <Input
+                    id="edit-difficulty"
+                    type="number"
+                    value={formData.Difficulty ?? ""}
+                    onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select 
+                    value={formData.Status} 
+                    onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Backlog">Backlog</SelectItem>
+                      <SelectItem value="Planned">Planned</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Published">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-type">Typ</Label>
+                  <Select 
+                    value={formData.Action_Type} 
+                    onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
+                  >
+                    <SelectTrigger id="edit-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Erstellung">Erstellung</SelectItem>
+                      <SelectItem value="Optimierung">Optimierung</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-url">Target URL *</Label>
                 <Input
-                  id="edit-keyword"
-                  value={formData.Keyword || ""}
-                  onChange={(e) => setFormData({ ...formData, Keyword: e.target.value })}
+                  id="edit-url"
+                  value={formData.Target_URL || ""}
+                  onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-main">Main Keyword</Label>
-                <Select 
-                  value={formData.Main_Keyword} 
-                  onValueChange={(v) => setFormData({ ...formData, Main_Keyword: v as 'Y' | 'N' })}
-                >
-                  <SelectTrigger id="edit-main">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Y">Ja (Y)</SelectItem>
-                    <SelectItem value="N">Nein (N)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            {/* Row 2: Suchvolumen, Difficulty, Status, Typ */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-volume">Suchvolumen</Label>
-                <Input
-                  id="edit-volume"
-                  type="number"
-                  value={formData.Search_Volume ?? ""}
-                  onChange={(e) => setFormData({ ...formData, Search_Volume: e.target.value ? Number(e.target.value) : undefined })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-difficulty">Difficulty</Label>
-                <Input
-                  id="edit-difficulty"
-                  type="number"
-                  value={formData.Difficulty ?? ""}
-                  onChange={(e) => setFormData({ ...formData, Difficulty: e.target.value ? Number(e.target.value) : undefined })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select 
-                  value={formData.Status} 
-                  onValueChange={(v) => setFormData({ ...formData, Status: v as any })}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Backlog">Backlog</SelectItem>
-                    <SelectItem value="Planned">Planned</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Published">Published</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-type">Typ</Label>
-                <Select 
-                  value={formData.Action_Type} 
-                  onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
-                >
-                  <SelectTrigger id="edit-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Erstellung">Erstellung</SelectItem>
-                    <SelectItem value="Optimierung">Optimierung</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Row 3: Target URL (Full width) */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-url">Target URL *</Label>
-              <Input
-                id="edit-url"
-                value={formData.Target_URL || ""}
-                onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
-                required
-              />
-            </div>
-
-            {/* Row 4: Produkt-Count and Ø Produktwert */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-articles">Produkt-Count</Label>
-                <Input
-                  id="edit-articles"
-                  type="number"
-                  value={formData.Article_Count ?? ""}
-                  onChange={(e) => setFormData({ ...formData, Article_Count: e.target.value ? Number(e.target.value) : undefined })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-value">Ø Produktwert</Label>
-                <Input
-                  id="edit-value"
-                  type="number"
-                  step="0.01"
-                  value={formData.Avg_Product_Value ?? ""}
-                  onChange={(e) => setFormData({ ...formData, Avg_Product_Value: e.target.value ? Number(e.target.value) : undefined })}
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-[#00463c]/10 pt-4 mt-2">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="text-sm font-semibold text-[#00463c]">Content-Plan Status</Label>
-                  <div className="flex items-center gap-2">
-                    {formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog") ? (
-                      <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
-                        Hinzugefügt
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
-                        Nicht im Plan
-                      </Badge>
-                    )}
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-articles">Produkt-Count</Label>
+                  <Input
+                    id="edit-articles"
+                    type="number"
+                    value={formData.Article_Count ?? ""}
+                    onChange={(e) => setFormData({ ...formData, Article_Count: e.target.value ? Number(e.target.value) : undefined })}
+                  />
                 </div>
-                
-                {!(formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog")) && formData.Main_Keyword === "Y" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
-                    onClick={handleAddToContentPlan}
-                    disabled={isAddingToPlan || loading}
-                  >
-                    {isAddingToPlan ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : (
-                      <Plus className="h-3 w-3 mr-1" />
-                    )}
-                    Zum Plan hinzufügen
-                  </Button>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-value">Ø Produktwert</Label>
+                  <Input
+                    id="edit-value"
+                    type="number"
+                    step="0.01"
+                    value={formData.Avg_Product_Value ?? ""}
+                    onChange={(e) => setFormData({ ...formData, Avg_Product_Value: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Content-Historie
-                </h4>
-                {keyword?.Target_URL && (
-                  <Link 
-                    href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
-                    className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
-                  >
-                    Vollständige Historie
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
+              <div className="border-t border-[#00463c]/10 pt-4 mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold text-[#00463c]">Content-Plan Status</Label>
+                    <div className="flex items-center gap-2">
+                      {formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog") ? (
+                        <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+                          Hinzugefügt
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/20">
+                          Nicht im Plan
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {!(formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog")) && formData.Main_Keyword === "Y" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                      onClick={handleAddToContentPlan}
+                      disabled={isAddingToPlan || loading}
+                    >
+                      {isAddingToPlan ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Plus className="h-3 w-3 mr-1" />
+                      )}
+                      Zum Plan hinzufügen
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Content-Historie
+                  </h4>
+                  {keyword?.Target_URL && (
+                    <Link 
+                      href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
+                      className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
+                    >
+                      Vollständige Historie
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  )}
+                </div>
+
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
+                  </div>
+                ) : history.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
+                      <p className="text-xs font-medium text-[#00463c]">
+                        Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
+                    <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
+                  </div>
                 )}
               </div>
 
-              {loadingHistory ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
-                </div>
-              ) : history.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
-                    <p className="text-xs font-medium text-[#00463c]">
-                      Zuletzt {history[0].Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am {new Date(history[0].Created_At).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
+              {error && (
+                <Alert variant="destructive" className="overflow-hidden border-red-200">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <div className="flex-1 overflow-hidden">
+                    <AlertTitle>Fehler</AlertTitle>
+                    <AlertDescription className="break-words text-sm">
+                      {error}
+                    </AlertDescription>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
-                  <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
-                </div>
+                </Alert>
               )}
             </div>
+          </ScrollArea>
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Fehler</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="p-6 bg-muted/30 border-t border-border mt-auto">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={loading}>
               Abbrechen
             </Button>
