@@ -11,7 +11,8 @@ import {
   Send, 
   Layout, 
   ArrowLeftRight,
-  FileText
+  FileText,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,7 @@ export function AIEditorWorkspace({
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
   const [workingContent, setWorkingContent] = useState(v2Content);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
 
   // Sync working content if v2Content changes (e.g. from polling), but only if not in edit mode
   useEffect(() => {
@@ -92,6 +94,7 @@ export function AIEditorWorkspace({
 
       if (!response.ok) throw new Error('Veröffentlichung fehlgeschlagen');
       
+      setIsPublished(true);
       toast.success('Content erfolgreich veröffentlicht');
       
       // Trigger a global refresh to update polling/parent data
@@ -164,11 +167,25 @@ export function AIEditorWorkspace({
           </Button>
           <Button
             onClick={handlePublish}
-            disabled={isSaving}
-            className="bg-[#00463c] hover:bg-[#00332c] text-white gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider"
+            disabled={isSaving || isPublished}
+            className={cn(
+              "gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider transition-all",
+              isPublished 
+                ? "bg-green-600 hover:bg-green-700 text-white" 
+                : "bg-[#00463c] hover:bg-[#00332c] text-white"
+            )}
           >
-            <Send className="h-3.5 w-3.5" />
-            Veröffentlichen
+            {isPublished ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Veröffentlicht
+              </>
+            ) : (
+              <>
+                <Send className="h-3.5 w-3.5" />
+                Als veröffentlicht markieren
+              </>
+            )}
           </Button>
         </div>
       </div>
