@@ -151,18 +151,17 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     cell: ({ row }) => row.getValue("Difficulty") ?? "-",
   },
   {
-    accessorKey: "Status",
-    header: "Status",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="font-medium">
-        {row.getValue("Status")}
-      </Badge>
-    ),
+    accessorKey: "Search_Volume",
+    header: "Volumen",
+    cell: ({ row }) => {
+      const val = row.getValue("Search_Volume") as number;
+      return val ? val.toLocaleString("de-DE") : "-";
+    },
   },
   {
-    accessorKey: "Action_Type",
-    header: "Typ",
-    cell: ({ row }) => row.getValue("Action_Type") || "Erstellung",
+    accessorKey: "Difficulty",
+    header: "Diff.",
+    cell: ({ row }) => row.getValue("Difficulty") ?? "-",
   },
   {
     accessorKey: "Article_Count",

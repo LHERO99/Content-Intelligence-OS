@@ -94,11 +94,21 @@ export async function PATCH(request: Request) {
     const currentKeywords = await getKeywordMap();
     const currentKeyword = currentKeywords.find(k => k.id === id);
 
+    if (!currentKeyword) {
+      console.error(`[API] Keyword not found for ID: ${id}`);
+      return NextResponse.json(
+        { error: 'Keyword nicht gefunden.' },
+        { status: 404 }
+      );
+    }
+
     // 2. Convert numeric fields if they exist in updates
     if (updates.Search_Volume !== undefined) updates.Search_Volume = Number(updates.Search_Volume);
     if (updates.Difficulty !== undefined) updates.Difficulty = Number(updates.Difficulty);
     if (updates.Article_Count !== undefined) updates.Article_Count = Number(updates.Article_Count);
     if (updates.Avg_Product_Value !== undefined) updates.Avg_Product_Value = Number(updates.Avg_Product_Value);
+
+    console.log(`[API] Updating keyword ${id} with:`, updates);
 
     const result = await updateKeyword(id, updates);
 
@@ -110,15 +120,20 @@ export async function PATCH(request: Request) {
     }
 
     // 3. Log History for specific transitions
-    if (currentKeyword && updates.Status) {
+    if (updates.Status) {
       // Transition from Backlog to Planned -> Log "Planung"
       if (currentKeyword.Status === 'Backlog' && updates.Status === 'Planned') {
-        await createContentLog({
-          Keyword_ID: [id],
-          Target_URL: result.Target_URL,
-          Action_Type: 'Planung' as any,
-          Diff_Summary: 'Keyword in Redaktions-Planung aufgenommen',
-        });
+        try {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: result.Target_URL,
+            Action_Type: 'Planung' as any,
+            Diff_Summary: 'Keyword in Redaktions-Planung aufgenommen',
+          });
+        } catch (logError) {
+          console.error('[API] Error creating content log:', logError);
+          // Don't fail the whole request if logging fails
+        }
       }
     }
 

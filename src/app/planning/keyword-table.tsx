@@ -50,7 +50,6 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
     Article_Count: false,
     Avg_Product_Value: false,
     Difficulty: false,
-    Action_Type: false,
   });
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>([]);
@@ -69,7 +68,7 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
 
   React.useEffect(() => {
     const savedOrder = localStorage.getItem("keyword-table-column-order");
-    const defaultOrder = ["select", "Keyword", "Content-Plan", "Main_Keyword", "Search_Volume", "Difficulty", "Status", "Action_Type", "Article_Count", "Avg_Product_Value", "Target_URL"];
+    const defaultOrder = ["select", "Keyword", "Content-Plan", "Main_Keyword", "Search_Volume", "Difficulty", "Article_Count", "Avg_Product_Value", "Target_URL"];
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder) as string[];
