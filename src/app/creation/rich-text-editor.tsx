@@ -288,9 +288,9 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 display: block !important;
               }
               .ProseMirror p {
-                margin-top: 1.25rem !important;
-                margin-bottom: 1.25rem !important;
-                line-height: 1.75 !important;
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                line-height: 1.2 !important;
                 color: #334155 !important;
                 display: block !important;
               }

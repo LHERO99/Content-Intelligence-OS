@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
           Action_Type: 'Erstellung',
           Content_Body: '',
           Diff_Summary: 'Content beauftragt',
+          Created_At: new Date().toISOString(),
           Editor: session.user?.email ? [session.user.email] : undefined
         });
       } catch (logError) {
