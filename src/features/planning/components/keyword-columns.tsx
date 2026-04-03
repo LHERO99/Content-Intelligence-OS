@@ -4,51 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
-import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2, Zap } from "lucide-react";
-import { PlanningService } from "../services/planning-service";
-
-const AddToEditorialButton = ({ row }: { row: any }) => {
-  const [loading, setLoading] = React.useState(false);
-
-  const handleAdd = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLoading(true);
-    try {
-      const isPublished = row.original.Status === "Published";
-      
-      // Update status to "Planned"
-      // If previously published, set Action_Type to "Optimierung", else "Erstellung"
-      await PlanningService.updateKeyword(row.original.id, { 
-        Status: "Planned",
-        Action_Type: isPublished ? "Optimierung" : "Erstellung"
-      });
-    } catch (error) {
-      console.error("Failed to add to editorial:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex justify-center w-full">
-      <Button 
-        size="sm" 
-        variant="outline" 
-        className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
-        onClick={handleAdd}
-        disabled={loading}
-      >
-        {loading ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : (
-          <Zap className="h-3 w-3 fill-current" />
-        )}
-        Hinzufügen
-      </Button>
-    </div>
-  );
-};
 
 export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
@@ -108,32 +63,6 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     },
   },
   {
-    id: "Content-Plan",
-    header: () => <div className="text-center w-full">Content-Plan</div>,
-    enableColumnFilter: false,
-    cell: ({ row }) => {
-      const isMain = row.original.Main_Keyword === "Y";
-      if (!isMain) return <div className="flex justify-center w-full">-</div>;
-
-      const status = row.original.Status;
-      const isAdded = status !== "Backlog" && status !== "Published";
-      
-      if (isAdded) {
-        return (
-          <div className="flex justify-center w-full">
-            <Badge variant="outline" className="text-green-600 border-green-600 font-bold bg-green-50/50">Hinzugefügt</Badge>
-          </div>
-        );
-      }
-      
-      return (
-        <div className="flex justify-center w-full">
-           <AddToEditorialButton row={row} />
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: "Main_Keyword",
     header: "Main",
     cell: ({ row }) => (
@@ -141,19 +70,6 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
         {row.getValue("Main_Keyword")}
       </Badge>
     ),
-  },
-  {
-    accessorKey: "Search_Volume",
-    header: "Volumen",
-    cell: ({ row }) => {
-      const val = row.getValue("Search_Volume") as number;
-      return val ? val.toLocaleString("de-DE") : "-";
-    },
-  },
-  {
-    accessorKey: "Difficulty",
-    header: "Diff.",
-    cell: ({ row }) => row.getValue("Difficulty") ?? "-",
   },
   {
     accessorKey: "Search_Volume",

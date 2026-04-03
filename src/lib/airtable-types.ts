@@ -15,6 +15,7 @@ export interface KeywordMap {
   Policy?: number;
   Priority_Score?: number;
   Action_Type?: 'Erstellung' | 'Optimierung';
+  Last_Published?: string; // ISO Date String
 }
 
 export interface SkippedKeyword extends Partial<KeywordMap> {

@@ -35,6 +35,7 @@ export function PrioritizationSettingsModal({
     weight_article_count: 20,
     weight_avg_value: 20,
     weight_policy: 20,
+    weight_recency: 20,
   });
 
   React.useEffect(() => {
@@ -207,6 +208,19 @@ export function PrioritizationSettingsModal({
               <Slider
                 value={[weights.weight_policy]}
                 onValueChange={(v) => updateWeight("weight_policy", v)}
+                max={100}
+                step={1}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <Label>Aktualität (Recency)</Label>
+                <span className="text-sm font-medium text-[#00463c]">{weights.weight_recency}%</span>
+              </div>
+              <Slider
+                value={[weights.weight_recency]}
+                onValueChange={(v) => updateWeight("weight_recency", v)}
                 max={100}
                 step={1}
               />

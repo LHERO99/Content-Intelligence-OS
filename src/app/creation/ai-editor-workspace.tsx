@@ -87,7 +87,8 @@ export function AIEditorWorkspace({
         body: JSON.stringify({
           id: keywordId,
           fields: {
-            Status: 'Published'
+            Status: 'Published',
+            Last_Published: new Date().toISOString()
           }
         })
       });
@@ -104,13 +105,6 @@ export function AIEditorWorkspace({
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleForwardToPharma = () => {
-    toast.info('Schnittstelle zu Pharma wird in einer späteren Phase implementiert.', {
-      description: 'Der aktuelle Content wurde für den Export vorgemerkt.',
-      duration: 5000,
-    });
   };
 
   return (
@@ -157,14 +151,6 @@ export function AIEditorWorkspace({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleForwardToPharma}
-            className="border-emerald-200 text-[#00463c] hover:bg-emerald-50 gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider"
-          >
-            <Send className="h-3.5 w-3.5" />
-            An Pharma senden
-          </Button>
           <Button
             onClick={handlePublish}
             disabled={isSaving || isPublished}

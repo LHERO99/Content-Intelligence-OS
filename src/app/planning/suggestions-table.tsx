@@ -12,7 +12,7 @@ import {
   useReactTable,
   ColumnOrderState,
 } from "@tanstack/react-table";
-import { Map } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { KeywordMap } from "@/lib/airtable-types";
@@ -34,21 +34,29 @@ import {
   KeywordFilterBar,
   PlanningTable,
   PlanningHeader,
-  keywordColumns as columns
+  suggestionColumns as columns
 } from "@/features/planning/components";
 import { PlanningService } from "@/features/planning/services/planning-service";
 
-interface KeywordTableProps {
+interface SuggestionsTableProps {
   keywords: KeywordMap[];
 }
 
-export function KeywordTable({ keywords }: KeywordTableProps) {
+export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
   const { addAlert } = useAlerts();
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: "Search_Volume", desc: true }]);
+  
+  // Filter for Main Keywords that are in Backlog or already Published (eligible for Optimization)
+  const suggestionData = React.useMemo(() => {
+    return keywords.filter(kw => 
+      kw.Main_Keyword === 'Y' && 
+      (kw.Status === 'Backlog' || kw.Status === 'Published')
+    );
+  }, [keywords]);
+
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "Priority_Score", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     Article_Count: false,
-    Avg_Product_Value: false,
     Difficulty: false,
   });
   const [rowSelection, setRowSelection] = React.useState({});
@@ -67,8 +75,8 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
   };
 
   React.useEffect(() => {
-    const savedOrder = localStorage.getItem("keyword-table-column-order");
-    const defaultOrder = ["select", "Keyword", "Main_Keyword", "Search_Volume", "Difficulty", "Article_Count", "Avg_Product_Value", "Target_URL"];
+    const savedOrder = localStorage.getItem("suggestions-table-column-order");
+    const defaultOrder = ["select", "Keyword", "Action", "Priority_Score", "Search_Volume", "Difficulty", "Article_Count", "Last_Published", "Target_URL"];
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder) as string[];
@@ -79,7 +87,7 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
   }, []);
 
   const table = useReactTable({
-    data: keywords,
+    data: suggestionData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -103,7 +111,7 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
         const oldIndex = prev.indexOf(active.id as string);
         const newIndex = prev.indexOf(over.id as string);
         const newOrder = arrayMove(prev, oldIndex, newIndex);
-        localStorage.setItem("keyword-table-column-order", JSON.stringify(newOrder));
+        localStorage.setItem("suggestions-table-column-order", JSON.stringify(newOrder));
         return newOrder;
       });
     }
@@ -112,9 +120,9 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
   return (
     <div className="w-full space-y-6">
       <PlanningHeader 
-        icon={Map} 
-        title="Keyword-Map" 
-        description="Zentrales Repository aller Keywords und deren Performance-Metriken." 
+        icon={Sparkles} 
+        title="Vorschläge" 
+        description="Vorschläge für neue Inhalte oder zur Optimierung bestehender Inhalte basierend auf SEO-Metriken." 
       />
       <KeywordFilterBar table={table} columns={columns} />
       <PlanningTable 

@@ -140,6 +140,7 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Last_Published: record.get('Last_Published') as string,
     }));
   } catch (error) {
     return handleAirtableError(error,'getKeywordMap');
@@ -853,6 +854,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     if (kw.Policy !== undefined) fields.Policy = kw.Policy;
     if (kw.Priority_Score !== undefined) fields.Priority_Score = kw.Priority_Score;
     if (kw.Action_Type !== undefined) fields.Action_Type = kw.Action_Type;
+    if (kw.Last_Published !== undefined) fields.Last_Published = kw.Last_Published;
 
     let records;
     try {
@@ -896,6 +898,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Last_Published: record.get('Last_Published') as string,
     };
   } catch (error) {
     return handleAirtableError(error,'updateKeyword');

@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { KeywordTable } from "./keyword-table";
+import { SuggestionsTable } from "./suggestions-table";
 import { TrendRadar } from "./trend-radar";
 import { EditorialPlanning } from "./editorial-planning";
 import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Radar, Map, Calendar, ShieldAlert, Loader2 } from "lucide-react";
+import { Radar, Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
 import { KeywordMap, PotentialTrend } from "@/lib/airtable-types";
 
 export default function PlanningPage() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('planning-active-tab') || "editorial";
+      return localStorage.getItem('planning-active-tab') || "suggestions";
     }
-    return "editorial";
+    return "suggestions";
   });
   const [data, setData] = useState<{ keywords: KeywordMap[], trends: PotentialTrend[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +86,10 @@ export default function PlanningPage() {
         className="space-y-4"
       >
         <TabsList className="bg-[#e7f3ee] border-[#00463c]/10">
+          <TabsTrigger value="suggestions" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Vorschläge
+          </TabsTrigger>
           <TabsTrigger value="editorial" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
             <Calendar className="mr-2 h-4 w-4" />
             Redaktions-Planung
@@ -105,6 +110,10 @@ export default function PlanningPage() {
 
         <TabsContent value="editorial" className="space-y-4">
           <EditorialPlanning keywords={data.keywords} />
+        </TabsContent>
+
+        <TabsContent value="suggestions" className="space-y-4">
+          <SuggestionsTable keywords={data.keywords} />
         </TabsContent>
 
         <TabsContent value="keyword-map" className="space-y-4">
