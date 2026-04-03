@@ -371,21 +371,23 @@ export function KeywordImport() {
                     Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich übernommen.
                   </p>
                       {skippedCount > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left mx-6">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left mx-6 overflow-hidden">
                       <p className="text-sm text-amber-800 flex items-center gap-2 font-semibold mb-2">
-                        <AlertCircle className="h-4 w-4" />
+                        <AlertCircle className="h-4 w-4 shrink-0" />
                         {skippedCount} Einträge wurden übersprungen:
                       </p>
                       
-                      <ScrollArea className="h-[120px] w-full rounded border border-amber-100 bg-white/50 p-2">
-                        <ul className="text-xs space-y-2">
-                          {skippedRecords.map((record, idx) => (
-                            <li key={idx} className="border-b border-amber-100 pb-1 last:border-0">
-                              <span className="font-bold text-amber-900">{record.Keyword || "Unbekannt"}</span>: {record.reason || "Bereits vorhanden"}
-                            </li>
-                          ))}
-                        </ul>
-                      </ScrollArea>
+                      <div className="w-full rounded border border-amber-100 bg-white/50 p-2">
+                        <ScrollArea className="h-[120px] w-full">
+                          <ul className="text-xs space-y-2 pr-2">
+                            {skippedRecords.map((record, idx) => (
+                              <li key={idx} className="border-b border-amber-100 pb-1 last:border-0 truncate">
+                                <span className="font-bold text-amber-900">{record.Keyword || "Unbekannt"}</span>: {record.reason || "Bereits vorhanden"}
+                              </li>
+                            ))}
+                          </ul>
+                        </ScrollArea>
+                      </div>
 
                       <Button 
                         variant="link" 
