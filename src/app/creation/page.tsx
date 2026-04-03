@@ -128,7 +128,7 @@ export default function CreationPage() {
                           key={kw.id} 
                           className={cn(
                             "cursor-pointer transition-colors hover:bg-emerald-50/50",
-                            selectedKeywordId === kw.id && "bg-emerald-50 border-l-4 border-l-emerald-600 !bg-emerald-50"
+                            selectedKeywordId === kw.id && "bg-emerald-50 border-l-4 border-l-emerald-600 !bg-emerald-50 !border-l-emerald-600 shadow-[inset_4px_0_0_0_#059669]"
                           )}
                           onClick={() => setSelectedKeywordId(kw.id)}
                         >
