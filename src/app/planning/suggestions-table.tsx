@@ -45,11 +45,11 @@ interface SuggestionsTableProps {
 export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
   const { addAlert } = useAlerts();
   
-  // Filter for Main Keywords that are in Backlog or already Published (eligible for Optimization)
+  // Filter for Main Keywords that are in Backlog
   const suggestionData = React.useMemo(() => {
     return keywords.filter(kw => 
       kw.Main_Keyword === 'Y' && 
-      (kw.Status === 'Backlog' || kw.Status === 'Published')
+      kw.Status === 'Backlog'
     );
   }, [keywords]);
 
@@ -76,7 +76,7 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
 
   React.useEffect(() => {
     const savedOrder = localStorage.getItem("suggestions-table-column-order");
-    const defaultOrder = ["select", "Keyword", "Action", "Priority_Score", "Search_Volume", "Difficulty", "Article_Count", "Last_Published", "Target_URL"];
+    const defaultOrder = ["select", "Keyword", "Action_Type", "Action", "Priority_Score", "Search_Volume", "Difficulty", "Article_Count", "Last_Published", "Target_URL"];
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder) as string[];
@@ -124,7 +124,7 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
         title="Vorschläge" 
         description="Vorschläge für neue Inhalte oder zur Optimierung bestehender Inhalte basierend auf SEO-Metriken." 
       />
-      <KeywordFilterBar table={table} columns={columns} />
+      <KeywordFilterBar table={table} columns={columns} hideImport={true} />
       <PlanningTable 
         table={table} 
         columnOrder={columnOrder} 

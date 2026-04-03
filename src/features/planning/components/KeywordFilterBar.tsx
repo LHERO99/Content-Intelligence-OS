@@ -39,9 +39,10 @@ import { PlanningService } from "../services/planning-service";
 interface KeywordFilterBarProps {
   table: any;
   columns: ColumnDef<any>[];
+  hideImport?: boolean;
 }
 
-export function KeywordFilterBar({ table, columns }: KeywordFilterBarProps) {
+export function KeywordFilterBar({ table, columns, hideImport = false }: KeywordFilterBarProps) {
   const [selectedColumn, setSelectedColumn] = React.useState<string>("");
   const [filterValue, setFilterValue] = React.useState<string>("");
   const [isBlacklistModalOpen, setIsBlacklistModalOpen] = React.useState(false);
@@ -209,7 +210,7 @@ export function KeywordFilterBar({ table, columns }: KeywordFilterBarProps) {
             </>
           )}
           
-          <KeywordImport />
+          {!hideImport && <KeywordImport />}
           
           <DropdownMenu>
             <DropdownMenuTrigger>
