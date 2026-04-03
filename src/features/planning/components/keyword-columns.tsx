@@ -4,6 +4,46 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, Loader2 } from "lucide-react";
+import { PlanningService } from "../services/planning-service";
+
+const AddToEditorialButton = ({ row }: { row: any }) => {
+  const [loading, setLoading] = React.useState(false);
+
+  const handleAdd = async () => {
+    setLoading(true);
+    try {
+      // Set status to "Planned" to add it to the editorial plan
+      await PlanningService.updateKeyword(row.original.id, { 
+        Status: "Planned" 
+      });
+    } catch (error) {
+      console.error("Failed to add to editorial:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex justify-center w-full">
+      <Button 
+        size="sm" 
+        variant="outline" 
+        className="h-7 px-2 text-[10px] border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
+        onClick={handleAdd}
+        disabled={loading}
+      >
+        {loading ? (
+          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+        ) : (
+          <PlusCircle className="h-3 w-3 mr-1" />
+        )}
+        Einplanen
+      </Button>
+    </div>
+  );
+};
 
 export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
@@ -82,7 +122,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
       
       return (
         <div className="flex justify-center w-full">
-           <Badge variant="outline" className="text-muted-foreground border-muted-foreground bg-muted/10">Kein Plan</Badge>
+           <AddToEditorialButton row={row} />
         </div>
       );
     },
@@ -91,7 +131,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Main_Keyword",
     header: "Main",
     cell: ({ row }) => (
-      <Badge variant="outline" className={row.getValue("Main_Keyword") === "Y" ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-slate-200 text-slate-400 bg-slate-50"}>
+      <Badge variant="outline" className={row.getValue("Main_Keyword") === "Y" ? "border-[#00463c] text-[#00463c] bg-[#00463c]/10" : "border-slate-200 text-slate-400 bg-slate-50"}>
         {row.getValue("Main_Keyword")}
       </Badge>
     ),

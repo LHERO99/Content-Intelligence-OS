@@ -366,15 +366,23 @@ export function KeywordImport() {
               </div>
               <div className="text-center">
                 <p className="text-xl font-bold text-green-700">Import abgeschlossen!</p>
-                <div className="mt-4 space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich übernommen.
-                  </p>
+                <div className="mt-4 w-full">
+                  <div className="grid grid-cols-2 gap-4 w-full text-center">
+                    <div className="bg-[#e7f3ee] border border-[#00463c]/20 p-4 rounded-xl">
+                      <p className="text-3xl font-bold text-[#00463c]">{importCount}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mt-1">Importiert</p>
+                    </div>
+                    <div className={skippedCount > 0 ? "bg-amber-50 border border-amber-200 p-4 rounded-xl" : "bg-gray-50 border border-gray-200 p-4 rounded-xl"}>
+                      <p className={`text-3xl font-bold ${skippedCount > 0 ? "text-amber-700" : "text-gray-500"}`}>{skippedCount}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mt-1">Übersprungen</p>
+                    </div>
+                  </div>
+
                   {skippedCount > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left mx-6 overflow-hidden flex flex-col shrink-0">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left">
                       <p className="text-sm text-amber-800 flex items-center gap-2 font-semibold mb-2">
                         <AlertCircle className="h-4 w-4 shrink-0" />
-                        {skippedCount} Einträge wurden übersprungen:
+                        Details zu den Übersprungenen:
                       </p>
                       
                       <div className="w-full rounded border border-amber-100 bg-white/50 p-2 min-h-0 flex flex-col overflow-hidden">
@@ -392,11 +400,11 @@ export function KeywordImport() {
                       <Button 
                         variant="link" 
                         size="sm" 
-                        className="text-amber-900 font-bold mt-2 h-auto p-0 justify-start w-fit"
+                        className="text-amber-900 font-bold mt-2 h-auto p-0 justify-start w-fit text-xs"
                         onClick={downloadSkipped}
                       >
                         <Download className="h-3 w-3 mr-1" />
-                        Vollständige Liste als Excel herunterladen
+                        Liste als Excel laden
                       </Button>
                     </div>
                   )}
