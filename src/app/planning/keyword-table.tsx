@@ -913,7 +913,9 @@ export function KeywordTable({ data }: KeywordTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const { addAlert } = useAlerts();
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    Action_Type: false,
+  });
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>([]);
 
