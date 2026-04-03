@@ -4,7 +4,8 @@ import {
   Plus, 
   Calendar, 
   ExternalLink, 
-  AlertCircle 
+  AlertCircle,
+  Zap
 } from "lucide-react";
 import Link from "next/link";
 import { 
@@ -63,10 +64,8 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
     setIsAddingToPlan(true);
     setError(null);
     try {
-      const today = new Date().toISOString().split('T')[0];
       const updates: Partial<KeywordMap> = {
-        Editorial_Deadline: today,
-        Status: "In Progress"
+        Status: "Planned"
       };
       await onSave(keyword.id, updates);
       setFormData(prev => ({ ...prev, ...updates }));
@@ -248,16 +247,16 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                      className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
                       onClick={handleAddToContentPlan}
                       disabled={isAddingToPlan || loading}
                     >
                       {isAddingToPlan ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Plus className="h-3 w-3 mr-1" />
+                        <Zap className="h-3 w-3 fill-current" />
                       )}
-                      Zum Plan hinzufügen
+                      Hinzufügen
                     </Button>
                   )}
                 </div>

@@ -5,13 +5,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Zap } from "lucide-react";
 import { PlanningService } from "../services/planning-service";
 
 const AddToEditorialButton = ({ row }: { row: any }) => {
   const [loading, setLoading] = React.useState(false);
 
-  const handleAdd = async () => {
+  const handleAdd = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     setLoading(true);
     try {
       // Set status to "Planned" to add it to the editorial plan
@@ -30,16 +31,16 @@ const AddToEditorialButton = ({ row }: { row: any }) => {
       <Button 
         size="sm" 
         variant="outline" 
-        className="h-7 px-2 text-[10px] border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
+        className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
         onClick={handleAdd}
         disabled={loading}
       >
         {loading ? (
-          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          <Loader2 className="h-3 w-3 animate-spin" />
         ) : (
-          <PlusCircle className="h-3 w-3 mr-1" />
+          <Zap className="h-3 w-3 fill-current" />
         )}
-        Einplanen
+        Hinzufügen
       </Button>
     </div>
   );
@@ -115,7 +116,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
       if (isInEditorial) {
         return (
           <div className="flex justify-center w-full">
-            <Badge variant="outline" className="text-green-600 border-green-600 font-bold bg-green-50/50">Geplant</Badge>
+            <Badge variant="outline" className="text-green-600 border-green-600 font-bold bg-green-50/50">Hinzugefügt</Badge>
           </div>
         );
       }
