@@ -631,7 +631,13 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                   <div className="space-y-1">
                     <Label className="text-sm font-semibold text-[#00463c]">Content-Status</Label>
                     <div className="flex items-center gap-2">
-                      {commissionedIds.has(keyword?.id || '') ? (
+                      {commissionedIds.has(keyword?.id || '') || 
+                       keyword?.Status === 'In Progress' || 
+                       keyword?.Status === 'Beauftragt' || 
+                       keyword?.Status === 'In Arbeit' ||
+                       keyword?.Status === 'Erstellt' ||
+                       keyword?.Status === 'Review' ||
+                       keyword?.Status === 'Optimierung' ? (
                         <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
                           Beauftragt
                         </Badge>
@@ -643,7 +649,13 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     </div>
                   </div>
                   
-                  {!commissionedIds.has(keyword?.id || '') && (
+                  {!(commissionedIds.has(keyword?.id || '') || 
+                     keyword?.Status === 'In Progress' || 
+                     keyword?.Status === 'Beauftragt' || 
+                     keyword?.Status === 'In Arbeit' ||
+                     keyword?.Status === 'Erstellt' ||
+                     keyword?.Status === 'Review' ||
+                     keyword?.Status === 'Optimierung') && (
                     <Button
                       type="button"
                       size="sm"
@@ -822,10 +834,18 @@ export const columns: ColumnDef<KeywordMap>[] = [
       const meta = table.options.meta as any;
       const isCommissioning = meta?.isCommissioning === id;
       const isCommissioned = meta?.commissionedIds?.has(id);
+      const currentStatus = row.original.Status;
+      const isAlreadyInWorkflow = isCommissioned || 
+                                 currentStatus === 'In Progress' || 
+                                 currentStatus === 'Beauftragt' || 
+                                 currentStatus === 'In Arbeit' ||
+                                 currentStatus === 'Erstellt' ||
+                                 currentStatus === 'Review' ||
+                                 currentStatus === 'Optimierung';
 
       return (
         <div className="flex items-center gap-2">
-            {isCommissioned ? (
+            {isAlreadyInWorkflow ? (
               <div className="flex justify-center w-full">
                 <Badge variant="outline" className="text-green-600 border-green-600">Beauftragt</Badge>
               </div>

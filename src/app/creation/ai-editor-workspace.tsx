@@ -146,7 +146,12 @@ export function AIEditorWorkspace({
                   Neu erstellter Content
                 </div>
                 <div className="p-8 overflow-auto max-h-[600px] bg-white">
-                  <style jsx>{`
+                  <style jsx global>{`
+                    .preview-content {
+                      all: initial;
+                      display: block;
+                      font-family: sans-serif;
+                    }
                     .preview-content h1 {
                       font-size: 2.25rem !important;
                       line-height: 1.2 !important;
@@ -155,6 +160,7 @@ export function AIEditorWorkspace({
                       margin-bottom: 0.5rem !important;
                       color: #00463c !important;
                       display: block !important;
+                      visibility: visible !important;
                     }
                     .preview-content h2 {
                       font-size: 1.875rem !important;
@@ -164,6 +170,7 @@ export function AIEditorWorkspace({
                       margin-bottom: 0.5rem !important;
                       color: #00463c !important;
                       display: block !important;
+                      visibility: visible !important;
                     }
                     .preview-content h3 {
                       font-size: 1.5rem !important;
@@ -173,6 +180,7 @@ export function AIEditorWorkspace({
                       margin-bottom: 0.5rem !important;
                       color: #00463c !important;
                       display: block !important;
+                      visibility: visible !important;
                     }
                     .preview-content p {
                       margin-top: 0.5rem !important;
@@ -180,6 +188,7 @@ export function AIEditorWorkspace({
                       line-height: 1.2 !important;
                       color: #334155 !important;
                       display: block !important;
+                      font-size: 0.875rem !important;
                     }
                     .preview-content ul {
                       list-style-type: disc !important;
@@ -200,6 +209,7 @@ export function AIEditorWorkspace({
                       margin-bottom: 0.25rem !important;
                       line-height: 1.2 !important;
                       display: list-item !important;
+                      font-size: 0.875rem !important;
                     }
                     .preview-content strong {
                       font-weight: bold !important;
@@ -213,7 +223,7 @@ export function AIEditorWorkspace({
                     }
                   `}</style>
                   <div 
-                    className="preview-content font-sans"
+                    className="preview-content"
                     dangerouslySetInnerHTML={{ __html: workingContent }}
                   />
                 </div>
@@ -272,8 +282,64 @@ export function AIEditorWorkspace({
                 Aktueller Arbeitsstand
               </div>
               <div className="flex-1 overflow-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar">
+                <style jsx global>{`
+                  .ai-chat-preview h1 {
+                    font-size: 2.25rem !important;
+                    line-height: 1.2 !important;
+                    font-weight: 800 !important;
+                    margin-top: 1.25rem !important;
+                    margin-bottom: 0.5rem !important;
+                    color: #00463c !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview h2 {
+                    font-size: 1.875rem !important;
+                    line-height: 1.2 !important;
+                    font-weight: 700 !important;
+                    margin-top: 1.25rem !important;
+                    margin-bottom: 0.5rem !important;
+                    color: #00463c !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview h3 {
+                    font-size: 1.5rem !important;
+                    line-height: 1.2 !important;
+                    font-weight: 600 !important;
+                    margin-top: 1.25rem !important;
+                    margin-bottom: 0.5rem !important;
+                    color: #00463c !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview p {
+                    margin-top: 0.5rem !important;
+                    margin-bottom: 0.5rem !important;
+                    line-height: 1.2 !important;
+                    color: #334155 !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview ul {
+                    list-style-type: disc !important;
+                    margin-top: 0.5rem !important;
+                    margin-bottom: 0.5rem !important;
+                    padding-left: 1.5rem !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview ol {
+                    list-style-type: decimal !important;
+                    margin-top: 0.5rem !important;
+                    margin-bottom: 0.5rem !important;
+                    padding-left: 1.5rem !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview li {
+                    margin-top: 0.25rem !important;
+                    margin-bottom: 0.25rem !important;
+                    line-height: 1.2 !important;
+                    display: list-item !important;
+                  }
+                `}</style>
                 <div 
-                  className="prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-[#00463c] prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-emerald-600 prose-emerald"
+                  className="ai-chat-preview font-sans"
                   dangerouslySetInnerHTML={{ __html: workingContent }}
                 />
               </div>
