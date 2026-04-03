@@ -294,6 +294,20 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 color: #334155 !important;
                 display: block !important;
               }
+              .ProseMirror ul, .ProseMirror ol {
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                padding-left: 1.5rem !important;
+                list-style-type: disc !important;
+              }
+              .ProseMirror ol {
+                list-style-type: decimal !important;
+              }
+              .ProseMirror li {
+                margin-top: 0.25rem !important;
+                margin-bottom: 0.25rem !important;
+                line-height: 1.2 !important;
+              }
             `}</style>
             <EditorContent editor={editor} />
           </div>

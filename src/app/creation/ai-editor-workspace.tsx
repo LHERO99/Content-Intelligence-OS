@@ -147,32 +147,31 @@ export function AIEditorWorkspace({
                 </div>
                 <div className="p-8 overflow-auto max-h-[600px] bg-white">
                   <style jsx>{`
+                    .preview-content h1, .preview-content h2, .preview-content h3 {
+                      color: #00463c !important;
+                      font-weight: 800 !important;
+                      display: block !important;
+                      visibility: visible !important;
+                      opacity: 1 !important;
+                      font-family: sans-serif !important;
+                    }
                     .preview-content h1 {
                       font-size: 2.25rem;
                       line-height: 1.2;
-                      font-weight: 800;
                       margin-top: 1.25rem;
                       margin-bottom: 0.5rem;
-                      color: #00463c;
-                      display: block;
                     }
                     .preview-content h2 {
                       font-size: 1.875rem;
                       line-height: 1.2;
-                      font-weight: 700;
                       margin-top: 1.25rem;
                       margin-bottom: 0.5rem;
-                      color: #00463c;
-                      display: block;
                     }
                     .preview-content h3 {
                       font-size: 1.5rem;
                       line-height: 1.2;
-                      font-weight: 600;
                       margin-top: 1.25rem;
                       margin-bottom: 0.5rem;
-                      color: #00463c;
-                      display: block;
                     }
                     .preview-content p {
                       margin-top: 0.5rem;
