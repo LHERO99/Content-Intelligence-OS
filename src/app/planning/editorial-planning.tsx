@@ -633,7 +633,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                     <div className="flex items-center gap-2">
                       {commissionedIds.has(keyword?.id || '') || 
                        keyword?.Status === 'Beauftragt' || 
-                       keyword?.Status === 'In Progress' || 
+                       (keyword?.Status === 'In Progress' && commissionedIds.has(keyword?.id || '')) || 
                        keyword?.Status === 'In Arbeit' ||
                        keyword?.Status === 'Erstellt' ||
                        keyword?.Status === 'Review' ||
@@ -652,7 +652,7 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
                   
                   {!(commissionedIds.has(keyword?.id || '') || 
                      keyword?.Status === 'Beauftragt' || 
-                     keyword?.Status === 'In Progress' || 
+                     (keyword?.Status === 'In Progress' && commissionedIds.has(keyword?.id || '')) || 
                      keyword?.Status === 'In Arbeit' ||
                      keyword?.Status === 'Erstellt' ||
                      keyword?.Status === 'Review' ||
@@ -843,7 +843,7 @@ export const columns: ColumnDef<KeywordMap>[] = [
       const currentStatus = row.original.Status;
       const isAlreadyInWorkflow = isCommissioned || 
                                  currentStatus === 'Beauftragt' || 
-                                 currentStatus === 'In Progress' || 
+                                 (currentStatus === 'In Progress' && isCommissioned) || 
                                  currentStatus === 'In Arbeit' ||
                                  currentStatus === 'Erstellt' ||
                                  currentStatus === 'Review' ||

@@ -1,27 +1,22 @@
-# Project Status - 2026-04-03 (Aktualisiert)
+# Projekt-Status (Stand: 03.04.2026)
 
-## Current State
-The SEO Content Tool has evolved from a planning and automation tool into a comprehensive **Content Production Hub**. The system now supports manual high-end editing, AI-assisted content optimization via chat, and automated workflow transitions.
+## Content-Erstellung (Creation)
+- **Status-Formatierung**: Zeitstempel in der Auftragsliste auf `DD.MM.YYYY, HH:MM` umgestellt. Bei n8n-Beauftragung wird der Zeitpunkt sofort via `COMMISSION_CONTENT` in der Content-Historie fixiert.
+- **Editor-Optimierung**:
+  - HTML-Umschalter ("Code"-Button) in der Rich-Text-Editor Toolbar integriert.
+  - Automatisches "Beautify" (Einrückung) im Code-Modus mittels `js-beautify`.
+  - H-Tags (H1, H2, H3) und Absätze (`<p>`) visuell durch DocMorris-Branding (`#00463c`, `Poppins`-Font) abgehoben.
+  - Visuelle Toolbar-Aktualisierung (H-Status) in Echtzeit.
+  - Headline-Konvertierung in Normaltext via Toolbar-Icon möglich.
+- **Vorschau-Tab**: 
+  - Konsistente Anwendung von `global` Styling für dynamisch injiziertes HTML.
+  - Unterstützung für poppins-Font und korrekte Listenelemente (`<ul>`, `<ol>`, `<li>`).
+- **UI/UX**: 
+  - Konsistente grüne Markierung der aktiven Tab-Zeile (Auftragsliste) über alle Status-Typen hinweg.
+  - Anpassung der Abstände (Padding `p-3`, Headline-Margins).
+  - KI-Optimierungs-Workspace nutzt nun volle Bildschirmhöhe (`h-full`) mit internem Scrollen.
 
-- **Enhanced Content Creation Workspace**:
-  - **Modular Editor**: Implementation of a Tiptap-based HTML editor allowing direct manipulation of headlines (H1-H3), formatting, and links.
-  - **AI Chat Integration**: Integrated side-panel for real-time interaction with n8n/LLM agents (`REFINE_CONTENT`). The AI considers the current text context and can propose direct refinements.
-  - **Mode Switching**: A persistent toolbar allows seamless toggling between "Preview" (Diff-view), "Edit" (HTML), and "AI Chat".
-  - **Pharma Interface**: Placeholder implementation for the "An Pharma senden" workflow.
-- **Automated n8n Lifecycle**:
-  - **Status Transitions**: Automatic shift from "In Arbeit" to "Erstellt" upon successful delivery of AI content via `/api/n8n/callback`.
-  - **Commissioning**: One-click trigger that initializes the `Content-Log` and sets keywords to "In Arbeit".
-- **Redaktionsplanung Expansion**:
-  - **Type Management**: New "Action_Type" field differentiating between "Erstellung" (Creation) and "Optimierung" (Optimization).
-  - **Schema Resilience**: Robust Airtable integration that handles missing fields gracefully with automatic fallback and retry logic.
-- **UI/UX & Branding**:
-  - **DocMorris Branded UI**: Refined color palette using Emerald (`#00463c`) for primary actions and status indicators.
-  - **Clean History**: Simplified history views in planning modals, removing technical clutter and adding direct links to the global history feed.
-  - **Usability**: Fixed height chat panels and scrollable workspaces to maintain layout stability during long interactions.
-
-## Recent Fixes
-- **Editor Focus & Formatting**: Resolved issues where Tiptap formatting (H1, Bold) wouldn't apply due to focus loss and missing event prevention.
-- **Timestamp Formatting**: Standardized commissioning timestamps to `DD.MM.YYYY, HH:MM` for better readability.
-- **Airtable 422 Errors**: Implemented defensive logic for `Action_Type` field to prevent server crashes if Airtable schema is not yet updated.
-- **Layout Stabilization**: Removed redundant "Reasoning Chain" panel and fixed chat window expansion issues.
-- **API Reliability**: Switched data fetching in the creation module to productive endpoints, resolving data structure mismatches.
+## Redaktionsplanung
+- **Kommissionierungs-Button**: Button-Persistenz behoben; er verschwindet nun dauerhaft, sobald ein Workflow gestartet wurde, durch Prüfung von Historie und Status.
+- **Modals**: Behebung von Overflow-Problemen bei langen URLs in Fehler-Alerts (`break-words`) sowie Fix für das Layout der "Übersprungen"-Box im Importer.
+- **Content-Historie**: Design des Historien-Abschnitts in der Keyword-Map auf den Standard der Redaktionsplanung vereinheitlicht.
