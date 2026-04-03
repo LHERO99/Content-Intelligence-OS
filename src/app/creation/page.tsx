@@ -242,6 +242,8 @@ export default function CreationPage() {
                         v1Content={v1Content} 
                         v2Content={v2Content} 
                         mode={creationMode as any}
+                        keywordId={selectedKeywordId}
+                        keyword={selectedKeyword?.Keyword || ''}
                       />
                     )}
                   </div>

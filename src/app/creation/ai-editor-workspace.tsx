@@ -1,72 +1,221 @@
-'use strict';
+'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
+import { RichTextEditor } from './rich-text-editor';
+import { AIChatPanel } from './ai-chat-panel';
+import { 
+  Eye, 
+  Edit3, 
+  Sparkles, 
+  Send, 
+  Layout, 
+  ArrowLeftRight,
+  FileText
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface AIEditorWorkspaceProps {
   v1Content: string;
   v2Content: string;
   mode?: 'Erstellung' | 'Optimierung' | 'Planung';
+  keywordId: string;
+  keyword: string;
 }
 
-export function AIEditorWorkspace({ v1Content, v2Content, mode = 'Optimierung' }: AIEditorWorkspaceProps) {
-  if (mode === 'Erstellung') {
-    return (
-      <div className="rounded-md border bg-white overflow-hidden">
-        <div className="border-b bg-emerald-50/50 p-2 text-sm font-bold text-[#00463c]">
-          Neu erstellter Content
-        </div>
-        <div className="p-6 overflow-auto max-h-[600px] prose prose-emerald max-w-none">
-          <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">
-            {v2Content}
-          </div>
-        </div>
-      </div>
-    );
-  }
+type WorkspaceMode = 'preview' | 'edit' | 'ai-chat';
+
+export function AIEditorWorkspace({ 
+  v1Content, 
+  v2Content, 
+  mode = 'Optimierung',
+  keywordId,
+  keyword
+}: AIEditorWorkspaceProps) {
+  const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
+  const [workingContent, setWorkingContent] = useState(v2Content);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync working content if v2Content changes (e.g. from polling), but only if not in edit mode
+  useEffect(() => {
+    if (activeMode !== 'edit') {
+      setWorkingContent(v2Content);
+    }
+  }, [v2Content, activeMode]);
+
+  const handleSaveContent = async (html: string) => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/planning/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywordId,
+          actionType: 'Optimierung',
+          contentBody: html,
+          Diff_Summary: 'Manuelle Textanpassung im Editor',
+          version: 'v2' // We keep it as v2 for the workspace or could increment
+        })
+      });
+
+      if (!response.ok) throw new Error('Speichern fehlgeschlagen');
+      
+      setWorkingContent(html);
+      toast.success('Änderungen erfolgreich gespeichert');
+      setActiveMode('preview');
+    } catch (error) {
+      toast.error('Fehler beim Speichern des Contents');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleForwardToPharma = () => {
+    toast.info('Schnittstelle zu Pharma wird in einer späteren Phase implementiert.', {
+      description: 'Der aktuelle Content wurde für den Export vorgemerkt.',
+      duration: 5000,
+    });
+  };
 
   return (
-    <div className="rounded-md border bg-white overflow-hidden">
-      <div className="grid grid-cols-2 border-b bg-muted/50 text-sm font-medium">
-        <div className="p-2 border-r">v1 (Aktuell)</div>
-        <div className="p-2">v2 (KI Vorschlag)</div>
+    <div className="flex flex-col gap-4">
+      {/* Action Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-lg border border-emerald-100 shadow-sm">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveMode('preview')}
+            className={cn(
+              "h-8 gap-2 text-xs font-bold px-3",
+              activeMode === 'preview' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Vorschau
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveMode('edit')}
+            className={cn(
+              "h-8 gap-2 text-xs font-bold px-3",
+              activeMode === 'edit' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+            Bearbeiten
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveMode('ai-chat')}
+            className={cn(
+              "h-8 gap-2 text-xs font-bold px-3",
+              activeMode === 'ai-chat' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+            KI-Optimierung
+          </Button>
+        </div>
+
+        <Button
+          onClick={handleForwardToPharma}
+          className="bg-[#00463c] hover:bg-[#00332c] text-white gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider"
+        >
+          <Send className="h-3.5 w-3.5" />
+          An Pharma senden
+        </Button>
       </div>
-      <div className="overflow-auto max-h-[600px]">
-        <ReactDiffViewer
-          oldValue={v1Content}
-          newValue={v2Content}
-          splitView={true}
-          useDarkTheme={false}
-          styles={{
-            variables: {
-              light: {
-                diffViewerBackground: '#fff',
-                diffViewerColor: '#212529',
-                addedBackground: '#e6ffed',
-                addedColor: '#24292e',
-                removedBackground: '#ffeef0',
-                removedColor: '#24292e',
-                wordAddedBackground: '#acf2bd',
-                wordRemovedBackground: '#fdb8c0',
-                addedGutterBackground: '#cdffd8',
-                removedGutterBackground: '#ffdce0',
-                gutterColor: '#959da5',
-                codeFoldGutterBackground: '#f1f8ff',
-                codeFoldBackground: '#f1f8ff',
-                emptyLineBackground: '#fafbfc',
-                gutterBackground: '#f6f8fa',
-                highlightBackground: '#fffbdd',
-                highlightGutterBackground: '#fff5b1',
-              },
-            },
-            line: {
-              padding: '4px 0',
-              '&:hover': {
-                background: '#f7f8f9',
-              },
-            },
-          }}
-        />
+
+      {/* Main Workspace Area */}
+      <div className="min-h-[500px]">
+        {activeMode === 'preview' && (
+          <div className="rounded-md border bg-white overflow-hidden animate-in fade-in duration-300">
+            {mode === 'Erstellung' ? (
+              <>
+                <div className="border-b bg-emerald-50/50 p-3 text-sm font-bold text-[#00463c] flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Neu erstellter Content
+                </div>
+                <div className="p-8 overflow-auto max-h-[600px] prose prose-emerald max-w-none">
+                  <div 
+                    className="font-sans text-sm leading-relaxed text-slate-700"
+                    dangerouslySetInnerHTML={{ __html: workingContent }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 border-b bg-muted/50 text-sm font-bold text-slate-600">
+                  <div className="p-3 border-r flex items-center gap-2">
+                    <Layout className="h-4 w-4" />
+                    v1 (Aktuell)
+                  </div>
+                  <div className="p-3 flex items-center gap-2 text-emerald-700">
+                    <ArrowLeftRight className="h-4 w-4" />
+                    v2 (KI Vorschlag / Edit)
+                  </div>
+                </div>
+                <div className="overflow-auto max-h-[600px]">
+                  <ReactDiffViewer
+                    oldValue={v1Content}
+                    newValue={workingContent}
+                    splitView={true}
+                    useDarkTheme={false}
+                    styles={{
+                      variables: {
+                        light: {
+                          diffViewerBackground: '#fff',
+                          diffViewerColor: '#212529',
+                          addedBackground: '#e6ffed',
+                          wordAddedBackground: '#acf2bd',
+                          addedGutterBackground: '#cdffd8',
+                        },
+                      },
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeMode === 'edit' && (
+          <div className="animate-in slide-in-from-bottom-2 duration-300">
+            <RichTextEditor 
+              content={workingContent} 
+              onSave={handleSaveContent} 
+              isSaving={isSaving} 
+            />
+          </div>
+        )}
+
+        {activeMode === 'ai-chat' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px] animate-in zoom-in-95 duration-300">
+            <div className="lg:col-span-2 rounded-md border bg-slate-50/50 p-6 overflow-auto prose prose-emerald max-w-none border-dashed">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                <FileText className="h-3 w-3" />
+                Aktueller Arbeitsstand
+              </h4>
+              <div 
+                className="font-sans text-sm leading-relaxed text-slate-600 opacity-80"
+                dangerouslySetInnerHTML={{ __html: workingContent }}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <AIChatPanel 
+                currentContent={workingContent} 
+                onApplyChanges={(newContent) => setWorkingContent(newContent)}
+                keywordId={keywordId}
+                keyword={keyword}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
