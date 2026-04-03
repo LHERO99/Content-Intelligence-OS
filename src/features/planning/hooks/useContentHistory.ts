@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ContentLog } from "@/lib/airtable-types";
+import { PlanningService } from "../services/planning-service";
 
 export const useContentHistory = (keywordId?: string, targetUrl?: string) => {
   const [history, setHistory] = React.useState<ContentLog[]>([]);
@@ -13,14 +14,8 @@ export const useContentHistory = (keywordId?: string, targetUrl?: string) => {
 
     setIsLoading(true);
     try {
-      const queryParam = targetUrl 
-        ? `url=${encodeURIComponent(targetUrl)}` 
-        : `keywordId=${keywordId}`;
-      const response = await fetch(`/api/planning/history?${queryParam}`);
-      if (response.ok) {
-        const data = await response.json();
-        setHistory(data);
-      }
+      const data = await PlanningService.getHistory({ keywordId, url: targetUrl });
+      setHistory(data);
     } catch (err) {
       console.error("Failed to fetch history:", err);
     } finally {

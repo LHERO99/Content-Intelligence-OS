@@ -62,6 +62,7 @@ import {
   KeywordFilterBar 
 } from "@/features/planning/components";
 import { DraggableTableHeader } from "@/features/shared/components/DraggableTableHeader";
+import { PlanningService } from "@/features/planning/services/planning-service";
 
 // --- Table Definition ---
 
@@ -221,16 +222,8 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
 
   const updateData = async (id: string, updates: any) => {
     try {
-      const response = await fetch(`/api/planning/keywords?id=${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(updates),
-      });
+      await PlanningService.updateKeyword(id, updates);
 
-      if (!response.ok) {
-        throw new Error("Update failed");
-      }
-
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
       addAlert({
         title: "Erfolg",
         message: "Eintrag wurde aktualisiert.",

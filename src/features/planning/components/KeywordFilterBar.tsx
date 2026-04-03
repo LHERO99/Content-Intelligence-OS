@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAlerts } from "@/components/alerts-provider";
 import { KeywordImport } from "./keyword-import";
 import { BlacklistReasonModal } from "./blacklist-reason-modal";
+import { PlanningService } from "../services/planning-service";
 
 interface KeywordFilterBarProps {
   table: any;
@@ -64,21 +65,13 @@ export function KeywordFilterBar({ table, columns }: KeywordFilterBarProps) {
   const bulkDelete = async (ids: string[]) => {
     try {
       setIsBulkDeleting(true);
-      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}`, {
-        method: "DELETE",
-      });
-      
-      if (!response.ok) {
-        const resData = await response.json();
-        throw new Error(resData.error || "Bulk delete failed");
-      }
+      await PlanningService.deleteKeywords(ids, false);
 
       addAlert({
         message: `${ids.length} Keywords wurden erfolgreich gelöscht.`,
         type: "success",
       });
       table.resetRowSelection();
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
         title: "Fehler beim Bulk-Löschen",

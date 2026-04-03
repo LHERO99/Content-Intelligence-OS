@@ -60,6 +60,7 @@ import {
   EditorialFilterBar 
 } from "@/features/planning/components";
 import { DraggableTableHeader } from "@/features/shared/components/DraggableTableHeader";
+import { PlanningService } from "@/features/planning/services/planning-service";
 
 // --- Table Definition ---
 
@@ -292,16 +293,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
 
   const updateData = async (id: string, updates: any) => {
     try {
-      const response = await fetch(`/api/planning/keywords?id=${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(updates),
-      });
+      await PlanningService.updateKeyword(id, updates);
 
-      if (!response.ok) {
-        throw new Error("Update failed");
-      }
-
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
       addAlert({
         title: "Erfolg",
         message: "Eintrag wurde aktualisiert.",
@@ -319,16 +312,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
 
   const deleteData = async (id: string) => {
     try {
-      // Use soft delete to only remove from planning, not from Keyword-Map
-      const response = await fetch(`/api/planning/keywords?ids=${id}&soft=true`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Delete failed");
-      }
-
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
+      await PlanningService.deleteKeywords([id], true);
       addAlert({
         title: "Erfolg",
         message: "Eintrag wurde aus der Planung entfernt.",

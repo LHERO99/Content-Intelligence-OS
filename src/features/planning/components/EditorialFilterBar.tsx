@@ -33,6 +33,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAlerts } from "@/components/alerts-provider";
 import { PrioritizationSettingsModal } from "./prioritization-settings-modal";
+import { PlanningService } from "../services/planning-service";
 
 interface EditorialFilterBarProps {
   table: any;
@@ -63,22 +64,13 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
   const bulkDelete = async (ids: string[]) => {
     try {
       setIsBulkDeleting(true);
-      // Use soft delete to only remove from planning, not from Keyword-Map
-      const response = await fetch(`/api/planning/keywords?ids=${ids.join(',')}&soft=true`, {
-        method: "DELETE",
-      });
-      
-      if (!response.ok) {
-        const resData = await response.json();
-        throw new Error(resData.error || "Bulk delete failed");
-      }
+      await PlanningService.deleteKeywords(ids, true);
 
       addAlert({
         message: `${ids.length} Einträge wurden aus der Planung entfernt.`,
         type: "success",
       });
       table.resetRowSelection();
-      window.dispatchEvent(new CustomEvent("refresh-planning-data"));
     } catch (error: any) {
       addAlert({
         title: "Fehler beim Entfernen",
