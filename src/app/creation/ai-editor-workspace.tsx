@@ -203,7 +203,7 @@ export function AIEditorWorkspace({
               </div>
               <div className="flex-1 overflow-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar">
                 <div 
-                  className="font-sans text-sm leading-relaxed text-slate-600"
+                  className="prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-[#00463c] prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-emerald-600 prose-emerald"
                   dangerouslySetInnerHTML={{ __html: workingContent }}
                 />
               </div>

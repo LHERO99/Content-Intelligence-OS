@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { KeywordMap, ContentLog } from '@/lib/airtable-types';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -125,7 +126,10 @@ export default function CreationPage() {
                       commissionedKeywords.map((kw) => (
                         <TableRow 
                           key={kw.id} 
-                          className={`cursor-pointer transition-colors hover:bg-emerald-50/50 ${selectedKeywordId === kw.id ? 'bg-emerald-50 border-l-4 border-l-emerald-600' : ''}`}
+                          className={cn(
+                            "cursor-pointer transition-colors hover:bg-emerald-50/50",
+                            selectedKeywordId === kw.id && "bg-emerald-50 border-l-4 border-l-emerald-600"
+                          )}
                           onClick={() => setSelectedKeywordId(kw.id)}
                         >
                           <TableCell className="font-medium">
@@ -168,7 +172,14 @@ export default function CreationPage() {
                                             minute: '2-digit' 
                                           });
                                         }
-                                        return 'Wird geladen...';
+                                        return new Date().toLocaleDateString('de-DE', { 
+                                          day: '2-digit', 
+                                          month: '2-digit', 
+                                          year: 'numeric'
+                                        }) + ', ' + new Date().toLocaleTimeString('de-DE', { 
+                                          hour: '2-digit', 
+                                          minute: '2-digit' 
+                                        });
                                       })()}
                                     </span>
                                   </div>
