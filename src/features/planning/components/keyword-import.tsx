@@ -366,7 +366,7 @@ export function KeywordImport() {
               </div>
               <div className="text-center">
                 <p className="text-xl font-bold text-green-700">Import abgeschlossen!</p>
-                <div className="mt-4 w-full">
+                <div className="mt-4 w-full px-6">
                   <div className="grid grid-cols-2 gap-4 w-full text-center">
                     <div className="bg-[#e7f3ee] border border-[#00463c]/20 p-4 rounded-xl">
                       <p className="text-3xl font-bold text-[#00463c]">{importCount}</p>

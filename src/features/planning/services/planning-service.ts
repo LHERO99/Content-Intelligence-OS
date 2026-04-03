@@ -21,9 +21,9 @@ export const PlanningService = {
    * Updates a specific keyword.
    */
   async updateKeyword(id: string, updates: Partial<KeywordMap>): Promise<KeywordMap> {
-    const response = await fetch(`/api/planning/keywords?id=${id}`, {
+    const response = await fetch(`/api/planning/keywords`, {
       method: "PATCH",
-      body: JSON.stringify(updates),
+      body: JSON.stringify({ id, ...updates }),
     });
 
     if (!response.ok) {
