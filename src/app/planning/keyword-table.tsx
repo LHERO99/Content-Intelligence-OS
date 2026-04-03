@@ -91,7 +91,7 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onColumnOrderChange: setColumnOrder,
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: { pagination: { pageSize: 50 } },
     state: { sorting, columnFilters, columnVisibility, rowSelection, columnOrder },
   });
 

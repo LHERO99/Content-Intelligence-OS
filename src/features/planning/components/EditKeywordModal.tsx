@@ -95,7 +95,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
   const closeDialog = () => onOpenChange(false);
 
   const isInContentPlan = React.useMemo(() => {
-    return formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog");
+    return (formData.Editorial_Deadline || (formData.Status && formData.Status !== "Backlog")) && formData.Status !== "Backlog";
   }, [formData.Editorial_Deadline, formData.Status]);
 
   return (
