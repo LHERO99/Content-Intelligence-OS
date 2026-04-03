@@ -370,8 +370,8 @@ export function KeywordImport() {
                   <p className="text-sm text-muted-foreground">
                     Es wurden <span className="font-bold text-[#00463c]">{importCount}</span> Keywords erfolgreich übernommen.
                   </p>
-                  {skippedCount > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left">
+                      {skippedCount > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4 text-left mx-6">
                       <p className="text-sm text-amber-800 flex items-center gap-2 font-semibold mb-2">
                         <AlertCircle className="h-4 w-4" />
                         {skippedCount} Einträge wurden übersprungen:

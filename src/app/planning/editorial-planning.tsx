@@ -717,10 +717,10 @@ function EditEditorialModal({ keyword, open, onOpenChange, onSave, onCommission,
               </div>
 
               {error && (
-                <Alert variant="destructive" className="mt-4">
+                <Alert variant="destructive" className="mt-4 overflow-hidden">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Fehler</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription className="break-words">{error}</AlertDescription>
                 </Alert>
               )}
             </div>

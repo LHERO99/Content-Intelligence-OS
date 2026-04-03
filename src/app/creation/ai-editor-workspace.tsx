@@ -145,7 +145,7 @@ export function AIEditorWorkspace({
                   <FileText className="h-4 w-4" />
                   Neu erstellter Content
                 </div>
-                <div className="p-2 overflow-auto max-h-[600px] bg-white">
+                <div className="p-3 overflow-auto max-h-[600px] bg-white">
                   <style jsx global>{`
                     .preview-content {
                       all: initial;
@@ -156,7 +156,7 @@ export function AIEditorWorkspace({
                       font-size: 2.25rem !important;
                       line-height: 1.2 !important;
                       font-weight: 800 !important;
-                      margin-top: 1.25rem !important;
+                      margin-top: 0 !important;
                       margin-bottom: 0.5rem !important;
                       color: #00463c !important;
                       display: block !important;
@@ -280,19 +280,19 @@ export function AIEditorWorkspace({
         )}
 
         {activeMode === 'ai-chat' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[650px] animate-in zoom-in-95 duration-300">
-            <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)] animate-in zoom-in-95 duration-300">
+            <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed h-full">
               <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
                 <FileText className="h-3.5 w-3.5" />
                 Aktueller Arbeitsstand
               </div>
-              <div className="flex-1 overflow-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar">
                 <style jsx global>{`
                   .ai-chat-preview h1 {
                     font-size: 2.25rem !important;
                     line-height: 1.2 !important;
                     font-weight: 800 !important;
-                    margin-top: 1.25rem !important;
+                    margin-top: 0 !important;
                     margin-bottom: 0.5rem !important;
                     color: #00463c !important;
                     display: block !important;
@@ -349,7 +349,7 @@ export function AIEditorWorkspace({
                 />
               </div>
             </div>
-            <div className="lg:col-span-1 h-full">
+            <div className="lg:col-span-1 h-full overflow-hidden">
               <AIChatPanel 
                 currentContent={workingContent} 
                 onApplyChanges={(newContent) => setWorkingContent(newContent)}

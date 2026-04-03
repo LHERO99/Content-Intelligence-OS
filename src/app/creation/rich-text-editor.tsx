@@ -256,7 +256,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
           <div className="editor-container">
             <style jsx global>{`
               .ProseMirror {
-                padding: 0.5rem 2rem !important;
+                padding: 0.75rem 2rem !important;
                 min-height: 500px;
                 outline: none;
               }
