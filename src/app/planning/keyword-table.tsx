@@ -116,16 +116,7 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
         title="Keyword-Map" 
         description="Zentrales Repository aller Keywords und deren Performance-Metriken." 
       />
-      <div className="flex justify-between items-center">
-        <KeywordFilterBar table={table} columns={columns} />
-        <div className="flex items-center space-x-2">
-          <div className="text-sm text-muted-foreground mr-4">
-            {table.getFilteredSelectedRowModel().rows.length} von {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
-          </div>
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Zurück</Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Weiter</Button>
-        </div>
-      </div>
+      <KeywordFilterBar table={table} columns={columns} />
       <PlanningTable 
         table={table} 
         columnOrder={columnOrder} 
@@ -133,6 +124,15 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
         onDragEnd={handleDragEnd} 
         onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
       />
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredSelectedRowModel().rows.length} von {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
+        </div>
+        <div className="space-x-2">
+          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Zurück</Button>
+          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Weiter</Button>
+        </div>
+      </div>
       <EditKeywordModal 
         keyword={editingKeyword} 
         open={isEditModalOpen} 

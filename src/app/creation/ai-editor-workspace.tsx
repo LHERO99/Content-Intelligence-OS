@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+import { PlanningService } from "@/features/planning/services/planning-service";
 interface AIEditorWorkspaceProps {
   v1Content: string;
   v2Content: string;
@@ -77,31 +78,21 @@ export function AIEditorWorkspace({
       setIsSaving(false);
     }
   };
-
   const handlePublish = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/planning/keywords`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: keywordId,
-          fields: {
-            Status: 'Published',
-            Last_Published: new Date().toISOString()
-          }
-        })
+      await PlanningService.updateKeyword(keywordId, {
+        Status: "Published",
+        Last_Published: new Date().toISOString()
       });
 
-      if (!response.ok) throw new Error('Veröffentlichung fehlgeschlagen');
-      
       setIsPublished(true);
-      toast.success('Content erfolgreich veröffentlicht');
+      toast.success("Content erfolgreich veröffentlicht");
       
-      // Trigger a global refresh to update polling/parent data
+      // Explicitly trigger refresh
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
     } catch (error) {
-      toast.error('Fehler bei der Veröffentlichung');
+      toast.error("Fehler bei der Veröffentlichung");
     } finally {
       setIsSaving(false);
     }

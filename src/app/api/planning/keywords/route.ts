@@ -81,11 +81,19 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, ...updates } = body;
+    let { id, ...updates } = body;
+
+    // Support both flat structure and Airtable-style nested fields
+    if (updates.fields) {
+      updates = { ...updates, ...updates.fields };
+      delete updates.fields;
+    }
+
+    if (!id && updates.id) id = updates.id as string;
 
     if (!id) {
       return NextResponse.json(
-        { error: 'ID ist erforderlich für Updates.' },
+        { error: "ID ist erforderlich für Updates." },
         { status: 400 }
       );
     }
@@ -132,7 +140,20 @@ export async function PATCH(request: Request) {
           });
         } catch (logError) {
           console.error('[API] Error creating content log:', logError);
-          // Don't fail the whole request if logging fails
+        }
+      }
+      
+      // NEW: Transition to Published -> Log "Veröffentlichung"
+      if (updates.Status === 'Published') {
+        try {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: result.Target_URL,
+            Action_Type: 'Optimierung' as any, // Or a specific type if added to Airtable
+            Diff_Summary: 'Content erfolgreich veröffentlicht',
+          });
+        } catch (logError) {
+          console.error('[API] Error logging publication:', logError);
         }
       }
     }
