@@ -311,8 +311,8 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-bold text-[#00463c]">
-                          {log.Action_Type === 'Erstellung' ? 'Beauftragung / Erstellung' : 
-                           log.Action_Type === 'Planung' ? 'Planung' : 'Optimierung'}
+                          {log.Diff_Summary || (log.Action_Type === 'Erstellung' ? 'Beauftragung / Erstellung' : 
+                           log.Action_Type === 'Planung' ? 'Planung' : 'Optimierung')}
                         </span>
                         <Badge variant="outline" className="text-[10px] bg-[#00463c]/5 border-[#00463c]/10">
                           {log.Version || (log.Content_Body ? 'v2' : 'v1')}
@@ -332,7 +332,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
                       </div>
                     </div>
 
-                    {log.Diff_Summary && !log.Diff_Summary.includes('n8n callback') && (
+                    {log.Diff_Summary && !log.Diff_Summary.includes('n8n callback') && !log.Diff_Summary.includes('Beauftragung') && !log.Diff_Summary.includes('erstellt') && (
                       <div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-100 text-sm text-emerald-900 italic">
                         {log.Diff_Summary}
                       </div>

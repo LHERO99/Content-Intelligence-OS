@@ -1,8 +1,7 @@
 # Technische Entscheidungen
 
-## 03.04.2026: UI-Sync, Performance und API-Stabilität
-- **API-Stabilität (Airtable)**: Berechnete Felder (Computed Fields) in Airtable, wie `Target_URL` in der Tabelle `Content-Log`, dürfen niemals in `create`- oder `update`-Calls enthalten sein. Die API-Services müssen sicherstellen, dass nur beschreibbare Felder an die Airtable-SDK übergeben werden, um 422-Fehler zu vermeiden.
-- **CSS-Strategie**: Um globale Stil-Overrides in dynamisch injiziertem HTML (z. B. im Vorschaubereich) zuverlässig anzuwenden, werden `<style jsx global>` Tags direkt in den Workspace-Komponenten verwendet.
-- **Synchronisation**: Einführung des `refresh-planning-data` Events als globaler Trigger, um UI-Aktualisierungen nach Datenbank-Operationen (Speichern, Beauftragen) ohne manuellen Reload zu erzwingen.
-- **Status-Logik**: Umstellung der Button-Steuerung von einer reinen Historien-Prüfung auf eine Kombination aus Historien-Prüfung (`Set`) und dem expliziten Status-Feld in Airtable, um Flickering durch Latenzen zu verhindern.
-- **Editor-Styling**: Verwendung von `!important` Flags innerhalb von `ProseMirror` globalen CSS-Blöcken, um eine konsistente Corporate-Identity (DocMorris-Design) im Editor zu garantieren, unabhängig von Tailwind-Prose-Defaults.
+## 04.04.2026: UI-Architektur und Deployment-Sicherheit
+- **UI-Komponenten (@base-ui/react)**: Die Entscheidung gegen die Nutzung von `asChild` bei Triggern wurde fixiert, um Build-Fehler zu vermeiden. Trigger müssen ihre Kinder direkt umschließen (meist via `Button` oder `div`).
+- **Priorisierungs-Algorithmus**: Umstellung auf ein nicht-lineares Scoring-Modell für Rankings, um "Striking Distance" Potenziale (Seite 2/3) algorithmisch zu bevorzugen.
+- **Airtable Date Format**: Die API erzwingt nun das Format `YYYY-MM-DD` für Datumsfelder, um Inkompatibilitäten mit der Airtable-Validierung (422 Error) bei aktiven Zeitzonen-Strings zu umgehen.
+- **Tab-Logik**: Trennung von "Daten-Ansicht" (Keyword-Map) und "Aktions-Ansicht" (Vorschläge/Redaktionsplan) zur Verbesserung der Übersichtlichkeit und Performance durch kleinere Datensets pro View.

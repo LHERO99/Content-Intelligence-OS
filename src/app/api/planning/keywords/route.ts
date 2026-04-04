@@ -50,13 +50,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Automatically log "Planung" if keyword is created directly in Planned status
+    // 1. Log initial creation
+    await createContentLog({
+      Keyword_ID: [result.id],
+      Target_URL: result.Target_URL,
+      Action_Type: 'Planung',
+      Diff_Summary: 'URL zur Keyword-Map hinzugefügt',
+    });
+
+    // 2. Automatically log "Planung" if keyword is created directly in Planned status
     if (result.Status === 'Planned') {
       await createContentLog({
         Keyword_ID: [result.id],
         Target_URL: result.Target_URL,
-        Action_Type: 'Planung' as any,
-        Diff_Summary: 'Keyword direkt in Planung erstellt',
+        Action_Type: 'Planung',
+        Diff_Summary: 'URL direkt in Planung erstellt',
       });
     }
 
@@ -135,22 +143,36 @@ export async function PATCH(request: Request) {
           await createContentLog({
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
-            Action_Type: 'Planung' as any,
-            Diff_Summary: 'Keyword in Redaktions-Planung aufgenommen',
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL in Redaktions-Planung aufgenommen',
           });
         } catch (logError) {
           console.error('[API] Error creating content log:', logError);
         }
       }
-      
-      // NEW: Transition to Published -> Log "Veröffentlichung"
-      if (updates.Status === 'Published') {
+
+      // Transition to Optimierung -> Log "URL zur Optimierung in Vorschläge aufgenommen"
+      if (currentKeyword.Status !== 'Optimierung' && updates.Status === 'Optimierung') {
         try {
           await createContentLog({
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
-            Action_Type: 'Optimierung' as any, // Or a specific type if added to Airtable
-            Diff_Summary: 'Content erfolgreich veröffentlicht',
+            Action_Type: 'Optimierung',
+            Diff_Summary: 'URL zur Optimierung in Vorschläge aufgenommen',
+          });
+        } catch (logError) {
+          console.error('[API] Error logging optimization suggestion:', logError);
+        }
+      }
+      
+      // Transition to Published -> Log "Veröffentlichung"
+      if (currentKeyword.Status !== 'Published' && updates.Status === 'Published') {
+        try {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: result.Target_URL,
+            Action_Type: 'Optimierung',
+            Diff_Summary: 'Content als veröffentlicht markiert',
           });
         } catch (logError) {
           console.error('[API] Error logging publication:', logError);

@@ -8,7 +8,8 @@ export type N8nActionType =
   | 'GENERATE_DRAFT' 
   | 'APPROVE_PROPOSAL' 
   | 'BLACKLIST_TREND'
-  | 'COMMISSION_CONTENT';
+  | 'COMMISSION_CONTENT'
+  | 'COMMISSION_OPTIMIZATION';
 
 export interface N8nPayload {
   action: N8nActionType;

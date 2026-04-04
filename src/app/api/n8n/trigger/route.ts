@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing action or data' }, { status: 400 });
     }
 
-    // 3. Special handling for COMMISSION_CONTENT: Update status and log history
-    if (action === 'COMMISSION_CONTENT' && data.keywordId) {
+    // 3. Special handling for COMMISSION_CONTENT/OPTIMIZATION: Update status and log history
+    if ((action === 'COMMISSION_CONTENT' || action === 'COMMISSION_OPTIMIZATION') && data.keywordId) {
       try {
         const commissionTime = new Date().toISOString();
         
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
         await createContentLog({
           Keyword_ID: [data.keywordId],
           Target_URL: data.targetUrl, // Include Target_URL for history grouping
-          Action_Type: 'Erstellung',
+          Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
           Content_Body: '',
-          Diff_Summary: 'Content beauftragt',
+          Diff_Summary: action === 'COMMISSION_OPTIMIZATION' ? 'Content-Optimierung beauftragt' : 'Content beauftragt',
           Created_At: commissionTime,
           Editor: session.user?.email ? [session.user.email] : undefined
         });

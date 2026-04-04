@@ -40,13 +40,15 @@ export async function POST(request: Request) {
     }
 
     // 2. Create Content-Log entry (v2 for AI suggestions)
+    const isOptimization = status === 'Optimierung' || (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert'));
+    
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
       Target_URL: body.url || body.targetUrl, // Support passing URL from n8n for better grouping
-      Action_Type: 'Erstellung',
+      Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',
-      Diff_Summary: 'KI-Vorschlag erstellt',
+      Diff_Summary: body.diffSummary || (isOptimization ? 'Content optimiert' : 'Content erstellt'),
     });
 
     return NextResponse.json({

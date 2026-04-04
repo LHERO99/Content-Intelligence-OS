@@ -1,33 +1,28 @@
-# Projekt-Status (Stand: 03.04.2026)
+# Projekt-Status (Stand: 04.04.2026)
 
-## Content-Lifecycle & Status-Refactoring
-- **Status-Standardisierung**: Einführung eines klaren Workflows: `Backlog` -> `Planned` (Hinzugefügt) -> `Beauftragt` -> `Angeliefert` (Content durch API empfangen) -> `Published` (Veröffentlicht).
-- **Keyword-Map Optimierung**:
-  - Keywords können nach `Published` erneut dem Redaktionsplan hinzugefügt werden.
-  - Automatischer Wechsel des `Action_Type` von `Erstellung` auf `Optimierung` bei wiederholtem Hinzufügen.
-- **Auftragsliste (Creation)**:
-  - Vereinheitlichte Anzeige: Sowohl `Beauftragt` als auch `In Arbeit` werden als "In Arbeit" dargestellt.
-  - Neuer Status `Angeliefert` für Content, der von der API zurückkam.
-  - Implementierung eines "Veröffentlichen"-Buttons im Workspace, der den Status auf `Published` setzt und den Content aus den aktiven Listen entfernt.
-- **n8n-Integration**: Trigger setzt nun Status `Beauftragt`, Callback setzt `Angeliefert`.
+## Content-Lifecycle & UI-Refactoring
+- **Status-Workflow**: Der Workflow wurde finalisiert: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
+- **Tab-Struktur (Planung)**:
+  - **Redaktions-Planung (Standard)**: Zeigt alle aktiven Planungen (`Planned` bis `Optimierung`), schließt `Published` aus.
+  - **Vorschläge**: Neuer Tab für Keywords im `Backlog`. Nur Main-Keywords (`Main_Keyword === 'Y'`).
+  - **Keyword-Map**: Jetzt ein reines Daten-Repository ohne Aktions-Buttons.
+  - **Blacklist**: Verwaltung ausgeschlossener Begriffe/URLs.
+  - *Entfernt*: Der Tab "Trend-Radar" wurde gelöscht.
+- **Workflow-Sperren**: Der Button "Als veröffentlicht markieren" im Editor ist nun gesperrt (`disabled`), solange der Content-Status nicht `Angeliefert` ist.
+
+## Priorisierung & Ranking
+- **Striking Distance Logic**: Einführung einer neuen Gewichtung basierend auf dem Ranking.
+  - Ranking **11-30** erhält die höchste Punktzahl (Striking Distance), während Top-3 Rankings niedriger priorisiert werden.
+  - Das Feld `Ranking` wurde systemweit (Airtable, Types, UI, Import) integriert.
+- **Aktualitäts-Faktor (Recency)**: Integration eines Zeitfaktors. Frischer Content (`Last_Published`) senkt die Priorität massiv, alte Inhalte steigen über 12 Monate wieder an.
+- **Einstellungs-Modal**: Neue Slider für "Ranking" und "Aktualität" in den Priorisierungs-Einstellungen.
+
+## Deployment & Stabilität
+- **TypeScript & Build-Fixes**: Systemweite Entfernung von `asChild` Props bei `DialogTrigger`, `PopoverTrigger` und `DropdownMenuTrigger`, da die verwendete `@base-ui/react` Bibliothek dieses Prop in der aktuellen Version nicht unterstützt.
+- **Airtable-Synchronisation**: Fix für Datumsformate (`YYYY-MM-DD` statt ISO-Timestamp), um 422-Fehler bei der Veröffentlichung zu vermeiden.
+- **API-Robustheit**: Der Keywords-PATCH-Handler unterstützt nun flache und verschachtelte Payloads.
 
 ## Content-Erstellung (Creation) & Airtable
-- **Status-Formatierung**: Zeitstempel in der Auftragsliste auf `DD.MM.YYYY, HH:MM` umgestellt. Bei n8n-Beauftragung wird der Zeitpunkt sofort via `COMMISSION_CONTENT` in der Content-Historie fixiert.
-- **Editor-Optimierung**:
-  - HTML-Umschalter ("Code"-Button) in der Rich-Text-Editor Toolbar integriert.
-  - Automatisches "Beautify" (Einrückung) im Code-Modus mittels `js-beautify`.
-  - H-Tags (H1, H2, H3) und Absätze (`<p>`) visuell durch DocMorris-Branding (`#00463c`, `Poppins`-Font) abgehoben.
-  - Visuelle Toolbar-Aktualisierung (H-Status) in Echtzeit.
-  - Headline-Konvertierung in Normaltext via Toolbar-Icon möglich.
-- **Vorschau-Tab**: 
-  - Konsistente Anwendung von `global` Styling für dynamisch injiziertes HTML.
-  - Unterstützung für poppins-Font und korrekte Listenelemente (`<ul>`, `<ol>`, `<li>`).
-- **UI/UX**: 
-  - Konsistente grüne Markierung der aktiven Tab-Zeile (Auftragsliste) über alle Status-Typen hinweg.
-  - Anpassung der Abstände (Padding `p-3`, Headline-Margins).
-  - KI-Optimierungs-Workspace nutzt nun volle Bildschirmhöhe (`h-full`) mit internem Scrollen.
-
-## Redaktionsplanung
-- **Kommissionierungs-Button**: Button-Persistenz behoben; er verschwindet nun dauerhaft, sobald ein Workflow gestartet wurde, durch Prüfung von Historie und Status.
-- **Modals**: Behebung von Overflow-Problemen bei langen URLs in Fehler-Alerts (`break-words`) sowie Fix für das Layout der "Übersprungen"-Box im Importer.
-- **Content-Historie**: Design des Historien-Abschnitts in der Keyword-Map auf den Standard der Redaktionsplanung vereinheitlicht.
+- **Veröffentlichung**: Beim Markieren als "Veröffentlicht" wird automatisch das Feld `Last_Published` mit dem aktuellen Datum gesetzt und ein History-Log erstellt.
+- **Layout**: Filterleisten und Pagination wurden in allen Planungstabs unter die Tabellen verschoben (standardisiertes Layout).
+- **Bereinigung**: Der Button "An Pharma senden" wurde entfernt.

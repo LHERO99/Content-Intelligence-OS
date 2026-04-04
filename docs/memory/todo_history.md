@@ -1,7 +1,17 @@
 # TODO Historie
 
 ## Erledigt
-- [x] Airtable 422 Error in `createContentLog` behoben (Computed Field `Target_URL` entfernt).
+- [x] Ranking-System integriert (Airtable, Types, UI).
+- [x] Striking Distance Priorisierung implementiert (Ranking 11-30 Fokus).
+- [x] Aktualitäts-Faktor (Recency) in Priorisierung aufgenommen.
+- [x] Tab-Refactoring: Vorschläge-Tab erstellt, Trend-Radar entfernt.
+- [x] Layout-Standardisierung: Filter & Pagination in Planungstabs vereinheitlicht.
+- [x] Sicherheit: "Veröffentlichen"-Button an Status "Angeliefert" gekoppelt.
+- [x] Bugfix: Deployment-Fehler durch `asChild` Props behoben.
+- [x] Bugfix: Airtable 422 Error durch Datumsformatierung behoben.
+- [x] UI: "An Pharma senden" Button entfernt.
+- [x] API: PATCH-Handler für Keywords robuster gestaltet.
+- [x] Airtable 422 Error in `createContentLog` behoben.
 - [x] Kommissionierungs-Zeitstempel fixen & Formatierung anpassen.
 - [x] HTML-Ansicht in "Bearbeiten"-Tab integrieren.
 - [x] Visualisierung von Headlines (H1-H3) und Absätzen im Editor/Vorschau fixen.
