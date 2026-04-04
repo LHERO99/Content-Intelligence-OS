@@ -24,23 +24,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing action or data' }, { status: 400 });
     }
 
-    // Status update is handled centrally by the trigger but updateKeyword will now auto-log
+    // Status update is handled centrally by updateKeyword in src/lib/airtable.ts
     if ((action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") && data.keywordId) {
-      // 1. Update Keyword Status
       await updateKeyword(data.keywordId, { Status: "Beauftragt" });
-      
-      // 2. Explicitly log commission event
-      try {
-        await createContentLog({
-          Keyword_ID: [data.keywordId],
-          Target_URL: data.targetUrl,
-          Action_Type: 'Optimierung', 
-          Diff_Summary: 'Content beauftragt',
-        });
-        console.log('[API] Successfully logged commission event for:', data.keywordId);
-      } catch (logErr) {
-        console.error('[API] Error logging commission event:', logErr);
-      }
     }
     // 4. Trigger n8n Workflow
     const result = await triggerN8nWorkflow({

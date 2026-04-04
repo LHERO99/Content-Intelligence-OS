@@ -19,24 +19,6 @@ export async function POST(req: NextRequest) {
 
     const result = await bulkCreateKeywords(keywords);
 
-    // Log the import events
-    if (result.created.length > 0) {
-      try {
-        await Promise.all(
-          result.created.map((record: any) => 
-            createContentLog({
-              Keyword_ID: [record.id],
-              Target_URL: record.Target_URL,
-              Action_Type: (record.Action_Type === 'Optimierung' ? 'Optimierung' : 'Erstellung'),
-              Diff_Summary: 'URL zur Keyword-Map hinzugefügt',
-            })
-          )
-        );
-      } catch (logError) {
-        console.error('[API Import] Error creating content logs:', logError);
-      }
-    }
-
     return NextResponse.json({
       success: true,
       count: result.created.length,

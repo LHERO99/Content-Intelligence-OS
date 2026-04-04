@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
           Keyword_ID: [], // No keyword yet
           Target_URL: url,
           Action_Type: 'Optimierung',
-          Diff_Summary: 'URL zu Vorschlägen hinzugefügt',
+          Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
         }))
       );
     } catch (logError) {

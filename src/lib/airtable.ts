@@ -767,7 +767,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
       const logsToCreate: Partial<ContentLog>[] = [];
       
       createdRecords.forEach(record => {
-        // 1. Initial Creation Log
+        // 1. Initial Creation Log - Standard Milestone
         logsToCreate.push({
           Keyword_ID: [record.id],
           Target_URL: record.Target_URL,
@@ -775,7 +775,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
           Diff_Summary: 'URL der Keyword-Map hinzugefügt',
         });
 
-        // 2. Status specific logs
+        // 2. Status specific logs - Following the "Nahrungskette" milestones
         if (record.Status === 'Backlog') {
           logsToCreate.push({
             Keyword_ID: [record.id],
@@ -789,6 +789,20 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
             Target_URL: record.Target_URL,
             Action_Type: 'Planung',
             Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+          });
+        } else if (record.Status === 'Beauftragt') {
+          logsToCreate.push({
+            Keyword_ID: [record.id],
+            Target_URL: record.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'Content beauftragt',
+          });
+        } else if (record.Status === 'Published') {
+          logsToCreate.push({
+            Keyword_ID: [record.id],
+            Target_URL: record.Target_URL,
+            Action_Type: 'Optimierung',
+            Diff_Summary: 'Content veröffentlicht',
           });
         }
       });
@@ -917,7 +931,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
 
     // --- Add Logging after single creation ---
     try {
-      // 1. Initial Creation Log
+      // 1. Initial Creation Log - Standard Milestone
       await createContentLog({
         Keyword_ID: [createdKeyword.id],
         Target_URL: createdKeyword.Target_URL,
@@ -925,7 +939,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
         Diff_Summary: 'URL der Keyword-Map hinzugefügt',
       });
 
-      // 2. Status specific logs
+      // 2. Status specific logs - Following the "Nahrungskette" milestones
       if (createdKeyword.Status === 'Backlog') {
         await createContentLog({
           Keyword_ID: [createdKeyword.id],
@@ -939,6 +953,20 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
           Target_URL: createdKeyword.Target_URL,
           Action_Type: 'Planung',
           Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+        });
+      } else if (createdKeyword.Status === 'Beauftragt') {
+        await createContentLog({
+          Keyword_ID: [createdKeyword.id],
+          Target_URL: createdKeyword.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'Content beauftragt',
+        });
+      } else if (createdKeyword.Status === 'Published') {
+        await createContentLog({
+          Keyword_ID: [createdKeyword.id],
+          Target_URL: createdKeyword.Target_URL,
+          Action_Type: 'Optimierung',
+          Diff_Summary: 'Content veröffentlicht',
         });
       }
     } catch (logError) {
@@ -1093,9 +1121,11 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
         };
         const summary = transitionLogs[kw.Status as keyof typeof transitionLogs];
         if (summary) {
+          // Always use the Target_URL from the record to ensure consistency
+          const targetUrl = kw.Target_URL || currentRecord.get("Target_URL") as string;
           await createContentLog({
             Keyword_ID: [id],
-            Target_URL: currentRecord.get("Target_URL") as string,
+            Target_URL: targetUrl,
             Action_Type: kw.Status === "Published" ? "Optimierung" : "Planung",
             Diff_Summary: summary,
           });
