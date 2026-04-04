@@ -22,18 +22,23 @@ export async function POST(req: NextRequest) {
 
     // Create initial history logs and trigger n8n for successfully created keywords
     if (result.created.length > 0) {
+      const loggedUrls = new Set<string>();
+      
       try {
         await Promise.all(
           result.created.map(async (kw) => {
-            // 1. Log to Database
-            await createContentLog({
-              Keyword_ID: [kw.id],
-              Target_URL: kw.Target_URL,
-              Action_Type: kw.Action_Type || 'Erstellung',
-              Diff_Summary: 'URL wurde dem Tool hinzugefügt',
-            });
+            // 1. Log to Database - only ONCE per URL in this batch
+            if (kw.Target_URL && !loggedUrls.has(kw.Target_URL)) {
+              loggedUrls.add(kw.Target_URL);
+              await createContentLog({
+                Keyword_ID: [kw.id],
+                Target_URL: kw.Target_URL,
+                Action_Type: kw.Action_Type || 'Erstellung',
+                Diff_Summary: 'URL wurde dem Tool hinzugefügt',
+              });
+            }
 
-            // 2. Trigger n8n Import Webhook
+            // 2. Trigger n8n Import Webhook - always for every keyword
             await triggerN8nWorkflow({
               action: 'IMPORT_DATA',
               data: {
