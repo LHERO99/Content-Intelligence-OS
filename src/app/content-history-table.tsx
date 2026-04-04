@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ContentLog } from "@/lib/airtable-types";
-import { Loader2, History, ExternalLink, ArrowUpDown, ChevronDown, Filter, X, Clock, FileText, Zap } from "lucide-react";
+import { Loader2, History, ExternalLink, ArrowUpDown, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,8 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { HistoryList } from "@/features/shared/components/HistoryList";
 
 interface GroupedHistory {
   url: string;
@@ -275,11 +274,11 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       </div>
 
       <Dialog open={!!selectedGroup} onOpenChange={(open) => !open && setSelectedGroup(null)}>
-        <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] p-0 overflow-hidden flex flex-col">
           <DialogHeader className="p-6 pb-4 bg-[#00463c]/5 border-b border-[#00463c]/10">
             <div className="space-y-1">
               <DialogTitle className="text-[#00463c] font-bold text-xl flex items-center gap-2">
-                Änderungs-Historie
+                URL-Historie
               </DialogTitle>
               <DialogDescription className="break-all font-mono text-xs">
                 {selectedGroup?.url}
@@ -287,81 +286,14 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
             </div>
           </DialogHeader>
 
-          <ScrollArea className="flex-1">
-            <div className="p-6 space-y-8">
-              {selectedGroup?.logs.map((log, index) => (
-                <div key={log.id} className="relative pl-8 pb-8 last:pb-0">
-                  {/* Timeline Line */}
-                  {index !== (selectedGroup.logs.length - 1) && (
-                    <div className="absolute left-[11px] top-6 bottom-0 w-[2px] bg-[#00463c]/10" />
-                  )}
-                  
-                  {/* Timeline Dot */}
-                  <div className="absolute left-0 top-1 h-6 w-6 rounded-full bg-white border-2 border-[#00463c] flex items-center justify-center z-10 shadow-sm">
-                    {log.Action_Type === 'Erstellung' ? (
-                      <Zap className="h-3 w-3 text-[#00463c] fill-[#00463c]" />
-                    ) : log.Action_Type === 'Planung' ? (
-                      <Clock className="h-3 w-3 text-[#00463c]" />
-                    ) : (
-                      <FileText className="h-3 w-3 text-[#00463c]" />
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-[#00463c]">
-                          {log.Diff_Summary || (log.Action_Type === 'Erstellung' ? 'Beauftragung / Erstellung' : 
-                           log.Action_Type === 'Planung' ? 'Planung' : 'Optimierung')}
-                        </span>
-                        <Badge variant="outline" className="text-[10px] bg-[#00463c]/5 border-[#00463c]/10">
-                          {log.Version || (log.Content_Body ? 'v2' : 'v1')}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span className="text-xs font-medium">
-                          {new Date(log.Created_At).toLocaleString('de-DE', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {log.Diff_Summary && !log.Diff_Summary.includes('n8n callback') && !log.Diff_Summary.includes('Beauftragung') && !log.Diff_Summary.includes('erstellt') && (
-                      <div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-100 text-sm text-emerald-900 italic">
-                        {log.Diff_Summary}
-                      </div>
-                    )}
-
-                    {log.Content_Body ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Content</p>
-                        <div className="p-4 rounded-lg bg-muted/30 border border-border text-sm leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-y-auto">
-                          {log.Content_Body}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">Kein Content-Body hinterlegt (nur Status-Änderung oder Beauftragung).</p>
-                    )}
-
-                    {log.Reasoning_Chain && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">KI-Reasoning</p>
-                        <div className="p-4 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10 text-sm italic text-[#00463c]/80 leading-relaxed">
-                          {log.Reasoning_Chain}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="flex-1 overflow-hidden p-6">
+            {selectedGroup && (
+              <HistoryList 
+                history={selectedGroup.logs} 
+                isLoading={false} 
+              />
+            )}
+          </div>
 
           <div className="p-4 bg-muted/30 border-t border-border flex justify-end">
             <Button variant="ghost" onClick={() => setSelectedGroup(null)}>
