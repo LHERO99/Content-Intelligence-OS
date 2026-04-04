@@ -10,7 +10,8 @@ import {
   UserRecord,
   BlacklistEntry,
   ConfigRecord,
-  SkippedKeyword
+  SkippedKeyword,
+  CostConfig
 } from './airtable-types';
 
 export * from './airtable-types';
@@ -36,6 +37,7 @@ export const TABLES = {
   USERS: 'Users',
   BLACKLIST: 'Blacklist',
   CONFIG: 'Config',
+  COST_CONFIG: 'Cost_Config',
 } as const;
 
 // --- Error Handling ---
@@ -283,19 +285,84 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
 
 export async function getPerformanceData(): Promise<PerformanceData[]> {
   try {
-    const records = await base(TABLES.PERFORMANCE_DATA).select().all();
+    const records = await base(TABLES.PERFORMANCE_DATA).select({
+      sort: [{ field: 'Date', direction: 'desc' }]
+    }).all();
     return records.map((record) => ({
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
       Date: record.get('Date') as string,
       GSC_Clicks: record.get('GSC_Clicks') as number,
       GSC_Impressions: record.get('GSC_Impressions') as number,
       Sistrix_VI: record.get('Sistrix_VI') as number,
       Position: record.get('Position') as number,
+      Source: record.get('Source') as any,
     }));
   } catch (error) {
     return handleAirtableError(error,'getPerformanceData');
+  }
+}
+
+export async function getPerformanceDataByUrl(targetUrl: string): Promise<PerformanceData[]> {
+  try {
+    const records = await base(TABLES.PERFORMANCE_DATA).select({
+      filterByFormula: `{Target_URL} = '${targetUrl}'`,
+      sort: [{ field: 'Date', direction: 'asc' }]
+    }).all();
+    return records.map((record) => ({
+      id: record.id,
+      ID: record.get('ID') as number,
+      Keyword_ID: record.get('Keyword_ID') as string[],
+      Target_URL: record.get('Target_URL') as string,
+      Date: record.get('Date') as string,
+      GSC_Clicks: record.get('GSC_Clicks') as number,
+      GSC_Impressions: record.get('GSC_Impressions') as number,
+      Sistrix_VI: record.get('Sistrix_VI') as number,
+      Position: record.get('Position') as number,
+      Source: record.get('Source') as any,
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getPerformanceDataByUrl');
+  }
+}
+
+export async function getCostConfigs(): Promise<CostConfig[]> {
+  try {
+    const records = await base(TABLES.COST_CONFIG).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      Page_Type: record.get('Page_Type') as any,
+      Action_Type: record.get('Action_Type') as any,
+      Agency_Cost: record.get('Agency_Cost') as number,
+      Overhead_Cost: record.get('Overhead_Cost') as number,
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getCostConfigs');
+  }
+}
+
+export async function updateCostConfig(id: string, config: Partial<CostConfig>): Promise<CostConfig | null> {
+  try {
+    const fields: any = {};
+    if (config.Page_Type) fields.Page_Type = config.Page_Type;
+    if (config.Action_Type) fields.Action_Type = config.Action_Type;
+    if (config.Agency_Cost !== undefined) fields.Agency_Cost = config.Agency_Cost;
+    if (config.Overhead_Cost !== undefined) fields.Overhead_Cost = config.Overhead_Cost;
+
+    const records = await base(TABLES.COST_CONFIG).update([{ id, fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Page_Type: record.get('Page_Type') as any,
+      Action_Type: record.get('Action_Type') as any,
+      Agency_Cost: record.get('Agency_Cost') as number,
+      Overhead_Cost: record.get('Overhead_Cost') as number,
+    };
+  } catch (error) {
+    return handleAirtableError(error,'updateCostConfig');
   }
 }
 
