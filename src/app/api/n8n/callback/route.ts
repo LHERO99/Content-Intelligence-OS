@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
-      Target_URL: body.url || body.targetUrl, // Support passing URL from n8n for better grouping
+      // We don't pass Target_URL anymore as it's a computed field in Airtable
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',

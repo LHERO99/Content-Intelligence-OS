@@ -28,15 +28,13 @@ export async function POST(request: NextRequest) {
         if (trend) {
           // Log "URL wurde dem Tab Vorschläge hinzugefügt"
           try {
-            await createContentLog({
-              Target_URL: url,
-              Action_Type: 'Optimierung',
-              Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
-              Reasoning_Chain: reason || "Automatischer Vorschlag aus dem Monitoring",
-              Editor: session.user?.email ? [session.user.email] : undefined
-            });
+            // Trend doesn't have a Keyword_ID yet, so we log by Target_URL only
+            // But createContentLog REQUIRES Keyword_ID for the Link field in Airtable
+            // If it's a new trend without a keyword record, we might need a different logging strategy 
+            // or accept that it only logs when associated with a keyword.
+            console.log(`[API Suggest] Trend created for ${url}. Skipping Content-Log as no Keyword_ID exists yet.`);
           } catch (err) {
-            console.error('[API Suggest] Error creating history log:', err);
+            console.error('[API Suggest] Error in suggestion logic:', err);
           }
         }
         return trend;

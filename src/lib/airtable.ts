@@ -227,20 +227,44 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
 
 export async function createContentLog(log: Partial<ContentLog>): Promise<ContentLog | null> {
   try {
-    // Explicitly include Action_Type if provided
+    // 1. Validation: Ensure Keyword_ID consists of valid Airtable record IDs
+    if (!log.Keyword_ID || !Array.isArray(log.Keyword_ID) || log.Keyword_ID.length === 0) {
+      console.error('[Airtable createContentLog] Validation failed: Keyword_ID missing or empty');
+      return null;
+    }
+
+    const validKeywordIds = log.Keyword_ID.filter(id => id && id.startsWith('rec'));
+    if (validKeywordIds.length === 0) {
+      console.error('[Airtable createContentLog] Validation failed: No valid Airtable record IDs found in Keyword_ID', log.Keyword_ID);
+      return null;
+    }
+
+    // 2. Prepare fields
+    // IMPORTANT: Target_URL is a computed/lookup field in Content-Log table
+    // Sending a value for a computed field causes Airtable to error (422)
     const fields: any = {
-      Keyword_ID: log.Keyword_ID,
-      Target_URL: Array.isArray(log.Target_URL) ? log.Target_URL[0] : (log.Target_URL || ""),
+      Keyword_ID: validKeywordIds,
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,
       Action_Type: log.Action_Type, 
     };
 
+    // Clean undefined fields to avoid Airtable validation errors
+    Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
+
+    console.log('[Airtable createContentLog] Attempting to create log entry with fields:', JSON.stringify(fields, null, 2));
+
     const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
 
-    if (records.length === 0) return null;
+    if (records.length === 0) {
+      console.error('[Airtable createContentLog] No record returned from Airtable create call');
+      return null;
+    }
+    
     const record = records[0];
+    console.log('[Airtable createContentLog] Successfully created log entry:', record.id);
+    
     return {
       id: record.id,
       ID: record.get('ID') as number,
@@ -255,32 +279,42 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       Editor: record.get('Editor') as string[],
     };
   } catch (error: any) {
+    console.error('[Airtable createContentLog] Error occurred:', {
+      status: error.statusCode || error.status,
+      message: error.message,
+      error
+    });
+    
     // Retry without Action_Type if Airtable rejects it as a computed field
     if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
-      console.warn('[Airtable] "Action_Type" field rejected as computed, retrying without it');
+      console.warn('[Airtable createContentLog] "Action_Type" field rejected as computed, retrying without it');
       const retryFields: any = {
         Keyword_ID: log.Keyword_ID,
-        Target_URL: Array.isArray(log.Target_URL) ? log.Target_URL[0] : (log.Target_URL || ""),
         Content_Body: log.Content_Body,
         Diff_Summary: log.Diff_Summary,
         Reasoning_Chain: log.Reasoning_Chain,
       };
-      const records = await base(TABLES.CONTENT_LOG).create([{ fields: retryFields }]);
-      if (records.length === 0) return null;
-      const record = records[0];
-      return {
-        id: record.id,
-        ID: record.get('ID') as number,
-        Keyword_ID: record.get('Keyword_ID') as string[],
-        Target_URL: record.get('Target_URL') as string,
-        Action_Type: record.get('Action_Type') as any,
-        Version: record.get('Content_Body') ? 'v2' : 'v1',
-        Content_Body: record.get('Content_Body') as string,
-        Diff_Summary: record.get('Diff_Summary') as string,
-        Reasoning_Chain: record.get('Reasoning_Chain') as string,
-        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-        Editor: record.get('Editor') as string[],
-      };
+      
+      try {
+        const records = await base(TABLES.CONTENT_LOG).create([{ fields: retryFields }]);
+        if (records.length === 0) return null;
+        const record = records[0];
+        return {
+          id: record.id,
+          ID: record.get('ID') as number,
+          Keyword_ID: record.get('Keyword_ID') as string[],
+          Target_URL: record.get('Target_URL') as string,
+          Action_Type: record.get('Action_Type') as any,
+          Version: record.get('Content_Body') ? 'v2' : 'v1',
+          Content_Body: record.get('Content_Body') as string,
+          Diff_Summary: record.get('Diff_Summary') as string,
+          Reasoning_Chain: record.get('Reasoning_Chain') as string,
+          Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+          Editor: record.get('Editor') as string[],
+        };
+      } catch (retryError) {
+        console.error('[Airtable createContentLog] Retry also failed:', retryError);
+      }
     }
     return handleAirtableError(error,'createContentLog');
   }
