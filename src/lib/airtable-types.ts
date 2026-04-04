@@ -79,6 +79,7 @@ export interface AuditLog {
 export interface BlacklistEntry {
   id: string;
   Keyword: string;
+  Target_URL?: string;
   Type: 'Keyword' | 'URL';
   Reason?: string;
   Added_At: string;

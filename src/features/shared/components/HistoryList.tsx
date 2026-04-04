@@ -104,7 +104,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     "URL wurde dem Tool hinzugefügt",
     "URL wurde dem Tab 'Vorschläge' hinzugefügt",
     "URL der Vorschlagsliste hinzugefügt",
-    "URL der Redaktionsplanung hinzugefügt",
+    "URL wurde der Redaktionsplanung hinzugefügt",
     "Content beauftragt",
     "Content wurde beauftragt",
     "Content angeliefert",

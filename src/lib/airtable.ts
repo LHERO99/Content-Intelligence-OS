@@ -1088,6 +1088,7 @@ export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<Bl
       {
         fields: {
           Keyword: entry.Keyword,
+          Target_URL: entry.Target_URL,
           Type: entry.Type || 'Keyword',
           Reason: entry.Reason,
           Added_At: new Date().toISOString(),
@@ -1101,6 +1102,7 @@ export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<Bl
     return {
       id: record.id,
       Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
       Type: record.get('Type') as 'Keyword' | 'URL',
       Reason: record.get('Reason') as string,
       Added_At: record.get('Added_At') as string,
@@ -1116,9 +1118,9 @@ export async function getBlacklist(): Promise<BlacklistEntry[]> {
     try {
       records = await base(TABLES.BLACKLIST).select().all();
     } catch (error: any) {
-      // If 422 error (Unknown field name), try fetching without 'Type' field
-      if (error.statusCode === 422 && error.message?.includes('Type')) {
-        console.warn('[Airtable] "Type" field missing in Blacklist table, falling back to "Keyword" only');
+      // If 422 error (Unknown field name), try fetching without 'Type' or 'Target_URL' field
+      if (error.statusCode === 422) {
+        console.warn('[Airtable] Some fields missing in Blacklist table, falling back');
         records = await base(TABLES.BLACKLIST).select({ fields: ['Keyword', 'Reason', 'Added_At'] }).all();
       } else {
         throw error;
@@ -1127,6 +1129,7 @@ export async function getBlacklist(): Promise<BlacklistEntry[]> {
     return records.map((record) => ({
       id: record.id,
       Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
       Type: (record.get('Type') as 'Keyword' | 'URL') || 'Keyword',
       Reason: record.get('Reason') as string,
       Added_At: record.get('Added_At') as string,
