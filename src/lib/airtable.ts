@@ -230,6 +230,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
     // Explicitly include Action_Type if provided
     const fields: any = {
       Keyword_ID: log.Keyword_ID,
+      Target_URL: log.Target_URL,
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,
@@ -257,13 +258,14 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
     // Retry without Action_Type if Airtable rejects it as a computed field
     if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
       console.warn('[Airtable] "Action_Type" field rejected as computed, retrying without it');
-      const fields: any = {
+      const retryFields: any = {
         Keyword_ID: log.Keyword_ID,
+        Target_URL: log.Target_URL,
         Content_Body: log.Content_Body,
         Diff_Summary: log.Diff_Summary,
         Reasoning_Chain: log.Reasoning_Chain,
       };
-      const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
+      const records = await base(TABLES.CONTENT_LOG).create([{ fields: retryFields }]);
       if (records.length === 0) return null;
       const record = records[0];
       return {
@@ -809,6 +811,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
             chunk.map(log => ({
               fields: {
                 Keyword_ID: log.Keyword_ID,
+                Target_URL: log.Target_URL,
                 Diff_Summary: log.Diff_Summary,
                 Action_Type: log.Action_Type,
               }
