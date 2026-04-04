@@ -118,51 +118,6 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // 3. Log History for specific transitions
-    if (updates.Status) {
-      // Transition to Backlog -> Log "URL der Vorschlagsliste hinzugefügt"
-      // If the current status was anything other than Backlog (including undefined)
-      if (currentKeyword.Status !== 'Backlog' && updates.Status === 'Backlog') {
-        try {
-          await createContentLog({
-            Keyword_ID: [id],
-            Target_URL: result.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
-          });
-        } catch (logError) {
-          console.error('[API] Error creating backlog status log:', logError);
-        }
-      }
-
-      // Transition to Planned -> Log "URL der Redaktionsplanung hinzugefügt"
-      if (currentKeyword.Status !== 'Planned' && updates.Status === 'Planned') {
-        try {
-          await createContentLog({
-            Keyword_ID: [id],
-            Target_URL: result.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
-          });
-        } catch (logError) {
-          console.error('[API] Error creating planned status log:', logError);
-        }
-      }
-
-      // Transition to Published -> Log "Content veröffentlicht"
-      if (currentKeyword.Status !== 'Published' && updates.Status === 'Published') {
-        try {
-          await createContentLog({
-            Keyword_ID: [id],
-            Target_URL: result.Target_URL,
-            Action_Type: 'Optimierung',
-            Diff_Summary: 'Content veröffentlicht',
-          });
-        } catch (logError) {
-          console.error('[API] Error logging publication:', logError);
-        }
-      }
-    }
 
     return NextResponse.json(result);
   } catch (error: any) {

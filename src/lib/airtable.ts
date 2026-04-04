@@ -230,7 +230,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
     // Explicitly include Action_Type if provided
     const fields: any = {
       Keyword_ID: log.Keyword_ID,
-      Target_URL: log.Target_URL,
+      Target_URL: log.Target_URL, // Added explicitly
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,
@@ -260,7 +260,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       console.warn('[Airtable] "Action_Type" field rejected as computed, retrying without it');
       const retryFields: any = {
         Keyword_ID: log.Keyword_ID,
-        Target_URL: log.Target_URL,
+        Target_URL: log.Target_URL, // Added explicitly
         Content_Body: log.Content_Body,
         Diff_Summary: log.Diff_Summary,
         Reasoning_Chain: log.Reasoning_Chain,
@@ -811,7 +811,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
             chunk.map(log => ({
               fields: {
                 Keyword_ID: log.Keyword_ID,
-                Target_URL: log.Target_URL,
+                Target_URL: log.Target_URL, // Added explicitly
                 Diff_Summary: log.Diff_Summary,
                 Action_Type: log.Action_Type,
               }
@@ -1080,6 +1080,29 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     if (kw.Action_Type !== undefined) fields.Action_Type = kw.Action_Type;
     if (kw.Last_Published !== undefined) fields.Last_Published = kw.Last_Published;
     if (kw.Ranking !== undefined) fields.Ranking = kw.Ranking;
+
+    // Logging for Status transitions
+    if (kw.Status && currentRecord.get("Status") !== kw.Status) {
+      try {
+        const transitionLogs = {
+          "Backlog": "URL der Vorschlagsliste hinzugefügt",
+          "Planned": "URL der Redaktionsplanung hinzugefügt",
+          "Beauftragt": "Content beauftragt",
+          "Published": "Content veröffentlicht"
+        };
+        const summary = transitionLogs[kw.Status as keyof typeof transitionLogs];
+        if (summary) {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: currentRecord.get("Target_URL") as string,
+            Action_Type: kw.Status === "Published" ? "Optimierung" : "Planung",
+            Diff_Summary: summary,
+          });
+        }
+      } catch (logErr) {
+        console.error("[Airtable] Error logging status transition:", logErr);
+      }
+    }
 
     let records;
     try {
