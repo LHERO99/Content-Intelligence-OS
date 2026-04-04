@@ -29,6 +29,7 @@ export interface ContentLog {
   Keyword_ID: string[]; // Link to Keyword-Map
   Target_URL?: string; // New field for URL-based history
   Action_Type: 'Planung' | 'Erstellung' | 'Optimierung';
+  Page_Type?: 'Ratgeber' | 'Kategorie' | 'Andere'; // Cost lookup
   Version: 'v1' | 'v2';
   Content_Body?: string;
   Diff_Summary?: string;
@@ -40,12 +41,22 @@ export interface ContentLog {
 export interface PerformanceData {
   id: string;
   ID: number;
-  Keyword_ID: string[]; // Link to Keyword-Map
+  Target_URL?: string; // For high volume monitoring
+  Keyword_ID?: string[]; // Optional link
   Date: string;
   GSC_Clicks?: number;
   GSC_Impressions?: number;
   Sistrix_VI?: number;
   Position?: number;
+  Source?: 'GSC' | 'Sistrix' | 'Combined';
+}
+
+export interface CostConfig {
+  id: string;
+  Page_Type: 'Ratgeber' | 'Kategorie' | 'Andere';
+  Action_Type: 'Erstellung' | 'Optimierung';
+  Agency_Cost: number;
+  Overhead_Cost: number;
 }
 
 export interface PotentialTrend {
