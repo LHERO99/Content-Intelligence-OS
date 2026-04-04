@@ -17,7 +17,9 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
 
   const getIcon = () => {
     const s = summary.toLowerCase();
-    if (s.includes("keyword-map") || s.includes("hinzugefügt")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
+    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
+    if (s.includes("tool hinzugefügt")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
+    if (s.includes("vorschlägen hinzugefügt")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
     if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
     if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-indigo-500" />;
     if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-orange-500" />;
@@ -98,14 +100,18 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   // Define the exact "Nahrungskette" events to show
   const nahrungskette = [
     "URL der Keyword-Map hinzugefügt",
+    "URL wurde dem Tool hinzugefügt",
+    "URL wurde dem Tab 'Vorschläge' hinzugefügt",
     "URL der Vorschlagsliste hinzugefügt",
     "URL der Redaktionsplanung hinzugefügt",
     "Content beauftragt",
+    "Content wurde beauftragt",
     "Content angeliefert",
     "Content veröffentlicht"
   ];
 
   // Filter history to only include these specific events
+  // We use includes and a fallback to empty string to ensure type safety
   const filteredHistory = history.filter(log => {
     const summary = log.Diff_Summary || "";
     return nahrungskette.includes(summary);

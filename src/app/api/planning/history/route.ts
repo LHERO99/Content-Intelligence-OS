@@ -57,24 +57,48 @@ export async function POST(request: Request) {
       console.log('[API] POST /api/planning/history - API Key used (last 4 chars):', apiKey?.slice(-4));
     }
 
-    const { keywordId, url, actionType, contentBody, diffSummary, reasoningChain, editor } = body;
+    let { 
+      keywordId, 
+      Keyword_ID, 
+      url, 
+      Target_URL, 
+      actionType, 
+      Action_Type, 
+      contentBody, 
+      Content_Body, 
+      diffSummary, 
+      Diff_Summary, 
+      reasoningChain, 
+      Reasoning_Chain, 
+      editor, 
+      Editor 
+    } = body;
 
-    if (!keywordId || !actionType) {
-      console.error('[API] Missing required fields:', { keywordId, actionType });
+    // Standardize field names
+    const finalKeywordId = keywordId || Keyword_ID;
+    const finalUrl = url || Target_URL;
+    const finalActionType = actionType || Action_Type;
+    const finalContentBody = contentBody || Content_Body;
+    const finalDiffSummary = diffSummary || Diff_Summary;
+    const finalReasoningChain = reasoningChain || Reasoning_Chain;
+    const finalEditor = editor || Editor;
+
+    if (!finalKeywordId || !finalActionType) {
+      console.error('[API] Missing required fields:', { finalKeywordId, finalActionType });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Ensure keywordId is an array for Airtable Link field
-    const keywordIds = Array.isArray(keywordId) ? keywordId : [keywordId];
+    const keywordIds = Array.isArray(finalKeywordId) ? finalKeywordId : [finalKeywordId];
 
     const newLog = await createContentLog({
       Keyword_ID: keywordIds,
-      Target_URL: url,
-      Action_Type: actionType,
-      Content_Body: contentBody,
-      Diff_Summary: diffSummary,
-      Reasoning_Chain: reasoningChain,
-      Editor: editor || (session?.user?.email ? [session.user.email] : undefined),
+      Target_URL: finalUrl,
+      Action_Type: finalActionType,
+      Content_Body: finalContentBody,
+      Diff_Summary: finalDiffSummary,
+      Reasoning_Chain: finalReasoningChain,
+      Editor: finalEditor || (session?.user?.email ? [session.user.email] : undefined),
     });
 
     return NextResponse.json(newLog);

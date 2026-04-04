@@ -760,84 +760,6 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
       }
     }
 
-    // --- Performance Optimization: Bulk Log Creation ---
-    // After creating all keywords, create all necessary logs in parallel batches
-    if (createdRecords.length > 0) {
-      console.log(`[Airtable] Creating logs for ${createdRecords.length} new keywords...`);
-      const logsToCreate: Partial<ContentLog>[] = [];
-      
-      createdRecords.forEach(record => {
-        // 1. Initial Creation Log - Standard Milestone
-        logsToCreate.push({
-          Keyword_ID: [record.id],
-          Target_URL: record.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'URL der Keyword-Map hinzugefügt',
-        });
-
-        // 2. Status specific logs - Following the "Nahrungskette" milestones
-        if (record.Status === 'Backlog') {
-          logsToCreate.push({
-            Keyword_ID: [record.id],
-            Target_URL: record.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
-          });
-        } else if (record.Status === 'Planned') {
-          logsToCreate.push({
-            Keyword_ID: [record.id],
-            Target_URL: record.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
-          });
-        } else if (record.Status === 'Beauftragt') {
-          logsToCreate.push({
-            Keyword_ID: [record.id],
-            Target_URL: record.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'Content beauftragt',
-          });
-        } else if (record.Status === 'Published') {
-          logsToCreate.push({
-            Keyword_ID: [record.id],
-            Target_URL: record.Target_URL,
-            Action_Type: 'Optimierung',
-            Diff_Summary: 'Content veröffentlicht',
-          });
-        }
-      });
-
-      // Airtable create max 10 records per call. We process logs in chunks of 10.
-      const logChunks = [];
-      for (let i = 0; i < logsToCreate.length; i += 10) {
-        logChunks.push(logsToCreate.slice(i, i + 10));
-      }
-
-      // Process batches with a small delay to respect rate limits if many chunks
-      for (const [index, chunk] of logChunks.entries()) {
-        try {
-          if (index > 0 && index % 5 === 0) {
-            // Respect Airtable rate limits: 5 requests per second
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-          
-          await base(TABLES.CONTENT_LOG).create(
-            chunk.map(log => ({
-              fields: {
-                Keyword_ID: log.Keyword_ID,
-                Target_URL: Array.isArray(log.Target_URL) ? log.Target_URL[0] : (log.Target_URL || ""), 
-                Diff_Summary: log.Diff_Summary,
-                Action_Type: log.Action_Type,
-              }
-            }))
-          );
-        } catch (logError) {
-          console.error('[Airtable] Error creating bulk logs:', logError);
-          // Don't fail the keyword creation if logging fails
-        }
-      }
-    }
-
     console.log(`[Airtable] Successfully created ${createdRecords.length} keywords, skipped ${skippedRecords.length}`);
     return { created: createdRecords, skipped: skippedRecords };
   } catch (error) {
@@ -929,50 +851,6 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       Ranking: record.get('Ranking') as number,
     };
 
-    // --- Add Logging after single creation ---
-    try {
-      // 1. Initial Creation Log - Standard Milestone
-      await createContentLog({
-        Keyword_ID: [createdKeyword.id],
-        Target_URL: createdKeyword.Target_URL,
-        Action_Type: 'Planung',
-        Diff_Summary: 'URL der Keyword-Map hinzugefügt',
-      });
-
-      // 2. Status specific logs - Following the "Nahrungskette" milestones
-      if (createdKeyword.Status === 'Backlog') {
-        await createContentLog({
-          Keyword_ID: [createdKeyword.id],
-          Target_URL: createdKeyword.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
-        });
-      } else if (createdKeyword.Status === 'Planned') {
-        await createContentLog({
-          Keyword_ID: [createdKeyword.id],
-          Target_URL: createdKeyword.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
-        });
-      } else if (createdKeyword.Status === 'Beauftragt') {
-        await createContentLog({
-          Keyword_ID: [createdKeyword.id],
-          Target_URL: createdKeyword.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'Content beauftragt',
-        });
-      } else if (createdKeyword.Status === 'Published') {
-        await createContentLog({
-          Keyword_ID: [createdKeyword.id],
-          Target_URL: createdKeyword.Target_URL,
-          Action_Type: 'Optimierung',
-          Diff_Summary: 'Content veröffentlicht',
-        });
-      }
-    } catch (logError) {
-      console.error('[Airtable] Error creating initial logs after single creation:', logError);
-    }
-
     return createdKeyword;
   } catch (error: any) {
     // Retry without Action_Type if missing in Airtable
@@ -1014,26 +892,6 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
         Ranking: retryRecord.get('Ranking') as number,
       };
 
-      // Logging for retry
-      try {
-        await createContentLog({
-          Keyword_ID: [createdKeyword.id],
-          Target_URL: createdKeyword.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'URL der Keyword-Map hinzugefügt',
-        });
-        if (createdKeyword.Status === 'Backlog') {
-          await createContentLog({
-            Keyword_ID: [createdKeyword.id],
-            Target_URL: createdKeyword.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
-          });
-        }
-      } catch (logError) {
-        console.error('[Airtable] Error creating initial logs after single creation (retry):', logError);
-      }
-
       return createdKeyword;
     }
     return handleAirtableError(error,'createKeyword');
@@ -1044,7 +902,7 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
   try {
     console.log(`[Airtable] Updating keyword: ${id}`);
 
-    // Fetch current record to have full context for validation and logging
+    // Fetch current record to have full context for validation
     const currentRecord = await base(TABLES.KEYWORD_MAP).find(id);
 
     // If Keyword or Target_URL or Main_Keyword is being updated, we need to re-validate
@@ -1109,31 +967,6 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     if (kw.Action_Type !== undefined) fields.Action_Type = kw.Action_Type;
     if (kw.Last_Published !== undefined) fields.Last_Published = kw.Last_Published;
     if (kw.Ranking !== undefined) fields.Ranking = kw.Ranking;
-
-    // Logging for Status transitions
-    if (kw.Status && currentRecord.get("Status") !== kw.Status) {
-      try {
-        const transitionLogs = {
-          "Backlog": "URL der Vorschlagsliste hinzugefügt",
-          "Planned": "URL der Redaktionsplanung hinzugefügt",
-          "Beauftragt": "Content beauftragt",
-          "Published": "Content veröffentlicht"
-        };
-        const summary = transitionLogs[kw.Status as keyof typeof transitionLogs];
-        if (summary) {
-          // Always use the Target_URL from the record to ensure consistency
-          const targetUrl = kw.Target_URL || currentRecord.get("Target_URL") as string;
-          await createContentLog({
-            Keyword_ID: [id],
-            Target_URL: targetUrl,
-            Action_Type: kw.Status === "Published" ? "Optimierung" : "Planung",
-            Diff_Summary: summary,
-          });
-        }
-      } catch (logErr) {
-        console.error("[Airtable] Error logging status transition:", logErr);
-      }
-    }
 
     let records;
     try {
@@ -1418,5 +1251,96 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
     return true;
   } catch (error) {
     return handleAirtableError(error,'bulkDeleteFromBlacklist');
+  }
+}
+
+/**
+ * Performs an upsert operation on Performance_Data.
+ * It checks for existing records with the same Target_URL, Date, and Source.
+ */
+export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
+  try {
+    console.log(`[Airtable] Upserting ${data.length} performance data records`);
+    let created = 0;
+    let updated = 0;
+    const errors: any[] = [];
+
+    // Process in chunks of 10 for Airtable API limits
+    const chunks = [];
+    for (let i = 0; i < data.length; i += 10) {
+      chunks.push(data.slice(i, i + 10));
+    }
+
+    for (const chunk of chunks) {
+      const updates: { id: string, fields: any }[] = [];
+      const creations: { fields: any }[] = [];
+
+      for (const item of chunk) {
+        if (!item.Target_URL || !item.Date || !item.Source) {
+          errors.push({ item, error: 'Missing required fields: Target_URL, Date, or Source' });
+          continue;
+        }
+
+        try {
+          // Check for existing record with same URL, Date, and Source
+          const formula = `AND({Target_URL} = '${item.Target_URL}', {Date} = '${item.Date}', {Source} = '${item.Source}')`;
+          const existing = await base(TABLES.PERFORMANCE_DATA).select({
+            filterByFormula: formula,
+            maxRecords: 1
+          }).firstPage();
+
+          const fields: any = {
+            Target_URL: item.Target_URL,
+            Date: item.Date,
+            Source: item.Source,
+            GSC_Clicks: item.GSC_Clicks,
+            GSC_Impressions: item.GSC_Impressions,
+            Sistrix_VI: item.Sistrix_VI,
+            Position: item.Position,
+            Keyword_ID: item.Keyword_ID,
+          };
+
+          if (existing.length > 0) {
+            updates.push({ id: existing[0].id, fields });
+          } else {
+            creations.push({ fields });
+          }
+        } catch (err: any) {
+          console.error(`[Airtable] Error checking existing record for ${item.Target_URL} on ${item.Date}:`, err);
+          errors.push({ item, error: err.message });
+        }
+      }
+
+      // Perform Batch Update
+      if (updates.length > 0) {
+        try {
+          await base(TABLES.PERFORMANCE_DATA).update(updates);
+          updated += updates.length;
+        } catch (err: any) {
+          console.error('[Airtable] Batch update failed:', err);
+          errors.push({ type: 'update', count: updates.length, error: err.message });
+        }
+      }
+
+      // Perform Batch Creation
+      if (creations.length > 0) {
+        try {
+          await base(TABLES.PERFORMANCE_DATA).create(creations);
+          created += creations.length;
+        } catch (err: any) {
+          console.error('[Airtable] Batch creation failed:', err);
+          errors.push({ type: 'create', count: creations.length, error: err.message });
+        }
+      }
+      
+      // Rate limiting: 5 requests per second
+      if (chunks.length > 1) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+    }
+
+    return { created, updated, errors };
+  } catch (error) {
+    return handleAirtableError(error, 'upsertPerformanceData');
   }
 }

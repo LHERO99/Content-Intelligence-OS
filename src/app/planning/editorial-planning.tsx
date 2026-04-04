@@ -78,6 +78,23 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     try {
       setIsCommissioning(id);
       const keyword = keywords.find(k => k.id === id);
+
+      // Log "Content wurde beauftragt" before triggering n8n
+      try {
+        await fetch('/api/planning/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Keyword_ID: [id],
+            Target_URL: keyword?.Target_URL,
+            Action_Type: keyword?.Action_Type || 'Erstellung',
+            Diff_Summary: 'Content wurde beauftragt'
+          })
+        });
+      } catch (logErr) {
+        console.error('Error logging commissioning:', logErr);
+      }
+
       await triggerN8nAction('COMMISSION_CONTENT', {
         keywordId: id,
         keyword: keyword?.Keyword || '',

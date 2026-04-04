@@ -17,27 +17,30 @@ export async function POST(request: NextRequest) {
 
   try {
     const results = await Promise.all(
-      urls.map(url => createTrend({
-        Trend_Topic: `Optimierung: ${url}`,
-        Source: 'GSC', // Originating from monitoring
-        Gap_Score: 0,
-        Status: 'New'
-      }))
-    );
+      urls.map(async (url) => {
+        const trend = await createTrend({
+          Trend_Topic: `Optimierung: ${url}`,
+          Source: 'GSC', // Originating from monitoring
+          Gap_Score: 0,
+          Status: 'New'
+        });
 
-    // Log the suggestion events
-    try {
-      await Promise.all(
-        urls.map(url => createContentLog({
-          Keyword_ID: [], // No keyword yet
-          Target_URL: url,
-          Action_Type: 'Optimierung',
-          Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
-        }))
-      );
-    } catch (logError) {
-      console.error('[API Suggest] Error creating content logs:', logError);
-    }
+        if (trend) {
+          // Log "URL wurde dem Tab Vorschläge hinzugefügt"
+          try {
+            await createContentLog({
+              Target_URL: url,
+              Action_Type: 'Optimierung',
+              Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+              Reasoning_Chain: reason || "Automatischer Vorschlag aus dem Monitoring"
+            });
+          } catch (err) {
+            console.error('[API Suggest] Error creating history log:', err);
+          }
+        }
+        return trend;
+      })
+    );
 
     return NextResponse.json({ success: true, count: results.length });
   } catch (error: any) {

@@ -2,13 +2,14 @@
 
 ## Content-Lifecycle & UI-Refactoring
 - **Status-Workflow**: Der Workflow wurde finalisiert: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
-- **Content-Historie (Nahrungskette)**: Die Historie wurde auf eine wesentliche Kette von 6 Events reduziert:
+- **Content-Historie (Nahrungskette)**: Die Historie wurde zur Neukonzeption vorübergehend zurückgesetzt. Das Ziel ist eine robuste, fehlerresistente Erfassung der 6 Kern-Meilensteine:
   1. URL der Keyword-Map hinzugefügt
   2. URL der Vorschlagsliste hinzugefügt
   3. URL der Redaktionsplanung hinzugefügt
   4. Content beauftragt
-  5. Content angeliefert (mit Versionierung V1, V2... und Text-Vorschau)
+  5. Content angeliefert
   6. Content veröffentlicht
+- **Status-Workflow**: Bestehende Implementierung der Logging-Trigger wurde entfernt, um eine saubere Neukonzeption der Datenbank- und Service-Ebene zu ermöglichen.
 - **UI-Refactoring (Pop-up & /history)**: 
   - Radikale Entschlackung: Nur noch Event-Name und Zeitpunkt (rechtsbündig).
   - Versionierung und Ausklapp-Option exklusiv für "Content angeliefert".

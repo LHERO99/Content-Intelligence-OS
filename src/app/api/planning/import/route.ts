@@ -19,6 +19,25 @@ export async function POST(req: NextRequest) {
 
     const result = await bulkCreateKeywords(keywords);
 
+    // Create initial history logs for successfully created keywords
+    if (result.created.length > 0) {
+      try {
+        await Promise.all(
+          result.created.map((kw) => 
+            createContentLog({
+              Keyword_ID: [kw.id],
+              Target_URL: kw.Target_URL,
+              Action_Type: kw.Action_Type || 'Erstellung',
+              Diff_Summary: 'URL wurde dem Tool hinzugefügt',
+            })
+          )
+        );
+      } catch (logError) {
+        console.error('[API Import] Error creating initial logs:', logError);
+        // We don't fail the whole import if logging fails, but we log it
+      }
+    }
+
     return NextResponse.json({
       success: true,
       count: result.created.length,

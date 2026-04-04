@@ -111,6 +111,29 @@ export async function PATCH(request: Request) {
 
     const result = await updateKeyword(id, updates);
 
+    // 3. Status Transition Logging
+    if (result && updates.Status && updates.Status !== currentKeyword.Status) {
+      try {
+        if (updates.Status === 'Planned') {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: result.Target_URL,
+            Action_Type: result.Action_Type,
+            Diff_Summary: 'URL wurde der Redaktionsplanung hinzugefügt'
+          });
+        } else if (updates.Status === 'Published') {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: result.Target_URL,
+            Action_Type: result.Action_Type,
+            Diff_Summary: 'Content veröffentlicht'
+          });
+        }
+      } catch (logErr) {
+        console.error('[API] Error creating transition log:', logErr);
+      }
+    }
+
     if (!result) {
       return NextResponse.json(
         { error: 'Fehler beim Aktualisieren des Keywords in Airtable.' },
