@@ -50,58 +50,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Log initial creation - Keyword-Map
-    try {
-      await createContentLog({
-        Keyword_ID: [result.id],
-        Target_URL: result.Target_URL,
-        Action_Type: 'Planung',
-        Diff_Summary: 'URL der Keyword-Map hinzugefügt',
-      });
-    } catch (logError) {
-      console.error('[API] Error creating initial content log:', logError);
-    }
-
-    // 2. Log addition to proposal list if Status is Backlog
-    if (result.Status === 'Backlog') {
-      try {
-        await createContentLog({
-          Keyword_ID: [result.id],
-          Target_URL: result.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
-        });
-      } catch (logError) {
-        console.error('[API] Error creating backlog log:', logError);
-      }
-    }
-
-    // 3. Log addition to editorial planning if Status is Planned
-    if (result.Status === 'Planned') {
-      try {
-        await createContentLog({
-          Keyword_ID: [result.id],
-          Target_URL: result.Target_URL,
-          Action_Type: 'Planung',
-          Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
-        });
-      } catch (logError) {
-        console.error('[API] Error creating planned log:', logError);
-      }
-    }
-
-
-    // 3. Log addition to editorial planning if Status is Planned
-    if (result.Status === 'Planned') {
-      await createContentLog({
-        Keyword_ID: [result.id],
-        Target_URL: result.Target_URL,
-        Action_Type: 'Planung',
-        Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
-      });
-    }
-
     return NextResponse.json(result);
+
   } catch (error: any) {
     console.error('[API] Error creating keyword:', error);
     

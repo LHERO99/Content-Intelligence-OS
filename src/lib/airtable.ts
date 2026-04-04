@@ -718,7 +718,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
         // If Action_Type is missing, retry this chunk without it
         if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
           console.warn('[Airtable] "Action_Type" field missing in bulk creation, retrying chunk without it');
-          const records = await base(TABLES.KEYWORD_MAP).create(
+          const retryRecords = await base(TABLES.KEYWORD_MAP).create(
             currentChunkValid.map((kw) => ({
               fields: {
                 Keyword: kw.Keyword,
@@ -735,7 +735,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
               },
             }))
           );
-          records.forEach((record) => {
+          retryRecords.forEach((record) => {
             createdRecords.push({
               id: record.id,
               Keyword: record.get('Keyword') as string,
@@ -754,6 +754,69 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
           });
         } else {
           throw error;
+        }
+      }
+    }
+
+    // --- Performance Optimization: Bulk Log Creation ---
+    // After creating all keywords, create all necessary logs in parallel batches
+    if (createdRecords.length > 0) {
+      console.log(`[Airtable] Creating logs for ${createdRecords.length} new keywords...`);
+      const logsToCreate: Partial<ContentLog>[] = [];
+      
+      createdRecords.forEach(record => {
+        // 1. Initial Creation Log
+        logsToCreate.push({
+          Keyword_ID: [record.id],
+          Target_URL: record.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Keyword-Map hinzugefügt',
+        });
+
+        // 2. Status specific logs
+        if (record.Status === 'Backlog') {
+          logsToCreate.push({
+            Keyword_ID: [record.id],
+            Target_URL: record.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+          });
+        } else if (record.Status === 'Planned') {
+          logsToCreate.push({
+            Keyword_ID: [record.id],
+            Target_URL: record.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+          });
+        }
+      });
+
+      // Airtable create max 10 records per call. We process logs in chunks of 10.
+      const logChunks = [];
+      for (let i = 0; i < logsToCreate.length; i += 10) {
+        logChunks.push(logsToCreate.slice(i, i + 10));
+      }
+
+      // Process batches with a small delay to respect rate limits if many chunks
+      for (const [index, chunk] of logChunks.entries()) {
+        try {
+          if (index > 0 && index % 5 === 0) {
+            // Respect Airtable rate limits: 5 requests per second
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          await base(TABLES.CONTENT_LOG).create(
+            chunk.map(log => ({
+              fields: {
+                Keyword_ID: log.Keyword_ID,
+                Diff_Summary: log.Diff_Summary,
+                Action_Type: log.Action_Type,
+              }
+            }))
+          );
+        } catch (logError) {
+          console.error('[Airtable] Error creating bulk logs:', logError);
+          // Don't fail the keyword creation if logging fails
         }
       }
     }
@@ -831,7 +894,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
     if (records.length === 0) return null;
 
     const record = records[0];
-    return {
+    const createdKeyword = {
       id: record.id,
       Keyword: record.get('Keyword') as string,
       Target_URL: record.get('Target_URL') as string,
@@ -848,6 +911,38 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
       Ranking: record.get('Ranking') as number,
     };
+
+    // --- Add Logging after single creation ---
+    try {
+      // 1. Initial Creation Log
+      await createContentLog({
+        Keyword_ID: [createdKeyword.id],
+        Target_URL: createdKeyword.Target_URL,
+        Action_Type: 'Planung',
+        Diff_Summary: 'URL der Keyword-Map hinzugefügt',
+      });
+
+      // 2. Status specific logs
+      if (createdKeyword.Status === 'Backlog') {
+        await createContentLog({
+          Keyword_ID: [createdKeyword.id],
+          Target_URL: createdKeyword.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+        });
+      } else if (createdKeyword.Status === 'Planned') {
+        await createContentLog({
+          Keyword_ID: [createdKeyword.id],
+          Target_URL: createdKeyword.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+        });
+      }
+    } catch (logError) {
+      console.error('[Airtable] Error creating initial logs after single creation:', logError);
+    }
+
+    return createdKeyword;
   } catch (error: any) {
     // Retry without Action_Type if missing in Airtable
     if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
@@ -867,26 +962,48 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
         Priority_Score: kw.Priority_Score,
         Ranking: kw.Ranking,
       };
-      const records = await base(TABLES.KEYWORD_MAP).create([{ fields }]);
-      if (records.length === 0) return null;
-      const record = records[0];
-      return {
-        id: record.id,
-        Keyword: record.get('Keyword') as string,
-        Target_URL: record.get('Target_URL') as string,
-        Search_Volume: record.get('Search_Volume') as number,
-        Difficulty: record.get('Difficulty') as number,
-        Status: record.get('Status') as KeywordStatus,
-        Editorial_Deadline: record.get('Editorial_Deadline') as string,
-        Assigned_Editor: record.get('Assigned_Editor') as string[],
-        Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
-        Article_Count: record.get('Article_Count') as number,
-        Avg_Product_Value: record.get('Avg_Product_Value') as number,
-        Policy: record.get('Policy') as number,
-        Priority_Score: record.get('Priority_Score') as number,
-        Action_Type: 'Erstellung',
-        Ranking: record.get('Ranking') as number,
+      const retryRecords = await base(TABLES.KEYWORD_MAP).create([{ fields }]);
+      if (retryRecords.length === 0) return null;
+      const retryRecord = retryRecords[0];
+      const createdKeyword = {
+        id: retryRecord.id,
+        Keyword: retryRecord.get('Keyword') as string,
+        Target_URL: retryRecord.get('Target_URL') as string,
+        Search_Volume: retryRecord.get('Search_Volume') as number,
+        Difficulty: retryRecord.get('Difficulty') as number,
+        Status: retryRecord.get('Status') as KeywordStatus,
+        Editorial_Deadline: retryRecord.get('Editorial_Deadline') as string,
+        Assigned_Editor: retryRecord.get('Assigned_Editor') as string[],
+        Main_Keyword: (retryRecord.get('Main_Keyword') as 'Y' | 'N') || 'N',
+        Article_Count: retryRecord.get('Article_Count') as number,
+        Avg_Product_Value: retryRecord.get('Avg_Product_Value') as number,
+        Policy: retryRecord.get('Policy') as number,
+        Priority_Score: retryRecord.get('Priority_Score') as number,
+        Action_Type: 'Erstellung' as any,
+        Ranking: retryRecord.get('Ranking') as number,
       };
+
+      // Logging for retry
+      try {
+        await createContentLog({
+          Keyword_ID: [createdKeyword.id],
+          Target_URL: createdKeyword.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Keyword-Map hinzugefügt',
+        });
+        if (createdKeyword.Status === 'Backlog') {
+          await createContentLog({
+            Keyword_ID: [createdKeyword.id],
+            Target_URL: createdKeyword.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+          });
+        }
+      } catch (logError) {
+        console.error('[Airtable] Error creating initial logs after single creation (retry):', logError);
+      }
+
+      return createdKeyword;
     }
     return handleAirtableError(error,'createKeyword');
   }

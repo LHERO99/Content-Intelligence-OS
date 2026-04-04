@@ -26,7 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
 import { useContentHistory } from "../hooks/useContentHistory";
-import { HistoryList } from "../../shared/components";
+import { LastActionHistory } from "../../shared/components";
 
 interface EditKeywordModalProps {
   keyword: KeywordMap | null;
@@ -234,7 +234,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                   )}
                 </div>
 
-                <HistoryList history={history} isLoading={loadingHistory} />
+                <LastActionHistory history={history} isLoading={loadingHistory} />
               </div>
 
               {error && (

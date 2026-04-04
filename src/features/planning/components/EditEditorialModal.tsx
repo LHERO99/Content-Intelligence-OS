@@ -33,7 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { KeywordMap } from "@/lib/airtable-types";
 import { useContentHistory } from "../hooks/useContentHistory";
-import { HistoryList, MetricItem } from "../../shared/components";
+import { LastActionHistory, MetricItem } from "../../shared/components";
 
 interface EditEditorialModalProps {
   keyword: KeywordMap | null;
@@ -286,7 +286,7 @@ export function EditEditorialModal({
                   )}
                 </div>
 
-                <HistoryList history={history} isLoading={loadingHistory} />
+                <LastActionHistory history={history} isLoading={loadingHistory} />
               </div>
 
               {error && (
