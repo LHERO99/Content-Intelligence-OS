@@ -225,11 +225,13 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
 
 export async function createContentLog(log: Partial<ContentLog>): Promise<ContentLog | null> {
   try {
+    // Explicitly include Action_Type if provided
     const fields: any = {
       Keyword_ID: log.Keyword_ID,
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,
+      Action_Type: log.Action_Type, 
     };
 
     const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
@@ -249,7 +251,33 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
       Editor: record.get('Editor') as string[],
     };
-  } catch (error) {
+  } catch (error: any) {
+    // Retry without Action_Type if Airtable rejects it as a computed field
+    if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
+      console.warn('[Airtable] "Action_Type" field rejected as computed, retrying without it');
+      const fields: any = {
+        Keyword_ID: log.Keyword_ID,
+        Content_Body: log.Content_Body,
+        Diff_Summary: log.Diff_Summary,
+        Reasoning_Chain: log.Reasoning_Chain,
+      };
+      const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
+      if (records.length === 0) return null;
+      const record = records[0];
+      return {
+        id: record.id,
+        ID: record.get('ID') as number,
+        Keyword_ID: record.get('Keyword_ID') as string[],
+        Target_URL: record.get('Target_URL') as string,
+        Action_Type: record.get('Action_Type') as any,
+        Version: record.get('Content_Body') ? 'v2' : 'v1',
+        Content_Body: record.get('Content_Body') as string,
+        Diff_Summary: record.get('Diff_Summary') as string,
+        Reasoning_Chain: record.get('Reasoning_Chain') as string,
+        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Editor: record.get('Editor') as string[],
+      };
+    }
     return handleAirtableError(error,'createContentLog');
   }
 }

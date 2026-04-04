@@ -106,8 +106,10 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   ];
 
   // Filter history to only include these specific events
+  // We use includes and a fallback to empty string to ensure type safety
   const filteredHistory = history.filter(log => {
-    return nahrungskette.includes(log.Diff_Summary || "");
+    const summary = log.Diff_Summary || "";
+    return nahrungskette.includes(summary);
   });
 
   if (filteredHistory.length === 0) {
@@ -119,19 +121,27 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   }
 
   // Calculate versions ONLY for "Content angeliefert"
-  const sortedHistory = [...filteredHistory].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
+  // We sort by date ascending to assign V1, V2 etc.
+  const sortedHistoryForVersioning = [...filteredHistory].sort((a, b) => 
+    new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime()
+  );
+  
   let deliveryCount = 0;
   const versionMap = new Map<string, string>();
 
-  sortedHistory.forEach(log => {
+  sortedHistoryForVersioning.forEach(log => {
     if (log.Diff_Summary === "Content angeliefert") {
       deliveryCount++;
       versionMap.set(log.id, `V${deliveryCount}`);
     }
   });
 
-  // Find last update for header summary
-  const lastUpdate = filteredHistory[0];
+  // Display newest first in the UI
+  const displayHistory = [...filteredHistory].sort((a, b) => 
+    new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime()
+  );
+
+  const lastUpdate = displayHistory[0];
 
   return (
     <div className="space-y-4">
@@ -155,11 +165,11 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
 
       <ScrollArea className="h-[400px] pr-4">
         <div className="pt-2">
-          {filteredHistory.map((log, index) => (
+          {displayHistory.map((log, index) => (
             <HistoryItem 
               key={log.id} 
               log={log} 
-              isLast={index === filteredHistory.length - 1} 
+              isLast={index === displayHistory.length - 1} 
               version={versionMap.get(log.id)}
             />
           ))}
