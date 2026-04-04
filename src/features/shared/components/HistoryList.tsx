@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, RefreshCw, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, RefreshCw, FileText, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { ContentLog } from "@/lib/airtable-types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +25,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
     if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-orange-500" />;
     if (s.includes("angeliefert")) return <Zap className="h-3 w-3 text-[#00463c]" />;
     if (s.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-emerald-500" />;
+    if (s.includes("blacklist")) return <ShieldAlert className="h-3 w-3 text-red-500" />;
     
     return <FileText className="h-3 w-3 text-[#00463c]" />;
   };
@@ -107,7 +108,8 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     "Content beauftragt",
     "Content wurde beauftragt",
     "Content angeliefert",
-    "Content veröffentlicht"
+    "Content veröffentlicht",
+    "URL der Blacklist hinzugefügt"
   ];
 
   // Filter history to only include these specific events

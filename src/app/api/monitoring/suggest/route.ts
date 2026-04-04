@@ -28,11 +28,12 @@ export async function POST(request: NextRequest) {
         if (trend) {
           // Log "URL wurde dem Tab Vorschläge hinzugefügt"
           try {
-            // Trend doesn't have a Keyword_ID yet, so we log by Target_URL only
-            // But createContentLog REQUIRES Keyword_ID for the Link field in Airtable
-            // If it's a new trend without a keyword record, we might need a different logging strategy 
-            // or accept that it only logs when associated with a keyword.
-            console.log(`[API Suggest] Trend created for ${url}. Skipping Content-Log as no Keyword_ID exists yet.`);
+            // Trend doesn't have a Keyword_ID yet, but once it's created as a trend, 
+            // it doesn't automatically show in the "Suggestions" tab (which is Keyword-Map based).
+            // However, the user wants to log when something is added to the Suggestions tab.
+            // If this API creates a Keyword-Map entry, we should log it.
+            // Currently, this creates a Trend (Potential_Trends).
+            console.log(`[API Suggest] Trend created for ${url}.`);
           } catch (err) {
             console.error('[API Suggest] Error in suggestion logic:', err);
           }

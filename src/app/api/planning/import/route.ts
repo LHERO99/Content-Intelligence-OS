@@ -30,12 +30,24 @@ export async function POST(req: NextRequest) {
             // 1. Log to Database - only ONCE per URL in this batch
             if (kw.Target_URL && !loggedUrls.has(kw.Target_URL)) {
               loggedUrls.add(kw.Target_URL);
+              
+              // Base Log: Added to tool
               await createContentLog({
                 Keyword_ID: [kw.id],
                 Target_URL: kw.Target_URL,
                 Action_Type: kw.Action_Type || 'Erstellung',
                 Diff_Summary: 'URL wurde dem Tool hinzugefügt',
               });
+
+              // Conditional Log: Added to Suggestions Tab (if Status=Backlog and Main_Keyword=Y)
+              if (kw.Status === 'Backlog' && kw.Main_Keyword === 'Y') {
+                await createContentLog({
+                  Keyword_ID: [kw.id],
+                  Target_URL: kw.Target_URL,
+                  Action_Type: kw.Action_Type || 'Erstellung',
+                  Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+                });
+              }
             }
 
             // 2. Trigger n8n Import Webhook - always for every keyword

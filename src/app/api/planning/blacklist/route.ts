@@ -6,8 +6,11 @@ import {
   deleteFromBlacklist, 
   bulkDeleteFromBlacklist,
   deleteKeyword,
-  bulkDeleteKeywords
+  bulkDeleteKeywords,
+  createContentLog
 } from '@/lib/airtable';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET() {
   try {
@@ -24,6 +27,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
     const body = await request.json();
     const { Keyword, Reason, Type, keywordId, keywordIds } = body;
 
@@ -38,11 +42,26 @@ export async function POST(request: Request) {
       }
 
       for (const kw of keywords) {
-        await addToBlacklist({
+        const blacklistEntry = await addToBlacklist({
           Keyword: Type === 'URL' ? kw.Target_URL : kw.Keyword,
           Type: Type || 'Keyword',
           Reason,
         });
+
+        if (blacklistEntry && kw.Target_URL) {
+          try {
+            await createContentLog({
+              Keyword_ID: [kw.id],
+              Target_URL: kw.Target_URL,
+              Action_Type: kw.Action_Type || 'Optimierung',
+              Diff_Summary: 'URL der Blacklist hinzugefügt',
+              Reasoning_Chain: `Grund: ${Reason}`,
+              Editor: session?.user?.email ? [session.user.email] : undefined
+            });
+          } catch (logErr) {
+            console.error('[API Blacklist] Error creating bulk log:', logErr);
+          }
+        }
       }
 
       const idsToDelete = keywords.map((k: any) => k.id);
@@ -53,8 +72,9 @@ export async function POST(request: Request) {
 
     // Case 2: Single move from Keyword-Map to Blacklist
     if (keywordId && Keyword && Reason) {
+      const targetUrl = body.Target_URL;
       const result = await addToBlacklist({
-        Keyword: Type === 'URL' ? body.Target_URL : Keyword,
+        Keyword: Type === 'URL' ? targetUrl : Keyword,
         Type: Type || 'Keyword',
         Reason,
       });
@@ -64,6 +84,22 @@ export async function POST(request: Request) {
           { error: 'Fehler beim Hinzufügen zur Blacklist in Airtable.' },
           { status: 500 }
         );
+      }
+
+      // Log to history if we have a Target_URL
+      if (targetUrl) {
+        try {
+          await createContentLog({
+            Keyword_ID: [keywordId],
+            Target_URL: targetUrl,
+            Action_Type: body.Action_Type || 'Optimierung',
+            Diff_Summary: 'URL der Blacklist hinzugefügt',
+            Reasoning_Chain: `Grund: ${Reason}`,
+            Editor: session?.user?.email ? [session.user.email] : undefined
+          });
+        } catch (logErr) {
+          console.error('[API Blacklist] Error creating single log:', logErr);
+        }
       }
 
       await deleteKeyword(keywordId);
