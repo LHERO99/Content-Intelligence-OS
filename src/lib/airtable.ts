@@ -1016,10 +1016,11 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
   try {
     console.log(`[Airtable] Updating keyword: ${id}`);
 
+    // Fetch current record to have full context for validation and logging
+    const currentRecord = await base(TABLES.KEYWORD_MAP).find(id);
+
     // If Keyword or Target_URL or Main_Keyword is being updated, we need to re-validate
     if (kw.Keyword !== undefined || kw.Target_URL !== undefined || kw.Main_Keyword !== undefined) {
-      // Fetch current record to have full context for validation
-      const currentRecord = await base(TABLES.KEYWORD_MAP).find(id);
       const currentKeyword = currentRecord.get('Keyword') as string;
       const currentURL = currentRecord.get('Target_URL') as string;
       const currentMain = currentRecord.get('Main_Keyword') as string;
