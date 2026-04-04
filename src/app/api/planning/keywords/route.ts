@@ -140,6 +140,7 @@ export async function PATCH(request: Request) {
           Action_Type: result.Action_Type || 'Erstellung',
           Diff_Summary: 'Content veröffentlicht',
         });
+        console.log('[API] Successfully logged publication event for:', id);
       } catch (logError) {
         console.error('[API] Error creating publication log:', logError);
       }

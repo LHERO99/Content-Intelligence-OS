@@ -107,10 +107,12 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     "Content veröffentlicht"
   ];
 
+  // Helper to normalize the summary string for comparison
+  const normalizeSummary = (s: string) => s.trim();
+
   // Filter history to only include these specific events
-  // We use includes and a fallback to empty string to ensure type safety
   const filteredHistory = history.filter(log => {
-    const summary = log.Diff_Summary || "";
+    const summary = normalizeSummary(log.Diff_Summary || "");
     return nahrungskette.includes(summary);
   });
 
