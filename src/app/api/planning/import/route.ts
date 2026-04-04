@@ -20,15 +20,20 @@ export async function POST(req: NextRequest) {
 
     const result = await bulkCreateKeywords(keywords);
 
-    // Trigger n8n for successfully created keywords
-    // NOTE: The initial log "URL wurde dem Tool hinzugefügt" is now only triggered via n8n 
-    // to avoid duplicates when both the app and n8n log the same event.
+    // Create initial history logs and trigger n8n for successfully created keywords
     if (result.created.length > 0) {
       try {
         await Promise.all(
           result.created.map(async (kw) => {
-            // Trigger n8n Import Webhook
-            // n8n should handle the initial "URL wurde dem Tool hinzugefügt" log entry
+            // 1. Log to Database
+            await createContentLog({
+              Keyword_ID: [kw.id],
+              Target_URL: kw.Target_URL,
+              Action_Type: kw.Action_Type || 'Erstellung',
+              Diff_Summary: 'URL wurde dem Tool hinzugefügt',
+            });
+
+            // 2. Trigger n8n Import Webhook
             await triggerN8nWorkflow({
               action: 'IMPORT_DATA',
               data: {
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest) {
           })
         );
       } catch (logError) {
-        console.error('[API Import] Error triggering n8n import webhook:', logError);
+        console.error('[API Import] Error in post-creation tasks:', logError);
       }
     }
 
