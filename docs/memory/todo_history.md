@@ -30,6 +30,11 @@
 - [x] Content-Historie: UI entschlackt (Nur Event + Zeit).
 - [x] Content-Historie: Versionierung (V1, V2...) nur für Anlieferungen.
 - [x] Content-Historie: /history Pop-up synchronisiert.
+- [x] Zentralisiertes Status-Logging (Backlog, Planned, Beauftragt, Published) in `airtable.ts`.
+- [x] Fix: `Target_URL` Mapping in `bulkCreateKeywords` und `createContentLog`.
+- [x] Performance: Bulk-Logging in 10er-Batches mit Rate-Limiting.
+- [x] UI: "Zuletzt optimiert/erstellt" Kurzansicht in Planungs-Modals.
+- [x] API-Cleanup: Manuelle Log-Aufrufe aus API-Routen entfernt.
 - [x] Bugfix: Next.js 15 Async Params Deployment Fehler behoben.
 - [x] API: Content angeliefert Terminologie vereinheitlicht.
 - [x] API: createContentLog robuster gestaltet (Action_Type Fix).

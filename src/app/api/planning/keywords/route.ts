@@ -50,6 +50,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Log the creation event
+    try {
+      await createContentLog({
+        Keyword_ID: [result.id],
+        Target_URL: Target_URL,
+        Action_Type: (body.Action_Type === 'Optimierung' ? 'Optimierung' : 'Erstellung'),
+        Diff_Summary: 'URL zur Keyword-Map hinzugefügt',
+      });
+    } catch (logError) {
+      console.error('[API] Error creating creation log:', logError);
+      // Non-blocking error
+    }
+
     return NextResponse.json(result);
 
   } catch (error: any) {
@@ -118,6 +131,19 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Log publication event if status changed to Published
+    if (updates.Status === 'Published' && currentKeyword.Status !== 'Published') {
+      try {
+        await createContentLog({
+          Keyword_ID: [id],
+          Target_URL: result.Target_URL,
+          Action_Type: result.Action_Type || 'Erstellung',
+          Diff_Summary: 'Content veröffentlicht',
+        });
+      } catch (logError) {
+        console.error('[API] Error creating publication log:', logError);
+      }
+    }
 
     return NextResponse.json(result);
   } catch (error: any) {

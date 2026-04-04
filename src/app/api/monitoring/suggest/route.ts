@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createTrend } from '@/lib/airtable';
+import { createTrend, createContentLog } from '@/lib/airtable';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -24,6 +24,20 @@ export async function POST(request: NextRequest) {
         Status: 'New'
       }))
     );
+
+    // Log the suggestion events
+    try {
+      await Promise.all(
+        urls.map(url => createContentLog({
+          Keyword_ID: [], // No keyword yet
+          Target_URL: url,
+          Action_Type: 'Optimierung',
+          Diff_Summary: 'URL zu Vorschlägen hinzugefügt',
+        }))
+      );
+    } catch (logError) {
+      console.error('[API Suggest] Error creating content logs:', logError);
+    }
 
     return NextResponse.json({ success: true, count: results.length });
   } catch (error: any) {

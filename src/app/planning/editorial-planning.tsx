@@ -83,6 +83,23 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         keyword: keyword?.Keyword || '',
         targetUrl: keyword?.Target_URL || '',
       });
+
+      // Log the commission event
+      try {
+        await fetch('/api/planning/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            keywordId: [id],
+            url: keyword?.Target_URL,
+            actionType: keyword?.Action_Type || 'Erstellung',
+            diffSummary: 'Content beauftragt',
+          }),
+        });
+      } catch (logError) {
+        console.error('[Frontend] Error logging commission:', logError);
+      }
+
       setCommissionedIds(prev => new Set([...Array.from(prev), id]));
       addAlert({ title: "Erfolg", message: "Content beauftragt.", type: "success" });
       PlanningService.refreshData();

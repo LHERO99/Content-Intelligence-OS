@@ -30,6 +30,14 @@
 - **Einstellungs-Modal**: Neue Slider für "Ranking" und "Aktualität" in den Priorisierungs-Einstellungen.
 
 ## Deployment & Stabilität
+- **Zentralisiertes Logging (Airtable Service)**: 
+  - Die gesamte History-Logik wurde vom API-Layer in den `Airtable-Service` (`src/lib/airtable.ts`) verschoben.
+  - Automatisches Logging bei Status-Übergängen (`Backlog`, `Planned`, `Beauftragt`, `Published`).
+  - Fix: `Target_URL` wird nun konsistent in alle Log-Einträge geschrieben, um die Filterung in der UI zu gewährleisten.
+  - Performance: Bulk-Logging bei Imports wird nun in optimierten 10er-Batches mit Rate-Limiting verarbeitet.
+- **UI-Optimierung (Modals)**:
+  - In den Planungs-Modals (`EditKeywordModal`, `EditEditorialModal`) wurde die detaillierte History-Liste durch eine kompakte Anzeige ersetzt: "Zuletzt erstellt/optimiert am [Datum]".
+  - Die vollständige Historie bleibt über einen Deep-Link erreichbar.
 - **TypeScript & Build-Fixes**: Systemweite Entfernung von `asChild` Props bei `DialogTrigger`, `PopoverTrigger` und `DropdownMenuTrigger`, da die verwendete `@base-ui/react` Bibliothek dieses Prop in der aktuellen Version nicht unterstützt.
 - **Airtable-Synchronisation**: Fix für Datumsformate (`YYYY-MM-DD` statt ISO-Timestamp), um 422-Fehler bei der Veröffentlichung zu vermeiden.
 - **API-Robustheit**: Der Keywords-PATCH-Handler unterstützt nun flache und verschachtelte Payloads.

@@ -17,8 +17,8 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
 
   const getIcon = () => {
     const s = summary.toLowerCase();
-    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
-    if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
+    if (s.includes("keyword-map") || s.includes("hinzugefügt")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
+    if (s.includes("vorschlag") || s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
     if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-indigo-500" />;
     if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-orange-500" />;
     if (s.includes("angeliefert")) return <Zap className="h-3 w-3 text-[#00463c]" />;
@@ -97,7 +97,9 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
 
   // Define the exact "Nahrungskette" events to show
   const nahrungskette = [
+    "URL zur Keyword-Map hinzugefügt",
     "URL der Keyword-Map hinzugefügt",
+    "URL zu Vorschlägen hinzugefügt",
     "URL der Vorschlagsliste hinzugefügt",
     "URL der Redaktionsplanung hinzugefügt",
     "Content beauftragt",
