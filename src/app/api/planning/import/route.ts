@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkCreateKeywords } from '@/lib/airtable';
+import { bulkCreateKeywords, createContentLog } from '@/lib/airtable';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -18,6 +18,42 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await bulkCreateKeywords(keywords);
+
+    // Add logging for each successfully created keyword
+    for (const record of result.created) {
+      try {
+        // 1. Log initial creation - Keyword-Map
+        await createContentLog({
+          Keyword_ID: [record.id],
+          Target_URL: record.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Keyword-Map hinzugefügt',
+        });
+
+        // 2. Log addition to proposal list if Status is Backlog
+        if (record.Status === 'Backlog') {
+          await createContentLog({
+            Keyword_ID: [record.id],
+            Target_URL: record.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+          });
+        }
+
+        // 3. Log addition to editorial planning if Status is Planned
+        if (record.Status === 'Planned') {
+          await createContentLog({
+            Keyword_ID: [record.id],
+            Target_URL: record.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+          });
+        }
+      } catch (logError) {
+        console.error(`[API Import] Error creating log for keyword ${record.id}:`, logError);
+        // Continue with other keywords even if logging fails for one
+      }
+    }
 
     return NextResponse.json({
       success: true,

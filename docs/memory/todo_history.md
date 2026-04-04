@@ -26,3 +26,10 @@
 - [x] Layout: Höhe der KI-Optimierungs-Tabs fixiert.
 - [x] Modals: Overflow bei langen URLs & Importer-Layout-Fixes.
 - [x] Konsolidierung: Content-Historie Layout-Design vereinheitlicht.
+- [x] Content-Historie: Nahrungskette von 6 Events implementiert.
+- [x] Content-Historie: UI entschlackt (Nur Event + Zeit).
+- [x] Content-Historie: Versionierung (V1, V2...) nur für Anlieferungen.
+- [x] Content-Historie: /history Pop-up synchronisiert.
+- [x] Bugfix: Next.js 15 Async Params Deployment Fehler behoben.
+- [x] API: Content angeliefert Terminologie vereinheitlicht.
+- [x] API: createContentLog robuster gestaltet (Action_Type Fix).

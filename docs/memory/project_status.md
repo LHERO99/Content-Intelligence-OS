@@ -2,6 +2,18 @@
 
 ## Content-Lifecycle & UI-Refactoring
 - **Status-Workflow**: Der Workflow wurde finalisiert: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
+- **Content-Historie (Nahrungskette)**: Die Historie wurde auf eine wesentliche Kette von 6 Events reduziert:
+  1. URL der Keyword-Map hinzugefügt
+  2. URL der Vorschlagsliste hinzugefügt
+  3. URL der Redaktionsplanung hinzugefügt
+  4. Content beauftragt
+  5. Content angeliefert (mit Versionierung V1, V2... und Text-Vorschau)
+  6. Content veröffentlicht
+- **UI-Refactoring (Pop-up & /history)**: 
+  - Radikale Entschlackung: Nur noch Event-Name und Zeitpunkt (rechtsbündig).
+  - Versionierung und Ausklapp-Option exklusiv für "Content angeliefert".
+  - Timeline-Icons für jeden Meilenstein.
+  - Globale Konsistenz zwischen Planungs-Pop-ups und der `/history` Seite.
 - **Tab-Struktur (Planung)**:
   - **Redaktions-Planung (Standard)**: Zeigt alle aktiven Planungen (`Planned` bis `Optimierung`), schließt `Published` aus.
   - **Vorschläge**: Neuer Tab für Keywords im `Backlog`. Nur Main-Keywords (`Main_Keyword === 'Y'`).

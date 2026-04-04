@@ -51,22 +51,45 @@ export async function POST(request: Request) {
     }
 
     // 1. Log initial creation - Keyword-Map
-    await createContentLog({
-      Keyword_ID: [result.id],
-      Target_URL: result.Target_URL,
-      Action_Type: 'Planung',
-      Diff_Summary: 'URL der Keyword-Map hinzugefügt',
-    });
-
-    // 2. Log addition to proposal list if Status is Backlog
-    if (result.Status === 'Backlog') {
+    try {
       await createContentLog({
         Keyword_ID: [result.id],
         Target_URL: result.Target_URL,
         Action_Type: 'Planung',
-        Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+        Diff_Summary: 'URL der Keyword-Map hinzugefügt',
       });
+    } catch (logError) {
+      console.error('[API] Error creating initial content log:', logError);
     }
+
+    // 2. Log addition to proposal list if Status is Backlog
+    if (result.Status === 'Backlog') {
+      try {
+        await createContentLog({
+          Keyword_ID: [result.id],
+          Target_URL: result.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+        });
+      } catch (logError) {
+        console.error('[API] Error creating backlog log:', logError);
+      }
+    }
+
+    // 3. Log addition to editorial planning if Status is Planned
+    if (result.Status === 'Planned') {
+      try {
+        await createContentLog({
+          Keyword_ID: [result.id],
+          Target_URL: result.Target_URL,
+          Action_Type: 'Planung',
+          Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+        });
+      } catch (logError) {
+        console.error('[API] Error creating planned log:', logError);
+      }
+    }
+
 
     // 3. Log addition to editorial planning if Status is Planned
     if (result.Status === 'Planned') {
@@ -148,6 +171,7 @@ export async function PATCH(request: Request) {
     // 3. Log History for specific transitions
     if (updates.Status) {
       // Transition to Backlog -> Log "URL der Vorschlagsliste hinzugefügt"
+      // If the current status was anything other than Backlog (including undefined)
       if (currentKeyword.Status !== 'Backlog' && updates.Status === 'Backlog') {
         try {
           await createContentLog({
@@ -157,7 +181,7 @@ export async function PATCH(request: Request) {
             Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
           });
         } catch (logError) {
-          console.error('[API] Error creating content log:', logError);
+          console.error('[API] Error creating backlog status log:', logError);
         }
       }
 
@@ -171,7 +195,7 @@ export async function PATCH(request: Request) {
             Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
           });
         } catch (logError) {
-          console.error('[API] Error creating content log:', logError);
+          console.error('[API] Error creating planned status log:', logError);
         }
       }
 
