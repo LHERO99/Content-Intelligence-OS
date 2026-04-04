@@ -58,16 +58,6 @@ export async function POST(request: Request) {
       Diff_Summary: 'URL zur Keyword-Map hinzugefügt',
     });
 
-    // 2. Automatically log "Planung" if keyword is created directly in Planned status
-    if (result.Status === 'Planned') {
-      await createContentLog({
-        Keyword_ID: [result.id],
-        Target_URL: result.Target_URL,
-        Action_Type: 'Planung',
-        Diff_Summary: 'URL direkt in Planung erstellt',
-      });
-    }
-
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API] Error creating keyword:', error);
@@ -137,20 +127,6 @@ export async function PATCH(request: Request) {
 
     // 3. Log History for specific transitions
     if (updates.Status) {
-      // Transition from Backlog to Planned -> Log "Planung"
-      if (currentKeyword.Status === 'Backlog' && updates.Status === 'Planned') {
-        try {
-          await createContentLog({
-            Keyword_ID: [id],
-            Target_URL: result.Target_URL,
-            Action_Type: 'Planung',
-            Diff_Summary: 'URL in Redaktions-Planung aufgenommen',
-          });
-        } catch (logError) {
-          console.error('[API] Error creating content log:', logError);
-        }
-      }
-
       // Transition to Optimierung -> Log "URL zur Optimierung in Vorschläge aufgenommen"
       if (currentKeyword.Status !== 'Optimierung' && updates.Status === 'Optimierung') {
         try {

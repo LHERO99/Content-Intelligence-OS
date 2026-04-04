@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',
-      Diff_Summary: body.diffSummary || (isOptimization ? 'Content-Optimierung angeliefert' : 'Content-Erstellung angeliefert'),
+      Diff_Summary: 'Content angeliefert',
     });
 
     return NextResponse.json({

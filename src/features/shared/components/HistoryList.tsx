@@ -11,10 +11,11 @@ interface HistoryListProps {
 
 const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const isDelivery = log.Diff_Summary?.toLowerCase().includes("angeliefert") || !!log.Content_Body;
+  const summary = log.Diff_Summary?.toLowerCase() || "";
+  const isDelivery = summary === "content angeliefert";
+  const isCommissioned = summary.includes("beauftragt");
 
   const getIcon = () => {
-    const summary = log.Diff_Summary?.toLowerCase() || "";
     if (summary.includes("hinzugefügt")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
     if (summary.includes("vorschläge")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
     if (summary.includes("planung")) return <Calendar className="h-3 w-3 text-indigo-500" />;
@@ -59,9 +60,10 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
           </span>
         </div>
 
-        {isDelivery && log.Content_Body && (
+        {isDelivery && !isCommissioned && log.Content_Body && (
           <div className="space-y-2">
             <button 
+              type="button"
               onClick={() => setIsExpanded(!isExpanded)}
               className="flex items-center gap-1 text-[11px] font-bold text-[#00463c] hover:underline"
             >
@@ -93,7 +95,13 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     );
   }
 
-  if (history.length === 0) {
+  // Filter out "Planung" events
+  const filteredHistory = history.filter(log => {
+    const s = log.Diff_Summary?.toLowerCase() || "";
+    return !s.includes("planung") && log.Action_Type !== 'Planung';
+  });
+
+  if (filteredHistory.length === 0) {
     return (
       <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
         <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
@@ -101,14 +109,15 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     );
   }
 
-  // Calculate versions only for delivery events
-  // We sort chronologically to assign versions, then reverse for display
-  const sortedHistory = [...history].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
+  // Calculate versions ONLY for "Content angeliefert"
+  const sortedHistory = [...filteredHistory].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
   let deliveryCount = 0;
   const versionMap = new Map<string, string>();
 
   sortedHistory.forEach(log => {
-    const isDelivery = log.Diff_Summary?.toLowerCase().includes("angeliefert") || !!log.Content_Body;
+    const s = log.Diff_Summary?.toLowerCase() || "";
+    const isDelivery = s === "content angeliefert";
+    
     if (isDelivery) {
       deliveryCount++;
       versionMap.set(log.id, `V${deliveryCount}`);
@@ -116,13 +125,12 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   });
 
   // Find last delivery or optimization for header
-  const lastUpdate = history.find(log => 
+  const lastUpdate = filteredHistory.find(log => 
     log.Action_Type === 'Erstellung' || log.Action_Type === 'Optimierung'
   );
 
   return (
     <div className="space-y-4">
-      {/* Latest Action Highlight */}
       <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
         <p className="text-xs font-bold text-[#00463c]">
           {lastUpdate ? (
@@ -142,11 +150,11 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
 
       <ScrollArea className="h-[400px] pr-4">
         <div className="pt-2">
-          {history.map((log, index) => (
+          {filteredHistory.map((log, index) => (
             <HistoryItem 
               key={log.id} 
               log={log} 
-              isLast={index === history.length - 1} 
+              isLast={index === filteredHistory.length - 1} 
               version={versionMap.get(log.id)}
             />
           ))}
