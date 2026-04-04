@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       console.error('[API] Error updating keyword status to Angeliefert:', err);
     }
 
-    // 2. Create Content-Log entry (v2 for AI suggestions)
+    // 2. Create Content-Log entry
     const isOptimization = status === 'Optimierung' || (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert'));
     
     const newLog = await createContentLog({
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',
-      Diff_Summary: body.diffSummary || (isOptimization ? 'Content optimiert' : 'Content erstellt'),
+      Diff_Summary: body.diffSummary || (isOptimization ? 'Content-Optimierung angeliefert' : 'Content-Erstellung angeliefert'),
     });
 
     return NextResponse.json({

@@ -1,17 +1,17 @@
 import * as React from "react";
-import { Loader2, Clock, Zap, FileText, CheckCircle, PlusCircle, Lightbulb, Calendar, Send, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, RefreshCw, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { ContentLog } from "@/lib/airtable-types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 interface HistoryListProps {
   history: ContentLog[];
   isLoading: boolean;
 }
 
-const HistoryItem = ({ log, index, isLast }: { log: ContentLog; index: number; isLast: boolean }) => {
+const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const isDelivery = log.Diff_Summary?.toLowerCase().includes("angeliefert") || !!log.Content_Body;
 
   const getIcon = () => {
     const summary = log.Diff_Summary?.toLowerCase() || "";
@@ -26,29 +26,25 @@ const HistoryItem = ({ log, index, isLast }: { log: ContentLog; index: number; i
     return <FileText className="h-3 w-3 text-[#00463c]" />;
   };
 
-  const hasContent = !!log.Content_Body;
-
   return (
-    <div className="relative pl-8 pb-6 last:pb-0">
-      {/* Timeline Line */}
+    <div className="relative pl-8 pb-4 last:pb-0">
       {!isLast && (
         <div className="absolute left-[11px] top-6 bottom-0 w-[2px] bg-[#00463c]/10" />
       )}
       
-      {/* Timeline Dot */}
       <div className="absolute left-0 top-1 h-6 w-6 rounded-full bg-white border-2 border-[#00463c]/20 flex items-center justify-center z-10 shadow-sm">
         {getIcon()}
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold text-[#00463c]">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="text-sm font-bold text-[#00463c] truncate">
               {log.Diff_Summary || (log.Action_Type === 'Erstellung' ? 'Content Erstellung' : log.Action_Type === 'Optimierung' ? 'Content Optimierung' : 'Planung')}
             </span>
-            {log.Version && (
-              <Badge variant="outline" className="text-[10px] h-4 bg-[#00463c]/5 border-[#00463c]/10 px-1">
-                {log.Version}
+            {version && (
+              <Badge variant="outline" className="text-[10px] h-4 bg-[#00463c]/5 border-[#00463c]/10 px-1 font-bold">
+                {version}
               </Badge>
             )}
           </div>
@@ -63,11 +59,11 @@ const HistoryItem = ({ log, index, isLast }: { log: ContentLog; index: number; i
           </span>
         </div>
 
-        {hasContent && (
+        {isDelivery && log.Content_Body && (
           <div className="space-y-2">
             <button 
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-[#00463c] hover:underline"
+              className="flex items-center gap-1 text-[11px] font-bold text-[#00463c] hover:underline"
             >
               {isExpanded ? (
                 <>Content einklappen <ChevronUp className="h-3 w-3" /></>
@@ -81,12 +77,6 @@ const HistoryItem = ({ log, index, isLast }: { log: ContentLog; index: number; i
                 {log.Content_Body}
               </div>
             )}
-          </div>
-        )}
-
-        {log.Reasoning_Chain && !hasContent && (
-          <div className="p-2 rounded bg-[#00463c]/5 border border-[#00463c]/10 text-[11px] italic text-[#00463c]/70">
-            {log.Reasoning_Chain}
           </div>
         )}
       </div>
@@ -111,24 +101,43 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     );
   }
 
+  // Calculate versions only for delivery events
+  // We sort chronologically to assign versions, then reverse for display
+  const sortedHistory = [...history].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
+  let deliveryCount = 0;
+  const versionMap = new Map<string, string>();
+
+  sortedHistory.forEach(log => {
+    const isDelivery = log.Diff_Summary?.toLowerCase().includes("angeliefert") || !!log.Content_Body;
+    if (isDelivery) {
+      deliveryCount++;
+      versionMap.set(log.id, `V${deliveryCount}`);
+    }
+  });
+
+  // Find last delivery or optimization for header
+  const lastUpdate = history.find(log => 
+    log.Action_Type === 'Erstellung' || log.Action_Type === 'Optimierung'
+  );
+
   return (
     <div className="space-y-4">
       {/* Latest Action Highlight */}
-      <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10 flex items-center justify-between">
-        <div className="space-y-0.5">
-          <p className="text-[10px] uppercase tracking-wider font-bold text-[#00463c]/60">Letztes Ereignis</p>
-          <p className="text-xs font-bold text-[#00463c]">
-            {history[0].Diff_Summary || (history[0].Action_Type === 'Erstellung' ? 'Content erstellt' : 'In Planung')}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] text-muted-foreground">
-            {new Date(history[0].Created_At).toLocaleDateString('de-DE')}
-          </p>
-          <p className="text-[10px] font-mono text-muted-foreground">
-            {new Date(history[0].Created_At).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-          </p>
-        </div>
+      <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
+        <p className="text-xs font-bold text-[#00463c]">
+          {lastUpdate ? (
+            <>
+              Zuletzt {lastUpdate.Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am{" "}
+              {new Date(lastUpdate.Created_At).toLocaleDateString('de-DE', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric' 
+              })}
+            </>
+          ) : (
+            <>Historie verfügbar</>
+          )}
+        </p>
       </div>
 
       <ScrollArea className="h-[400px] pr-4">
@@ -137,8 +146,8 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
             <HistoryItem 
               key={log.id} 
               log={log} 
-              index={index} 
               isLast={index === history.length - 1} 
+              version={versionMap.get(log.id)}
             />
           ))}
         </div>
