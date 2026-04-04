@@ -11,19 +11,19 @@ interface HistoryListProps {
 
 const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const summary = log.Diff_Summary?.toLowerCase() || "";
-  const isDelivery = summary === "content angeliefert";
-  const isCommissioned = summary.includes("beauftragt");
+  const summary = log.Diff_Summary || "";
+  const isDelivery = summary === "Content angeliefert";
+  const isCommissioned = summary === "Content beauftragt";
 
   const getIcon = () => {
-    if (summary.includes("hinzugefügt")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
-    if (summary.includes("vorschläge")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
-    if (summary.includes("planung")) return <Calendar className="h-3 w-3 text-indigo-500" />;
-    if (summary.includes("beauftragt")) return <Send className="h-3 w-3 text-orange-500" />;
-    if (summary.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-emerald-500" />;
+    const s = summary.toLowerCase();
+    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
+    if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
+    if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-indigo-500" />;
+    if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-orange-500" />;
+    if (s.includes("angeliefert")) return <Zap className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-emerald-500" />;
     
-    if (log.Action_Type === 'Erstellung') return <Zap className="h-3 w-3 text-[#00463c]" />;
-    if (log.Action_Type === 'Optimierung') return <RefreshCw className="h-3 w-3 text-[#00463c]" />;
     return <FileText className="h-3 w-3 text-[#00463c]" />;
   };
 
@@ -41,7 +41,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-hidden">
             <span className="text-sm font-bold text-[#00463c] truncate">
-              {log.Diff_Summary || (log.Action_Type === 'Erstellung' ? 'Content Erstellung' : log.Action_Type === 'Optimierung' ? 'Content Optimierung' : 'Planung')}
+              {summary}
             </span>
             {version && (
               <Badge variant="outline" className="text-[10px] h-4 bg-[#00463c]/5 border-[#00463c]/10 px-1 font-bold">
@@ -60,7 +60,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
           </span>
         </div>
 
-        {isDelivery && !isCommissioned && log.Content_Body && (
+        {isDelivery && log.Content_Body && (
           <div className="space-y-2">
             <button 
               type="button"
@@ -95,10 +95,19 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     );
   }
 
-  // Filter out "Planung" events
+  // Define the exact "Nahrungskette" events to show
+  const nahrungskette = [
+    "URL der Keyword-Map hinzugefügt",
+    "URL der Vorschlagsliste hinzugefügt",
+    "URL der Redaktionsplanung hinzugefügt",
+    "Content beauftragt",
+    "Content angeliefert",
+    "Content veröffentlicht"
+  ];
+
+  // Filter history to only include these specific events
   const filteredHistory = history.filter(log => {
-    const s = log.Diff_Summary?.toLowerCase() || "";
-    return !s.includes("planung") && log.Action_Type !== 'Planung';
+    return nahrungskette.includes(log.Diff_Summary || "");
   });
 
   if (filteredHistory.length === 0) {
@@ -115,27 +124,23 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   const versionMap = new Map<string, string>();
 
   sortedHistory.forEach(log => {
-    const s = log.Diff_Summary?.toLowerCase() || "";
-    const isDelivery = s === "content angeliefert";
-    
-    if (isDelivery) {
+    if (log.Diff_Summary === "Content angeliefert") {
       deliveryCount++;
       versionMap.set(log.id, `V${deliveryCount}`);
     }
   });
 
-  // Find last delivery or optimization for header
-  const lastUpdate = filteredHistory.find(log => 
-    log.Action_Type === 'Erstellung' || log.Action_Type === 'Optimierung'
-  );
+  // Find last update for header summary
+  const lastUpdate = filteredHistory[0];
 
   return (
     <div className="space-y-4">
+      {/* Latest Action Highlight */}
       <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
         <p className="text-xs font-bold text-[#00463c]">
           {lastUpdate ? (
             <>
-              Zuletzt {lastUpdate.Action_Type === 'Erstellung' ? 'erstellt' : 'optimiert'} am{" "}
+              Status: {lastUpdate.Diff_Summary} am{" "}
               {new Date(lastUpdate.Created_At).toLocaleDateString('de-DE', { 
                 day: '2-digit', 
                 month: '2-digit', 

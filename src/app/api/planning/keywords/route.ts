@@ -50,13 +50,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Log initial creation
+    // 1. Log initial creation - Keyword-Map
     await createContentLog({
       Keyword_ID: [result.id],
       Target_URL: result.Target_URL,
       Action_Type: 'Planung',
-      Diff_Summary: 'URL zur Keyword-Map hinzugefügt',
+      Diff_Summary: 'URL der Keyword-Map hinzugefügt',
     });
+
+    // 2. Log addition to proposal list if Status is Backlog
+    if (result.Status === 'Backlog') {
+      await createContentLog({
+        Keyword_ID: [result.id],
+        Target_URL: result.Target_URL,
+        Action_Type: 'Planung',
+        Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
+      });
+    }
+
+    // 3. Log addition to editorial planning if Status is Planned
+    if (result.Status === 'Planned') {
+      await createContentLog({
+        Keyword_ID: [result.id],
+        Target_URL: result.Target_URL,
+        Action_Type: 'Planung',
+        Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error: any) {
@@ -127,28 +147,42 @@ export async function PATCH(request: Request) {
 
     // 3. Log History for specific transitions
     if (updates.Status) {
-      // Transition to Optimierung -> Log "URL zur Optimierung in Vorschläge aufgenommen"
-      if (currentKeyword.Status !== 'Optimierung' && updates.Status === 'Optimierung') {
+      // Transition to Backlog -> Log "URL der Vorschlagsliste hinzugefügt"
+      if (currentKeyword.Status !== 'Backlog' && updates.Status === 'Backlog') {
         try {
           await createContentLog({
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
-            Action_Type: 'Optimierung',
-            Diff_Summary: 'URL zur Optimierung in Vorschläge aufgenommen',
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Vorschlagsliste hinzugefügt',
           });
         } catch (logError) {
-          console.error('[API] Error logging optimization suggestion:', logError);
+          console.error('[API] Error creating content log:', logError);
         }
       }
-      
-      // Transition to Published -> Log "Veröffentlichung"
+
+      // Transition to Planned -> Log "URL der Redaktionsplanung hinzugefügt"
+      if (currentKeyword.Status !== 'Planned' && updates.Status === 'Planned') {
+        try {
+          await createContentLog({
+            Keyword_ID: [id],
+            Target_URL: result.Target_URL,
+            Action_Type: 'Planung',
+            Diff_Summary: 'URL der Redaktionsplanung hinzugefügt',
+          });
+        } catch (logError) {
+          console.error('[API] Error creating content log:', logError);
+        }
+      }
+
+      // Transition to Published -> Log "Content veröffentlicht"
       if (currentKeyword.Status !== 'Published' && updates.Status === 'Published') {
         try {
           await createContentLog({
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
             Action_Type: 'Optimierung',
-            Diff_Summary: 'Content als veröffentlicht markiert',
+            Diff_Summary: 'Content veröffentlicht',
           });
         } catch (logError) {
           console.error('[API] Error logging publication:', logError);
