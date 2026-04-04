@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
               Target_URL: url,
               Action_Type: 'Optimierung',
               Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
-              Reasoning_Chain: reason || "Automatischer Vorschlag aus dem Monitoring"
+              Reasoning_Chain: reason || "Automatischer Vorschlag aus dem Monitoring",
+              Editor: session.user?.email ? [session.user.email] : undefined
             });
           } catch (err) {
             console.error('[API Suggest] Error creating history log:', err);

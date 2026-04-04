@@ -24,9 +24,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing action or data' }, { status: 400 });
     }
 
-    // Status update is handled centrally by updateKeyword in src/lib/airtable.ts
+    // 3. Status update and Logging for Commissioning
     if ((action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") && data.keywordId) {
       await updateKeyword(data.keywordId, { Status: "Beauftragt" });
+      
+      // Log event to database
+      try {
+        await createContentLog({
+          Keyword_ID: [data.keywordId],
+          Target_URL: data.targetUrl,
+          Action_Type: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
+          Diff_Summary: "Content wurde beauftragt",
+          Editor: session.user?.email ? [session.user.email] : undefined
+        });
+      } catch (logErr) {
+        console.error('Error creating commissioning log:', logErr);
+      }
     }
     // 4. Trigger n8n Workflow
     const result = await triggerN8nWorkflow({

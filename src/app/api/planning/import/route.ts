@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bulkCreateKeywords, createContentLog } from '@/lib/airtable';
+import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -19,22 +20,34 @@ export async function POST(req: NextRequest) {
 
     const result = await bulkCreateKeywords(keywords);
 
-    // Create initial history logs for successfully created keywords
+    // Create initial history logs and trigger n8n for successfully created keywords
     if (result.created.length > 0) {
       try {
         await Promise.all(
-          result.created.map((kw) => 
-            createContentLog({
+          result.created.map(async (kw) => {
+            // 1. Log to Database
+            await createContentLog({
               Keyword_ID: [kw.id],
               Target_URL: kw.Target_URL,
               Action_Type: kw.Action_Type || 'Erstellung',
               Diff_Summary: 'URL wurde dem Tool hinzugefügt',
-            })
-          )
+            });
+
+            // 2. Trigger n8n Import Webhook
+            await triggerN8nWorkflow({
+              action: 'IMPORT_DATA',
+              data: {
+                keywordId: kw.id,
+                keyword: kw.Keyword,
+                targetUrl: kw.Target_URL
+              },
+              userId: session.user?.email || 'unknown',
+              timestamp: new Date().toISOString()
+            });
+          })
         );
       } catch (logError) {
-        console.error('[API Import] Error creating initial logs:', logError);
-        // We don't fail the whole import if logging fails, but we log it
+        console.error('[API Import] Error in post-creation tasks:', logError);
       }
     }
 

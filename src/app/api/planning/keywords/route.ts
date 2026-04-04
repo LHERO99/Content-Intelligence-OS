@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteKeywords, AirtableValidationError, createContentLog } from '@/lib/airtable';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET() {
   try {
@@ -114,19 +116,24 @@ export async function PATCH(request: Request) {
     // 3. Status Transition Logging
     if (result && updates.Status && updates.Status !== currentKeyword.Status) {
       try {
+        const session = await getServerSession(authOptions);
+        const editor = session?.user?.email ? [session.user.email] : undefined;
+
         if (updates.Status === 'Planned') {
           await createContentLog({
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
             Action_Type: result.Action_Type,
-            Diff_Summary: 'URL wurde der Redaktionsplanung hinzugefügt'
+            Diff_Summary: 'URL wurde der Redaktionsplanung hinzugefügt',
+            Editor: editor
           });
         } else if (updates.Status === 'Published') {
           await createContentLog({
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
             Action_Type: result.Action_Type,
-            Diff_Summary: 'Content veröffentlicht'
+            Diff_Summary: 'Content veröffentlicht',
+            Editor: editor
           });
         }
       } catch (logErr) {

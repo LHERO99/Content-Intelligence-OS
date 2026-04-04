@@ -9,7 +9,8 @@ export type N8nActionType =
   | 'APPROVE_PROPOSAL' 
   | 'BLACKLIST_TREND'
   | 'COMMISSION_CONTENT'
-  | 'COMMISSION_OPTIMIZATION';
+  | 'COMMISSION_OPTIMIZATION'
+  | 'IMPORT_DATA';
 
 export interface N8nPayload {
   action: N8nActionType;
@@ -23,23 +24,29 @@ export interface N8nPayload {
  * This is intended to be called from the server-side (API routes).
  */
 export async function triggerN8nWorkflow(payload: N8nPayload) {
-  let n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
   const n8nApiKey = process.env.N8N_API_KEY;
 
-  // Use specific multi-agent webhook for commissioning
-  if (payload.action === 'COMMISSION_CONTENT') {
-    const baseUrl = 'https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c';
+  let baseUrl = '';
+  let method = 'GET';
+
+  // Specific webhooks for different actions
+  if (payload.action === 'IMPORT_DATA') {
+    baseUrl = 'https://n8n.heromarketing.de/webhook-test/6706e957-0aae-4f5d-9439-1eb5f6e2c327';
+  } else if (payload.action === 'COMMISSION_CONTENT' || payload.action === 'COMMISSION_OPTIMIZATION') {
+    baseUrl = 'https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c';
+  }
+
+  if (baseUrl) {
     const params = new URLSearchParams({
-      keywordId: payload.data.keywordId || '',
-      keyword: payload.data.keyword || '',
-      targetUrl: payload.data.targetUrl || '',
-      userId: payload.userId || 'unknown'
+      ...payload.data,
+      userId: payload.userId || 'unknown',
+      timestamp: payload.timestamp
     });
     
     const urlWithParams = `${baseUrl}?${params.toString()}`;
     
     const response = await fetch(urlWithParams, {
-      method: 'GET',
+      method: method,
       headers: {
         'X-API-KEY': n8nApiKey || '',
       }
@@ -47,14 +54,13 @@ export async function triggerN8nWorkflow(payload: N8nPayload) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`n8n GET webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(`n8n ${method} webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    // Try to parse JSON, but handle empty/text responses
     try {
       return await response.json();
     } catch (e) {
-      return { status: 'ok', message: 'GET request successful' };
+      return { status: 'ok', message: `${method} request successful` };
     }
   }
 }
