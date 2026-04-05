@@ -428,13 +428,46 @@ export async function updateCostConfig(id: string, config: Partial<CostConfig>):
     const record = records[0];
     return {
       id: record.id,
-      Page_Type: record.get('Page') as any,
+      Page_Type: record.get('Page_Type') as any,
       Action_Type: record.get('Action_Type') as any,
       Agency_Cost: record.get('Agency_Cost') as number,
       Overhead_Cost: record.get('Overhead_Cost') as number,
     };
   } catch (error) {
     return handleAirtableError(error,'updateCostConfig');
+  }
+}
+
+export async function createCostConfig(config: Partial<CostConfig>): Promise<CostConfig | null> {
+  try {
+    const fields: any = {
+      Page_Type: config.Page_Type,
+      Action_Type: config.Action_Type,
+      Agency_Cost: config.Agency_Cost || 0,
+      Overhead_Cost: config.Overhead_Cost || 0,
+    };
+
+    const records = await base(TABLES.COST_CONFIG).create([{ fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Page_Type: record.get('Page_Type') as any,
+      Action_Type: record.get('Action_Type') as any,
+      Agency_Cost: record.get('Agency_Cost') as number,
+      Overhead_Cost: record.get('Overhead_Cost') as number,
+    };
+  } catch (error) {
+    return handleAirtableError(error,'createCostConfig');
+  }
+}
+
+export async function deleteCostConfig(id: string): Promise<boolean> {
+  try {
+    await base(TABLES.COST_CONFIG).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'deleteCostConfig');
   }
 }
 
