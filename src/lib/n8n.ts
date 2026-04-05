@@ -38,6 +38,8 @@ export async function triggerN8nWorkflow(payload: N8nPayload) {
   }
 
   if (baseUrl) {
+    console.log(`[n8n Webhook] Triggering ${payload.action} via ${method} to ${baseUrl}`);
+    
     let urlWithParams = baseUrl;
     const body: Record<string, any> = {
       ...payload.data,
@@ -50,24 +52,32 @@ export async function triggerN8nWorkflow(payload: N8nPayload) {
       urlWithParams = `${baseUrl}?${params.toString()}`;
     }
     
-    const response = await fetch(urlWithParams, {
-      method: method,
-      headers: {
-        'X-API-KEY': n8nApiKey || '',
-        'Content-Type': 'application/json',
-      },
-      body: method === 'POST' ? JSON.stringify(body) : undefined
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`n8n ${method} webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
-    }
-
     try {
-      return await response.json();
-    } catch (e) {
-      return { status: 'ok', message: `${method} request successful` };
+      const response = await fetch(urlWithParams, {
+        method: method,
+        headers: {
+          'X-API-KEY': n8nApiKey || '',
+          'Content-Type': 'application/json',
+        },
+        body: method === 'POST' ? JSON.stringify(body) : undefined
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[n8n Webhook] Failed: ${response.status} - ${errorText}`);
+        throw new Error(`n8n ${method} webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      console.log(`[n8n Webhook] Success: ${payload.action}`);
+      
+      try {
+        return await response.json();
+      } catch (e) {
+        return { status: 'ok', message: `${method} request successful` };
+      }
+    } catch (fetchError) {
+      console.error(`[n8n Webhook] Fetch error:`, fetchError);
+      throw fetchError;
     }
   }
 }

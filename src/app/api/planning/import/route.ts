@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            // 2. Trigger n8n Import Webhook - always for every keyword
-            await triggerN8nWorkflow({
+            // 2. Trigger n8n Import Webhook in background
+            triggerN8nWorkflow({
               action: 'IMPORT_DATA',
               data: {
                 keywordId: kw.id,
@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
               },
               userId: session.user?.email || 'unknown',
               timestamp: new Date().toISOString()
+            }).catch(err => {
+              console.error('[Background Trigger Import] Error calling n8n for keyword:', kw.id, err);
             });
           })
         );

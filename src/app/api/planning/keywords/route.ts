@@ -80,8 +80,8 @@ export async function POST(request: Request) {
           });
         }
 
-        // 3. Trigger n8n Performance Data (History) Webhook
-        await triggerN8nWorkflow({
+        // 3. Trigger n8n Performance Data (History) Webhook in background
+        triggerN8nWorkflow({
           action: 'IMPORT_DATA',
           data: {
             keywordId: result.id,
@@ -90,6 +90,8 @@ export async function POST(request: Request) {
           },
           userId: session?.user?.email || 'unknown',
           timestamp: new Date().toISOString()
+        }).catch(err => {
+          console.error('[Background Trigger] Error calling n8n for keyword:', result.id, err);
         });
       } catch (logErr) {
         console.error('[API Keyword POST] Error in post-creation tasks:', logErr);
