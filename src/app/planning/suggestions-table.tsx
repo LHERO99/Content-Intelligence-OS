@@ -98,6 +98,8 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onColumnOrderChange: setColumnOrder,
+    enableMultiSort: false,
+    enableSortingRemoval: false,
     initialState: { pagination: { pageSize: 50 } },
     state: { sorting, columnFilters, columnVisibility, rowSelection, columnOrder },
   });

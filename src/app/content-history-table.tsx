@@ -79,13 +79,23 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
       // 2. Try parsing Reasoning_Chain if still missing
       if (!url && log.Reasoning_Chain) {
-        const urlMatch = log.Reasoning_Chain.match(/URL:\s*(https?:\/\/[^\s\n]+)/);
+        const urlMatch = log.Reasoning_Chain.match(/URL:\s*(https?:\/\/[^\n]+)/);
         if (urlMatch) {
           url = urlMatch[1];
         }
       }
 
       const finalUrl = url || "Keine URL";
+
+      if (url === undefined || url === null) {
+        console.log(`[DEBUG] Missing URL for log ID ${log.id}:`);
+        console.log(`  Target_URL from log: ${log.Target_URL}`);
+        console.log(`  Keyword_ID: ${log.Keyword_ID}`);
+        console.log(`  Reasoning_Chain: ${log.Reasoning_Chain}`);
+        const urlMatchDebug = log.Reasoning_Chain?.match(/URL:\s*(https?:\/\/[^\n]+)/);
+        console.log(`  Reasoning_Chain match: ${urlMatchDebug ? urlMatchDebug[1] : 'No match'}`);
+      }
+
 
       if (!groups[finalUrl]) {
         groups[finalUrl] = {
@@ -212,6 +222,8 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    enableMultiSort: false,
+    enableSortingRemoval: false,
     state: {
       sorting,
       columnFilters,

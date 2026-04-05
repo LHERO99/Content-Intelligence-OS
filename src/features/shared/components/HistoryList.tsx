@@ -17,15 +17,15 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
 
   const getIcon = () => {
     const s = summary.toLowerCase();
-    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
-    if (s.includes("tool hinzugefügt")) return <PlusCircle className="h-3 w-3 text-blue-500" />;
-    if (s.includes("vorschlägen hinzugefügt")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
-    if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-amber-500" />;
-    if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-indigo-500" />;
-    if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-orange-500" />;
+    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("tool hinzugefügt")) return <PlusCircle className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("vorschlägen hinzugefügt")) return <Lightbulb className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-[#00463c]" />;
     if (s.includes("angeliefert")) return <Zap className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-emerald-500" />;
-    if (s.includes("blacklist")) return <ShieldAlert className="h-3 w-3 text-red-500" />;
+    if (s.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("blacklist")) return <ShieldAlert className="h-3 w-3 text-[#00463c]" />;
     
     return <FileText className="h-3 w-3 text-[#00463c]" />;
   };
