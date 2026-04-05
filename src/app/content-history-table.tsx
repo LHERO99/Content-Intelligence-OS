@@ -57,19 +57,25 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
     // First pass: Build a map of Keyword_ID to Target_URL where available
     logs.forEach(log => {
-      if (log.Target_URL && log.Keyword_ID && log.Keyword_ID.length > 0) {
+      // Use Target_URL or Logged_URL to map the ID
+      const bestUrl = log.Logged_URL || log.Target_URL;
+      if (bestUrl && log.Keyword_ID && log.Keyword_ID.length > 0) {
         log.Keyword_ID.forEach(id => {
-          if (!keywordToUrlMap[id]) keywordToUrlMap[id] = log.Target_URL!;
+          if (!keywordToUrlMap[id]) keywordToUrlMap[id] = bestUrl;
         });
       }
     });
     
     logs.forEach((log) => {
-      let url = log.Logged_URL || log.Target_URL; // Prioritize Logged_URL
+      // Logic to determine the URL for grouping:
+      // 1. Logged_URL (explicitly stored during log creation)
+      // 2. Lookup via keywordToUrlMap (bridges logs where Target_URL lookup is broken)
+      // 3. Target_URL (Airtable lookup field - might be empty if record is deleted)
+      // 4. Reasoning_Chain parsing (final fallback)
       
-      // Attempt to recover URL if missing
+      let url = log.Logged_URL;
+      
       if (!url && log.Keyword_ID && log.Keyword_ID.length > 0) {
-        // 1. Try Keyword-to-URL map
         for (const id of log.Keyword_ID) {
           if (keywordToUrlMap[id]) {
             url = keywordToUrlMap[id];
@@ -77,6 +83,8 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
           }
         }
       }
+
+      if (!url) url = log.Target_URL;
 
       // 2. Try parsing Reasoning_Chain if still missing
       if (!url && log.Reasoning_Chain) {
@@ -98,7 +106,8 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         console.log(`  Reasoning_Chain match: ${urlMatchDebug ? urlMatchDebug[1] : 'No match'}`);
       }
 
-      const isBlacklistedEntry = log.Diff_Summary === 'URL der Blacklist hinzugefügt';
+      const isBlacklistedAdded = log.Diff_Summary === 'URL der Blacklist hinzugefügt';
+      const isBlacklistedRemoved = log.Diff_Summary === 'URL von der Blacklist entfernt';
 
       if (!groups[finalUrl]) {
         groups[finalUrl] = {
@@ -106,15 +115,13 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
           firstCreated: log.Created_At,
           lastModified: log.Created_At,
           logs: [],
-          isBlacklisted: false, // Default to false
+          isBlacklisted: false,
         };
       }
       
       groups[finalUrl].logs.push(log);
-      if (isBlacklistedEntry) {
-        groups[finalUrl].isBlacklisted = true;
-      }
       
+      // Update timestamps
       if (new Date(log.Created_At) < new Date(groups[finalUrl].firstCreated)) {
         groups[finalUrl].firstCreated = log.Created_At;
       }
@@ -123,9 +130,21 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       }
     });
 
-    // Sort logs within each group chronologically (newest first)
+    // Final sorting and dynamic blacklist status calculation
     Object.values(groups).forEach(group => {
+      // Sort logs within each group chronologically (newest first)
       group.logs.sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
+
+      // Blacklist status depends on the MOST RECENT relevant event
+      const blacklistEvents = group.logs.filter(l => 
+        l.Diff_Summary === 'URL der Blacklist hinzugefügt' || 
+        l.Diff_Summary === 'URL von der Blacklist entfernt'
+      );
+
+      if (blacklistEvents.length > 0) {
+        // The newest log (index 0) determines current state
+        group.isBlacklisted = blacklistEvents[0].Diff_Summary === 'URL der Blacklist hinzugefügt';
+      }
     });
 
     return Object.values(groups);
