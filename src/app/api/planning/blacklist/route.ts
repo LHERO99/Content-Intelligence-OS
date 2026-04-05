@@ -56,7 +56,7 @@ export async function POST(request: Request) {
               Target_URL: kw.Target_URL,
               Action_Type: kw.Action_Type || 'Optimierung',
               Diff_Summary: 'URL der Blacklist hinzugefügt',
-              Reasoning_Chain: `Grund: ${Reason}`,
+              Reasoning_Chain: `URL: ${kw.Target_URL}\nGrund: ${Reason}`,
               Editor: session?.user?.email ? [session.user.email] : undefined
             });
           } catch (logErr) {
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
             Target_URL: targetUrl,
             Action_Type: body.Action_Type || 'Optimierung',
             Diff_Summary: 'URL der Blacklist hinzugefügt',
-            Reasoning_Chain: `Grund: ${Reason}`,
+            Reasoning_Chain: `URL: ${targetUrl}\nGrund: ${Reason}`,
             Editor: session?.user?.email ? [session.user.email] : undefined
           });
         } catch (logErr) {

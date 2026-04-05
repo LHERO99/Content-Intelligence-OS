@@ -38,3 +38,11 @@
 - [x] Bugfix: Next.js 15 Async Params Deployment Fehler behoben.
 - [x] API: Content angeliefert Terminologie vereinheitlicht.
 - [x] API: createContentLog robuster gestaltet (Action_Type Fix).
+- [x] Fix: n8n Callback "Target_URL" computed field Error (422) behoben.
+- [x] Logging: Automatisches Logging für "Vorschläge"-Tab implementiert.
+- [x] Logging: Blacklist-Events ("URL der Blacklist hinzugefügt") integriert.
+- [x] Fix: URL-Deduplizierung beim Logging während des Keyword-Imports.
+- [x] API: n8n Webhook-URLs für Import und Erstellung differenziert.
+- [x] Logging: "Beauftragen"-Event in den Server-Proxy verschoben (Fix für blockierte Webhooks).
+- [x] DB: Blacklist-Schema um Target_URL erweitert für persistente Historie.
+- [x] UI: HistoryList um neue Event-Icons und Texte ergänzt.

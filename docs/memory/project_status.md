@@ -1,49 +1,28 @@
-# Projekt-Status (Stand: 04.04.2026)
+# Projekt-Status (Stand: 05.04.2026)
 
-## Content-Lifecycle & UI-Refactoring
-- **Status-Workflow**: Der Workflow wurde finalisiert: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
-- **Content-Historie (Nahrungskette)**: Die Historie wurde zur Neukonzeption vorübergehend zurückgesetzt. Das Ziel ist eine robuste, fehlerresistente Erfassung der 6 Kern-Meilensteine:
-  1. URL der Keyword-Map hinzugefügt
-  2. URL der Vorschlagsliste hinzugefügt
-  3. URL der Redaktionsplanung hinzugefügt
-  4. Content beauftragt
-  5. Content angeliefert
-  6. Content veröffentlicht
-- **Status-Workflow**: Bestehende Implementierung der Logging-Trigger wurde entfernt, um eine saubere Neukonzeption der Datenbank- und Service-Ebene zu ermöglichen.
-- **UI-Refactoring (Pop-up & /history)**: 
-  - Radikale Entschlackung: Nur noch Event-Name und Zeitpunkt (rechtsbündig).
-  - Versionierung und Ausklapp-Option exklusiv für "Content angeliefert".
-  - Timeline-Icons für jeden Meilenstein.
-  - Globale Konsistenz zwischen Planungs-Pop-ups und der `/history` Seite.
-- **Tab-Struktur (Planung)**:
-  - **Redaktions-Planung (Standard)**: Zeigt alle aktiven Planungen (`Planned` bis `Optimierung`), schließt `Published` aus.
-  - **Vorschläge**: Neuer Tab für Keywords im `Backlog`. Nur Main-Keywords (`Main_Keyword === 'Y'`).
-  - **Keyword-Map**: Jetzt ein reines Daten-Repository ohne Aktions-Buttons.
-  - **Blacklist**: Verwaltung ausgeschlossener Begriffe/URLs.
-  - *Entfernt*: Der Tab "Trend-Radar" wurde gelöscht.
-- **Workflow-Sperren**: Der Button "Als veröffentlicht markieren" im Editor ist nun gesperrt (`disabled`), solange der Content-Status nicht `Angeliefert` ist.
+## Content-Lifecycle & Logging-Events
+- **Status-Workflow**: Der Workflow umfasst nun: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
+- **Lückenloses Event-Logging**: Alle Kern-Meilensteine werden nun robust in der `Content-Log` Tabelle erfasst:
+  1. **URL dem Tool hinzugefügt**: Automatisches Log beim Import (`import/route.ts`). De-dupliziert pro URL innerhalb eines Batches.
+  2. **URL wurde dem Tab 'Vorschläge' hinzugefügt**: Automatisches Log, wenn ein Keyword im `Backlog` landet und `Main_Keyword === 'Y'` ist.
+  3. **URL wurde der Redaktionsplanung hinzugefügt**: Log bei Status-Transition zu `Planned`.
+  4. **Content wurde beauftragt**: Zentrales Logging im n8n-Trigger-Proxy (`api/n8n/trigger/route.ts`) bei Klick auf "Beauftragen".
+  5. **Content angeliefert**: Erfasst via n8n Callback Webhook (`api/n8n/callback/route.ts`).
+  6. **Content veröffentlicht**: Log bei Status-Transition zu `Published`.
+  7. **URL der Blacklist hinzugefügt**: Automatisches Logging beim Verschieben oder Hinzufügen zur Blacklist.
 
-## Priorisierung & Ranking
-- **Striking Distance Logic**: Einführung einer neuen Gewichtung basierend auf dem Ranking.
-  - Ranking **11-30** erhält die höchste Punktzahl (Striking Distance), während Top-3 Rankings niedriger priorisiert werden.
-  - Das Feld `Ranking` wurde systemweit (Airtable, Types, UI, Import) integriert.
-- **Aktualitäts-Faktor (Recency)**: Integration eines Zeitfaktors. Frischer Content (`Last_Published`) senkt die Priorität massiv, alte Inhalte steigen über 12 Monate wieder an.
-- **Einstellungs-Modal**: Neue Slider für "Ranking" und "Aktualität" in den Priorisierungs-Einstellungen.
+## Datenbank & API-Stabilität
+- **Airtable Service-Härtung**:
+  - **Computed Field Fix**: Das Feld `Target_URL` in `Content-Log` wird beim Schreiben explizit ignoriert, da es ein Lookup-Feld in Airtable ist. Dies verhindert 422-Fehler.
+  - **ID-Validierung**: Die Funktion `createContentLog` prüft nun zwingend auf gültige Airtable-Record-IDs (`rec...`), um stille Fehlgeschläge zu vermeiden.
+  - **Detailliertes Debugging**: Erweitertes Server-side Logging für alle Datenbank-Operationen im Airtable-Service.
+- **Blacklist-Persistenz**: Die Tabelle `Blacklist` wurde um das Feld `Target_URL` erweitert (manuelle Airtable-Änderung erforderlich), um die URL-Historie auch nach Löschung aus der Keyword-Map zu erhalten.
 
-## Deployment & Stabilität
-- **Zentralisiertes Logging (Airtable Service)**: 
-  - Die gesamte History-Logik wurde vom API-Layer in den `Airtable-Service` (`src/lib/airtable.ts`) verschoben.
-  - Automatisches Logging bei Status-Übergängen (`Backlog`, `Planned`, `Beauftragt`, `Published`).
-  - Fix: `Target_URL` wird nun konsistent in alle Log-Einträge geschrieben, um die Filterung in der UI zu gewährleisten.
-  - Performance: Bulk-Logging bei Imports wird nun in optimierten 10er-Batches mit Rate-Limiting verarbeitet.
-- **UI-Optimierung (Modals)**:
-  - In den Planungs-Modals (`EditKeywordModal`, `EditEditorialModal`) wurde die detaillierte History-Liste durch eine kompakte Anzeige ersetzt: "Zuletzt erstellt/optimiert am [Datum]".
-  - Die vollständige Historie bleibt über einen Deep-Link erreichbar.
-- **TypeScript & Build-Fixes**: Systemweite Entfernung von `asChild` Props bei `DialogTrigger`, `PopoverTrigger` und `DropdownMenuTrigger`, da die verwendete `@base-ui/react` Bibliothek dieses Prop in der aktuellen Version nicht unterstützt.
-- **Airtable-Synchronisation**: Fix für Datumsformate (`YYYY-MM-DD` statt ISO-Timestamp), um 422-Fehler bei der Veröffentlichung zu vermeiden.
-- **API-Robustheit**: Der Keywords-PATCH-Handler unterstützt nun flache und verschachtelte Payloads.
+## n8n Integration
+- **Webhook-Differenzierung**: Die `triggerN8nWorkflow` Funktion unterscheidet nun zwischen Import-Webhook (`.../6706e957...`) und Content-Erstellungs-Webhook (`.../23daa68a...`).
+- **Callback-Robustheit**: Der n8n-Callback-Handler filtert nun berechnete Felder aus, bevor er in Airtable schreibt.
 
-## Content-Erstellung (Creation) & Airtable
-- **Veröffentlichung**: Beim Markieren als "Veröffentlicht" wird automatisch das Feld `Last_Published` mit dem aktuellen Datum gesetzt und ein History-Log erstellt.
-- **Layout**: Filterleisten und Pagination wurden in allen Planungstabs unter die Tabellen verschoben (standardisiertes Layout).
-- **Bereinigung**: Der Button "An Pharma senden" wurde entfernt.
+## UI & Visualisierung (HistoryList)
+- **Erweiterte Nahrungskette**: Die `HistoryList` Komponente zeigt nun auch Events für "Vorschläge" und "Blacklist" an.
+- **Icon-System**: Neue Icons für Blacklist (`ShieldAlert` in Rot) und Vorschläge (`Lightbulb` in Amber) integriert.
+- **Editor-Tracking**: Der ausführende User (Editor) wird nun bei fast allen Logging-Events automatisch erfasst und in der Historie hinterlegt.

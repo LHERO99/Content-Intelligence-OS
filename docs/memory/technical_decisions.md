@@ -1,9 +1,10 @@
-# Technische Entscheidungen (Stand: 04.04.2026)
+# Technische Entscheidungen (Stand: 05.04.2026)
 
 ## Aktuelle Strategien & Patterns
-- **Logging-Reset (04.04.2026)**: 
-  - Alle automatisierten und manuellen Logging-Trigger wurden aus dem Airtable-Service und den API-Routen entfernt.
-  - Grund: Inkonsistenzen bei Bulk-Imports und Status-Übergängen.
-  - Neukonzeption erforderlich: Fokus auf Datenbank-Stabilität (Airtable Felder) und garantierte Verknüpfung zwischen Keywords und Logs via Target_URL als Primärschlüssel-Fallback.
-- **Kompakte History-Ansicht in Modals**: 
-  - In den Planungs-Modals (`EditKeywordModal`, `EditEditorialModal`) wird nur noch die letzte Veröffentlichung (Erstellung/Optimierung) angezeigt, um den visuellen Ballast im Vergleich zur vollständigen Timeline zu reduzieren.
+- **Computed Fields Policy (05.04.2026)**: 
+  - Felder, die in Airtable als Lookup oder Formel definiert sind (z.B. `Target_URL` in `Content-Log`), dürfen niemals im `create`- oder `update`-Call der API gesendet werden. 
+  - Der Airtable-Service (`createContentLog`) filtert diese nun aktiv aus, um 422 Unprocessable Entity Fehler zu vermeiden.
+- **ID-First Validation**: Verknüpfungsfelder (Link fields) in Airtable werden vor dem Senden auf das Präfix `rec` validiert. Ungültige Daten führen zum Abbruch des Log-Eintrags mit Fehlerprotokollierung, anstatt fehlerhafte Daten in die DB zu schreiben.
+- **Persistent URL Logging**: Da Keywords beim Blacklisting gelöscht werden, wird die `Target_URL` nun als statischer Text in der Blacklist-Tabelle und in den Logs mitgeführt, um die Historien-Integrität zu wahren.
+- **Server-side Proxy Logging**: Kritische Events wie "Beauftragt" werden nicht mehr vom Client (Frontend) geloggt, sondern im Server-Proxy (`api/n8n/trigger`), um Race Conditions und blockierte Webhooks zu verhindern.
+- **URL-Deduplizierung beim Bulk-Import**: Um die Historie sauber zu halten, wird beim Import einer Liste mit Main- und Nebenkeywords das Event "URL hinzugefügt" nur einmal pro eindeutiger URL ausgelöst (via `Set` Tracking in der Route).

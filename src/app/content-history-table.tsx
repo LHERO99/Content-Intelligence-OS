@@ -52,25 +52,57 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
   const groupedData = React.useMemo(() => {
     const groups: Record<string, GroupedHistory> = {};
+    const keywordToUrlMap: Record<string, string> = {};
+
+    // First pass: Build a map of Keyword_ID to Target_URL where available
+    logs.forEach(log => {
+      if (log.Target_URL && log.Keyword_ID && log.Keyword_ID.length > 0) {
+        log.Keyword_ID.forEach(id => {
+          if (!keywordToUrlMap[id]) keywordToUrlMap[id] = log.Target_URL!;
+        });
+      }
+    });
     
     logs.forEach((log) => {
-      const url = log.Target_URL || "Keine URL";
-      if (!groups[url]) {
-        groups[url] = {
-          url,
+      let url = log.Target_URL;
+      
+      // Attempt to recover URL if missing
+      if (!url && log.Keyword_ID && log.Keyword_ID.length > 0) {
+        // 1. Try Keyword-to-URL map
+        for (const id of log.Keyword_ID) {
+          if (keywordToUrlMap[id]) {
+            url = keywordToUrlMap[id];
+            break;
+          }
+        }
+      }
+
+      // 2. Try parsing Reasoning_Chain if still missing
+      if (!url && log.Reasoning_Chain) {
+        const urlMatch = log.Reasoning_Chain.match(/URL:\s*(https?:\/\/[^\s\n]+)/);
+        if (urlMatch) {
+          url = urlMatch[1];
+        }
+      }
+
+      const finalUrl = url || "Keine URL";
+
+      if (!groups[finalUrl]) {
+        groups[finalUrl] = {
+          url: finalUrl,
           firstCreated: log.Created_At,
           lastModified: log.Created_At,
           logs: [],
         };
       }
       
-      groups[url].logs.push(log);
+      groups[finalUrl].logs.push(log);
       
-      if (new Date(log.Created_At) < new Date(groups[url].firstCreated)) {
-        groups[url].firstCreated = log.Created_At;
+      if (new Date(log.Created_At) < new Date(groups[finalUrl].firstCreated)) {
+        groups[finalUrl].firstCreated = log.Created_At;
       }
-      if (new Date(log.Created_At) > new Date(groups[url].lastModified)) {
-        groups[url].lastModified = log.Created_At;
+      if (new Date(log.Created_At) > new Date(groups[finalUrl].lastModified)) {
+        groups[finalUrl].lastModified = log.Created_At;
       }
     });
 
