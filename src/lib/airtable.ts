@@ -529,7 +529,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Airtable request timed out')), TIMEOUT_MS));
-      const fetchPromise = base(TABLES.USERS).select({ filterByFormula: `{Email} = '${email}'`, maxRecords: 1 }).firstPage();
+      const fetchPromise = base(TABLES.USERS).select({ filterByFormula: \`{Email} = '\${email}'\`, maxRecords: 1 }).firstPage();
       const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
       if (records.length === 0) return null;
       const record = records[0];
@@ -634,9 +634,9 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
     const validKeywords: Partial<KeywordMap>[] = [];
     for (const kw of keywords) {
       if (kw.Target_URL && kw.Keyword) {
-        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`, maxRecords: 1 }).firstPage();
+        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Target_URL} = '\${kw.Target_URL}', {Keyword} = '\${kw.Keyword.replace(/'/g, "\\\\'")}')\`, maxRecords: 1 }).firstPage();
         if (existingKeywordUrl.length > 0) {
-          skippedRecords.push({ ...kw, reason: `Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.` });
+          skippedRecords.push({ ...kw, reason: \`Die Kombination aus Keyword "\${kw.Keyword}" und URL "\${kw.Target_URL}" existiert bereits.\` });
           continue;
         }
       }
@@ -649,12 +649,12 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
       for (const kw of chunk) {
         try {
           if (kw.Target_URL && kw.Main_Keyword === 'Y') {
-            const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-            if (existingMainKeywords.length > 0) throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
+            const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Target_URL} = '\${kw.Target_URL}', {Main_Keyword} = 'Y')\`, maxRecords: 1 }).firstPage();
+            if (existingMainKeywords.length > 0) throw new AirtableValidationError(\`Die URL \${kw.Target_URL} hat bereits ein Main Keyword.\`, 409);
           }
           if (kw.Keyword && kw.Main_Keyword === 'Y') {
-            const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-            if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
+            const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Keyword} = '\${kw.Keyword.replace(/'/g, "\\\\'")}', {Main_Keyword} = 'Y')\`, maxRecords: 1 }).firstPage();
+            if (existingGlobalMain.length > 0) throw new AirtableValidationError(\`Das Keyword "\${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.\`, 409);
           }
           currentChunkValid.push(kw);
         } catch (error: any) {
@@ -685,13 +685,13 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
 export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap | null> {
   try {
     if (!kw.Keyword || !kw.Target_URL) throw new AirtableValidationError('Keyword und Target_URL sind Pflichtfelder.');
-    const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`, maxRecords: 1 }).firstPage();
-    if (existingKeywordUrl.length > 0) throw new AirtableValidationError(`Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.`, 409);
+    const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Target_URL} = '\${kw.Target_URL}', {Keyword} = '\${kw.Keyword.replace(/'/g, "\\\\'")}')\`, maxRecords: 1 }).firstPage();
+    if (existingKeywordUrl.length > 0) throw new AirtableValidationError(\`Die Kombination aus Keyword "\${kw.Keyword}" und URL "\${kw.Target_URL}" existiert bereits.\`, 409);
     if (kw.Main_Keyword === 'Y') {
-      const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-      if (existingMainKeywords.length > 0) throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
-      const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-      if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
+      const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Target_URL} = '\${kw.Target_URL}', {Main_Keyword} = 'Y')\`, maxRecords: 1 }).firstPage();
+      if (existingMainKeywords.length > 0) throw new AirtableValidationError(\`Die URL \${kw.Target_URL} hat bereits ein Main Keyword.\`, 409);
+      const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Keyword} = '\${kw.Keyword.replace(/'/g, "\\\\'")}', {Main_Keyword} = 'Y')\`, maxRecords: 1 }).firstPage();
+      if (existingGlobalMain.length > 0) throw new AirtableValidationError(\`Das Keyword "\${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.\`, 409);
     }
     const records = await base(TABLES.KEYWORD_MAP).create([{ fields: { Keyword: kw.Keyword, Target_URL: kw.Target_URL, Search_Volume: kw.Search_Volume, Difficulty: kw.Difficulty, Status: kw.Status || 'Backlog', Editorial_Deadline: kw.Editorial_Deadline, Assigned_Editor: kw.Assigned_Editor, Main_Keyword: kw.Main_Keyword || 'N', Article_Count: kw.Article_Count, Avg_Product_Value: kw.Avg_Product_Value, Policy: kw.Policy, Priority_Score: kw.Priority_Score, Action_Type: kw.Action_Type || 'Erstellung' } }]);
     if (records.length === 0) return null;
@@ -717,14 +717,14 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       const nextURL = kw.Target_URL !== undefined ? kw.Target_URL : currentRecord.get('Target_URL') as string;
       const nextMain = kw.Main_Keyword !== undefined ? kw.Main_Keyword : currentRecord.get('Main_Keyword') as string;
       if (kw.Keyword !== undefined || kw.Target_URL !== undefined) {
-        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${nextURL}', {Keyword} = '${nextKeyword.replace(/'/g, "\\'")}', RECORD_ID() != '${id}')`, maxRecords: 1 }).firstPage();
-        if (existingKeywordUrl.length > 0) throw new AirtableValidationError(`Die Kombination aus Keyword "${nextKeyword}" und URL "${nextURL}" existiert bereits.`, 409);
+        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Target_URL} = '\${nextURL}', {Keyword} = '\${nextKeyword.replace(/'/g, "\\\\'")}', RECORD_ID() != '\${id}')\`, maxRecords: 1 }).firstPage();
+        if (existingKeywordUrl.length > 0) throw new AirtableValidationError(\`Die Kombination aus Keyword "\${nextKeyword}" und URL "\${nextURL}" existiert bereits.\`, 409);
       }
       if (nextMain === 'Y' && (kw.Main_Keyword === 'Y' || kw.Target_URL !== undefined || kw.Keyword !== undefined)) {
-        const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${nextURL}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`, maxRecords: 1 }).firstPage();
-        if (existingMainKeywords.length > 0) throw new AirtableValidationError(`Die URL ${nextURL} hat bereits ein Main Keyword.`, 409);
-        const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${nextKeyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`, maxRecords: 1 }).firstPage();
-        if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${nextKeyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
+        const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Target_URL} = '\${nextURL}', {Main_Keyword} = 'Y', RECORD_ID() != '\${id}')\`, maxRecords: 1 }).firstPage();
+        if (existingMainKeywords.length > 0) throw new AirtableValidationError(\`Die URL \${nextURL} hat bereits ein Main Keyword.\`, 409);
+        const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: \`AND({Keyword} = '\${nextKeyword.replace(/'/g, "\\\\'")}', {Main_Keyword} = 'Y', RECORD_ID() != '\${id}')\`, maxRecords: 1 }).firstPage();
+        if (existingGlobalMain.length > 0) throw new AirtableValidationError(\`Das Keyword "\${nextKeyword}" ist bereits als Main Keyword für eine andere URL registriert.\`, 409);
       }
     }
     const fields: any = {};
@@ -807,7 +807,7 @@ export async function getConfig(): Promise<ConfigRecord[]> {
 
 export async function updateConfig(key: string, value: string): Promise<ConfigRecord | null> {
   try {
-    const records = await base(TABLES.CONFIG).select({ filterByFormula: `{Key} = '${key}'`, maxRecords: 1 }).firstPage();
+    const records = await base(TABLES.CONFIG).select({ filterByFormula: \`{Key} = '\${key}'\`, maxRecords: 1 }).firstPage();
     if (records.length === 0) {
       const newRecords = await base(TABLES.CONFIG).create([{ fields: { Key: key, Value: value, Updated_At: new Date().toISOString() } }]);
       const record = newRecords[0];
@@ -878,7 +878,7 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
 
 export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
   try {
-    console.log(`[Airtable] Upserting ${data.length} keyword-specific performance records`);
+    console.log(\`[Airtable] Upserting \${data.length} keyword-specific performance records\`);
     let created = 0;
     let updated = 0;
     const errors: any[] = [];
@@ -887,7 +887,7 @@ export async function upsertPerformanceData(data: Partial<PerformanceData>[]): P
       if (!item.Keyword_ID || !item.Date) continue;
       try {
         const keywordIdStr = Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : item.Keyword_ID;
-        const formula = `AND(SEARCH('${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`;
+        const formula = \`AND(SEARCH('\${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '\${item.Date}')\`;
         const existing = await base(TABLES.PERFORMANCE_DATA).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
 
         const fields: any = {
@@ -1037,7 +1037,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Airtable request timed out')), TIMEOUT_MS));
-      const fetchPromise = base(TABLES.USERS).select({ filterByFormula: `{Email} = '${email}'`, maxRecords: 1 }).firstPage();
+      const fetchPromise = base(TABLES.USERS).select({ filterByFormula: \`{Email} = '\${email}'\`, maxRecords: 1 }).firstPage();
       const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
       if (records.length === 0) return null;
       const record = records[0];
@@ -1134,4 +1134,3 @@ export async function deleteUser(id: string): Promise<boolean> {
     return handleAirtableError(error,'deleteUser');
   }
 }
-'EOF'
