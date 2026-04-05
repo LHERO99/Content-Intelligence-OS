@@ -53,7 +53,7 @@ export async function POST(request: Request) {
           try {
             await createContentLog({
               Keyword_ID: [kw.id],
-              Target_URL: kw.Target_URL,
+              Logged_URL: kw.Target_URL, // Pass Target_URL to Logged_URL
               Action_Type: kw.Action_Type || 'Optimierung',
               Diff_Summary: 'URL der Blacklist hinzugefügt',
               Reasoning_Chain: `URL: ${kw.Target_URL}\nGrund: ${Reason}`,
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         try {
           await createContentLog({
             Keyword_ID: [keywordId],
-            Target_URL: targetUrl,
+            Logged_URL: targetUrl, // Pass targetUrl to Logged_URL
             Action_Type: body.Action_Type || 'Optimierung',
             Diff_Summary: 'URL der Blacklist hinzugefügt',
             Reasoning_Chain: `URL: ${targetUrl}\nGrund: ${Reason}`,

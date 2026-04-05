@@ -161,6 +161,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
       Target_URL: Array.isArray(record.get('Target_URL')) ? (record.get('Target_URL') as string[])[0] : (record.get('Target_URL') as string),
+      Logged_URL: record.get('Logged_URL') as string, // Retrieve Logged_URL for getContentLogs
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1', // Derived from content presence
       Content_Body: record.get('Content_Body') as string,
@@ -187,6 +188,7 @@ export async function getContentHistoryByUrl(targetUrl: string): Promise<Content
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
       Target_URL: record.get('Target_URL') as string,
+      Logged_URL: record.get('Logged_URL') as string, // Retrieve Logged_URL for getContentHistoryByUrl
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,
@@ -212,6 +214,7 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
       Target_URL: record.get('Target_URL') as string,
+      Logged_URL: record.get('Logged_URL') as string, // Retrieve Logged_URL for getContentHistoryByKeyword
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,
@@ -244,6 +247,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
     // Sending a value for a computed field causes Airtable to error (422)
     const fields: any = {
       Keyword_ID: validKeywordIds,
+      Logged_URL: log.Logged_URL, // Store the URL directly here
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Reasoning_Chain: log.Reasoning_Chain,
@@ -270,6 +274,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
       Target_URL: record.get('Target_URL') as string,
+      Logged_URL: record.get('Logged_URL') as string, // Retrieve the directly logged URL
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,
@@ -290,6 +295,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       console.warn('[Airtable createContentLog] "Action_Type" field rejected as computed, retrying without it');
       const retryFields: any = {
         Keyword_ID: log.Keyword_ID,
+        Logged_URL: log.Logged_URL, // Store the URL directly here in retry
         Content_Body: log.Content_Body,
         Diff_Summary: log.Diff_Summary,
         Reasoning_Chain: log.Reasoning_Chain,
@@ -304,6 +310,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
           ID: record.get('ID') as number,
           Keyword_ID: record.get('Keyword_ID') as string[],
           Target_URL: record.get('Target_URL') as string,
+          Logged_URL: record.get('Logged_URL') as string, // Retrieve the directly logged URL in retry
           Action_Type: record.get('Action_Type') as any,
           Version: record.get('Content_Body') ? 'v2' : 'v1',
           Content_Body: record.get('Content_Body') as string,
@@ -334,6 +341,7 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
       Target_URL: record.get('Target_URL') as string,
+      Logged_URL: record.get('Logged_URL') as string, // Also retrieve Logged_URL for getAllContentHistory
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
       Content_Body: record.get('Content_Body') as string,
@@ -420,7 +428,7 @@ export async function updateCostConfig(id: string, config: Partial<CostConfig>):
     const record = records[0];
     return {
       id: record.id,
-      Page_Type: record.get('Page_Type') as any,
+      Page_Type: record.get('Page') as any,
       Action_Type: record.get('Action_Type') as any,
       Agency_Cost: record.get('Agency_Cost') as number,
       Overhead_Cost: record.get('Overhead_Cost') as number,
@@ -1147,7 +1155,7 @@ export async function getConfig(): Promise<ConfigRecord[]> {
       Key: record.get('Key') as string,
       Value: record.get('Value') as string,
       Description: record.get('Description') as string,
-      Updated_At: record.get('Updated_At') as string,
+      Updated_At: record.get('Updated') as string,
     }));
   } catch (error) {
     return handleAirtableError(error,'getConfig');
@@ -1343,41 +1351,32 @@ export async function upsertPerformanceData(data: Partial<PerformanceData>[]): P
             creations.push({ fields });
           }
         } catch (err: any) {
-          console.error(`[Airtable] Error checking existing record for ${item.Target_URL} on ${item.Date}:`, err);
           errors.push({ item, error: err.message });
         }
       }
 
-      // Perform Batch Update
       if (updates.length > 0) {
         try {
           await base(TABLES.PERFORMANCE_DATA).update(updates);
           updated += updates.length;
         } catch (err: any) {
-          console.error('[Airtable] Batch update failed:', err);
-          errors.push({ type: 'update', count: updates.length, error: err.message });
+          updates.forEach(upd => errors.push({ item: upd, error: err.message }));
         }
       }
 
-      // Perform Batch Creation
       if (creations.length > 0) {
         try {
           await base(TABLES.PERFORMANCE_DATA).create(creations);
           created += creations.length;
         } catch (err: any) {
-          console.error('[Airtable] Batch creation failed:', err);
-          errors.push({ type: 'create', count: creations.length, error: err.message });
+          creations.forEach(cre => errors.push({ item: cre, error: err.message }));
         }
-      }
-      
-      // Rate limiting: 5 requests per second
-      if (chunks.length > 1) {
-        await new Promise(resolve => setTimeout(resolve, 250));
       }
     }
 
+    console.log(`[Airtable] Upsert completed: Created ${created}, Updated ${updated}, Errors ${errors.length}`);
     return { created, updated, errors };
   } catch (error) {
-    return handleAirtableError(error, 'upsertPerformanceData');
+    return handleAirtableError(error,'upsertPerformanceData');
   }
 }

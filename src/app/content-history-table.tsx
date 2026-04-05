@@ -38,6 +38,7 @@ interface GroupedHistory {
   firstCreated: string;
   lastModified: string;
   logs: ContentLog[];
+  isBlacklisted: boolean; // Added for blacklist status
 }
 
 interface ContentHistoryTableProps {
@@ -64,7 +65,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
     });
     
     logs.forEach((log) => {
-      let url = log.Target_URL;
+      let url = log.Logged_URL || log.Target_URL; // Prioritize Logged_URL
       
       // Attempt to recover URL if missing
       if (!url && log.Keyword_ID && log.Keyword_ID.length > 0) {
@@ -90,12 +91,14 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       if (url === undefined || url === null) {
         console.log(`[DEBUG] Missing URL for log ID ${log.id}:`);
         console.log(`  Target_URL from log: ${log.Target_URL}`);
+        console.log(`  Logged_URL from log: ${log.Logged_URL}`); // Debug Logged_URL
         console.log(`  Keyword_ID: ${log.Keyword_ID}`);
         console.log(`  Reasoning_Chain: ${log.Reasoning_Chain}`);
         const urlMatchDebug = log.Reasoning_Chain?.match(/URL:\s*(https?:\/\/[^\n]+)/);
         console.log(`  Reasoning_Chain match: ${urlMatchDebug ? urlMatchDebug[1] : 'No match'}`);
       }
 
+      const isBlacklistedEntry = log.Diff_Summary === 'URL der Blacklist hinzugefügt';
 
       if (!groups[finalUrl]) {
         groups[finalUrl] = {
@@ -103,10 +106,14 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
           firstCreated: log.Created_At,
           lastModified: log.Created_At,
           logs: [],
+          isBlacklisted: false, // Default to false
         };
       }
       
       groups[finalUrl].logs.push(log);
+      if (isBlacklistedEntry) {
+        groups[finalUrl].isBlacklisted = true;
+      }
       
       if (new Date(log.Created_At) < new Date(groups[finalUrl].firstCreated)) {
         groups[finalUrl].firstCreated = log.Created_At;
@@ -139,6 +146,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       ),
       cell: ({ row }) => {
         const url = row.getValue("url") as string;
+        const isBlacklisted = row.original.isBlacklisted;
         return (
           <div className="flex items-center gap-2 max-w-[400px]">
             <span className="font-medium truncate">{url}</span>
@@ -152,6 +160,11 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
               >
                 <ExternalLink className="h-3 w-3" />
               </a>
+            )}
+            {isBlacklisted && (
+              <Badge variant="destructive" className="text-[10px] h-4 px-1 font-bold bg-red-500/10 text-red-700 border-red-500/20">
+                Blacklisted
+              </Badge>
             )}
           </div>
         );

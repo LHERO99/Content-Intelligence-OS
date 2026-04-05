@@ -119,6 +119,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     onRowSelectionChange: setRowSelection,
     onColumnOrderChange: setColumnOrder,
     getPaginationRowModel: getPaginationRowModel(),
+    enableMultiSort: false,
+    enableSortingRemoval: false,
     meta: { handleCommissionContent, isCommissioning, commissionedIds },
     initialState: { sorting: [{ id: "Priority_Score", desc: true }], pagination: { pageSize: 10 } },
     state: { sorting, columnFilters, columnVisibility, rowSelection, columnOrder },
