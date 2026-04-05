@@ -1357,82 +1357,57 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
 
 /**
  * Performs an upsert operation on Performance_Data.
- * It checks for existing records with the same Target_URL, Date, and Source.
+ * Matches records by Keyword_ID and Date.
  */
 export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
   try {
-    console.log(`[Airtable] Upserting ${data.length} performance data records`);
+    console.log(`[Airtable] Upserting ${data.length} performance records`);
     let created = 0;
     let updated = 0;
     const errors: any[] = [];
 
-    // Process in chunks of 10 for Airtable API limits
-    const chunks = [];
-    for (let i = 0; i < data.length; i += 10) {
-      chunks.push(data.slice(i, i + 10));
-    }
-
-    for (const chunk of chunks) {
-      const updates: { id: string, fields: any }[] = [];
-      const creations: { fields: any }[] = [];
-
-      for (const item of chunk) {
-        if (!item.Target_URL || !item.Date || !item.Source) {
-          errors.push({ item, error: 'Missing required fields: Target_URL, Date, or Source' });
-          continue;
-        }
-
-        try {
-          // Check for existing record with same URL, Date, and Source
-          const formula = `AND({Target_URL} = '${item.Target_URL}', {Date} = '${item.Date}', {Source} = '${item.Source}')`;
-          const existing = await base(TABLES.PERFORMANCE_DATA).select({
-            filterByFormula: formula,
-            maxRecords: 1
-          }).firstPage();
-
-          const fields: any = {
-            Target_URL: item.Target_URL,
-            Date: item.Date,
-            Source: item.Source,
-            GSC_Clicks: item.GSC_Clicks,
-            GSC_Impressions: item.GSC_Impressions,
-            Sistrix_VI: item.Sistrix_VI,
-            Position: item.Position,
-            Keyword_ID: item.Keyword_ID,
-          };
-
-          if (existing.length > 0) {
-            updates.push({ id: existing[0].id, fields });
-          } else {
-            creations.push({ fields });
-          }
-        } catch (err: any) {
-          errors.push({ item, error: err.message });
-        }
+    for (const item of data) {
+      if (!item.Keyword_ID || !item.Date) {
+        console.warn("[Airtable upsert] Skipping item due to missing Keyword_ID or Date:", item);
+        continue;
       }
 
-      if (updates.length > 0) {
-        try {
-          await base(TABLES.PERFORMANCE_DATA).update(updates);
-          updated += updates.length;
-        } catch (err: any) {
-          updates.forEach(upd => errors.push({ item: upd, error: err.message }));
-        }
-      }
+      try {
+        const keywordIdStr = Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : item.Keyword_ID;
+        
+        // Find existing record for this keyword and date
+        const formula = `AND(SEARCH('${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`;
+        const existing = await base(TABLES.PERFORMANCE_DATA).select({
+          filterByFormula: formula,
+          maxRecords: 1
+        }).firstPage();
 
-      if (creations.length > 0) {
-        try {
-          await base(TABLES.PERFORMANCE_DATA).create(creations);
-          created += creations.length;
-        } catch (err: any) {
-          creations.forEach(cre => errors.push({ item: cre, error: err.message }));
+        const fields: any = {
+          Keyword_ID: Array.isArray(item.Keyword_ID) ? item.Keyword_ID : [item.Keyword_ID],
+          Date: item.Date,
+          GSC_Clicks: item.GSC_Clicks,
+          GSC_Impressions: item.GSC_Impressions,
+          Position: item.Position,
+          Sistrix_VI: item.Sistrix_VI
+        };
+
+        if (existing.length > 0) {
+          console.log(`[Airtable upsert] Updating record ${existing[0].id} for Date ${item.Date}`);
+          await base(TABLES.PERFORMANCE_DATA).update(existing[0].id, fields);
+          updated++;
+        } else {
+          console.log(`[Airtable upsert] Creating new record for Date ${item.Date}`);
+          await base(TABLES.PERFORMANCE_DATA).create([{ fields }]);
+          created++;
         }
+      } catch (err: any) {
+        console.error("[Airtable upsert] Error processing item:", err);
+        errors.push({ item, error: err.message });
       }
     }
 
-    console.log(`[Airtable] Upsert completed: Created ${created}, Updated ${updated}, Errors ${errors.length}`);
     return { created, updated, errors };
   } catch (error) {
-    return handleAirtableError(error,'upsertPerformanceData');
+    return handleAirtableError(error, 'upsertPerformanceData');
   }
 }

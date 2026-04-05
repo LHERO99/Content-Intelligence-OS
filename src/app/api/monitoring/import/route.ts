@@ -30,17 +30,25 @@ export async function POST(req: NextRequest) {
       rankings: { status: 'skipped' }
     };
 
-    // 1. Process Performance Data (URL level)
+    // 1. Process Performance Data (Keyword level)
     if (performanceData && Array.isArray(performanceData)) {
+      // Find the main keyword ID from rankings or use the one provided by n8n
+      const mainKeywordId = rankings?.[0]?.keywordId || body.keywordId;
+
+      if (!mainKeywordId) {
+        return NextResponse.json({ error: 'Missing main keywordId for performance mapping' }, { status: 400 });
+      }
+
       const formattedData = performanceData.map(p => ({
-        Target_URL: targetUrl,
+        Keyword_ID: [mainKeywordId],
         Date: p.date,
         GSC_Clicks: p.clicks,
         GSC_Impressions: p.impressions,
         Position: p.position,
-        Source: p.source || 'GSC'
+        Sistrix_VI: p.sistrixVi || p.vi
       }));
 
+      console.log(`[API Monitoring Import] Upserting ${formattedData.length} records for Keyword ${mainKeywordId}`);
       const perfResult = await upsertPerformanceData(formattedData);
       results.performance = { status: 'success', ...perfResult };
     }
