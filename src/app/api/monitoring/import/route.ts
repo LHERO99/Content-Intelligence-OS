@@ -1,66 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertPerformanceData, bulkUpdateKeywordRankings } from '@/lib/airtable';
+import { upsertPerformanceData } from '@/lib/airtable';
 
 /**
  * API Route for n8n to import performance data and keyword rankings.
- * Expects a POST request with:
- * {
- *   "targetUrl": "...",
- *   "performanceData": [{ "date": "...", "clicks": 0, "impressions": 0, "position": 0, "source": "GSC" }],
- *   "rankings": [{ "keywordId": "...", "rank": 0 }]
- * }
+ * 
+ * Each ranking entry (Main or Secondary) results in a unique entry in Performance_Data
+ * for that specific Keyword_ID and Date. URL metrics (clicks, impressions) are 
+ * duplicated across these keyword-specific entries for easier per-keyword analysis.
  */
 export async function POST(req: NextRequest) {
   try {
-    // Basic authentication (optional but recommended)
+    // Basic authentication
     const authHeader = req.headers.get('x-api-key');
     if (process.env.N8N_API_KEY && authHeader !== process.env.N8N_API_KEY) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
-    const { targetUrl, performanceData, rankings } = body;
+    const { targetUrl, performanceData, rankings, keywordId } = body;
 
     if (!targetUrl) {
       return NextResponse.json({ error: 'Missing targetUrl' }, { status: 400 });
     }
 
+    if (!performanceData || !Array.isArray(performanceData)) {
+      return NextResponse.json({ error: 'Missing performanceData array' }, { status: 400 });
+    }
+
     const results: any = {
-      performance: { status: 'skipped' },
-      rankings: { status: 'skipped' }
+      keywordEntries: 0,
+      upsertResults: { created: 0, updated: 0, errorCount: 0 }
     };
 
-    // 1. Process Performance Data (Keyword level)
-    if (performanceData && Array.isArray(performanceData)) {
-      // Find the main keyword ID from rankings or use the one provided by n8n
-      const mainKeywordId = rankings?.[0]?.keywordId || body.keywordId;
+    // Prepare a flat list of all performance records to upsert
+    // We create one record per (Keyword_ID + Date) combination.
+    const allKeywordPerformanceRecords: any[] = [];
 
-      if (!mainKeywordId) {
-        return NextResponse.json({ error: 'Missing main keywordId for performance mapping' }, { status: 400 });
+    // 1. Identify all keywords to process (Main + Secondaries)
+    // n8n sends rankings: [{ keywordId: "...", rank: 12 }, ...]
+    const keywordsToProcess = rankings && Array.isArray(rankings) ? rankings : [];
+    
+    // If n8n sent a top-level keywordId but it's not in rankings, add it (fallback)
+    if (keywordId && !keywordsToProcess.find((k: any) => k.keywordId === keywordId)) {
+      keywordsToProcess.push({ keywordId, rank: body.rank || undefined });
+    }
+
+    if (keywordsToProcess.length === 0) {
+      return NextResponse.json({ error: 'No keywordId or rankings provided' }, { status: 400 });
+    }
+
+    // 2. Map performanceData to each keyword
+    for (const kw of keywordsToProcess) {
+      for (const perf of performanceData) {
+        allKeywordPerformanceRecords.push({
+          Keyword_ID: [kw.keywordId],
+          Target_URL: targetUrl,
+          Date: perf.date,
+          Ranking: kw.rank, // Use the rank provided for this keyword
+          GSC_Clicks: perf.clicks,
+          GSC_Impressions: perf.impressions,
+          Position: perf.position, // URL level average position
+          Sistrix_VI: perf.sistrixVi || perf.vi
+        });
       }
-
-      const formattedData = performanceData.map(p => ({
-        Keyword_ID: [mainKeywordId],
-        Date: p.date,
-        GSC_Clicks: p.clicks,
-        GSC_Impressions: p.impressions,
-        Position: p.position,
-        Sistrix_VI: p.sistrixVi || p.vi
-      }));
-
-      console.log(`[API Monitoring Import] Upserting ${formattedData.length} records for Keyword ${mainKeywordId}`);
-      const perfResult = await upsertPerformanceData(formattedData);
-      results.performance = { status: 'success', ...perfResult };
     }
 
-    // 2. Process Keyword Rankings
-    if (rankings && Array.isArray(rankings)) {
-      await bulkUpdateKeywordRankings(rankings);
-      results.rankings = { status: 'success', count: rankings.length };
-    }
+    // 3. Execute Upsert
+    const upsertResult = await upsertPerformanceData(allKeywordPerformanceRecords);
+    
+    results.keywordEntries = keywordsToProcess.length;
+    results.upsertResults = {
+      created: upsertResult.created,
+      updated: upsertResult.updated,
+      errorCount: upsertResult.errors.length,
+      errors: upsertResult.errors.length > 0 ? upsertResult.errors : undefined
+    };
 
     return NextResponse.json({
-      message: 'Import completed successfully',
+      message: 'Historical performance import completed',
       results
     });
 

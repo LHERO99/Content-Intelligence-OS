@@ -45,6 +45,7 @@ export interface PerformanceData {
   Target_URL?: string; // For high volume monitoring
   Keyword_ID?: string[]; // Optional link
   Date: string;
+  Ranking?: number; // Historical ranking for this keyword
   GSC_Clicks?: number;
   GSC_Impressions?: number;
   Sistrix_VI?: number;
