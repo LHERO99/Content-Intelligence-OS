@@ -28,14 +28,17 @@ export async function POST(request: NextRequest) {
         if (trend) {
           // Log "URL wurde dem Tab Vorschläge hinzugefügt"
           try {
-            // Trend doesn't have a Keyword_ID yet, but once it's created as a trend, 
-            // it doesn't automatically show in the "Suggestions" tab (which is Keyword-Map based).
-            // However, the user wants to log when something is added to the Suggestions tab.
-            // If this API creates a Keyword-Map entry, we should log it.
-            // Currently, this creates a Trend (Potential_Trends).
-            console.log(`[API Suggest] Trend created for ${url}.`);
+            const editor = session?.user?.email ? [session.user.email] : undefined;
+            await createContentLog({
+              Logged_URL: url,
+              Action_Type: 'Optimierung', // Monitoring suggestions are usually optimizations
+              Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+              Editor: editor,
+              Reasoning_Chain: `Vorgeschlagen aus dem Monitoring-Bereich. URL: ${url}`
+            });
+            console.log(`[API Suggest] Trend and log created for ${url}.`);
           } catch (err) {
-            console.error('[API Suggest] Error in suggestion logic:', err);
+            console.error('[API Suggest] Error in suggestion logging:', err);
           }
         }
         return trend;

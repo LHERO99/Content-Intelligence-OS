@@ -52,6 +52,36 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- Add Logging for Creation ---
+    try {
+      const session = await getServerSession(authOptions);
+      const editor = session?.user?.email ? [session.user.email] : undefined;
+      
+      // 1. Base Log: Added to tool
+      await createContentLog({
+        Keyword_ID: [result.id],
+        Target_URL: result.Target_URL,
+        Logged_URL: result.Target_URL,
+        Action_Type: result.Action_Type || 'Erstellung',
+        Diff_Summary: 'URL wurde dem Tool hinzugefügt',
+        Editor: editor
+      });
+
+      // 2. Conditional Log: Added to Suggestions Tab (if Status=Backlog and Main_Keyword=Y)
+      if (result.Status === 'Backlog' && result.Main_Keyword === 'Y') {
+        await createContentLog({
+          Keyword_ID: [result.id],
+          Target_URL: result.Target_URL,
+          Logged_URL: result.Target_URL,
+          Action_Type: result.Action_Type || 'Erstellung',
+          Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+          Editor: editor
+        });
+      }
+    } catch (logErr) {
+      console.error('[API Keyword POST] Error creating creation log:', logErr);
+    }
+
     return NextResponse.json(result);
 
   } catch (error: any) {
