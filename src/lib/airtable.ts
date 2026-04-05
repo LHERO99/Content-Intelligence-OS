@@ -400,6 +400,29 @@ export async function getPerformanceDataByUrl(targetUrl: string): Promise<Perfor
   }
 }
 
+/**
+ * Updates multiple keyword rankings in bulk.
+ */
+export async function bulkUpdateKeywordRankings(rankings: { keywordId: string, rank: number }[]): Promise<void> {
+  try {
+    const chunks = [];
+    for (let i = 0; i < rankings.length; i += 10) {
+      chunks.push(rankings.slice(i, i + 10));
+    }
+
+    for (const chunk of chunks) {
+      await base(TABLES.KEYWORD_MAP).update(
+        chunk.map(r => ({
+          id: r.keywordId,
+          fields: { Ranking: r.rank }
+        }))
+      );
+    }
+  } catch (error) {
+    await handleAirtableError(error, 'bulkUpdateKeywordRankings');
+  }
+}
+
 export async function getCostConfigs(): Promise<CostConfig[]> {
   try {
     const records = await base(TABLES.COST_CONFIG).select().all();
