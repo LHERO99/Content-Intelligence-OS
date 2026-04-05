@@ -758,3 +758,379 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     return handleAirtableError(error,'updateKeyword');
   }
 }
+
+export async function createTrend(trend: Partial<PotentialTrend>): Promise<PotentialTrend | null> {
+  try {
+    const records = await base(TABLES.POTENTIAL_TRENDS).create([{ fields: { Trend_Topic: trend.Trend_Topic, Source: trend.Source || 'GSC', Gap_Score: trend.Gap_Score || 0, Status: trend.Status || 'New' } }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return { id: record.id, Trend_Topic: record.get('Trend_Topic') as string, Source: record.get('Source') as 'GSC' | 'Sistrix', Gap_Score: record.get('Gap_Score') as number, Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted' };
+  } catch (error) {
+    return handleAirtableError(error,'createTrend');
+  }
+}
+
+export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
+  try {
+    const records = await base(TABLES.BLACKLIST).create([{ fields: { Keyword: entry.Keyword, Target_URL: entry.Target_URL, Type: entry.Type || 'Keyword', Reason: entry.Reason, Added_At: new Date().toISOString() } }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return { id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Type: record.get('Type') as 'Keyword' | 'URL', Reason: record.get('Reason') as string, Added_At: record.get('Added_At') as string };
+  } catch (error) {
+    return handleAirtableError(error,'addToBlacklist');
+  }
+}
+
+export async function getBlacklist(): Promise<BlacklistEntry[]> {
+  try {
+    let records: readonly any[] = [];
+    try {
+      records = await base(TABLES.BLACKLIST).select().all();
+    } catch (error: any) {
+      if (error.statusCode === 422) records = await base(TABLES.BLACKLIST).select({ fields: ['Keyword', 'Reason', 'Added_At'] }).all();
+      else throw error;
+    }
+    return records.map((record) => ({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Type: (record.get('Type') as 'Keyword' | 'URL') || 'Keyword', Reason: record.get('Reason') as string, Added_At: record.get('Added_At') as string }));
+  } catch (error) {
+    return handleAirtableError(error,'getBlacklist');
+  }
+}
+
+export async function getConfig(): Promise<ConfigRecord[]> {
+  try {
+    const records = await base(TABLES.CONFIG).select().all();
+    return records.map((record) => ({ id: record.id, Key: record.get('Key') as string, Value: record.get('Value') as string, Description: record.get('Description') as string, Updated_At: record.get('Updated') as string }));
+  } catch (error) {
+    return handleAirtableError(error,'getConfig');
+  }
+}
+
+export async function updateConfig(key: string, value: string): Promise<ConfigRecord | null> {
+  try {
+    const records = await base(TABLES.CONFIG).select({ filterByFormula: `{Key} = '${key}'`, maxRecords: 1 }).firstPage();
+    if (records.length === 0) {
+      const newRecords = await base(TABLES.CONFIG).create([{ fields: { Key: key, Value: value, Updated_At: new Date().toISOString() } }]);
+      const record = newRecords[0];
+      return { id: record.id, Key: record.get('Key') as string, Value: record.get('Value') as string, Description: record.get('Description') as string, Updated_At: record.get('Updated_At') as string };
+    }
+    const updatedRecords = await base(TABLES.CONFIG).update([{ id: records[0].id, fields: { Value: value, Updated_At: new Date().toISOString() } }]);
+    const record = updatedRecords[0];
+    return { id: record.id, Key: record.get('Key') as string, Value: record.get('Value') as string, Description: record.get('Description') as string, Updated_At: record.get('Updated_At') as string };
+  } catch (error) {
+    return handleAirtableError(error,'updateConfig');
+  }
+}
+
+export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
+  try {
+    const fields: any = {};
+    if (entry.Keyword !== undefined) fields.Keyword = entry.Keyword;
+    if (entry.Type !== undefined) fields.Type = entry.Type;
+    if (entry.Reason !== undefined) fields.Reason = entry.Reason;
+    const records = await base(TABLES.BLACKLIST).update([{ id, fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return { id: record.id, Keyword: record.get('Keyword') as string, Type: record.get('Type') as 'Keyword' | 'URL', Reason: record.get('Reason') as string, Added_At: record.get('Added_At') as string };
+  } catch (error) {
+    return handleAirtableError(error,'updateBlacklist');
+  }
+}
+
+export async function deleteFromBlacklist(id: string): Promise<boolean> {
+  try {
+    await base(TABLES.BLACKLIST).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'deleteFromBlacklist');
+  }
+}
+
+export async function deleteKeyword(id: string): Promise<boolean> {
+  try {
+    await base(TABLES.KEYWORD_MAP).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'deleteKeyword');
+  }
+}
+
+export async function bulkDeleteKeywords(ids: string[]): Promise<boolean> {
+  try {
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+    for (const chunk of chunks) await base(TABLES.KEYWORD_MAP).destroy(chunk);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'bulkDeleteKeywords');
+  }
+}
+
+export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
+  try {
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+    for (const chunk of chunks) await base(TABLES.BLACKLIST).destroy(chunk);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'bulkDeleteFromBlacklist');
+  }
+}
+
+export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
+  try {
+    console.log(`[Airtable] Upserting ${data.length} keyword-specific performance records`);
+    let created = 0;
+    let updated = 0;
+    const errors: any[] = [];
+
+    for (const item of data) {
+      if (!item.Keyword_ID || !item.Date) continue;
+      try {
+        const keywordIdStr = Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : item.Keyword_ID;
+        const formula = `AND(SEARCH('${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`;
+        const existing = await base(TABLES.PERFORMANCE_DATA).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
+
+        const fields: any = {
+          Keyword_ID: [keywordIdStr],
+          Target_URL: item.Target_URL,
+          Date: item.Date,
+          Ranking: item.Ranking,
+          GSC_Clicks: item.GSC_Clicks,
+          GSC_Impressions: item.GSC_Impressions,
+          Position: item.Position,
+          Sistrix_VI: item.Sistrix_VI
+        };
+        Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
+
+        if (existing.length > 0) {
+          await base(TABLES.PERFORMANCE_DATA).update(existing[0].id, fields);
+          updated++;
+        } else {
+          await base(TABLES.PERFORMANCE_DATA).create([{ fields }]);
+          created++;
+        }
+      } catch (err: any) {
+        errors.push({ item, error: err.message });
+      }
+    }
+    return { created, updated, errors };
+  } catch (error) {
+    return handleAirtableError(error, 'upsertPerformanceData');
+  }
+}
+
+export async function bulkUpdateKeywordRankings(rankings: { keywordId: string, rank: number }[]): Promise<void> {
+  try {
+    const chunks = [];
+    for (let i = 0; i < rankings.length; i += 10) chunks.push(rankings.slice(i, i + 10));
+    for (const chunk of chunks) {
+      await base(TABLES.KEYWORD_MAP).update(chunk.map(r => ({ id: r.keywordId, fields: { Ranking: r.rank } })));
+    }
+  } catch (error) {
+    await handleAirtableError(error, 'bulkUpdateKeywordRankings');
+  }
+}
+
+export async function getCostConfigs(): Promise<CostConfig[]> {
+  try {
+    const records = await base(TABLES.COST_CONFIG).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      Page_Type: record.get('Page_Type') as any,
+      Action_Type: record.get('Action_Type') as any,
+      Agency_Cost: record.get('Agency_Cost') as number,
+      Overhead_Cost: record.get('Overhead_Cost') as number,
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getCostConfigs');
+  }
+}
+
+export async function updateCostConfig(id: string, config: Partial<CostConfig>): Promise<CostConfig | null> {
+  try {
+    const fields: any = {};
+    if (config.Page_Type) fields.Page_Type = config.Page_Type;
+    if (config.Action_Type) fields.Action_Type = config.Action_Type;
+    if (config.Agency_Cost !== undefined) fields.Agency_Cost = config.Agency_Cost;
+    if (config.Overhead_Cost !== undefined) fields.Overhead_Cost = config.Overhead_Cost;
+    const records = await base(TABLES.COST_CONFIG).update([{ id, fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Page_Type: record.get('Page_Type') as any,
+      Action_Type: record.get('Action_Type') as any,
+      Agency_Cost: record.get('Agency_Cost') as number,
+      Overhead_Cost: record.get('Overhead_Cost') as number,
+    };
+  } catch (error) {
+    return handleAirtableError(error,'updateCostConfig');
+  }
+}
+
+export async function createCostConfig(config: Partial<CostConfig>): Promise<CostConfig | null> {
+  try {
+    const fields: any = {
+      Page_Type: config.Page_Type,
+      Action_Type: config.Action_Type,
+      Agency_Cost: config.Agency_Cost || 0,
+      Overhead_Cost: config.Overhead_Cost || 0,
+    };
+    const records = await base(TABLES.COST_CONFIG).create([{ fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Page_Type: record.get('Page_Type') as any,
+      Action_Type: record.get('Action_Type') as any,
+      Agency_Cost: record.get('Agency_Cost') as number,
+      Overhead_Cost: record.get('Overhead_Cost') as number,
+    };
+  } catch (error) {
+    return handleAirtableError(error,'createCostConfig');
+  }
+}
+
+export async function deleteCostConfig(id: string): Promise<boolean> {
+  try {
+    await base(TABLES.COST_CONFIG).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'deleteCostConfig');
+  }
+}
+
+export async function getPotentialTrends(): Promise<PotentialTrend[]> {
+  try {
+    const records = await base(TABLES.POTENTIAL_TRENDS).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      Trend_Topic: record.get('Trend_Topic') as string,
+      Source: record.get('Source') as 'GSC' | 'Sistrix',
+      Gap_Score: record.get('Gap_Score') as number,
+      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getPotentialTrends');
+  }
+}
+
+export async function getAuditLogs(): Promise<AuditLog[]> {
+  try {
+    const records = await base(TABLES.AUDIT_LOGS).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      ID: record.get('ID') as number,
+      Action: record.get('Action') as string,
+      Timestamp: record.get('Timestamp') as string,
+      User_ID: record.get('User_ID') as string[],
+      Raw_Payload: record.get('Raw_Payload') as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getAuditLogs');
+  }
+}
+
+export async function getUserByEmail(email: string): Promise<UserRecord | null> {
+  const MAX_RETRIES = 3;
+  const TIMEOUT_MS = 10000;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Airtable request timed out')), TIMEOUT_MS));
+      const fetchPromise = base(TABLES.USERS).select({ filterByFormula: `{Email} = '${email}'`, maxRecords: 1 }).firstPage();
+      const records = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+      if (records.length === 0) return null;
+      const record = records[0];
+      return {
+        id: record.id,
+        Name: record.get('Name') as string,
+        Email: record.get('Email') as string,
+        Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+        Password: record.get('Password') as string,
+        Password_Changed: record.get('Password_Changed') as boolean,
+      };
+    } catch (error: any) {
+      const status = error.statusCode || error.status;
+      if (status === 403 || status === 401) return handleAirtableError(error,'getUserByEmail');
+      if (attempt === MAX_RETRIES) return null;
+      await new Promise(resolve => setTimeout(resolve, attempt * 500));
+    }
+  }
+  return null;
+}
+
+export async function countUsers(): Promise<number> {
+  try {
+    const records = await base(TABLES.USERS).select({ fields: ['Email'] }).all();
+    return records.length;
+  } catch (error) {
+    return handleAirtableError(error,'countUsers');
+  }
+}
+
+export async function getAllUsers(): Promise<UserRecord[]> {
+  try {
+    const records = await base(TABLES.USERS).select().all();
+    return records.map((record) => ({
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+      Password_Changed: record.get('Password_Changed') as boolean,
+    }));
+  } catch (error) {
+    return handleAirtableError(error,'getAllUsers');
+  }
+}
+
+export async function createUser(userData: Partial<UserRecord>): Promise<UserRecord | null> {
+  try {
+    const records = await base(TABLES.USERS).create([{ fields: { Name: userData.Name, Email: userData.Email, Role: userData.Role || 'Editor', Password: userData.Password, Password_Changed: userData.Password_Changed || false } }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+      Password_Changed: record.get('Password_Changed') as boolean,
+    };
+  } catch (error) {
+    return handleAirtableError(error,'createUser');
+  }
+}
+
+export async function updateUser(id: string, userData: Partial<UserRecord>): Promise<UserRecord | null> {
+  try {
+    const fields: any = {};
+    if (userData.Name) fields.Name = userData.Name;
+    if (userData.Email) fields.Email = userData.Email;
+    if (userData.Role) fields.Role = userData.Role;
+    if (userData.Password) fields.Password = userData.Password;
+    if (userData.Password_Changed !== undefined) fields.Password_Changed = userData.Password_Changed;
+    const records = await base(TABLES.USERS).update([{ id, fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Name: record.get('Name') as string,
+      Email: record.get('Email') as string,
+      Role: record.get('Role') as 'Admin' | 'Editor' | 'Viewer',
+      Password: record.get('Password') as string,
+      Password_Changed: record.get('Password_Changed') as boolean,
+    };
+  } catch (error) {
+    return handleAirtableError(error,'updateUser');
+  }
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  try {
+    await base(TABLES.USERS).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error,'deleteUser');
+  }
+}
