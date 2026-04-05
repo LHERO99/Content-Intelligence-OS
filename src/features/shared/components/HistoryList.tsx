@@ -98,28 +98,13 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
     );
   }
 
-  // Define the exact "Nahrungskette" events to show
-  const nahrungskette = [
-    "URL der Keyword-Map hinzugefügt",
-    "URL wurde dem Tool hinzugefügt",
-    "URL wurde dem Tab 'Vorschläge' hinzugefügt",
-    "URL der Vorschlagsliste hinzugefügt",
-    "URL wurde der Redaktionsplanung hinzugefügt",
-    "Content beauftragt",
-    "Content wurde beauftragt",
-    "Content angeliefert",
-    "Content veröffentlicht",
-    "URL der Blacklist hinzugefügt"
-  ];
+  // Display all history events directly. No filtering by nahrungskette here.
+  // We sort by date descending to display newest first in the UI
+  const displayHistory = [...history].sort((a, b) => 
+    new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime()
+  );
 
-  // Filter history to only include these specific events
-  // We use includes and a fallback to empty string to ensure type safety
-  const filteredHistory = history.filter(log => {
-    const summary = log.Diff_Summary || "";
-    return nahrungskette.includes(summary);
-  });
-
-  if (filteredHistory.length === 0) {
+  if (displayHistory.length === 0) {
     return (
       <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
         <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
@@ -129,7 +114,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
 
   // Calculate versions ONLY for "Content angeliefert"
   // We sort by date ascending to assign V1, V2 etc.
-  const sortedHistoryForVersioning = [...filteredHistory].sort((a, b) => 
+  const sortedHistoryForVersioning = [...displayHistory].sort((a, b) => 
     new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime()
   );
   
@@ -142,11 +127,6 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
       versionMap.set(log.id, `V${deliveryCount}`);
     }
   });
-
-  // Display newest first in the UI
-  const displayHistory = [...filteredHistory].sort((a, b) => 
-    new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime()
-  );
 
   const lastUpdate = displayHistory[0];
 
