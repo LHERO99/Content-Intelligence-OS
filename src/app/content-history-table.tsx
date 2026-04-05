@@ -61,11 +61,14 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       const bestUrl = log.Logged_URL || log.Target_URL;
       if (bestUrl && log.Keyword_ID && log.Keyword_ID.length > 0) {
         log.Keyword_ID.forEach(id => {
+          // If we have a URL for this ID, keep it. 
+          // If multiple URLs exist for one ID (unlikely but possible), the first one wins
           if (!keywordToUrlMap[id]) keywordToUrlMap[id] = bestUrl;
         });
       }
     });
-    
+
+    // Second pass: Group logs by URL
     logs.forEach((log) => {
       // Logic to determine the URL for grouping:
       // 1. Logged_URL (explicitly stored during log creation)
@@ -86,7 +89,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
       if (!url) url = log.Target_URL;
 
-      // 2. Try parsing Reasoning_Chain if still missing
+      // 3. Try parsing Reasoning_Chain if still missing
       if (!url && log.Reasoning_Chain) {
         const urlMatch = log.Reasoning_Chain.match(/URL:\s*(https?:\/\/[^\n]+)/);
         if (urlMatch) {

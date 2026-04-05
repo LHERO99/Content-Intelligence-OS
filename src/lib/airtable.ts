@@ -179,7 +179,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
 export async function getContentHistoryByUrl(targetUrl: string): Promise<ContentLog[]> {
   try {
     const records = await base(TABLES.CONTENT_LOG).select({
-      filterByFormula: `{Target_URL} = '${targetUrl}'`,
+      filterByFormula: `OR({Target_URL} = '${targetUrl}', {Logged_URL} = '${targetUrl}')`,
       sort: [{ field: 'Time_Created', direction: 'desc' }]
     }).all();
     
@@ -187,7 +187,7 @@ export async function getContentHistoryByUrl(targetUrl: string): Promise<Content
       id: record.id,
       ID: record.get('ID') as number,
       Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: record.get('Target_URL') as string,
+      Target_URL: Array.isArray(record.get('Target_URL')) ? (record.get('Target_URL') as string[])[0] : (record.get('Target_URL') as string),
       Logged_URL: record.get('Logged_URL') as string, // Retrieve Logged_URL for getContentHistoryByUrl
       Action_Type: record.get('Action_Type') as any,
       Version: record.get('Content_Body') ? 'v2' : 'v1',
