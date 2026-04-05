@@ -507,6 +507,102 @@ export async function getPotentialTrends(): Promise<PotentialTrend[]> {
   }
 }
 
+export async function createTrend(trend: Partial<PotentialTrend>): Promise<PotentialTrend | null> {
+  try {
+    const fields: any = {
+      Trend_Topic: trend.Trend_Topic,
+      Source: trend.Source,
+      Gap_Score: trend.Gap_Score,
+      Status: trend.Status || 'New',
+    };
+    const records = await base(TABLES.POTENTIAL_TRENDS).create([{ fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Trend_Topic: record.get('Trend_Topic') as string,
+      Source: record.get('Source') as 'GSC' | 'Sistrix',
+      Gap_Score: record.get('Gap_Score') as number,
+      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'createTrend');
+  }
+}
+
+export async function getBlacklist(): Promise<BlacklistEntry[]> {
+  try {
+    const records = await base(TABLES.BLACKLIST).select().all();
+    return records.map(record => ({
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
+      Type: record.get('Type') as 'Keyword' | 'URL',
+      Reason: record.get('Reason') as string,
+      Added_At: (record.get('Added_At') || record.get('Time_Created') || new Date().toISOString()) as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getBlacklist');
+  }
+}
+
+export async function addToBlacklist(entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
+  try {
+    const fields: any = {
+      Keyword: entry.Keyword,
+      Target_URL: entry.Target_URL,
+      Type: entry.Type,
+      Reason: entry.Reason,
+    };
+    const records = await base(TABLES.BLACKLIST).create([{ fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
+      Type: record.get('Type') as 'Keyword' | 'URL',
+      Reason: record.get('Reason') as string,
+      Added_At: (record.get('Added_At') || record.get('Time_Created') || new Date().toISOString()) as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'addToBlacklist');
+  }
+}
+
+export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>): Promise<BlacklistEntry | null> {
+  try {
+    const fields: any = {};
+    if (entry.Keyword) fields.Keyword = entry.Keyword;
+    if (entry.Target_URL) fields.Target_URL = entry.Target_URL;
+    if (entry.Type) fields.Type = entry.Type;
+    if (entry.Reason) fields.Reason = entry.Reason;
+    
+    const records = await base(TABLES.BLACKLIST).update([{ id, fields }]);
+    if (records.length === 0) return null;
+    const record = records[0];
+    return {
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
+      Type: record.get('Type') as 'Keyword' | 'URL',
+      Reason: record.get('Reason') as string,
+      Added_At: (record.get('Added_At') || record.get('Time_Created') || new Date().toISOString()) as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'updateBlacklist');
+  }
+}
+
+export async function deleteFromBlacklist(id: string): Promise<boolean> {
+  try {
+    await base(TABLES.BLACKLIST).destroy([id]);
+    return true;
+  } catch (error) {
+    return handleAirtableError(error, 'deleteFromBlacklist');
+  }
+}
+
 export async function getAuditLogs(): Promise<AuditLog[]> {
   try {
     const records = await base(TABLES.AUDIT_LOGS).select().all();
@@ -756,5 +852,58 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
     return { id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Policy: record.get('Policy') as number, Priority_Score: record.get('Priority_Score') as number, Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung', Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string };
   } catch (error) {
     return handleAirtableError(error,'updateKeyword');
+  }
+}
+
+export async function getConfig(): Promise<Record<string, string>> {
+  try {
+    const records = await base(TABLES.CONFIG).select().all();
+    const config: Record<string, string> = {};
+    records.forEach(record => {
+      const key = record.get('Key') as string;
+      const value = record.get('Value') as string;
+      if (key) config[key] = value;
+    });
+    return config;
+  } catch (error) {
+    return handleAirtableError(error, 'getConfig');
+  }
+}
+
+export async function updateConfig(key: string, value: string): Promise<ConfigRecord | null> {
+  try {
+    const records = await base(TABLES.CONFIG).select({
+      filterByFormula: `{Key} = '${key}'`,
+      maxRecords: 1
+    }).firstPage();
+
+    if (records.length === 0) {
+      const newRecords = await base(TABLES.CONFIG).create([{
+        fields: { Key: key, Value: value }
+      }]);
+      const record = newRecords[0];
+      return {
+        id: record.id,
+        Key: record.get('Key') as string,
+        Value: record.get('Value') as string,
+        Description: record.get('Description') as string,
+      };
+    }
+
+    const recordId = records[0].id;
+    const updatedRecords = await base(TABLES.CONFIG).update([{
+      id: recordId,
+      fields: { Value: value }
+    }]);
+
+    const updatedRecord = updatedRecords[0];
+    return {
+      id: updatedRecord.id,
+      Key: updatedRecord.get('Key') as string,
+      Value: updatedRecord.get('Value') as string,
+      Description: updatedRecord.get('Description') as string,
+    };
+  } catch (error) {
+    return handleAirtableError(error, 'updateConfig');
   }
 }

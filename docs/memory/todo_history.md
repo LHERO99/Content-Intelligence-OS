@@ -51,3 +51,10 @@
 - [x] Logging: "Beauftragen"-Event in den Server-Proxy verschoben (Fix für blockierte Webhooks).
 - [x] DB: Blacklist-Schema um Target_URL erweitert für persistente Historie.
 - [x] UI: HistoryList um neue Event-Icons und Texte ergänzt.
+- [x] API: Inbound-Endpunkt `/api/monitoring/import` für n8n Performance-Daten erstellt.
+- [x] Performance: n8n-Webhook-Trigger auf asynchronen Hintergrund-Modus umgestellt.
+- [x] Architektur: Ranking von `Keyword-Map` in historische `Performance_Data` verschoben.
+- [x] Fix: De-Duplizierung (Upsert) in `Performance_Data` auf Basis von `Keyword_ID` + `Date`.
+- [x] Middleware: `src/proxy.ts` durch standardisierte `src/middleware.ts` ersetzt (Next.js Build Fix).
+- [x] Sicherheit: Inbound-Monitoring-API via `x-api-key` Header abgesichert.
+- [x] n8n: Payload für `IMPORT_DATA` um strukturierte Main-/Secondary-Keywords ergänzt.

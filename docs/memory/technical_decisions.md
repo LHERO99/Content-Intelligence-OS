@@ -8,3 +8,9 @@
 - **Persistent URL Logging**: Da Keywords beim Blacklisting gelöscht werden, wird die `Target_URL` nun als statischer Text in der Blacklist-Tabelle und in den Logs mitgeführt, um die Historien-Integrität zu wahren.
 - **Server-side Proxy Logging**: Kritische Events wie "Beauftragt" werden nicht mehr vom Client (Frontend) geloggt, sondern im Server-Proxy (`api/n8n/trigger`), um Race Conditions und blockierte Webhooks zu verhindern.
 - **URL-Deduplizierung beim Bulk-Import**: Um die Historie sauber zu halten, wird beim Import einer Liste mit Main- und Nebenkeywords das Event "URL hinzugefügt" nur einmal pro eindeutiger URL ausgelöst (via `Set` Tracking in der Route).
+- **Time-Series Data Strategy (05.04.2026)**:
+  - Performance-Daten und Rankings werden in der Tabelle `Performance_Data` historisiert.
+  - Der Unique-Constraint für Zeitreihen ist die Kombination aus `Keyword_ID` (Link) und `Date` (Montag der Woche).
+  - Rankings wurden de-normalisiert: Die `Keyword-Map` enthält nur den Stammdatensatz, die Historie liegt vollständig in `Performance_Data`.
+- **Background Task Pattern**: Webhooks an externe Systeme (n8n) werden im API-Layer nicht mehr "awaited", sondern als Background-Promises ausgeführt, um Timeouts und UI-Blocking zu verhindern. Fehler werden via `.catch()` im Server-Log isoliert.
+- **Middleware Standardization**: Nutzung der standardkonformen `src/middleware.ts` anstelle von proprietären Proxy-Dateien, um Next.js Build-Konflikte zu vermeiden und granulare Pfad-Freigaben (z.B. für n8n-Inbound) zu ermöglichen.
