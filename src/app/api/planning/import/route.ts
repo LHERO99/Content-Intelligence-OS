@@ -24,14 +24,22 @@ export async function POST(req: NextRequest) {
     if (result.created.length > 0) {
       const loggedUrls = new Set<string>();
       
+      // Group created keywords by URL for n8n trigger
+      const keywordsByUrl: Record<string, typeof result.created> = {};
+      result.created.forEach(kw => {
+        if (kw.Target_URL) {
+          if (!keywordsByUrl[kw.Target_URL]) keywordsByUrl[kw.Target_URL] = [];
+          keywordsByUrl[kw.Target_URL].push(kw);
+        }
+      });
+
       try {
+        // 1. Database Logging
         await Promise.all(
           result.created.map(async (kw) => {
-            // 1. Log to Database - only ONCE per URL in this batch
             if (kw.Target_URL && !loggedUrls.has(kw.Target_URL)) {
               loggedUrls.add(kw.Target_URL);
               
-              // Base Log: Added to tool
               await createContentLog({
                 Keyword_ID: [kw.id],
                 Target_URL: kw.Target_URL,
@@ -39,7 +47,6 @@ export async function POST(req: NextRequest) {
                 Diff_Summary: 'URL wurde dem Tool hinzugefügt',
               });
 
-              // Conditional Log: Added to Suggestions Tab (if Status=Backlog and Main_Keyword=Y)
               if (kw.Status === 'Backlog' && kw.Main_Keyword === 'Y') {
                 await createContentLog({
                   Keyword_ID: [kw.id],
@@ -49,22 +56,34 @@ export async function POST(req: NextRequest) {
                 });
               }
             }
-
-            // 2. Trigger n8n Import Webhook in background
-            triggerN8nWorkflow({
-              action: 'IMPORT_DATA',
-              data: {
-                keywordId: kw.id,
-                keyword: kw.Keyword,
-                targetUrl: kw.Target_URL
-              },
-              userId: session.user?.email || 'unknown',
-              timestamp: new Date().toISOString()
-            }).catch(err => {
-              console.error('[Background Trigger Import] Error calling n8n for keyword:', kw.id, err);
-            });
           })
         );
+
+        // 2. Trigger n8n Import Webhook in background (grouped by URL)
+        Object.entries(keywordsByUrl).forEach(([url, kws]) => {
+          const mainKw = kws.find(k => k.Main_Keyword === 'Y') || kws[0];
+          const secondaryKws = kws.filter(k => k.id !== mainKw.id);
+
+          const n8nData: Record<string, any> = {
+            keywordId: mainKw.id,
+            MainKeyword: mainKw.Keyword,
+            targetUrl: url,
+          };
+
+          secondaryKws.forEach((skw, index) => {
+            n8nData[`SecondaryKeyword${index + 1}`] = skw.Keyword;
+          });
+
+          triggerN8nWorkflow({
+            action: 'IMPORT_DATA',
+            data: n8nData,
+            userId: session.user?.email || 'unknown',
+            timestamp: new Date().toISOString()
+          }).catch(err => {
+            console.error('[Background Trigger Import] Error calling n8n for URL:', url, err);
+          });
+        });
+
       } catch (logError) {
         console.error('[API Import] Error in post-creation tasks:', logError);
       }

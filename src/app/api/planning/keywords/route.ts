@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           action: 'IMPORT_DATA',
           data: {
             keywordId: result.id,
-            keyword: result.Keyword,
+            MainKeyword: result.Keyword,
             targetUrl: result.Target_URL
           },
           userId: session?.user?.email || 'unknown',
