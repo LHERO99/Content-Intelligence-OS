@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteKeywords, AirtableValidationError, createContentLog } from '@/lib/airtable';
+import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -67,20 +68,32 @@ export async function POST(request: Request) {
         Editor: editor
       });
 
-      // 2. Conditional Log: Added to Suggestions Tab (if Status=Backlog and Main_Keyword=Y)
-      if (result.Status === 'Backlog' && result.Main_Keyword === 'Y') {
-        await createContentLog({
-          Keyword_ID: [result.id],
-          Target_URL: result.Target_URL,
-          Logged_URL: result.Target_URL,
-          Action_Type: result.Action_Type || 'Erstellung',
-          Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
-          Editor: editor
+        // 2. Conditional Log: Added to Suggestions Tab (if Status=Backlog and Main_Keyword=Y)
+        if (result.Status === 'Backlog' && result.Main_Keyword === 'Y') {
+          await createContentLog({
+            Keyword_ID: [result.id],
+            Target_URL: result.Target_URL,
+            Logged_URL: result.Target_URL,
+            Action_Type: result.Action_Type || 'Erstellung',
+            Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+            Editor: editor
+          });
+        }
+
+        // 3. Trigger n8n Performance Data (History) Webhook
+        await triggerN8nWorkflow({
+          action: 'IMPORT_DATA',
+          data: {
+            keywordId: result.id,
+            keyword: result.Keyword,
+            targetUrl: result.Target_URL
+          },
+          userId: session?.user?.email || 'unknown',
+          timestamp: new Date().toISOString()
         });
+      } catch (logErr) {
+        console.error('[API Keyword POST] Error in post-creation tasks:', logErr);
       }
-    } catch (logErr) {
-      console.error('[API Keyword POST] Error creating creation log:', logErr);
-    }
 
     return NextResponse.json(result);
 

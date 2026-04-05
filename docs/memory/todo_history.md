@@ -41,6 +41,11 @@
 - [x] Fix: n8n Callback "Target_URL" computed field Error (422) behoben.
 - [x] Logging: Automatisches Logging für "Vorschläge"-Tab implementiert.
 - [x] Logging: Blacklist-Events ("URL der Blacklist hinzugefügt") integriert.
+- [x] Fix: Persistente Historie nach Blacklisting (OR-Filter Target_URL/Logged_URL).
+- [x] UI: Aggressives URL-Grouping in Historie (Bridging für gelöschte Records).
+- [x] UI: Dynamische Blacklist-Badge Logik (Newest Event wins).
+- [x] Logging: Hinzufügen zum Tool/Vorschläge für manuelle Keyword-Erstellung fixiert.
+- [x] Logging: Monitoring-Vorschläge (Trends) triggern nun Historie-Einträge.
 - [x] Fix: URL-Deduplizierung beim Logging während des Keyword-Imports.
 - [x] API: n8n Webhook-URLs für Import und Erstellung differenziert.
 - [x] Logging: "Beauftragen"-Event in den Server-Proxy verschoben (Fix für blockierte Webhooks).

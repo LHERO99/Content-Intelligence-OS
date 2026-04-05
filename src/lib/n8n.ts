@@ -31,25 +31,32 @@ export async function triggerN8nWorkflow(payload: N8nPayload) {
 
   // Specific webhooks for different actions
   if (payload.action === 'IMPORT_DATA') {
-    baseUrl = 'https://n8n.heromarketing.de/webhook-test/6706e957-0aae-4f5d-9439-1eb5f6e2c327';
+    baseUrl = 'https://n8n.heromarketing.de/webhook-test/gsc-history-report';
+    method = 'POST';
   } else if (payload.action === 'COMMISSION_CONTENT' || payload.action === 'COMMISSION_OPTIMIZATION') {
     baseUrl = 'https://n8n.heromarketing.de/webhook-test/23daa68a-287a-41b6-8d82-d6a61bea537c';
   }
 
   if (baseUrl) {
-    const params = new URLSearchParams({
+    let urlWithParams = baseUrl;
+    const body: Record<string, any> = {
       ...payload.data,
       userId: payload.userId || 'unknown',
       timestamp: payload.timestamp
-    });
-    
-    const urlWithParams = `${baseUrl}?${params.toString()}`;
+    };
+
+    if (method === 'GET') {
+      const params = new URLSearchParams(body);
+      urlWithParams = `${baseUrl}?${params.toString()}`;
+    }
     
     const response = await fetch(urlWithParams, {
       method: method,
       headers: {
         'X-API-KEY': n8nApiKey || '',
-      }
+        'Content-Type': 'application/json',
+      },
+      body: method === 'POST' ? JSON.stringify(body) : undefined
     });
 
     if (!response.ok) {
