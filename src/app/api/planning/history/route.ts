@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       Keyword_ID, 
       url, 
       Target_URL, 
+      Logged_URL,
       actionType, 
       Action_Type, 
       contentBody, 
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
     // Standardize field names
     const finalKeywordId = keywordId || Keyword_ID;
     const finalUrl = url || Target_URL;
+    const finalLoggedUrl = Logged_URL || finalUrl;
     const finalActionType = actionType || Action_Type;
     const finalContentBody = contentBody || Content_Body;
     const finalDiffSummary = diffSummary || Diff_Summary;
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
     const newLog = await createContentLog({
       Keyword_ID: keywordIds,
       Target_URL: finalUrl,
+      Logged_URL: finalLoggedUrl,
       Action_Type: finalActionType,
       Content_Body: finalContentBody,
       Diff_Summary: finalDiffSummary,

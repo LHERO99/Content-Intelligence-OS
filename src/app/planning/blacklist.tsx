@@ -828,7 +828,26 @@ export function Blacklist() {
         type: "success",
       });
 
-      // 3. Refresh data
+      // 3. Log the restoration event
+      try {
+        const restoredKeyword = await createResponse.json();
+        await fetch("/api/planning/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            keywordId: restoredKeyword.id,
+            url: formData.Target_URL,
+            Logged_URL: formData.Target_URL,
+            Action_Type: restoredKeyword.Action_Type || 'Optimierung',
+            Diff_Summary: 'URL von der Blacklist entfernt',
+            Reasoning_Chain: `Eintrag wurde aus der Blacklist wiederhergestellt.\nUrsprünglicher Eintrag: ${entry.Keyword}`,
+          }),
+        });
+      } catch (logErr) {
+        console.error('[Blacklist] Error creating restoration log:', logErr);
+      }
+
+      // 4. Refresh data
       fetchData();
       table.resetRowSelection();
       
