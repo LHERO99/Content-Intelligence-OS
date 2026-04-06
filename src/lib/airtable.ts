@@ -228,7 +228,6 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
-        Reasoning_Chain: record.get('Reasoning_Chain') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -339,13 +338,13 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
-        Reasoning_Chain: record.get('Reasoning_Chain') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Updated_At: (record.get('Time_Changed') || record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
     });
   } catch (error) {
-    return handleAirtableError(error, 'getAllContentHistory');
+    return handleAirtableError(error,'getContentLogs');
   }
 }
 

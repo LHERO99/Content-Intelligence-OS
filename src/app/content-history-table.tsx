@@ -74,7 +74,6 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       // 1. Logged_URL (explicitly stored during log creation)
       // 2. Lookup via keywordToUrlMap (bridges logs where Target_URL lookup is broken)
       // 3. Target_URL (Airtable lookup field - might be empty if record is deleted)
-      // 4. Reasoning_Chain parsing (final fallback)
       
       let url = log.Logged_URL;
       
@@ -89,14 +88,6 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
       if (!url) url = log.Target_URL;
 
-      // 3. Try parsing Reasoning_Chain if still missing
-      if (!url && log.Reasoning_Chain) {
-        const urlMatch = log.Reasoning_Chain.match(/URL:\s*(https?:\/\/[^\n]+)/);
-        if (urlMatch) {
-          url = urlMatch[1];
-        }
-      }
-
       const finalUrl = url || "Keine URL";
 
       if (url === undefined || url === null) {
@@ -104,13 +95,10 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         console.log(`  Target_URL from log: ${log.Target_URL}`);
         console.log(`  Logged_URL from log: ${log.Logged_URL}`); // Debug Logged_URL
         console.log(`  Keyword_ID: ${log.Keyword_ID}`);
-        console.log(`  Reasoning_Chain: ${log.Reasoning_Chain}`);
-        const urlMatchDebug = log.Reasoning_Chain?.match(/URL:\s*(https?:\/\/[^\n]+)/);
-        console.log(`  Reasoning_Chain match: ${urlMatchDebug ? urlMatchDebug[1] : 'No match'}`);
       }
 
-      const isBlacklistedAdded = log.Diff_Summary === 'URL der Blacklist hinzugefügt';
-      const isBlacklistedRemoved = log.Diff_Summary === 'URL von der Blacklist entfernt';
+      const isBlacklistedAdded = log.Diff_Summary?.includes('URL der Blacklist hinzugefügt');
+      const isBlacklistedRemoved = log.Diff_Summary?.includes('URL von der Blacklist entfernt');
 
       if (!groups[finalUrl]) {
         groups[finalUrl] = {
@@ -140,13 +128,13 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
       // Blacklist status depends on the MOST RECENT relevant event
       const blacklistEvents = group.logs.filter(l => 
-        l.Diff_Summary === 'URL der Blacklist hinzugefügt' || 
-        l.Diff_Summary === 'URL von der Blacklist entfernt'
+        l.Diff_Summary?.includes('URL der Blacklist hinzugefügt') || 
+        l.Diff_Summary?.includes('URL von der Blacklist entfernt')
       );
 
       if (blacklistEvents.length > 0) {
         // The newest log (index 0) determines current state
-        group.isBlacklisted = blacklistEvents[0].Diff_Summary === 'URL der Blacklist hinzugefügt';
+        group.isBlacklisted = blacklistEvents[0].Diff_Summary?.includes('URL der Blacklist hinzugefügt') ?? false;
       }
     });
 

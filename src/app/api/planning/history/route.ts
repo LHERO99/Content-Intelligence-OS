@@ -71,9 +71,6 @@ export async function POST(request: Request) {
       content,
       diffSummary, 
       Diff_Summary, 
-      reasoningChain, 
-      Reasoning_Chain, 
-      reasoning,
       editor, 
       Editor 
     } = body;
@@ -85,7 +82,6 @@ export async function POST(request: Request) {
     const finalActionType = actionType || Action_Type || status;
     const finalContentBody = contentBody || Content_Body || content;
     const finalDiffSummary = diffSummary || Diff_Summary;
-    const finalReasoningChain = reasoningChain || Reasoning_Chain || reasoning;
     const finalEditor = editor || Editor;
 
     if (!finalKeywordId || !finalActionType) {
@@ -104,7 +100,6 @@ export async function POST(request: Request) {
       Action_Type: finalActionType,
       Content_Body: finalContentBody,
       Diff_Summary: finalDiffSummary,
-      Reasoning_Chain: finalReasoningChain,
       Editor: finalEditor || (session?.user?.email ? [session.user.email] : undefined),
     });
 

@@ -834,14 +834,13 @@ export function Blacklist() {
         await fetch("/api/planning/history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            keywordId: restoredKeyword.id,
-            url: formData.Target_URL,
-            Logged_URL: formData.Target_URL,
-            Action_Type: restoredKeyword.Action_Type || 'Optimierung',
-            Diff_Summary: 'URL von der Blacklist entfernt',
-            Reasoning_Chain: `Eintrag wurde aus der Blacklist wiederhergestellt.\nUrsprünglicher Eintrag: ${entry.Keyword}`,
-          }),
+            body: JSON.stringify({
+              keywordId: restoredKeyword.id,
+              url: formData.Target_URL,
+              Logged_URL: formData.Target_URL,
+              Action_Type: restoredKeyword.Action_Type || 'Optimierung',
+              Diff_Summary: `Eintrag wurde aus der Blacklist wiederhergestellt. Ursprünglicher Eintrag: ${entry.Keyword}`,
+            }),
         });
       } catch (logErr) {
         console.error('[Blacklist] Error creating restoration log:', logErr);

@@ -54,9 +54,8 @@ export async function POST(request: Request) {
       await createContentLog({
         Logged_URL: isUrl ? Trend_Topic : undefined,
         Action_Type: 'Erstellung',
-        Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+        Diff_Summary: `Manueller Trend-Vorschlag: ${Trend_Topic}`,
         Editor: editor,
-        Reasoning_Chain: `Manueller Trend-Vorschlag: ${Trend_Topic}`
       });
     } catch (logErr) {
       console.error('[API Trends POST] Error creating creation log:', logErr);

@@ -32,9 +32,8 @@ export async function POST(request: NextRequest) {
             await createContentLog({
               Logged_URL: url,
               Action_Type: 'Optimierung', // Monitoring suggestions are usually optimizations
-              Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+              Diff_Summary: `Vorgeschlagen aus dem Monitoring-Bereich. URL: ${url}`,
               Editor: editor,
-              Reasoning_Chain: `Vorgeschlagen aus dem Monitoring-Bereich. URL: ${url}`
             });
             console.log(`[API Suggest] Trend and log created for ${url}.`);
           } catch (err) {
