@@ -31,7 +31,6 @@ export async function POST(request: Request) {
       Main_Keyword,
       Article_Count,
       Avg_Product_Value,
-      Action_Type,
       Page_Type
     } = body;
 
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
       Main_Keyword: Main_Keyword || 'N',
       Article_Count: Article_Count ? Number(Article_Count) : undefined,
       Avg_Product_Value: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
-      Action_Type: Action_Type || 'Erstellung',
+      Action_Type: 'Erstellung',
       Page_Type: Page_Type || 'Andere',
     });
 

@@ -75,6 +75,26 @@ export function UrlDetail({ url }: UrlDetailProps) {
 
   if (!data) return <div>Keine Daten gefunden.</div>;
 
+  const getStatusInfo = () => {
+    const hasErstellung = data.history.some(l => l.Action_Type === 'Erstellung');
+    const optimierungCount = data.history.filter(l => l.Action_Type === 'Optimierung').length;
+    
+    if (!hasErstellung && optimierungCount === 0) {
+      return { text: "Nicht optimiert", version: "" };
+    }
+    
+    if (optimierungCount === 0) {
+      return { text: "Content erstellt", version: "" };
+    }
+    
+    return { 
+      text: "Content optimiert", 
+      version: `(V${optimierungCount + 1})` 
+    };
+  };
+
+  const statusInfo = getStatusInfo();
+
   const eventMarkers = data.history.map(log => ({
     date: log.Created_At.split('T')[0],
     type: log.Action_Type,
@@ -124,8 +144,12 @@ export function UrlDetail({ url }: UrlDetailProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{data.history.length} Updates</div>
-            <p className="text-xs text-muted-foreground">Letztes Update: {data.history[0] ? new Date(data.history[0].Created_At).toLocaleDateString('de-DE') : 'N/A'}</p>
+            <div className="text-lg font-bold">{statusInfo.text} {statusInfo.version}</div>
+            <p className="text-xs text-muted-foreground">
+              {data.history.length > 0 
+                ? `Letztes Update: ${new Date(data.history[0].Created_At).toLocaleDateString('de-DE')}`
+                : 'Keine Updates vorhanden'}
+            </p>
           </CardContent>
         </Card>
 
@@ -137,9 +161,30 @@ export function UrlDetail({ url }: UrlDetailProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{data.keywords.length} Keywords</div>
-            <div className="flex gap-2 mt-1">
-              <Badge variant="default" className="text-[10px] py-0">Main: {data.keywords.find(k => k.Main_Keyword === 'Y')?.Keyword || 'N/A'}</Badge>
+            <div className="text-lg font-bold mb-2">{data.keywords.length} Keywords</div>
+            <div className="space-y-2">
+              {data.keywords.length > 0 ? (
+                <>
+                  {/* Main Keyword */}
+                  {data.keywords.filter(k => k.Main_Keyword === 'Y').map(k => (
+                    <div key={k.id} className="flex items-center gap-2">
+                      <Badge variant="default" className="text-[10px] py-0 bg-[#00463c]">Main</Badge>
+                      <span className="text-sm font-bold truncate" title={k.Keyword}>{k.Keyword}</span>
+                    </div>
+                  ))}
+                  
+                  {/* Secondary Keywords */}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {data.keywords.filter(k => k.Main_Keyword !== 'Y').map(k => (
+                      <Badge key={k.id} variant="outline" className="text-[10px] py-0 border-[#00463c]/20" title={k.Keyword}>
+                        {k.Keyword}
+                      </Badge>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Keine Keywords verknüpft</p>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -48,29 +48,36 @@ export async function GET(request: NextRequest) {
     let totalAgency = 0;
     let totalOverhead = 0;
     
-    history.forEach(log => {
-      // Find associated keyword to get Page_Type and Action_Type if not in log
-      const keywordId = log.Keyword_ID?.[0];
-      const keyword = allKeywords.find(k => k.id === keywordId);
+    // Rule: Only display savings if an "Erstellung" log exists for this URL
+    const hasErstellung = history.some(l => l.Action_Type === 'Erstellung');
+    
+    if (hasErstellung) {
+      history.forEach(log => {
+        // Find associated keyword to get Page_Type and Action_Type if not in log
+        const keywordId = log.Keyword_ID?.[0];
+        const keyword = allKeywords.find(k => k.id === keywordId);
 
-      const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
-      const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+        const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
+        const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
 
-      console.log(`[API Monitoring Detail] Log ${log.id}: Page_Type=${pageType}, Action_Type=${actionType}`);
+        console.log(`[API Monitoring Detail] Log ${log.id}: Page_Type=${pageType}, Action_Type=${actionType}`);
 
-      const cost = costs.find(c => 
-        c.Page_Type === pageType && 
-        c.Action_Type === actionType
-      );
+        const cost = costs.find(c => 
+          c.Page_Type === pageType && 
+          c.Action_Type === actionType
+        );
 
-      if (cost) {
-        totalAgency += cost.Agency_Cost;
-        totalOverhead += cost.Overhead_Cost;
-        console.log(`[API Monitoring Detail] Match found: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
-      } else {
-        console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}`);
-      }
-    });
+        if (cost) {
+          totalAgency += cost.Agency_Cost;
+          totalOverhead += cost.Overhead_Cost;
+          console.log(`[API Monitoring Detail] Match found: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
+        } else {
+          console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}`);
+        }
+      });
+    } else {
+      console.log(`[API Monitoring Detail] No Erstellung log found for ${targetUrl}. Savings remain 0.`);
+    }
 
     return NextResponse.json({
       performance: legacyPerformance, // Backward compatibility

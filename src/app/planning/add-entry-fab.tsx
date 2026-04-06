@@ -208,8 +208,8 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                   </div>
                 </div>
 
-                {/* Row 2: Suchvolumen, Difficulty, Typ */}
-                <div className="grid grid-cols-4 gap-4">
+                {/* Row 2: Suchvolumen, Difficulty, Seitentyp */}
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="volume" className="text-sm font-semibold">Suchvolumen</Label>
                     <Input
@@ -242,18 +242,6 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                         <SelectItem value="Ratgeber">Ratgeber</SelectItem>
                         <SelectItem value="Kategorie">Kategorie</SelectItem>
                         <SelectItem value="Andere">Andere</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="actionType" className="text-sm font-semibold">Aktion *</Label>
-                    <Select value={actionType} onValueChange={(v) => setActionType(v as 'Erstellung' | 'Optimierung')}>
-                      <SelectTrigger id="actionType" className="h-11 text-base">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Erstellung">Erstellung</SelectItem>
-                        <SelectItem value="Optimierung">Optimierung</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
