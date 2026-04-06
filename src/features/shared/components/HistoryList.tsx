@@ -78,9 +78,10 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
             </button>
             
             {isExpanded && (
-              <div className="p-3 rounded-lg bg-muted/30 border border-border text-xs leading-relaxed whitespace-pre-wrap max-h-[200px] overflow-y-auto animate-in fade-in slide-in-from-top-1">
-                {log.Content_Body}
-              </div>
+              <div 
+                className="p-3 rounded-lg bg-muted/30 border border-border text-xs leading-relaxed max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-top-1 html-content"
+                dangerouslySetInnerHTML={{ __html: log.Content_Body }}
+              />
             )}
           </div>
         )}
@@ -132,6 +133,19 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
 
   return (
     <div className="space-y-4">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .html-content h1 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #00463c; }
+        .html-content h2 { font-size: 1.1rem; font-weight: bold; margin-top: 0.8rem; margin-bottom: 0.4rem; color: #00463c; }
+        .html-content h3 { font-size: 1rem; font-weight: bold; margin-top: 0.6rem; margin-bottom: 0.3rem; }
+        .html-content p { margin-bottom: 0.75rem; }
+        .html-content a { color: #00463c; text-decoration: underline; font-weight: 500; }
+        .html-content ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; }
+        .html-content ol { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.75rem; }
+        .html-content li { margin-bottom: 0.25rem; }
+        .html-content img { max-width: 100%; height: auto; border-radius: 0.375rem; }
+        .html-content strong { font-weight: bold; }
+        .html-content em { font-style: italic; }
+      `}} />
       {/* Latest Action Highlight */}
       <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
         <p className="text-xs font-bold text-[#00463c]">
