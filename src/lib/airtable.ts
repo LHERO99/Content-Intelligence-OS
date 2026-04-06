@@ -33,8 +33,6 @@ export const base = airtable.base(process.env.AIRTABLE_BASE_ID);
 export const TABLES = {
   KEYWORD_MAP: 'Keyword-Map',
   CONTENT_LOG: 'Content-Log',
-  PERFORMANCE_DATA: 'Performance_Data',
-  POTENTIAL_TRENDS: 'Potential_Trends',
   AUDIT_LOGS: 'Audit_Logs',
   USERS: 'Users',
   BLACKLIST: 'Blacklist',
@@ -354,48 +352,50 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
 
 export async function getPerformanceData(): Promise<PerformanceData[]> {
   try {
-    const records = await base(TABLES.PERFORMANCE_DATA).select({
+    const records = await base(TABLES.URL_PERFORMANCE).select({
       sort: [{ field: 'Date', direction: 'desc' }]
     }).all();
     return records.map((record) => ({
       id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
+      ID: 0,
+      Keyword_ID: [],
       Target_URL: record.get('Target_URL') as string,
       Date: record.get('Date') as string,
-      Ranking: record.get('Ranking') as number,
+      Ranking: undefined,
       GSC_Clicks: record.get('GSC_Clicks') as number,
       GSC_Impressions: record.get('GSC_Impressions') as number,
       Sistrix_VI: record.get('Sistrix_VI') as number,
       Position: record.get('Position') as number,
-      Source: record.get('Source') as any,
+      Source: 'Combined',
     }));
-  } catch (error) {
-    return handleAirtableError(error,'getPerformanceData');
+  } catch (error: any) {
+    console.warn(`[Airtable] Error in getPerformanceData (using ${TABLES.URL_PERFORMANCE}):`, error.message);
+    return [];
   }
 }
 
 export async function getPerformanceDataByUrl(targetUrl: string): Promise<PerformanceData[]> {
   try {
-    const records = await base(TABLES.PERFORMANCE_DATA).select({
+    const records = await base(TABLES.URL_PERFORMANCE).select({
       filterByFormula: `{Target_URL} = '${targetUrl}'`,
       sort: [{ field: 'Date', direction: 'asc' }]
     }).all();
     return records.map((record) => ({
       id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
+      ID: 0,
+      Keyword_ID: [],
       Target_URL: record.get('Target_URL') as string,
       Date: record.get('Date') as string,
-      Ranking: record.get('Ranking') as number,
+      Ranking: undefined,
       GSC_Clicks: record.get('GSC_Clicks') as number,
       GSC_Impressions: record.get('GSC_Impressions') as number,
       Sistrix_VI: record.get('Sistrix_VI') as number,
       Position: record.get('Position') as number,
-      Source: record.get('Source') as any,
+      Source: 'Combined',
     }));
-  } catch (error) {
-    return handleAirtableError(error,'getPerformanceDataByUrl');
+  } catch (error: any) {
+    console.warn(`[Airtable] Error in getPerformanceDataByUrl (using ${TABLES.URL_PERFORMANCE}):`, error.message);
+    return [];
   }
 }
 
@@ -548,44 +548,9 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
 
 export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
   try {
-    console.log(`[Airtable] Upserting ${data.length} keyword-specific performance records`);
-    let created = 0;
-    let updated = 0;
-    const errors: any[] = [];
-
-    for (const item of data) {
-      if (!item.Keyword_ID || !item.Date) continue;
-      try {
-        const keywordIdStr = Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : item.Keyword_ID;
-        const formula = `AND(SEARCH('${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`;
-        const existing = await base(TABLES.PERFORMANCE_DATA).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
-
-        const fields: any = {
-          Keyword_ID: [keywordIdStr],
-          Target_URL: item.Target_URL,
-          Date: item.Date,
-          Ranking: item.Ranking,
-          GSC_Clicks: item.GSC_Clicks,
-          GSC_Impressions: item.GSC_Impressions,
-          Position: item.Position,
-          Sistrix_VI: item.Sistrix_VI
-        };
-        Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
-
-        if (existing.length > 0) {
-          await base(TABLES.PERFORMANCE_DATA).update(existing[0].id, fields);
-          updated++;
-        } else {
-          await base(TABLES.PERFORMANCE_DATA).create([{ fields }]);
-          created++;
-        }
-      } catch (err: any) {
-        errors.push({ item, error: err.message });
-      }
-    }
-    return { created, updated, errors };
+    return { created: 0, updated: 0, errors: [] };
   } catch (error) {
-    return handleAirtableError(error, 'upsertPerformanceData');
+    return { created: 0, updated: 0, errors: [String(error)] };
   }
 }
 
@@ -671,41 +636,11 @@ export async function deleteCostConfig(id: string): Promise<boolean> {
 }
 
 export async function getPotentialTrends(): Promise<PotentialTrend[]> {
-  try {
-    const records = await base(TABLES.POTENTIAL_TRENDS).select().all();
-    return records.map((record) => ({
-      id: record.id,
-      Trend_Topic: record.get('Trend_Topic') as string,
-      Source: record.get('Source') as 'GSC' | 'Sistrix',
-      Gap_Score: record.get('Gap_Score') as number,
-      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
-    }));
-  } catch (error) {
-    return handleAirtableError(error,'getPotentialTrends');
-  }
+  return [];
 }
 
 export async function createTrend(trend: Partial<PotentialTrend>): Promise<PotentialTrend | null> {
-  try {
-    const fields: any = {
-      Trend_Topic: trend.Trend_Topic,
-      Source: trend.Source,
-      Gap_Score: trend.Gap_Score,
-      Status: trend.Status || 'New',
-    };
-    const records = await base(TABLES.POTENTIAL_TRENDS).create([{ fields }]);
-    if (records.length === 0) return null;
-    const record = records[0];
-    return {
-      id: record.id,
-      Trend_Topic: record.get('Trend_Topic') as string,
-      Source: record.get('Source') as 'GSC' | 'Sistrix',
-      Gap_Score: record.get('Gap_Score') as number,
-      Status: record.get('Status') as 'New' | 'Claimed' | 'Blacklisted',
-    };
-  } catch (error) {
-    return handleAirtableError(error, 'createTrend');
-  }
+  return null;
 }
 
 export async function getBlacklist(): Promise<BlacklistEntry[]> {

@@ -85,17 +85,16 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Execute Upserts
-    const [legacyResult, urlResult, rankingResult] = await Promise.all([
-      upsertPerformanceData(allKeywordPerformanceRecords),
+    const [urlResult, rankingResult] = await Promise.all([
       upsertURLPerformance(urlPerformanceRecords),
       upsertKeywordRankingHistory(keywordRankingRecords)
     ]);
     
     results.keywordEntries = keywordsToProcess.length;
     results.upsertResults = {
-      created: legacyResult.created,
-      updated: legacyResult.updated,
-      errorCount: legacyResult.errors.length
+      created: 0,
+      updated: 0,
+      errorCount: 0
     };
     results.urlPerformanceResults = {
       created: urlResult.created,

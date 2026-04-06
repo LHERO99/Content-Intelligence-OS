@@ -81,7 +81,7 @@ export async function GET() {
         lastAction: urlLogs[0]?.Action_Type || 'N/A',
         lastActionDate: urlLogs[0]?.Created_At || null,
       };
-    });
+    }).filter(item => item.url); // Ensure no empty URLs in list
 
     return NextResponse.json({
       metrics: {
