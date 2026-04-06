@@ -4,6 +4,7 @@ import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
+import { useBranding } from "@/components/providers/branding-provider"
 
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const items = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
+  const { logoUrl, primaryColor } = useBranding()
 
   return (
     <Sidebar {...props}>
@@ -57,15 +59,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-center px-2">
             <Image
-              src="/docmorris-logo.png"
-              alt="DocMorris Logo"
+              src={logoUrl}
+              alt="App Logo"
               width={140}
               height={36}
               priority
-              className="h-auto w-auto"
+              className="h-auto w-auto max-h-[60px] object-contain"
             />
           </div>
-          <div className="flex items-center gap-2 font-bold text-[#00463c] px-2">
+          <div className="flex items-center gap-2 font-bold px-2" style={{ color: primaryColor }}>
             <ShieldCheck className="h-5 w-5" />
             <span className="text-sm">SEO Content Intelligence</span>
           </div>
@@ -103,7 +105,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenu>
             )}
             <Link href="/profile" className="flex items-center gap-3 px-2 hover:bg-gray-100 rounded-md p-1 transition-colors">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00463c] text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: primaryColor }}>
                 <User className="h-4 w-4" />
               </div>
               <div className="flex flex-col overflow-hidden">

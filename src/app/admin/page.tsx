@@ -30,8 +30,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette } from "lucide-react";
 import { CostManagement } from "./cost-management";
+import { BrandingTab } from "@/features/admin/components/branding-tab";
 
 interface User {
   id: string;
@@ -183,6 +184,10 @@ export default function AdminPage() {
           <TabsTrigger value="costs" className="flex items-center gap-2">
             <Coins className="h-4 w-4" />
             ROI & Kosten
+          </TabsTrigger>
+          <TabsTrigger value="branding" className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            Branding
           </TabsTrigger>
         </TabsList>
 
@@ -400,6 +405,9 @@ export default function AdminPage() {
 
         <TabsContent value="costs">
           <CostManagement />
+        </TabsContent>
+        <TabsContent value="branding">
+          <BrandingTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -35,12 +35,14 @@ export async function GET() {
     }
 
     // Aggregate Global Metrics
-    const publishedLogs = logs.filter(l => 
-      l.Action_Type === 'Erstellung' || 
-      l.Action_Type === 'Optimierung' ||
-      l.Diff_Summary?.toLowerCase().includes('content angeliefert') ||
-      l.Diff_Summary?.toLowerCase().includes('content veröffentlicht')
-    );
+    const publishedLogs = logs.filter(l => {
+      const type = l.Action_Type;
+      const summary = l.Diff_Summary?.toLowerCase() || '';
+      return type === 'Erstellung' || 
+             type === 'Optimierung' ||
+             summary.includes('content angeliefert') ||
+             summary.includes('content veröffentlicht');
+    });
     
     // Group logs by Target_URL to ensure we only count savings if at least one "Erstellung" exists
     const urlLogMap = new Map<string, typeof publishedLogs>();
@@ -57,13 +59,13 @@ export async function GET() {
     publishedLogs.forEach(log => {
       if (!log.Target_URL) return;
       const urlPerf = performance
-        .filter(p => p.Target_URL === log.Target_URL)
+        .filter(p => p.Target_URL === log.Target_URL && p.Date)
         .sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
       
       const publishDate = new Date(log.Created_At);
-      const top10Entry = urlPerf.find(p => new Date(p.Date) >= publishDate && p.Position && p.Position <= 10);
+      const top10Entry = urlPerf.find(p => p.Date && new Date(p.Date) >= publishDate && p.Position && p.Position <= 10);
       
-      if (top10Entry) {
+      if (top10Entry && top10Entry.Date) {
         const diffDays = Math.ceil((new Date(top10Entry.Date).getTime() - publishDate.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays >= 0) {
           totalTTR += diffDays;
@@ -109,7 +111,6 @@ export async function GET() {
       });
 
       dailyLogs.forEach((log, index) => {
-        const summary = log.Diff_Summary?.toLowerCase() || '';
         const keywordId = log.Keyword_ID?.[0];
         // Try to find the keyword by ID or Target_URL to get the Page_Type
         const keyword = keywords.find(k => k.id === keywordId) || keywords.find(k => k.Target_URL === url);
@@ -123,8 +124,6 @@ export async function GET() {
         }
 
         // Action_Type: Use Action_Type from keyword if available, or infer from log/index
-        // If the log is "Content angeliefert", it might be an 'Erstellung' or 'Optimierung'
-        // Rule: First delivery is Erstellung (if the keyword says so), subsequent ones are Optimierung
         let actionType = index === 0 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung';
 
         console.log(`[API Monitoring] URL: ${url}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
@@ -137,15 +136,16 @@ export async function GET() {
         if (cost) {
           totalAgencySavings += cost.Agency_Cost;
           totalOverheadSavings += cost.Overhead_Cost;
-          console.log(`[API Monitoring] Found cost match: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
-        } else {
-          console.warn(`[API Monitoring] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}. Available configs:`, costs.map(c => `${c.Page_Type}/${c.Action_Type}`).join(', '));
         }
         
-        const pageTypeKey = pageType.toLowerCase();
-        const actionTypeKey = actionType.toLowerCase();
-        const key = `${actionTypeKey === 'optimierung' ? 'optimierung' : 'neuerstellung'}_${pageTypeKey === 'ratgeber' ? 'ratgeber' : 'kategorie'}` as keyof typeof counts;
-        if (key in counts) counts[key]++;
+        // Robust key generation for counts object
+        const pageTypeKey = pageType.toLowerCase() === 'kategorie' ? 'kategorie' : 'ratgeber';
+        const actionTypeKey = actionType.toLowerCase() === 'optimierung' ? 'optimierung' : 'neuerstellung';
+        const key = `${actionTypeKey}_${pageTypeKey}` as keyof typeof counts;
+        
+        if (key in counts) {
+          counts[key]++;
+        }
       });
     });
 
@@ -156,7 +156,10 @@ export async function GET() {
     const allUniqueUrls = Array.from(new Set([...perfUrls, ...allLogUrls]));
 
     const urlList = allUniqueUrls.map(url => {
-      const urlPerf = performance.filter(p => p.Target_URL === url).sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime());
+      const urlPerf = performance
+        .filter(p => p.Target_URL === url && p.Date)
+        .sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime());
+      
       const latest = urlPerf[0];
       const previous = urlPerf[1];
       const urlLogs = logs.filter(l => l.Target_URL === url).sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
@@ -182,6 +185,10 @@ export async function GET() {
       urls: urlList
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[API Monitoring] Unhandled error:', error);
+    return NextResponse.json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 });
   }
 }

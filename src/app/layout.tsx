@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth-provider";
 import { AlertsProvider } from "@/components/alerts-provider";
 import { AuthenticatedLayout } from "@/components/authenticated-layout";
+import { BrandingProvider } from "@/components/providers/branding-provider";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -34,13 +35,15 @@ export default function RootLayout({
     >
       <body className="min-h-full">
         <AuthProvider>
-          <AlertsProvider>
-            <TooltipProvider>
-              <AuthenticatedLayout>
-                {children}
-              </AuthenticatedLayout>
-            </TooltipProvider>
-          </AlertsProvider>
+          <BrandingProvider>
+            <AlertsProvider>
+              <TooltipProvider>
+                <AuthenticatedLayout>
+                  {children}
+                </AuthenticatedLayout>
+              </TooltipProvider>
+            </AlertsProvider>
+          </BrandingProvider>
         </AuthProvider>
       </body>
     </html>
