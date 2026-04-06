@@ -54,13 +54,18 @@ export async function GET() {
     };
 
     publishedLogs.forEach(log => {
-      const cost = costs.find(c => c.Page_Type === log.Page_Type && c.Action_Type === log.Action_Type);
+      const cost = costs.find(c => 
+        c.Page_Type === log.Page_Type && 
+        c.Action_Type === log.Action_Type
+      );
       if (cost) {
         totalAgencySavings += cost.Agency_Cost;
         totalOverheadSavings += cost.Overhead_Cost;
       }
       
-      const key = `${log.Action_Type.toLowerCase()}_${(log.Page_Type || 'Andere').toLowerCase()}` as keyof typeof counts;
+      const pageTypeKey = (log.Page_Type || 'Andere').toLowerCase();
+      const actionTypeKey = log.Action_Type.toLowerCase();
+      const key = `${actionTypeKey}_${pageTypeKey}` as keyof typeof counts;
       if (key in counts) counts[key]++;
     });
 

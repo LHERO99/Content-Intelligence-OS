@@ -1,4 +1,4 @@
-# Projekt-Status (Stand: 05.04.2026)
+# Projekt-Status (Stand: 06.04.2026)
 
 ## Content-Lifecycle & Logging-Events
 - **Status-Workflow**: Der Workflow umfasst nun: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
@@ -31,14 +31,24 @@
 - **Detaillierte Payload-Struktur**: Der `IMPORT_DATA` Webhook sendet nun gruppierte Daten pro URL inklusive differenzierter Felder für `MainKeyword` und durchnummerierte `SecondaryKeywordX`.
 - **API-Key Schutz**: Neuer Endpunkt `/api/monitoring/import` für Daten-Rückfluss von n8n, gesichert via `x-api-key`.
 
-## Historisches Performance-Tracking
-- **Keyword-Historie Architektur**: Das Ranking wurde aus der `Keyword-Map` (Stammdaten) in die `Performance_Data` (Zeitreihen) verschoben.
-- **Multi-Keyword Support**: Ein Datensatz in `Performance_Data` repräsentiert nun die Kombination aus `Keyword_ID` + `Date`. Dies ermöglicht individuelle Ranking-Kurven für Main- und Nebenkeywords bei gleicher URL.
-- **Upsert-Logik**: Robuste De-Duplizierung basierend auf `Keyword_ID` und `Date`, um Datenintegrität bei mehrfachen n8n-Rückmeldungen pro Woche sicherzustellen.
-- **URL-Metriken**: GSC-Metriken (Klicks, Impressions, Average Position) werden auf URL-Ebene erfasst und redundant in den keyword-spezifischen Zeitreihen-Einträgen gespeichert, um einfache Aggregationen in Airtable zu ermöglichen.
+## Optimierte Performance-Speicherung (06.04.2026)
+- **Tabellen-Split**: Die redundante `Performance_Data` Tabelle wurde durch zwei spezialisierte Tabellen ersetzt:
+  1. **`URL_Performance`**: Speichert aggregierte Metriken (Klicks, Impressions, Position, Sistrix VI) auf URL-Ebene pro Woche.
+  2. **`Keyword_Ranking_History`**: Speichert wöchentliche Rankings pro Keyword (verknüpft mit `Keyword-Map`).
+- **Migration**: Die alte `Performance_Data` Tabelle wurde aus dem Code entfernt, um Berechtigungsfehler (403/404) nach deren Löschung in Airtable zu verhindern.
+- **Import-Logik**: Der Import-Endpunkt `/api/monitoring/import` verteilt eingehende Daten nun automatisch auf beide neuen Tabellen.
+- **Monitoring Übersicht**: Die globale Übersicht nutzt nun `URL_Performance` als Datenbasis, was die Ladezeiten verbessert und Redundanzen eliminiert.
+
+## UI & Visualisierung (URL Detail & Monitoring)
+- **Erweiterte Detailansicht**: Die `UrlDetail` Komponente zeigt nun zwei separate Charts:
+  1. **URL-Performance**: Zeitverlauf von Klicks und Sistrix VI.
+  2. **Keyword-Rankings**: Individuelle Kurven für alle zugeordneten Keywords (Main vs. Secondaries) mit Invertierter Y-Achse (Position 1 oben).
+- **Dynamic Icons**: Neues `Hash` Icon für Keyword-Zählungen und verbesserte `Badge` Logik für Main Keywords.
+- **Fehlertoleranz**: Alle Monitoring-Komponenten fangen nun fehlende Tabellen oder leere Datensätze ab, um "Failed to fetch" Fehler zu vermeiden.
 
 ## UI & Visualisierung (HistoryList)
 - **Dynamischer Blacklist-Status**: Der "Blacklisted" Badge in der Historie ist nicht mehr "sticky", sondern richtet sich nach dem zeitlich letzten Event (Hinzugefügt vs. Entfernt).
 - **Icon-System**: Icons für Blacklist (`ShieldAlert` in Rot) und Vorschläge (`Lightbulb` in Amber).
 - **Editor-Tracking**: User-E-Mail wird bei fast allen Events erfasst.
+
 

@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
     let totalOverhead = 0;
     
     history.forEach(log => {
-      const cost = costs.find(c => c.Page_Type === log.Page_Type && c.Action_Type === log.Action_Type);
+      const cost = costs.find(c => 
+        c.Page_Type === log.Page_Type && 
+        c.Action_Type === log.Action_Type
+      );
       if (cost) {
         totalAgency += cost.Agency_Cost;
         totalOverhead += cost.Overhead_Cost;

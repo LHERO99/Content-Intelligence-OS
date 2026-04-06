@@ -53,8 +53,6 @@
 - [x] UI: HistoryList um neue Event-Icons und Texte ergänzt.
 - [x] API: Inbound-Endpunkt `/api/monitoring/import` für n8n Performance-Daten erstellt.
 - [x] Performance: n8n-Webhook-Trigger auf asynchronen Hintergrund-Modus umgestellt.
-- [x] Architektur: Ranking von `Keyword-Map` in historische `Performance_Data` verschoben.
-- [x] Fix: De-Duplizierung (Upsert) in `Performance_Data` auf Basis von `Keyword_ID` + `Date`.
 - [x] Middleware: `src/proxy.ts` durch standardisierte `src/middleware.ts` ersetzt (Next.js Build Fix).
 - [x] Sicherheit: Inbound-Monitoring-API via `x-api-key` Header abgesichert.
 - [x] n8n: Payload für `IMPORT_DATA` um strukturierte Main-/Secondary-Keywords ergänzt.
@@ -67,3 +65,10 @@
 - [x] Feature: Double Confirmation & Warnung bei URL-Blacklisting.
 - [x] UI: URL Wrapping im Blacklist-Modal (break-all).
 - [x] UI: Dynamische Blacklist-Badge Logik (Nur bei URL-Event "starts-with" Match).
+- [x] Architektur: Performance-Speicherung von `Performance_Data` (gelöscht) auf `URL_Performance` & `Keyword_Ranking_History` umgestellt.
+- [x] API: Import-Endpunkt auf neue Tabellenstruktur (URL vs. Keyword) refactored.
+- [x] API: Monitoring-Übersicht Route auf neue URL-Metrik-Struktur umgestellt.
+- [x] UI: Monitoring Detail-Ansicht um zwei separate Charts (URL-Performance & Keyword-Trends) erweitert.
+- [x] Fix: Deployment-Fehler durch Löschen verwaister Debug-Routen (`trends/route.ts`) behoben.
+- [x] Cleanup: Vollständiges Entfernen veralteter Tabellen-Konstanten (`PERFORMANCE_DATA`, `POTENTIAL_TRENDS`) aus dem Code.
+
