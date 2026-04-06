@@ -58,11 +58,13 @@ async function handleAirtableError(error: any, operation: string): Promise<never
   const status = error.statusCode || error.status;
   const message = error.message || '';
   
-  console.error(`[Airtable] Error in ${operation}:`, {
+  // Log full error details to help debug Base64 length issues
+  console.error(`[Airtable] Error in ${operation}:`, JSON.stringify({
     status,
     message,
-    error
-  });
+    details: error.details,
+    errorType: error.error
+  }, null, 2));
 
   if (status === 403) {
     if (message.includes('NOT_AUTHORIZED')) {
@@ -1027,6 +1029,7 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
     }).firstPage();
 
     if (records.length === 0) {
+      console.log(`[Airtable] Creating new config record for key: ${key}`);
       const newRecords = await base(TABLES.CONFIG).create([{
         fields: { Key: key, Value: value }
       }]);
@@ -1040,6 +1043,7 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
     }
 
     const recordId = records[0].id;
+    console.log(`[Airtable] Updating config record ${recordId} with value length: ${value?.length}`);
     const updatedRecords = await base(TABLES.CONFIG).update([{
       id: recordId,
       fields: { Value: value }
