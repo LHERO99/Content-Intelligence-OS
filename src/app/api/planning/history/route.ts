@@ -65,12 +65,15 @@ export async function POST(request: Request) {
       Logged_URL,
       actionType, 
       Action_Type, 
+      status,
       contentBody, 
       Content_Body, 
+      content,
       diffSummary, 
       Diff_Summary, 
       reasoningChain, 
       Reasoning_Chain, 
+      reasoning,
       editor, 
       Editor 
     } = body;
@@ -79,10 +82,10 @@ export async function POST(request: Request) {
     const finalKeywordId = keywordId || Keyword_ID;
     const finalUrl = url || Target_URL || Logged_URL;
     const finalLoggedUrl = Logged_URL || finalUrl;
-    const finalActionType = actionType || Action_Type;
-    const finalContentBody = contentBody || Content_Body;
+    const finalActionType = actionType || Action_Type || status;
+    const finalContentBody = contentBody || Content_Body || content;
     const finalDiffSummary = diffSummary || Diff_Summary;
-    const finalReasoningChain = reasoningChain || Reasoning_Chain;
+    const finalReasoningChain = reasoningChain || Reasoning_Chain || reasoning;
     const finalEditor = editor || Editor;
 
     if (!finalKeywordId || !finalActionType) {
