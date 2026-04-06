@@ -30,7 +30,6 @@ export async function POST(req: NextRequest) {
 
     const results: any = {
       keywordEntries: 0,
-      upsertResults: { created: 0, updated: 0, errorCount: 0 },
       urlPerformanceResults: { created: 0, updated: 0, errorCount: 0 },
       keywordRankingResults: { created: 0, updated: 0, errorCount: 0 }
     };
@@ -67,35 +66,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Prepare Legacy Performance Records (Flat list)
-    const allKeywordPerformanceRecords: any[] = [];
-    for (const kw of keywordsToProcess) {
-      for (const perf of performanceData) {
-        allKeywordPerformanceRecords.push({
-          Keyword_ID: [kw.keywordId],
-          Target_URL: targetUrl,
-          Date: perf.date,
-          Ranking: kw.rank,
-          GSC_Clicks: perf.clicks,
-          GSC_Impressions: perf.impressions,
-          Position: perf.position,
-          Sistrix_VI: perf.sistrixVi || perf.vi
-        });
-      }
-    }
-
-    // 5. Execute Upserts
+    // 4. Execute Upserts
     const [urlResult, rankingResult] = await Promise.all([
       upsertURLPerformance(urlPerformanceRecords),
       upsertKeywordRankingHistory(keywordRankingRecords)
     ]);
     
     results.keywordEntries = keywordsToProcess.length;
-    results.upsertResults = {
-      created: 0,
-      updated: 0,
-      errorCount: 0
-    };
     results.urlPerformanceResults = {
       created: urlResult.created,
       updated: urlResult.updated,

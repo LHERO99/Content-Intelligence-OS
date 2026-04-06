@@ -198,6 +198,7 @@ export async function getContentHistoryByUrl(targetUrl: string): Promise<Content
         Target_URL: (resolvedTargetUrl || loggedUrl) as string,
         Logged_URL: loggedUrl,
         Action_Type: record.get('Action_Type') as any,
+        Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
@@ -261,6 +262,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
       Action_Type: log.Action_Type, 
+      Page_Type: log.Page_Type,
     };
 
     Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
@@ -282,6 +284,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
         Target_URL: (resolvedTarget || record.get('Logged_URL')) as string,
         Logged_URL: record.get('Logged_URL') as string,
         Action_Type: record.get('Action_Type') as any,
+        Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
@@ -906,7 +909,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
       if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
     }
-    const records = await base(TABLES.KEYWORD_MAP).create([{ fields: { Keyword: kw.Keyword, Target_URL: kw.Target_URL, Search_Volume: kw.Search_Volume, Difficulty: kw.Difficulty, Status: kw.Status || 'Backlog', Editorial_Deadline: kw.Editorial_Deadline, Assigned_Editor: kw.Assigned_Editor, Main_Keyword: kw.Main_Keyword || 'N', Article_Count: kw.Article_Count, Avg_Product_Value: kw.Avg_Product_Value, Policy: kw.Policy, Priority_Score: kw.Priority_Score, Action_Type: kw.Action_Type || 'Erstellung' } }]);
+    const records = await base(TABLES.KEYWORD_MAP).create([{ fields: { Keyword: kw.Keyword, Target_URL: kw.Target_URL, Search_Volume: kw.Search_Volume, Difficulty: kw.Difficulty, Status: kw.Status || 'Backlog', Editorial_Deadline: kw.Editorial_Deadline, Assigned_Editor: kw.Assigned_Editor, Main_Keyword: kw.Main_Keyword || 'N', Article_Count: kw.Article_Count, Avg_Product_Value: kw.Avg_Product_Value, Policy: kw.Policy, Priority_Score: kw.Priority_Score, Action_Type: kw.Action_Type || 'Erstellung', Page_Type: kw.Page_Type } }]);
     if (records.length === 0) return null;
     const record = records[0];
     return { id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Policy: record.get('Policy') as number, Priority_Score: record.get('Priority_Score') as number, Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung', Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string };

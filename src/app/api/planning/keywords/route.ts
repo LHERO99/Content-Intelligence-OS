@@ -30,7 +30,9 @@ export async function POST(request: Request) {
       Assigned_Editor,
       Main_Keyword,
       Article_Count,
-      Avg_Product_Value
+      Avg_Product_Value,
+      Action_Type,
+      Page_Type
     } = body;
 
     const result = await createKeyword({
@@ -44,6 +46,8 @@ export async function POST(request: Request) {
       Main_Keyword: Main_Keyword || 'N',
       Article_Count: Article_Count ? Number(Article_Count) : undefined,
       Avg_Product_Value: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
+      Action_Type: Action_Type || 'Erstellung',
+      Page_Type: Page_Type || 'Andere',
     });
 
     if (!result) {
@@ -64,6 +68,7 @@ export async function POST(request: Request) {
         Target_URL: result.Target_URL,
         Logged_URL: result.Target_URL,
         Action_Type: result.Action_Type || 'Erstellung',
+        Page_Type: result.Page_Type || 'Andere',
         Diff_Summary: 'URL wurde dem Tool hinzugefügt',
         Editor: editor
       });
@@ -75,6 +80,7 @@ export async function POST(request: Request) {
             Target_URL: result.Target_URL,
             Logged_URL: result.Target_URL,
             Action_Type: result.Action_Type || 'Erstellung',
+            Page_Type: result.Page_Type || 'Andere',
             Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
             Editor: editor
           });
@@ -169,6 +175,7 @@ export async function PATCH(request: Request) {
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
             Action_Type: result.Action_Type,
+            Page_Type: result.Page_Type,
             Diff_Summary: 'URL wurde der Redaktionsplanung hinzugefügt',
             Editor: editor
           });
@@ -177,6 +184,7 @@ export async function PATCH(request: Request) {
             Keyword_ID: [id],
             Target_URL: result.Target_URL,
             Action_Type: result.Action_Type,
+            Page_Type: result.Page_Type,
             Diff_Summary: 'Content veröffentlicht',
             Editor: editor
           });

@@ -43,6 +43,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
   const [volume, setVolume] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [actionType, setActionType] = useState<'Erstellung' | 'Optimierung'>('Erstellung');
+  const [pageType, setPageType] = useState<'Ratgeber' | 'Kategorie' | 'Andere'>('Ratgeber');
   const [mainKeyword, setMainKeyword] = useState<'Y' | 'N'>('N');
   const [articleCount, setArticleCount] = useState('');
   const [avgProductValue, setAvgProductValue] = useState('');
@@ -66,6 +67,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
     setVolume('');
     setDifficulty('');
     setActionType('Erstellung');
+    setPageType('Ratgeber');
     setMainKeyword('N');
     setArticleCount('');
     setAvgProductValue('');
@@ -98,6 +100,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
           Article_Count: articleCount ? Number(articleCount) : undefined,
           Avg_Product_Value: avgProductValue ? Number(avgProductValue) : undefined,
           Action_Type: actionType,
+          Page_Type: pageType,
         };
       } else if (type === 'trend') {
         if (!trendTopic || !source) throw new Error('Trend-Thema und Quelle sind erforderlich.');
@@ -206,7 +209,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                 </div>
 
                 {/* Row 2: Suchvolumen, Difficulty, Typ */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="volume" className="text-sm font-semibold">Suchvolumen</Label>
                     <Input
@@ -230,7 +233,20 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="actionType" className="text-sm font-semibold">Typ *</Label>
+                    <Label htmlFor="pageType" className="text-sm font-semibold">Seitentyp *</Label>
+                    <Select value={pageType} onValueChange={(v) => setPageType(v as 'Ratgeber' | 'Kategorie' | 'Andere')}>
+                      <SelectTrigger id="pageType" className="h-11 text-base">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ratgeber">Ratgeber</SelectItem>
+                        <SelectItem value="Kategorie">Kategorie</SelectItem>
+                        <SelectItem value="Andere">Andere</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="actionType" className="text-sm font-semibold">Aktion *</Label>
                     <Select value={actionType} onValueChange={(v) => setActionType(v as 'Erstellung' | 'Optimierung')}>
                       <SelectTrigger id="actionType" className="h-11 text-base">
                         <SelectValue />

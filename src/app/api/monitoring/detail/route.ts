@@ -49,12 +49,14 @@ export async function GET(request: NextRequest) {
     let totalOverhead = 0;
     
     history.forEach(log => {
-      // Find associated keyword to get Page_Type and Action_Type
+      // Find associated keyword to get Page_Type and Action_Type if not in log
       const keywordId = log.Keyword_ID?.[0];
       const keyword = allKeywords.find(k => k.id === keywordId);
 
       const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
       const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+
+      console.log(`[API Monitoring Detail] Log ${log.id}: Page_Type=${pageType}, Action_Type=${actionType}`);
 
       const cost = costs.find(c => 
         c.Page_Type === pageType && 
@@ -64,6 +66,9 @@ export async function GET(request: NextRequest) {
       if (cost) {
         totalAgency += cost.Agency_Cost;
         totalOverhead += cost.Overhead_Cost;
+        console.log(`[API Monitoring Detail] Match found: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
+      } else {
+        console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}`);
       }
     });
 
