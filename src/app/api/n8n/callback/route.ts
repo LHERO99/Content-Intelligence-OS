@@ -22,11 +22,23 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     console.log('[API] n8n callback received body:', JSON.stringify(body));
-    const { keywordId, content, reasoning, status } = body;
+    
+    // Extract with fallbacks to handle different naming conventions
+    const keywordId = body.keywordId || body.Keyword_ID;
+    const content = body.content || body.contentBody || body.Content_Body;
+    const reasoning = body.reasoning || body.reasoningChain || body.Reasoning_Chain;
+    const status = body.status || body.Status;
 
     if (!keywordId || !content) {
-      console.error('[API] n8n callback missing fields:', { keywordId, content: !!content });
-      return NextResponse.json({ error: 'Missing keywordId or content' }, { status: 400 });
+      console.error('[API] n8n callback missing fields:', { 
+        keywordId: !!keywordId, 
+        content: !!content,
+        receivedFields: Object.keys(body)
+      });
+      return NextResponse.json({ 
+        error: 'Missing keywordId or content',
+        details: { keywordId: !!keywordId, content: !!content }
+      }, { status: 400 });
     }
 
     console.log(`[API] Received content from n8n for Keyword ID: ${keywordId}`);
