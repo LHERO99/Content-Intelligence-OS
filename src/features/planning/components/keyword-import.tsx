@@ -35,6 +35,7 @@ const SYSTEM_COLUMNS = [
   { id: "Main_Keyword", label: "Main Keyword (Y/N)", required: false },
   { id: "Article_Count", label: "Article Count", required: false },
   { id: "Avg_Product_Value", label: "Avg Product Value", required: false },
+  { id: "Page_Type", label: "Page Type (Ratgeber/Kategorie)", required: false },
   { id: "Cluster", label: "Cluster", required: false },
   { id: "Status", label: "Status", required: false },
 ];
@@ -93,6 +94,9 @@ export function KeywordImport() {
       }
       if (!newMapping["Search_Volume"] && (normalizedHeader === "volume" || normalizedHeader === "msv")) {
         newMapping["Search_Volume"] = header;
+      }
+      if (!newMapping["Page_Type"] && (normalizedHeader === "seitentyp" || normalizedHeader === "type" || normalizedHeader === "pagetype")) {
+        newMapping["Page_Type"] = header;
       }
     });
     setMapping(newMapping);

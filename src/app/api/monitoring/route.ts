@@ -11,10 +11,10 @@ export async function GET() {
 
   try {
     const [keywords, performance, logs, costs] = await Promise.all([
-      getKeywordMap(),
-      getPerformanceData(),
-      getContentLogs(),
-      getCostConfigs()
+      getKeywordMap().catch(err => { console.error('[API Monitoring] Error fetching keywords:', err); throw err; }),
+      getPerformanceData().catch(err => { console.error('[API Monitoring] Error fetching performance:', err); throw err; }),
+      getContentLogs().catch(err => { console.error('[API Monitoring] Error fetching logs:', err); throw err; }),
+      getCostConfigs().catch(err => { console.error('[API Monitoring] Error fetching costs:', err); throw err; })
     ]);
 
     // Aggregate Global Metrics

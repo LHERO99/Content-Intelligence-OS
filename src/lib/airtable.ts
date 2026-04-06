@@ -879,15 +879,44 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
       }
       if (currentChunkValid.length === 0) continue;
       try {
-        const records = await base(TABLES.KEYWORD_MAP).create(currentChunkValid.map((kw) => ({ fields: { Keyword: kw.Keyword, Target_URL: kw.Target_URL, Search_Volume: kw.Search_Volume, Difficulty: kw.Difficulty, Status: kw.Status || 'Backlog', Editorial_Deadline: kw.Editorial_Deadline, Assigned_Editor: kw.Assigned_Editor, Main_Keyword: kw.Main_Keyword || 'N', Article_Count: kw.Article_Count, Avg_Product_Value: kw.Avg_Product_Value, Action_Type: kw.Action_Type || 'Erstellung' } })));
+        const records = await base(TABLES.KEYWORD_MAP).create(currentChunkValid.map((kw) => ({ 
+          fields: { 
+            Keyword: kw.Keyword, 
+            Target_URL: kw.Target_URL, 
+            Search_Volume: kw.Search_Volume, 
+            Difficulty: kw.Difficulty, 
+            Status: kw.Status || 'Backlog', 
+            Editorial_Deadline: kw.Editorial_Deadline, 
+            Assigned_Editor: kw.Assigned_Editor, 
+            Main_Keyword: kw.Main_Keyword || 'N', 
+            Article_Count: kw.Article_Count, 
+            Avg_Product_Value: kw.Avg_Product_Value, 
+            Action_Type: kw.Action_Type || 'Erstellung',
+            Page_Type: kw.Page_Type
+          } 
+        })));
         records.forEach((record) => {
-          createdRecords.push({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Policy: record.get('Policy') as number, Priority_Score: record.get('Priority_Score') as number, Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung', Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string });
+          createdRecords.push({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Policy: record.get('Policy') as number, Priority_Score: record.get('Priority_Score') as number, Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung', Page_Type: record.get('Page_Type') as any, Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string });
         });
       } catch (error: any) {
         if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
-          const retryRecords = await base(TABLES.KEYWORD_MAP).create(currentChunkValid.map((kw) => ({ fields: { Keyword: kw.Keyword, Target_URL: kw.Target_URL, Search_Volume: kw.Search_Volume, Difficulty: kw.Difficulty, Status: kw.Status || 'Backlog', Editorial_Deadline: kw.Editorial_Deadline, Assigned_Editor: kw.Assigned_Editor, Main_Keyword: kw.Main_Keyword || 'N', Article_Count: kw.Article_Count, Avg_Product_Value: kw.Avg_Product_Value } })));
+          const retryRecords = await base(TABLES.KEYWORD_MAP).create(currentChunkValid.map((kw) => ({ 
+            fields: { 
+              Keyword: kw.Keyword, 
+              Target_URL: kw.Target_URL, 
+              Search_Volume: kw.Search_Volume, 
+              Difficulty: kw.Difficulty, 
+              Status: kw.Status || 'Backlog', 
+              Editorial_Deadline: kw.Editorial_Deadline, 
+              Assigned_Editor: kw.Assigned_Editor, 
+              Main_Keyword: kw.Main_Keyword || 'N', 
+              Article_Count: kw.Article_Count, 
+              Avg_Product_Value: kw.Avg_Product_Value,
+              Page_Type: kw.Page_Type
+            } 
+          })));
           retryRecords.forEach((record) => {
-            createdRecords.push({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Action_Type: 'Erstellung', Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string });
+            createdRecords.push({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Action_Type: 'Erstellung', Page_Type: record.get('Page_Type') as any, Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string });
           });
         } else throw error;
       }
