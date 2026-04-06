@@ -20,8 +20,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    console.log('[API] n8n callback received body:', JSON.stringify(body));
+    const rawBody = await request.text();
+    console.log('[API] n8n callback received raw body:', rawBody);
+    
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch (e) {
+      console.error('[API] Failed to parse n8n callback body as JSON:', e);
+      return NextResponse.json({ error: 'Invalid JSON body', raw: rawBody.slice(0, 100) }, { status: 400 });
+    }
     
     // Extract with fallbacks to handle different naming conventions
     const keywordId = body.keywordId || body.Keyword_ID;
@@ -33,11 +41,13 @@ export async function POST(request: Request) {
       console.error('[API] n8n callback missing fields:', { 
         keywordId: !!keywordId, 
         content: !!content,
-        receivedFields: Object.keys(body)
+        receivedFields: Object.keys(body),
+        bodyPreview: JSON.stringify(body).slice(0, 100)
       });
       return NextResponse.json({ 
         error: 'Missing keywordId or content',
-        details: { keywordId: !!keywordId, content: !!content }
+        details: { keywordId: !!keywordId, content: !!content },
+        receivedKeys: Object.keys(body)
       }, { status: 400 });
     }
 
