@@ -49,45 +49,44 @@ export async function GET(request: NextRequest) {
     let totalOverhead = 0;
     
     // Rule: Only display savings if content was actually delivered/published
-    const isContentDelivered = history.some(l => {
+    const deliveryLogs = history.filter(l => {
       const summary = l.Diff_Summary?.toLowerCase() || '';
-      return summary.includes('content angeliefert') || 
-             summary.includes('content veröffentlicht');
-    });
+      return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
+             !summary.includes('url wurde dem tool hinzugefügt') &&
+             !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&
+             !summary.includes('url wurde der redaktionsplanung hinzugefügt');
+    }).sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
     
-    if (isContentDelivered) {
-      history.forEach(log => {
-        const summary = log.Diff_Summary?.toLowerCase() || '';
-        
-        // Skip logs that are just about tool/planning additions
-        if (summary.includes('url wurde dem tool hinzugefügt') || 
-            summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
-            summary.includes('url wurde der redaktionsplanung hinzugefügt')) {
-          return;
-        }
+    if (deliveryLogs.length > 0) {
+      // Deduplicate: Group logs by day
+      const dailyLogs: typeof deliveryLogs = [];
+      const seenDays = new Set<string>();
 
-        // Find associated keyword to get Page_Type and Action_Type if not in log
+      deliveryLogs.forEach(log => {
+        const day = new Date(log.Created_At).toISOString().split('T')[0];
+        if (!seenDays.has(day)) {
+          dailyLogs.push(log);
+          seenDays.add(day);
+        }
+      });
+
+      dailyLogs.forEach((log, index) => {
+        const summary = log.Diff_Summary?.toLowerCase() || '';
         const keywordId = log.Keyword_ID?.[0];
         const keyword = allKeywords.find(k => k.id === keywordId);
 
-        const pageType = log.Page_Type || keyword?.Page_Type || 'Ratgeber';
-        let actionType = log.Action_Type || keyword?.Action_Type;
-
-        // Infer Action_Type from Diff_Summary if missing
-        if (!actionType) {
-          if (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) {
-            const previousLogs = history.filter(l => 
-              new Date(l.Created_At).getTime() < new Date(log.Created_At).getTime() &&
-              (l.Diff_Summary?.toLowerCase().includes('content angeliefert') || 
-               l.Diff_Summary?.toLowerCase().includes('content veröffentlicht'))
-            );
-            actionType = previousLogs.length > 0 ? 'Optimierung' : 'Erstellung';
-          } else {
-            actionType = 'Erstellung';
-          }
+        // Infer Page_Type from URL structure if missing from log and keyword
+        let pageType = log.Page_Type || keyword?.Page_Type;
+        if (!pageType) {
+          if (targetUrl.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
+          else if (targetUrl.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
+          else pageType = 'Ratgeber'; // Default fallback
         }
 
-        console.log(`[API Monitoring Detail] Log ${log.id}: Page_Type=${pageType}, Action_Type=${actionType}`);
+        // Action_Type: First delivery is Erstellung, subsequent ones are Optimierung
+        const actionType = index === 0 ? 'Erstellung' : 'Optimierung';
+
+        console.log(`[API Monitoring Detail] URL: ${targetUrl}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
 
         const cost = costs.find(c => 
           c.Page_Type?.toLowerCase() === pageType.toLowerCase() && 

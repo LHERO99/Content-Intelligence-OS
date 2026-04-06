@@ -76,52 +76,42 @@ export function UrlDetail({ url }: UrlDetailProps) {
   if (!data) return <div>Keine Daten gefunden.</div>;
 
   const getStatusInfo = () => {
-    const isContentDelivered = data.history.some(l => {
-      const summary = l.Diff_Summary?.toLowerCase() || '';
-      return summary.includes('content angeliefert') || 
-             summary.includes('content veröffentlicht');
-    });
-    
-    // Version = 1 + [Number of Optimization Logs]
     // Strictly exclude tool/planning logs from counting
-    const validLogs = data.history.filter(log => {
+    const deliveryLogs = data.history.filter(log => {
       const summary = log.Diff_Summary?.toLowerCase() || '';
-      return !(
-        summary.includes('url wurde dem tool hinzugefügt') || 
-        summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
-        summary.includes('url wurde der redaktionsplanung hinzugefügt')
-      );
-    });
+      return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
+             !(
+               summary.includes('url wurde dem tool hinzugefügt') || 
+               summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
+               summary.includes('url wurde der redaktionsplanung hinzugefügt')
+             );
+    }).sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
 
-    const optimierungCount = validLogs.filter((l, idx) => {
-      if (l.Action_Type === 'Optimierung') return true;
-      if (l.Action_Type === 'Erstellung') return false;
-      
-      // If Action_Type is missing, check if it's a delivery log and if there was one before it
-      const summary = l.Diff_Summary?.toLowerCase() || '';
-      if (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) {
-        // Find if there is an older delivery log
-        const hasOlderDelivery = validLogs.some(otherLog => {
-          const otherSummary = otherLog.Diff_Summary?.toLowerCase() || '';
-          return new Date(otherLog.Created_At).getTime() < new Date(l.Created_At).getTime() &&
-                 (otherSummary.includes('content angeliefert') || otherSummary.includes('content veröffentlicht'));
-        });
-        return hasOlderDelivery;
-      }
-      return false;
-    }).length;
-    
-    if (!isContentDelivered) {
+    if (deliveryLogs.length === 0) {
       return { text: "Nicht optimiert", version: "" };
     }
     
-    if (optimierungCount === 0) {
+    // Deduplicate by day
+    const dailyLogs: typeof deliveryLogs = [];
+    const seenDays = new Set<string>();
+
+    deliveryLogs.forEach(log => {
+      const day = new Date(log.Created_At).toISOString().split('T')[0];
+      if (!seenDays.has(day)) {
+        dailyLogs.push(log);
+        seenDays.add(day);
+      }
+    });
+
+    const versionCount = dailyLogs.length;
+    
+    if (versionCount === 1) {
       return { text: "Content erstellt", version: "" };
     }
     
     return { 
       text: "Content optimiert", 
-      version: `(V${optimierungCount + 1})` 
+      version: `(V${versionCount})` 
     };
   };
 
