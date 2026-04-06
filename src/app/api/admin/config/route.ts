@@ -48,11 +48,9 @@ export async function PATCH(request: Request) {
     let textValue = value;
     if ((key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL') && value?.startsWith('data:')) {
       fileUrl = value;
-      // We still store the Base64 in the Value field as a fallback, 
-      // but only if it's small enough. Airtable will prefer the File attachment.
-      if (value.length > 100000) {
-        textValue = "[Stored as Attachment]";
-      }
+      // Note: We use the fileUrl parameter to pass the Base64 data, 
+      // which will now be stored in the Value field (text).
+      // We skip setting fileUrl in Airtable's 'File' field because it requires public URLs.
     }
 
     const updated = await updateConfig(key, textValue, fileUrl);

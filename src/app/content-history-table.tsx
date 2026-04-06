@@ -144,6 +144,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
   const columns: ColumnDef<GroupedHistory>[] = [
     {
       accessorKey: "url",
+      size: 500,
       header: ({ column }) => (
         <Button
           variant="ghost"
@@ -159,7 +160,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         const isBlacklisted = row.original.isBlacklisted;
         return (
           <div className="flex items-center gap-2 max-w-[800px]">
-            <span className="font-medium truncate flex-1">{url}</span>
+            <span className="font-medium truncate flex-1 text-left">{url}</span>
             {url !== "Keine URL" && (
               <a 
                 href={url} 

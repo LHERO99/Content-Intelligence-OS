@@ -42,13 +42,14 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Target_URL",
     header: "Target URL",
+    size: 400,
     cell: ({ row }) => {
       const url = row.getValue("Target_URL") as string;
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
-              <div className="max-w-[500px] truncate text-muted-foreground text-xs cursor-help">
+              <div className="max-w-[500px] truncate text-muted-foreground text-xs cursor-help text-left">
                 {url}
               </div>
             </TooltipTrigger>
@@ -83,7 +84,8 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
   },
   {
     accessorKey: "Search_Volume",
-    header: "Volumen",
+    header: "SV",
+    size: 60,
     cell: ({ row }) => {
       const val = row.getValue("Search_Volume") as number;
       return val ? val.toLocaleString("de-DE") : "-";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Card, 
   CardContent, 
@@ -21,9 +21,12 @@ import {
   Label
 } from 'recharts';
 import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
-import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash, Calendar, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { HistoryList } from "@/features/shared/components/HistoryList";
+import { Input } from "@/components/ui/input";
+import { Label as UILabel } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface UrlDetailProps {
   url: string;
@@ -39,6 +42,10 @@ export function UrlDetail({ url }: UrlDetailProps) {
     savings: { agency: number; overhead: number };
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: "",
+    end: ""
+  });
 
   useEffect(() => {
     fetchDetail();
@@ -51,10 +58,49 @@ export function UrlDetail({ url }: UrlDetailProps) {
       if (!res.ok) throw new Error("Failed to fetch detail");
       const json = await res.json();
       setData(json);
+      
+      // Auto-set initial date range based on available data
+      const allPerformance = json.urlPerformance.length > 0 ? json.urlPerformance : json.performance;
+      if (allPerformance.length > 0) {
+        const dates = allPerformance.map((p: any) => p.Date).sort();
+        setDateRange({
+          start: dates[0],
+          end: dates[dates.length - 1]
+        });
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const filteredUrlPerformance = useMemo(() => {
+    if (!data) return [];
+    const baseData = data.urlPerformance.length > 0 ? data.urlPerformance : data.performance;
+    return baseData.filter(p => 
+      (!dateRange.start || p.Date >= dateRange.start) && 
+      (!dateRange.end || p.Date <= dateRange.end)
+    );
+  }, [data, dateRange]);
+
+  const filteredKeywordRankings = useMemo(() => {
+    if (!data) return [];
+    return data.keywordRankings.filter(r => 
+      (!dateRange.start || r.Date >= dateRange.start) && 
+      (!dateRange.end || r.Date <= dateRange.end)
+    );
+  }, [data, dateRange]);
+
+  const handleResetDates = () => {
+    if (!data) return;
+    const baseData = data.urlPerformance.length > 0 ? data.urlPerformance : data.performance;
+    if (baseData.length > 0) {
+      const dates = baseData.map(p => p.Date).sort();
+      setDateRange({
+        start: dates[0],
+        end: dates[dates.length - 1]
+      });
     }
   };
 
@@ -118,11 +164,11 @@ export function UrlDetail({ url }: UrlDetailProps) {
 
   // Prepare Keyword Ranking Chart Data
   // We need to group rankings by date
-  const rankingDates = Array.from(new Set(data.keywordRankings.map(r => r.Date))).sort();
+  const rankingDates = Array.from(new Set(filteredKeywordRankings.map(r => r.Date))).sort();
   const keywordChartData = rankingDates.map(date => {
     const entry: any = { Date: date };
     data.keywords.forEach(kw => {
-      const ranking = data.keywordRankings.find(r => r.Date === date && r.Keyword_ID.includes(kw.id));
+      const ranking = filteredKeywordRankings.find(r => r.Date === date && r.Keyword_ID.includes(kw.id));
       if (ranking) {
         entry[kw.Keyword] = ranking.Ranking;
       }
@@ -205,6 +251,48 @@ export function UrlDetail({ url }: UrlDetailProps) {
         </Card>
       </div>
 
+      <Card className="bg-white border-none shadow-sm">
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-1.5">
+              <UILabel htmlFor="start-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                Zeitraum von
+              </UILabel>
+              <Input
+                id="start-date"
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                className="h-9 w-[160px] text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <UILabel htmlFor="end-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                bis
+              </UILabel>
+              <Input
+                id="end-date"
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                className="h-9 w-[160px] text-sm"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetDates}
+              className="h-9 gap-2 text-muted-foreground hover:text-[#00463c]"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white border-none shadow-sm">
           <CardHeader>
@@ -213,7 +301,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={(data.urlPerformance.length > 0 ? data.urlPerformance : data.performance) as any[]}>
+              <LineChart data={filteredUrlPerformance}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                   dataKey="Date" 

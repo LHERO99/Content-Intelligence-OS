@@ -1037,7 +1037,12 @@ export async function updateConfig(key: string, value: string, fileUrl?: string)
 
     const fields: any = { Value: value };
     if (fileUrl) {
-      fields.File = [{ url: fileUrl }];
+      // Note: Airtable's API for attachments DOES NOT support Data URLs (Base64) directly.
+      // It requires a publicly accessible URL. Since we are using Base64, 
+      // we should ONLY store it in the 'Value' field (text field) and NOT 
+      // try to push it to the 'File' (Attachment) field.
+      // fields.File = [{ url: fileUrl }];
+      fields.Value = fileUrl;
     }
 
     if (records.length === 0) {
