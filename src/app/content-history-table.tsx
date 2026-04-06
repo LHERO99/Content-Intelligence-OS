@@ -158,7 +158,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         const url = row.getValue("url") as string;
         const isBlacklisted = row.original.isBlacklisted;
         return (
-          <div className="flex items-center gap-2 max-w-[600px]">
+          <div className="flex items-center gap-2 max-w-[800px]">
             <span className="font-medium truncate flex-1">{url}</span>
             {url !== "Keine URL" && (
               <a 

@@ -24,3 +24,9 @@
 - **Inbound Data Resilience (06.04.2026)**: Implementierung von "Double-JSON Parsing" im n8n Callback, um Robustheit gegen unterschiedliche Serialisierungs-Strategien in n8n-Workflows zu gewährleisten.
 - **Schema Alignment Policy**: Bei Löschung von Feldern in Airtable (z.B. `Reasoning_Chain`) erfolgt eine sofortige systemweite Entfernung im Code, da Airtable keine unbekannten Felder akzeptiert (422 Error). Grund-Details werden stattdessen im `Diff_Summary` konsolidiert.
 
+## Monitoring & Kosten-Logik (06.04.2026)
+- **Graceful Degradation Policy**: Die Monitoring-Route nutzt nun ein "Try-Best" Pattern für parallele API-Calls. Das Fehlschlagen einer Tabelle (z.B. Cost_Config) führt nicht mehr zum Totalausfall des Dashboards, sondern wird durch Log-Warnungen und leere Default-Werte abgefangen.
+- **Contextual Page_Type Inference**: Bei fehlenden Metadaten im Log/Keyword wird der `Page_Type` über die URL-Struktur (`/ratgeber/` vs. `/kategorie/`) hergeleitet. Dies stellt sicher, dass ROI-Berechnungen auch bei unvollständigen Airtable-Daten funktionieren.
+- **Daily Billing Aggregation**: Um Kosten-Ausreißer durch technische Korrekturen zu vermeiden, werden alle Log-Ereignisse einer URL innerhalb eines Kalendertages als ein einziges Abrechnungs-Event gewertet.
+- **Case-Insensitive Config Lookup**: Alle Vergleiche gegen die `Cost_Config` (Page_Type, Action_Type) werden normalisiert (Lowercase) durchgeführt, um Fehler durch unterschiedliche Schreibweisen in Airtable zu eliminieren.
+- **Extended Target-Source for Monitoring**: Das Monitoring-Dashboard basiert nun primär auf der `URL_Performance` Tabelle. Sobald Daten für eine URL existieren, wird sie gelistet, unabhängig davon, ob bereits Logs vorliegen.

@@ -16,7 +16,7 @@
 - [x] HTML-Ansicht in "Bearbeiten"-Tab integrieren.
 - [x] Visualisierung von Headlines (H1-H3) und Absätzen im Editor/Vorschau fixen.
 - [x] UI-Farbanpassungen (Zeitstempel-Grau, Typ-Badge-Grau).
-- [x] "Code"-Modus im Editor mit Beautifier integrieren.
+- [x] "Code"-Modus im Editor with Beautifier integrieren.
 - [x] Toolbar-Responsivität (H-Tag Status-Anzeige) & Headline-zu-Text Schalter.
 - [x] "Beauftragen"-Button Synchronisation (Button-Verschwinden fixen).
 - [x] Active-Row-Highlighting in Auftragsliste fixen.
@@ -71,4 +71,8 @@
 - [x] UI: Monitoring Detail-Ansicht um zwei separate Charts (URL-Performance & Keyword-Trends) erweitert.
 - [x] Fix: Deployment-Fehler durch Löschen verwaister Debug-Routen (`trends/route.ts`) behoben.
 - [x] Cleanup: Vollständiges Entfernen veralteter Tabellen-Konstanten (`PERFORMANCE_DATA`, `POTENTIAL_TRENDS`) aus dem Code.
-
+- [x] API: Monitoring-Übersicht auf "Try-Catch isolation" für parallele Airtable-Requests umgestellt.
+- [x] Feature: Keyword-Importer unterstützt nun direktes Mapping von `Page_Type`.
+- [x] Feature: Automatisierte `Page_Type` Herleitung über URL-Struktur in der Monitoring-API.
+- [x] UI: URL-Spaltenbreite in Historie auf 800px und Keyword-Map auf 500px erhöht.
+- [x] Logic: Tägliche Deduplizierung von Kosten-Events implementiert.

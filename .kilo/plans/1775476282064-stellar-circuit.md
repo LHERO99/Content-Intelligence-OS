@@ -1,32 +1,32 @@
-# Plan: Behebung des "Failed to fetch" Fehlers & Robustes Monitoring
+# Plan: Korrektur Monitoring-Daten & Spaltenbreiten
 
-Der "Failed to fetch" Fehler im Content-Monitoring deutet auf ein serverseitiges Problem in der API-Route `/api/monitoring` hin, das die gesamte Übersicht blockiert.
+Das Content-Monitoring zeigt aktuell keine Daten an, und die Kostenberechnung greift nicht korrekt. Zudem sollen die URL-Spalten in der Historie und der Keyword-Map verbreitert werden.
 
 ## Analyse & Problemlösung
-1.  **Fehlersuche (Backend):** Die Route `/api/monitoring/route.ts` nutzt `Promise.all` für vier parallele Airtable-Abfragen. Wenn eine davon fehlschlägt (z.B. Timeout, Rate-Limit oder fehlende Berechtigungen), bricht der gesamte Request ab. Wir werden:
-    - Einzelne Abfragen absichern, sodass Teilerfolge möglich sind (Graceful Degradation).
-    - Detailliertere Fehlermeldungen an das Frontend senden.
-2.  **Fehlender Page_Type:** Da das Lookup-Feld in Airtable oft leer ist, werden wir die Zuordnung programmatisch in der API vornehmen.
-3.  **Keywordmap Importer:** Der Importer wird um das Feld `Page_Type` erweitert.
-4.  **Deduplizierung von Logs:** Wir verhindern Mehrfachberechnungen pro Tag/URL.
+1.  **Monitoring-Liste leer:** Die API-Route `/api/monitoring` filtert aktuell URLs basierend auf den `logs`. Wenn für eine URL Performance-Daten (`URL_Performance`) vorliegen, soll diese aber unabhängig von Logs erscheinen. Wir ändern die Logik so, dass `performance` die primäre Quelle für die URL-Liste ist.
+2.  **Kost-Savings Trigger:** Die Berechnung soll ausgelöst werden, sobald im `Content-Log` der Text "Content angeliefert" im Feld `Diff_Summary` steht. Dabei werden `Page_Type` (aus Keyword-Map), `Action_Type` und `Cost_Config` kombiniert.
+3.  **Spaltenbreiten:**
+    *   `src/app/content-history-table.tsx`: URL-Spalte verbreitern.
+    *   `src/features/planning/components/keyword-columns.tsx`: "Target URL" Spalte verbreitern, "Main" und "Rank" schmaler machen.
 
 ## Umsetzungsschritte
 
-### 1. API-Robustheit (`src/app/api/monitoring/route.ts`)
-*   **Fehler-Isolation:** Umstellung von `Promise.all` auf eine sicherere Methode oder Hinzufügen von individuellen `.catch()` Blöcken, die leere Arrays zurückgeben, anstatt den gesamten Request zu töten.
-*   **Logging:** Verbesserung der Server-Logs, um genau zu sehen, welche Airtable-Tabelle das Problem verursacht.
-*   **Page_Type Fallback:** Implementierung der URL-basierten Erkennung (`/ratgeber/` vs `/kategorie/`), wenn weder Log noch Keyword einen Typ liefern.
+### 1. API-Anpassung (`src/app/api/monitoring/route.ts`)
+*   **URL-Liste:** Basis der `uniqueUrls` von `logs` auf `performance` (URL_Performance Tabelle) umstellen.
+*   **Kosten-Logik:** Sicherstellen, dass "Content angeliefert" zuverlässig als Trigger für die Kostenberechnung fungiert, mit korrektem Mapping auf `Page_Type` aus der Keyword-Tabelle.
 
-### 2. Keyword-Importer Erweiterung (`src/features/planning/components/keyword-import.tsx`)
-*   Hinzufügen von `Page_Type` zu den `SYSTEM_COLUMNS` und `autoMapColumns`.
+### 2. UI-Verbesserungen (Spaltenbreiten)
+*   **Keyword-Map:** In `keyword-columns.tsx` die `max-w` der Target URL auf `max-w-[500px]` (oder flexibel) erhöhen. Header "Ranking" zu "Rank" kürzen und Spaltengrößen für "Main" und "Rank" reduzieren.
+*   **Historie:** In `content-history-table.tsx` die `max-w` der URL-Zelle auf `max-w-[800px]` erhöhen.
 
-### 3. Kosten-Deduplizierung
-*   Gruppierung der Logs nach URL und Kalendertag in der API-Logik.
+### 3. Keyword-Importer & Airtable
+*   Verifizierung, dass `Page_Type` beim Import korrekt in die `Keyword-Map` geschrieben wird (bereits vorbereitet).
 
 ## Geänderte Dateien
-*   `src/app/api/monitoring/route.ts` (Hauptursache für den Fehler)
-*   `src/features/planning/components/keyword-import.tsx`
-*   `src/lib/airtable.ts`
+*   `src/app/api/monitoring/route.ts`
+*   `src/app/content-history-table.tsx`
+*   `src/features/planning/components/keyword-columns.tsx`
 
 ## Offene Punkte
-*   Könnte ein Airtable Rate-Limit (5 Requests/Sekunde) vorliegen? Falls ja, wäre ein kurzes Caching (z.B. 60s) sinnvoll.
+*   Keine. Die Anforderungen sind klar definiert.
+

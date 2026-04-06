@@ -48,7 +48,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
-              <div className="max-w-[400px] truncate text-muted-foreground text-xs cursor-help">
+              <div className="max-w-[500px] truncate text-muted-foreground text-xs cursor-help">
                 {url}
               </div>
             </TooltipTrigger>

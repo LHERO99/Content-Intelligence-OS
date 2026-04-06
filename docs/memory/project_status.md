@@ -17,7 +17,7 @@
 - **Airtable Service-Härtung**:
   - **Computed Field Fix**: Das Feld `Target_URL` in `Content-Log` wird beim Schreiben explizit ignoriert.
   - **URL-Historie Persistenz**: `getContentHistoryByUrl` nutzt nun einen `OR`-Filter (`Target_URL` ODER `Logged_URL`), um Historie auch nach Keyword-Löschung (Blacklisting) anzuzeigen. Der "Blacklisted" Badge wird nur bei URL-Level Events angezeigt.
-  - **Aggressives URL-Grouping**: Die UI (`content-history-table.tsx`) nutzt eine Fallback-Kette (Logged_URL -> Keyword-Map -> Target_URL), um Logs einer URL zuzuordnen.
+  - **Aggressives URL-Grouping**: Die UI (`content-history-table.tsx`) nutzt eine Fallback-Kette (Logged_URL -> Keyword-Map -> Target_URL), um Logs einer URL zuozuordnen.
 - **Blacklist-Sicherheitsmechanismen (06.04.2026)**:
   - **Main Keyword Schutz**: Main Keywords können nicht einzeln blacklisted werden; erfordert URL-Blacklisting oder Neuzuweisung des Main Keywords.
   - **Double Confirmation**: URL-Blacklisting erfordert eine zweite Bestätigung mit Datenverlust-Warnung.
@@ -51,4 +51,11 @@
 - **Icon-System**: Icons für Blacklist (`ShieldAlert` in Rot) und Vorschläge (`Lightbulb` in Amber).
 - **Editor-Tracking**: User-E-Mail wird bei fast allen Events erfasst.
 
-
+## Monitoring & Kosten-Berechnung (Aktuelle Entwicklung)
+- **Fehler-Resilienz**: In `api/monitoring/route.ts` wurden individuelle `.catch()` Blöcke für parallele Airtable-Anfragen implementiert, um Teilausfälle abzufangen und den Dashboard-Lockup zu verhindern.
+- **Programmatisches Page_Type Mapping**: Da das Airtable-Lookup oft leer ist, zieht die API den `Page_Type` nun primär aus der `Keyword-Map`. Ein URL-basiertes Fallback (Erkennung von `/ratgeber/` vs. `/kategorie/`) sorgt für korrekte Zuordnungen.
+- **Kosten-Präzision**: 
+  - **Deduplizierung**: Mehrfache Logs pro Tag/URL werden zu einem Abrechnungs-Event zusammengefasst.
+  - **Trigger**: "Content angeliefert" im `Diff_Summary` fungiert als Kern-Trigger für die ROI-Berechnung.
+- **Importer-Upgrade**: Der Keyword-Importer unterstützt nun das Mapping des `Page_Type` Feldes inklusive automatischer Header-Erkennung ("Seitentyp").
+- **Tabellen-Layout**: URL-Spalten in der Historie und Keyword-Map wurden verbreitert, um die Lesbarkeit langer Pfade zu verbessern.

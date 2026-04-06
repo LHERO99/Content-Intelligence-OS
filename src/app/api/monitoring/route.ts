@@ -111,7 +111,8 @@ export async function GET() {
       dailyLogs.forEach((log, index) => {
         const summary = log.Diff_Summary?.toLowerCase() || '';
         const keywordId = log.Keyword_ID?.[0];
-        const keyword = keywords.find(k => k.id === keywordId);
+        // Try to find the keyword by ID or Target_URL to get the Page_Type
+        const keyword = keywords.find(k => k.id === keywordId) || keywords.find(k => k.Target_URL === url);
         
         // Infer Page_Type from URL structure if missing from log and keyword
         let pageType = log.Page_Type || keyword?.Page_Type;
@@ -121,8 +122,10 @@ export async function GET() {
           else pageType = 'Ratgeber'; // Default fallback
         }
 
-        // Action_Type: First delivery is Erstellung, subsequent ones are Optimierung
-        const actionType = index === 0 ? 'Erstellung' : 'Optimierung';
+        // Action_Type: Use Action_Type from keyword if available, or infer from log/index
+        // If the log is "Content angeliefert", it might be an 'Erstellung' or 'Optimierung'
+        // Rule: First delivery is Erstellung (if the keyword says so), subsequent ones are Optimierung
+        let actionType = index === 0 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung';
 
         console.log(`[API Monitoring] URL: ${url}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
 
@@ -146,9 +149,13 @@ export async function GET() {
       });
     });
 
-    // Unique URLs with latest stats
-    const uniqueUrls = Array.from(new Set(performance.map(p => p.Target_URL))).filter(Boolean);
-    const urlList = uniqueUrls.map(url => {
+    // Unified list of URLs that should appear in monitoring:
+    // Every URL that has data in URL_Performance OR has content logs
+    const perfUrls = new Set(performance.map(p => p.Target_URL).filter(Boolean));
+    const allLogUrls = new Set(logs.map(l => l.Target_URL).filter(Boolean));
+    const allUniqueUrls = Array.from(new Set([...perfUrls, ...allLogUrls]));
+
+    const urlList = allUniqueUrls.map(url => {
       const urlPerf = performance.filter(p => p.Target_URL === url).sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime());
       const latest = urlPerf[0];
       const previous = urlPerf[1];
@@ -163,7 +170,7 @@ export async function GET() {
         lastAction: urlLogs[0]?.Action_Type || 'N/A',
         lastActionDate: urlLogs[0]?.Created_At || null,
       };
-    }).filter(item => item.url);
+    });
 
     return NextResponse.json({
       metrics: {
