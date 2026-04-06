@@ -128,13 +128,13 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
       // Blacklist status depends on the MOST RECENT relevant event
       const blacklistEvents = group.logs.filter(l => 
-        l.Diff_Summary?.includes('URL der Blacklist hinzugefügt') || 
+        l.Diff_Summary?.startsWith('URL der Blacklist hinzugefügt') || 
         l.Diff_Summary?.includes('URL von der Blacklist entfernt')
       );
 
       if (blacklistEvents.length > 0) {
         // The newest log (index 0) determines current state
-        group.isBlacklisted = blacklistEvents[0].Diff_Summary?.includes('URL der Blacklist hinzugefügt') ?? false;
+        group.isBlacklisted = blacklistEvents[0].Diff_Summary?.startsWith('URL der Blacklist hinzugefügt') ?? false;
       }
     });
 

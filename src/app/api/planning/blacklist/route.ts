@@ -53,11 +53,11 @@ export async function POST(request: Request) {
           try {
             await createContentLog({
               Keyword_ID: [kw.id],
-              Logged_URL: kw.Target_URL, // Pass Target_URL to Logged_URL
-              Action_Type: kw.Action_Type || 'Optimierung',
-              Diff_Summary: `URL der Blacklist hinzugefügt. Grund: ${Reason}`,
-              Editor: session?.user?.email ? [session.user.email] : undefined
-            });
+            Logged_URL: kw.Target_URL, // Pass Target_URL to Logged_URL
+            Action_Type: kw.Action_Type || 'Optimierung',
+            Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
+            Editor: session?.user?.email ? [session.user.email] : undefined
+          });
           } catch (logErr) {
             console.error('[API Blacklist] Error creating bulk log:', logErr);
           }
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
             Keyword_ID: [keywordId],
             Logged_URL: targetUrl, // Pass targetUrl to Logged_URL
             Action_Type: body.Action_Type || 'Optimierung',
-            Diff_Summary: `URL der Blacklist hinzugefügt. Grund: ${Reason}`,
+            Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
             Editor: session?.user?.email ? [session.user.email] : undefined
           });
         } catch (logErr) {

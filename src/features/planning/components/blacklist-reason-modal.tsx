@@ -169,7 +169,7 @@ export function BlacklistReasonModal({
               </p>
               <ul className="list-disc list-inside max-h-32 overflow-y-auto">
                 {keywords.map((k) => (
-                  <li key={k.id} className="truncate">
+                  <li key={k.id} className="break-all whitespace-normal py-0.5">
                     {type === 'Keyword' ? k.Keyword : (k.Target_URL || 'Keine URL')}
                   </li>
                 ))}
