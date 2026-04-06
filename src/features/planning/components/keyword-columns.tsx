@@ -49,7 +49,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
-              <div className="max-w-[500px] truncate text-muted-foreground text-xs cursor-help text-left">
+              <div className="max-w-[700px] truncate text-muted-foreground text-xs cursor-help text-left">
                 {url}
               </div>
             </TooltipTrigger>

@@ -21,7 +21,7 @@ import {
   Label
 } from 'recharts';
 import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
-import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash, Calendar, RotateCcw } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash, Calendar, RotateCcw, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { HistoryList } from "@/features/shared/components/HistoryList";
 import { Input } from "@/components/ui/input";
@@ -156,6 +156,11 @@ export function UrlDetail({ url }: UrlDetailProps) {
 
   const statusInfo = getStatusInfo();
 
+  const mainKeyword = data.keywords.find(k => k.Main_Keyword === 'Y');
+  const latestRanking = mainKeyword ? data.keywordRankings
+    .filter(r => r.Keyword_ID.includes(mainKeyword.id))
+    .sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime())[0] : null;
+
   const eventMarkers = data.history.map(log => ({
     date: log.Created_At.split('T')[0],
     type: log.Action_Type,
@@ -178,7 +183,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white border-none shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -247,6 +252,30 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 <p className="text-xs text-muted-foreground italic">Keine Keywords verknüpft</p>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Target className="h-4 w-4 text-[#00463c]" />
+              Rankt für Main KW
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <div className={`text-lg font-bold ${latestRanking?.Ranking ? 'text-[#00463c]' : 'text-slate-400'}`}>
+                {latestRanking?.Ranking ? 'Ja' : 'Nein'}
+              </div>
+              {latestRanking?.Ranking && (
+                <span className="text-sm text-muted-foreground font-medium">
+                  (Platz {latestRanking.Ranking})
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate" title={mainKeyword?.Keyword}>
+              {mainKeyword?.Keyword || 'Kein Main KW definiert'}
+            </p>
           </CardContent>
         </Card>
       </div>
