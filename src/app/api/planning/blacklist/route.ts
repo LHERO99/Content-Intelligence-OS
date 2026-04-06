@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       for (const kw of keywords) {
         const blacklistEntry = await addToBlacklist({
           Keyword: Type === 'URL' ? kw.Target_URL : kw.Keyword,
-          Target_URL: kw.Target_URL, // Always preserve the Target_URL if available
+          Target_URL: Type === 'URL' ? kw.Target_URL : undefined, // Only preserve Target_URL if type is URL
           Type: Type || 'Keyword',
           Reason,
         });
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       const targetUrl = body.Target_URL;
       const result = await addToBlacklist({
         Keyword: Type === 'URL' ? targetUrl : Keyword,
-        Target_URL: targetUrl, // Preserve the URL
+        Target_URL: Type === 'URL' ? targetUrl : undefined, // Only preserve Target_URL if type is URL
         Type: Type || 'Keyword',
         Reason,
       });

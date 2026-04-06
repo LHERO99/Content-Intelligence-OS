@@ -58,3 +58,7 @@
 - [x] Middleware: `src/proxy.ts` durch standardisierte `src/middleware.ts` ersetzt (Next.js Build Fix).
 - [x] Sicherheit: Inbound-Monitoring-API via `x-api-key` Header abgesichert.
 - [x] n8n: Payload für `IMPORT_DATA` um strukturierte Main-/Secondary-Keywords ergänzt.
+- [x] Fix: n8n Callback "Double-JSON Parsing" für robustes Payload-Handling implementiert.
+- [x] Schema: `Reasoning_Chain` systemweit entfernt (Airtable, Types, UI, Routen).
+- [x] Bugfix: Deployment-Fehler in `suggest/route.ts` durch verwaiste `Reasoning_Chain` behoben.
+- [x] Fix: Blacklist-Grund in `Diff_Summary` integriert nach Entfernung des Reasoning-Feldes.

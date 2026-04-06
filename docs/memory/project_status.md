@@ -16,7 +16,9 @@
 - **Airtable Service-Härtung**:
   - **Computed Field Fix**: Das Feld `Target_URL` in `Content-Log` wird beim Schreiben explizit ignoriert.
   - **URL-Historie Persistenz**: `getContentHistoryByUrl` nutzt nun einen `OR`-Filter (`Target_URL` ODER `Logged_URL`), um Historie auch nach Keyword-Löschung (Blacklisting) anzuzeigen.
-  - **Aggressives URL-Grouping**: Die UI (`content-history-table.tsx`) nutzt eine Fallback-Kette (Logged_URL -> Keyword-Map -> Target_URL -> Reasoning_Chain), um Logs einer URL zuzuordnen, selbst wenn Airtable-Links gebrochen sind.
+  - **Aggressives URL-Grouping**: Die UI (`content-history-table.tsx`) nutzt eine Fallback-Kette (Logged_URL -> Keyword-Map -> Target_URL), um Logs einer URL zuzuordnen.
+- **Schema-Cleanup (06.04.2026)**: Das Feld `Reasoning_Chain` wurde systemweit entfernt (Airtable, Types, Routen, UI), da es aus der Datenbank gelöscht wurde.
+- **n8n Callback Härtung**: Der n8n Callback (`api/n8n/callback`) beherrscht nun "Double-JSON Parsing", um robust gegen fehlerhafte Serialisierung in n8n-Workflows zu sein.
 - **Blacklist-Logging**: Manuelle Keyword-Erstellung und Monitoring-Vorschläge (Trends) triggern nun korrekt die "Vorschläge"-Historie.
 
 ## n8n Integration & Performance-Monitoring
