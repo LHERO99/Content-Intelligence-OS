@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     // Standardize field names
     const finalKeywordId = keywordId || Keyword_ID;
-    const finalUrl = url || Target_URL;
+    const finalUrl = url || Target_URL || Logged_URL;
     const finalLoggedUrl = Logged_URL || finalUrl;
     const finalActionType = actionType || Action_Type;
     const finalContentBody = contentBody || Content_Body;
@@ -93,9 +93,10 @@ export async function POST(request: Request) {
     // Ensure keywordId is an array for Airtable Link field
     const keywordIds = Array.isArray(finalKeywordId) ? finalKeywordId : [finalKeywordId];
 
+    console.log('[API] Creating content log for URL:', finalLoggedUrl);
+
     const newLog = await createContentLog({
       Keyword_ID: keywordIds,
-      Target_URL: finalUrl,
       Logged_URL: finalLoggedUrl,
       Action_Type: finalActionType,
       Content_Body: finalContentBody,
@@ -103,6 +104,11 @@ export async function POST(request: Request) {
       Reasoning_Chain: finalReasoningChain,
       Editor: finalEditor || (session?.user?.email ? [session.user.email] : undefined),
     });
+
+    if (!newLog) {
+      console.error('[API] createContentLog returned null');
+      return NextResponse.json({ error: 'Failed to create content log in Airtable' }, { status: 500 });
+    }
 
     return NextResponse.json(newLog);
   } catch (error: any) {

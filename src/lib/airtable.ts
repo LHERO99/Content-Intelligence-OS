@@ -151,21 +151,27 @@ export async function getContentLogs(): Promise<ContentLog[]> {
       sort: [{ field: 'Time_Created', direction: 'desc' }],
       maxRecords: 100
     }).all();
-    return records.map((record) => ({
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: Array.isArray(record.get('Target_URL')) ? (record.get('Target_URL') as string[])[0] : (record.get('Target_URL') as string),
-      Logged_URL: record.get('Logged_URL') as string,
-      Action_Type: record.get('Action_Type') as any,
-      Version: record.get('Content_Body') ? 'v2' : 'v1',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-      Updated_At: (record.get('Time_Changed') || record.get('Time_Created') || new Date().toISOString()) as string,
-      Editor: record.get('Editor') as string[],
-    }));
+    return records.map((record) => {
+      const rawTargetUrl = record.get('Target_URL');
+      const targetUrl = Array.isArray(rawTargetUrl) ? rawTargetUrl[0] : rawTargetUrl;
+      const loggedUrl = record.get('Logged_URL') as string;
+      
+      return {
+        id: record.id,
+        ID: record.get('ID') as number,
+        Keyword_ID: record.get('Keyword_ID') as string[],
+        Target_URL: (targetUrl || loggedUrl) as string,
+        Logged_URL: loggedUrl,
+        Action_Type: record.get('Action_Type') as any,
+        Version: record.get('Content_Body') ? 'v2' : 'v1',
+        Content_Body: record.get('Content_Body') as string,
+        Diff_Summary: record.get('Diff_Summary') as string,
+        Reasoning_Chain: record.get('Reasoning_Chain') as string,
+        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Updated_At: (record.get('Time_Changed') || record.get('Time_Created') || new Date().toISOString()) as string,
+        Editor: record.get('Editor') as string[],
+      };
+    });
   } catch (error) {
     return handleAirtableError(error,'getContentLogs');
   }
@@ -178,20 +184,26 @@ export async function getContentHistoryByUrl(targetUrl: string): Promise<Content
       sort: [{ field: 'Time_Created', direction: 'desc' }]
     }).all();
     
-    return records.map((record) => ({
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: Array.isArray(record.get('Target_URL')) ? (record.get('Target_URL') as string[])[0] : (record.get('Target_URL') as string),
-      Logged_URL: record.get('Logged_URL') as string,
-      Action_Type: record.get('Action_Type') as any,
-      Version: record.get('Content_Body') ? 'v2' : 'v1',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-      Editor: record.get('Editor') as string[],
-    }));
+    return records.map((record) => {
+      const rawUrl = record.get('Target_URL');
+      const resolvedTargetUrl = Array.isArray(rawUrl) ? rawUrl[0] : rawUrl;
+      const loggedUrl = record.get('Logged_URL') as string;
+
+      return {
+        id: record.id,
+        ID: record.get('ID') as number,
+        Keyword_ID: record.get('Keyword_ID') as string[],
+        Target_URL: (resolvedTargetUrl || loggedUrl) as string,
+        Logged_URL: loggedUrl,
+        Action_Type: record.get('Action_Type') as any,
+        Version: record.get('Content_Body') ? 'v2' : 'v1',
+        Content_Body: record.get('Content_Body') as string,
+        Diff_Summary: record.get('Diff_Summary') as string,
+        Reasoning_Chain: record.get('Reasoning_Chain') as string,
+        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Editor: record.get('Editor') as string[],
+      };
+    });
   } catch (error) {
     return handleAirtableError(error,'getContentHistoryByUrl');
   }
@@ -204,20 +216,26 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
       sort: [{ field: 'Time_Created', direction: 'desc' }]
     }).all();
     
-    return records.map((record) => ({
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: record.get('Target_URL') as string,
-      Logged_URL: record.get('Logged_URL') as string,
-      Action_Type: record.get('Action_Type') as any,
-      Version: record.get('Content_Body') ? 'v2' : 'v1',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-      Editor: record.get('Editor') as string[],
-    }));
+    return records.map((record) => {
+      const rawUrl = record.get('Target_URL');
+      const targetUrl = Array.isArray(rawUrl) ? rawUrl[0] : rawUrl;
+      const loggedUrl = record.get('Logged_URL') as string;
+
+      return {
+        id: record.id,
+        ID: record.get('ID') as number,
+        Keyword_ID: record.get('Keyword_ID') as string[],
+        Target_URL: (targetUrl || loggedUrl) as string,
+        Logged_URL: loggedUrl,
+        Action_Type: record.get('Action_Type') as any,
+        Version: record.get('Content_Body') ? 'v2' : 'v1',
+        Content_Body: record.get('Content_Body') as string,
+        Diff_Summary: record.get('Diff_Summary') as string,
+        Reasoning_Chain: record.get('Reasoning_Chain') as string,
+        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Editor: record.get('Editor') as string[],
+      };
+    });
   } catch (error) {
     return handleAirtableError(error,'getContentHistoryByKeyword');
   }
@@ -226,10 +244,15 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
 export async function createContentLog(log: Partial<ContentLog>): Promise<ContentLog | null> {
   try {
     if (!log.Keyword_ID || !Array.isArray(log.Keyword_ID) || log.Keyword_ID.length === 0) {
+      console.error('[Airtable createContentLog] Validation failed: Keyword_ID missing or empty');
       return null;
     }
+
     const validKeywordIds = log.Keyword_ID.filter(id => id && id.startsWith('rec'));
-    if (validKeywordIds.length === 0) return null;
+    if (validKeywordIds.length === 0) {
+      console.error('[Airtable createContentLog] Validation failed: No valid record IDs');
+      return null;
+    }
 
     const fields: any = {
       Keyword_ID: validKeywordIds,
@@ -241,25 +264,61 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
     };
 
     Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
-    const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
-    if (records.length === 0) return null;
-    const record = records[0];
-    
-    return {
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: record.get('Target_URL') as string,
-      Logged_URL: record.get('Logged_URL') as string,
-      Action_Type: record.get('Action_Type') as any,
-      Version: record.get('Content_Body') ? 'v2' : 'v1',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-      Editor: record.get('Editor') as string[],
-    };
+
+    console.log('[Airtable createContentLog] Creating log with fields:', JSON.stringify(fields));
+
+    try {
+      const records = await base(TABLES.CONTENT_LOG).create([{ fields }]);
+      if (records.length === 0) return null;
+      const record = records[0];
+      
+      const rawTarget = record.get('Target_URL');
+      const resolvedTarget = Array.isArray(rawTarget) ? String(rawTarget[0]) : (rawTarget ? String(rawTarget) : undefined);
+      
+      return {
+        id: record.id,
+        ID: record.get('ID') as number,
+        Keyword_ID: record.get('Keyword_ID') as string[],
+        Target_URL: (resolvedTarget || record.get('Logged_URL')) as string,
+        Logged_URL: record.get('Logged_URL') as string,
+        Action_Type: record.get('Action_Type') as any,
+        Version: record.get('Content_Body') ? 'v2' : 'v1',
+        Content_Body: record.get('Content_Body') as string,
+        Diff_Summary: record.get('Diff_Summary') as string,
+        Reasoning_Chain: record.get('Reasoning_Chain') as string,
+        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Editor: record.get('Editor') as string[],
+      };
+    } catch (innerError: any) {
+      // Robust retry for Airtable 422 errors (computed fields)
+      if (innerError.statusCode === 422 && (innerError.message?.includes('Action_Type') || innerError.message?.includes('Target_URL'))) {
+        console.warn('[Airtable createContentLog] Computed field error, retrying without Action_Type/Target_URL');
+        delete fields.Action_Type;
+        const retryRecords = await base(TABLES.CONTENT_LOG).create([{ fields }]);
+        if (retryRecords.length === 0) return null;
+        const retryRecord = retryRecords[0];
+        const retryRawTarget = retryRecord.get('Target_URL');
+        const retryResolvedTarget = Array.isArray(retryRawTarget) ? String(retryRawTarget[0]) : (retryRawTarget ? String(retryRawTarget) : undefined);
+        
+        return {
+          id: retryRecord.id,
+          ID: retryRecord.get('ID') as number,
+          Keyword_ID: retryRecord.get('Keyword_ID') as string[],
+          Target_URL: (retryResolvedTarget || retryRecord.get('Logged_URL')) as string,
+          Logged_URL: retryRecord.get('Logged_URL') as string,
+          Action_Type: retryRecord.get('Action_Type') as any,
+          Version: retryRecord.get('Content_Body') ? 'v2' : 'v1',
+          Content_Body: retryRecord.get('Content_Body') as string,
+          Diff_Summary: retryRecord.get('Diff_Summary') as string,
+          Reasoning_Chain: retryRecord.get('Reasoning_Chain') as string,
+          Created_At: (retryRecord.get('Time_Created') || new Date().toISOString()) as string,
+          Editor: retryRecord.get('Editor') as string[],
+        };
+      }
+      throw innerError;
+    }
   } catch (error: any) {
+    console.error('[Airtable createContentLog] Final Error:', error);
     return handleAirtableError(error,'createContentLog');
   }
 }
@@ -271,20 +330,26 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
       maxRecords: 100,
     }).all();
 
-    return records.map((record) => ({
-      id: record.id,
-      ID: record.get('ID') as number,
-      Keyword_ID: record.get('Keyword_ID') as string[],
-      Target_URL: record.get('Target_URL') as string,
-      Logged_URL: record.get('Logged_URL') as string,
-      Action_Type: record.get('Action_Type') as any,
-      Version: record.get('Content_Body') ? 'v2' : 'v1',
-      Content_Body: record.get('Content_Body') as string,
-      Diff_Summary: record.get('Diff_Summary') as string,
-      Reasoning_Chain: record.get('Reasoning_Chain') as string,
-      Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-      Editor: record.get('Editor') as string[],
-    }));
+    return records.map((record) => {
+      const rawTargetUrl = record.get('Target_URL');
+      const targetUrl = Array.isArray(rawTargetUrl) ? rawTargetUrl[0] : rawTargetUrl;
+      const loggedUrl = record.get('Logged_URL') as string;
+
+      return {
+        id: record.id,
+        ID: record.get('ID') as number,
+        Keyword_ID: record.get('Keyword_ID') as string[],
+        Target_URL: (targetUrl || loggedUrl) as string,
+        Logged_URL: loggedUrl,
+        Action_Type: record.get('Action_Type') as any,
+        Version: record.get('Content_Body') ? 'v2' : 'v1',
+        Content_Body: record.get('Content_Body') as string,
+        Diff_Summary: record.get('Diff_Summary') as string,
+        Reasoning_Chain: record.get('Reasoning_Chain') as string,
+        Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
+        Editor: record.get('Editor') as string[],
+      };
+    });
   } catch (error) {
     return handleAirtableError(error, 'getAllContentHistory');
   }
