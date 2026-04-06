@@ -165,6 +165,47 @@ export async function GET() {
       const latest = urlPerf[0];
       const previous = urlPerf[1];
       const urlLogs = logs.filter(l => l.Target_URL === url).sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
+
+      // Calculate individual URL savings
+      let urlSavings = 0;
+      const deliveryLogs = urlLogs.filter(l => {
+        const summary = String(l.Diff_Summary || '').toLowerCase();
+        return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
+               !summary.includes('url wurde dem tool hinzugefügt') &&
+               !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&
+               !summary.includes('url wurde der redaktionsplanung hinzugefügt');
+      });
+
+      // Deduplicate by day for individual URL
+      const seenDays = new Set<string>();
+      deliveryLogs.reverse().forEach((log) => {
+        const day = new Date(log.Created_At).toISOString().split('T')[0];
+        if (!seenDays.has(day)) {
+          seenDays.add(day);
+          const keywordId = log.Keyword_ID?.[0];
+          const keyword = keywords.find(k => k.id === keywordId) || keywords.find(k => k.Target_URL === url);
+          
+          let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
+          if (!pageType && url) {
+            if (url.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
+            else if (url.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
+            else pageType = 'Ratgeber';
+          }
+
+          const actionType = seenDays.size === 1 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung';
+          
+          const cost = costs.find(c => {
+            const cPageType = String(c.Page_Type || '').toLowerCase();
+            const cActionType = String(c.Action_Type || '').toLowerCase();
+            return cPageType === pageType.toLowerCase() && 
+                   cActionType === actionType.toLowerCase();
+          });
+
+          if (cost) {
+            urlSavings += (Number(cost.Agency_Cost || 0) + Number(cost.Overhead_Cost || 0));
+          }
+        }
+      });
       
       return {
         url,
@@ -177,7 +218,8 @@ export async function GET() {
         isPublished: urlLogs.some(l => {
           const summary = String(l.Diff_Summary || '').toLowerCase();
           return summary.includes('content angeliefert') || summary.includes('content veröffentlicht');
-        })
+        }),
+        savings: urlSavings
       };
     });
 

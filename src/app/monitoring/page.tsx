@@ -56,6 +56,7 @@ interface MonitoringData {
     lastAction: string;
     lastActionDate: string | null;
     isPublished: boolean;
+    savings: number;
   }>;
 }
 
@@ -301,86 +302,85 @@ export default function MonitoringPage() {
         <CardContent>
           <div className="rounded-md border">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox 
-                      checked={selectedUrls.length === filteredUrls.length && filteredUrls.length > 0}
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedUrls(filteredUrls.map(u => u.url));
-                        else setSelectedUrls([]);
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Klicks (Woche)</TableHead>
-                  <TableHead>Sichtbarkeit (VI)</TableHead>
-                  <TableHead>Letzte Aktion</TableHead>
-                  <TableHead className="text-right">Aktion</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUrls.map((item) => (
-                  <TableRow key={item.url} className="group hover:bg-[#00463c]/5">
-                    <TableCell>
-                      <Checkbox 
-                        checked={selectedUrls.includes(item.url)}
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedUrls(prev => [...prev, item.url]);
-                          else setSelectedUrls(prev => prev.filter(u => u !== item.url));
-                        }}
-                        disabled={!item.isPublished || (item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung")}
-                      />
-                    </TableCell>
-                    <TableCell className="max-w-md">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium truncate">{item.url}</span>
-                        {item.lastActionDate && (
-                          <span className="text-[10px] text-muted-foreground">
-                            Update: {new Date(item.lastActionDate).toLocaleDateString('de-DE')}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {item.clicks}
-                        {item.clicksTrend !== 0 && (
-                          <span className={`text-[10px] flex items-center ${item.clicksTrend > 0 ? "text-green-600" : "text-red-600"}`}>
-                            {item.clicksTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
-                            {Math.abs(item.clicksTrend)}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {item.vi.toFixed(3)}
-                        {item.viTrend !== 0 && (
-                          <span className={`text-[10px] flex items-center ${item.viTrend > 0 ? "text-green-600" : "text-red-600"}`}>
-                            {item.viTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
-                            {Math.abs(item.viTrend).toFixed(3)}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={item.lastAction === "Erstellung" ? "default" : "secondary"}>
-                        {item.lastAction}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={selectedUrls.length === filteredUrls.length && filteredUrls.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedUrls(filteredUrls.map(u => u.url));
+                            else setSelectedUrls([]);
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>URL</TableHead>
+                      <TableHead>Klicks (Woche)</TableHead>
+                      <TableHead>Sichtbarkeit (VI)</TableHead>
+                      <TableHead>Eingesparte Kosten</TableHead>
+                      <TableHead className="text-right">Letzte Aktion</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUrls.map((item) => (
+                      <TableRow 
+                        key={item.url} 
+                        className="group hover:bg-[#00463c]/5 cursor-pointer"
                         onClick={() => setViewingUrl(item.url)}
-                        className="text-[#00463c] hover:text-[#00463c] hover:bg-[#00463c]/10"
                       >
-                        Details <ExternalLink className="h-3 w-3 ml-2" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox 
+                            checked={selectedUrls.includes(item.url)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedUrls(prev => [...prev, item.url]);
+                              else setSelectedUrls(prev => prev.filter(u => u !== item.url));
+                            }}
+                            disabled={!item.isPublished || (item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung")}
+                          />
+                        </TableCell>
+                        <TableCell className="max-w-md">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium truncate">{item.url}</span>
+                            {item.lastActionDate && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Update: {new Date(item.lastActionDate).toLocaleDateString('de-DE')}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {item.clicks}
+                            {item.clicksTrend !== 0 && (
+                              <span className={`text-[10px] flex items-center ${item.clicksTrend > 0 ? "text-green-600" : "text-red-600"}`}>
+                                {item.clicksTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
+                                {Math.abs(item.clicksTrend)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {item.vi.toFixed(3)}
+                            {item.viTrend !== 0 && (
+                              <span className={`text-[10px] flex items-center ${item.viTrend > 0 ? "text-green-600" : "text-red-600"}`}>
+                                {item.viTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
+                                {Math.abs(item.viTrend).toFixed(3)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-[#00463c]">
+                            {item.savings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={item.lastAction === "Erstellung" ? "default" : "secondary"}>
+                            {item.lastAction}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 {filteredUrls.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
