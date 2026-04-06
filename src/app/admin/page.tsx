@@ -30,8 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Key, Coins } from "lucide-react";
-import { ApiKeysManagement } from "./api-keys-management";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins } from "lucide-react";
 import { CostManagement } from "./cost-management";
 
 interface User {
@@ -180,10 +179,6 @@ export default function AdminPage() {
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Nutzer
-          </TabsTrigger>
-          <TabsTrigger value="apikeys" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
-            API-Keys
           </TabsTrigger>
           <TabsTrigger value="costs" className="flex items-center gap-2">
             <Coins className="h-4 w-4" />
@@ -401,10 +396,6 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="apikeys">
-          <ApiKeysManagement />
         </TabsContent>
 
         <TabsContent value="costs">

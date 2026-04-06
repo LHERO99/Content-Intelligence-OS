@@ -16,6 +16,7 @@ export interface KeywordMap {
   Priority_Score?: number;
   Ranking?: number;
   Action_Type?: 'Erstellung' | 'Optimierung';
+  Page_Type?: 'Ratgeber' | 'Kategorie' | 'Andere';
   Last_Published?: string; // ISO Date String
 }
 

@@ -49,10 +49,18 @@ export async function GET(request: NextRequest) {
     let totalOverhead = 0;
     
     history.forEach(log => {
+      // Find associated keyword to get Page_Type and Action_Type
+      const keywordId = log.Keyword_ID?.[0];
+      const keyword = allKeywords.find(k => k.id === keywordId);
+
+      const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
+      const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+
       const cost = costs.find(c => 
-        c.Page_Type === log.Page_Type && 
-        c.Action_Type === log.Action_Type
+        c.Page_Type === pageType && 
+        c.Action_Type === actionType
       );
+
       if (cost) {
         totalAgency += cost.Agency_Cost;
         totalOverhead += cost.Overhead_Cost;

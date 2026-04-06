@@ -54,17 +54,25 @@ export async function GET() {
     };
 
     publishedLogs.forEach(log => {
+      // Find associated keyword to get Page_Type and Action_Type
+      const keywordId = log.Keyword_ID?.[0];
+      const keyword = keywords.find(k => k.id === keywordId);
+      
+      const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
+      const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+
       const cost = costs.find(c => 
-        c.Page_Type === log.Page_Type && 
-        c.Action_Type === log.Action_Type
+        c.Page_Type === pageType && 
+        c.Action_Type === actionType
       );
+
       if (cost) {
         totalAgencySavings += cost.Agency_Cost;
         totalOverheadSavings += cost.Overhead_Cost;
       }
       
-      const pageTypeKey = (log.Page_Type || 'Andere').toLowerCase();
-      const actionTypeKey = log.Action_Type.toLowerCase();
+      const pageTypeKey = pageType.toLowerCase();
+      const actionTypeKey = actionType.toLowerCase();
       const key = `${actionTypeKey}_${pageTypeKey}` as keyof typeof counts;
       if (key in counts) counts[key]++;
     });

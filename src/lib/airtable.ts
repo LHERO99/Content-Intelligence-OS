@@ -139,6 +139,7 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
       Policy: record.get('Policy') as number,
       Priority_Score: record.get('Priority_Score') as number,
       Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Page_Type: record.get('Page_Type') as any,
       Ranking: record.get('Ranking') as number,
       Last_Published: record.get('Last_Published') as string,
     }));
