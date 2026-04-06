@@ -39,7 +39,6 @@ export async function POST(request: Request) {
     // Extract with fallbacks to handle different naming conventions
     const keywordId = body.keywordId || body.Keyword_ID;
     const content = body.content || body.contentBody || body.Content_Body;
-    const reasoning = body.reasoning || body.reasoningChain || body.Reasoning_Chain;
     const status = body.status || body.Status;
     const targetUrl = body.Target_URL || body.targetUrl || body.Logged_URL;
 
@@ -78,7 +77,6 @@ export async function POST(request: Request) {
       Logged_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
-      Reasoning_Chain: reasoning || '',
       Diff_Summary: 'Content angeliefert',
     });
 

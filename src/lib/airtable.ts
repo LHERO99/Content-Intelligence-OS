@@ -166,9 +166,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
-        Reasoning_Chain: record.get('Reasoning_Chain') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
-        Updated_At: (record.get('Time_Changed') || record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
     });
@@ -199,7 +197,6 @@ export async function getContentHistoryByUrl(targetUrl: string): Promise<Content
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
-        Reasoning_Chain: record.get('Reasoning_Chain') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -259,7 +256,6 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       Logged_URL: log.Logged_URL,
       Content_Body: log.Content_Body,
       Diff_Summary: log.Diff_Summary,
-      Reasoning_Chain: log.Reasoning_Chain,
       Action_Type: log.Action_Type, 
     };
 
@@ -285,7 +281,6 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
         Diff_Summary: record.get('Diff_Summary') as string,
-        Reasoning_Chain: record.get('Reasoning_Chain') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -310,7 +305,6 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
           Version: retryRecord.get('Content_Body') ? 'v2' : 'v1',
           Content_Body: retryRecord.get('Content_Body') as string,
           Diff_Summary: retryRecord.get('Diff_Summary') as string,
-          Reasoning_Chain: retryRecord.get('Reasoning_Chain') as string,
           Created_At: (retryRecord.get('Time_Created') || new Date().toISOString()) as string,
           Editor: retryRecord.get('Editor') as string[],
         };

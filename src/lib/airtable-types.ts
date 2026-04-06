@@ -34,7 +34,6 @@ export interface ContentLog {
   Version: 'v1' | 'v2';
   Content_Body?: string;
   Diff_Summary?: string;
-  Reasoning_Chain?: string;
   Created_At: string;
   Editor?: string[]; // Link to Users
 }
