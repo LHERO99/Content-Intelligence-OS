@@ -49,17 +49,20 @@ export async function GET(request: NextRequest) {
     let totalOverhead = 0;
     
     // Rule: Only display savings if content was actually delivered/published
-    const isContentDelivered = history.some(l => 
-      l.Diff_Summary?.includes('Content angeliefert') || 
-      l.Diff_Summary?.includes('Content veröffentlicht')
-    );
+    const isContentDelivered = history.some(l => {
+      const summary = l.Diff_Summary?.toLowerCase() || '';
+      return summary.includes('content angeliefert') || 
+             summary.includes('content veröffentlicht');
+    });
     
     if (isContentDelivered) {
       history.forEach(log => {
+        const summary = log.Diff_Summary?.toLowerCase() || '';
+        
         // Skip logs that are just about tool/planning additions
-        if (log.Diff_Summary?.includes('URL wurde dem Tool hinzugefügt') || 
-            log.Diff_Summary?.includes('URL wurde dem Tab \'Vorschläge\' hinzugefügt') ||
-            log.Diff_Summary?.includes('URL wurde der Redaktionsplanung hinzugefügt')) {
+        if (summary.includes('url wurde dem tool hinzugefügt') || 
+            summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
+            summary.includes('url wurde der redaktionsplanung hinzugefügt')) {
           return;
         }
 

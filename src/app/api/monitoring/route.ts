@@ -18,7 +18,12 @@ export async function GET() {
     ]);
 
     // Aggregate Global Metrics
-    const publishedLogs = logs.filter(l => l.Action_Type === 'Erstellung' || l.Action_Type === 'Optimierung');
+    const publishedLogs = logs.filter(l => 
+      l.Action_Type === 'Erstellung' || 
+      l.Action_Type === 'Optimierung' ||
+      l.Diff_Summary?.toLowerCase().includes('content angeliefert') ||
+      l.Diff_Summary?.toLowerCase().includes('content veröffentlicht')
+    );
     
     // Group logs by Target_URL to ensure we only count savings if at least one "Erstellung" exists
     const urlLogMap = new Map<string, typeof publishedLogs>();
@@ -64,18 +69,21 @@ export async function GET() {
 
     urlLogMap.forEach((urlLogs, url) => {
       // Rule: Only count savings if content was actually delivered/published
-      const isContentDelivered = urlLogs.some(l => 
-        l.Diff_Summary?.includes('Content angeliefert') || 
-        l.Diff_Summary?.includes('Content veröffentlicht')
-      );
+      const isContentDelivered = urlLogs.some(l => {
+        const summary = l.Diff_Summary?.toLowerCase() || '';
+        return summary.includes('content angeliefert') || 
+               summary.includes('content veröffentlicht');
+      });
       
       if (!isContentDelivered) return;
 
       urlLogs.forEach(log => {
+        const summary = log.Diff_Summary?.toLowerCase() || '';
+        
         // Skip logs that are just about tool/planning additions
-        if (log.Diff_Summary?.includes('URL wurde dem Tool hinzugefügt') || 
-            log.Diff_Summary?.includes('URL wurde dem Tab \'Vorschläge\' hinzugefügt') ||
-            log.Diff_Summary?.includes('URL wurde der Redaktionsplanung hinzugefügt')) {
+        if (summary.includes('url wurde dem tool hinzugefügt') || 
+            summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
+            summary.includes('url wurde der redaktionsplanung hinzugefügt')) {
           return;
         }
 
@@ -83,7 +91,15 @@ export async function GET() {
         const keyword = keywords.find(k => k.id === keywordId);
         
         const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
-        const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+        let actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+
+        // Infer Action_Type if not present but summary indicates content update
+        if (!log.Action_Type && summary.includes('content angeliefert')) {
+          // If it's the first log for this URL, it's likely "Erstellung"
+          // but if we want to be safe, we check if other logs exist.
+          // For now, follow the plan: 1 + [Number of Optimization Logs].
+          // If no Action_Type, we'll stick to the fallback.
+        }
 
         const cost = costs.find(c => 
           c.Page_Type === pageType && 

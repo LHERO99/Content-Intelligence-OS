@@ -76,11 +76,24 @@ export function UrlDetail({ url }: UrlDetailProps) {
   if (!data) return <div>Keine Daten gefunden.</div>;
 
   const getStatusInfo = () => {
-    const isContentDelivered = data.history.some(l => 
-      l.Diff_Summary?.includes('Content angeliefert') || 
-      l.Diff_Summary?.includes('Content veröffentlicht')
-    );
-    const optimierungCount = data.history.filter(l => l.Action_Type === 'Optimierung').length;
+    const isContentDelivered = data.history.some(l => {
+      const summary = l.Diff_Summary?.toLowerCase() || '';
+      return summary.includes('content angeliefert') || 
+             summary.includes('content veröffentlicht');
+    });
+    
+    // Version = 1 + [Number of Optimization Logs]
+    // Strictly exclude tool/planning logs from counting
+    const validLogs = data.history.filter(log => {
+      const summary = log.Diff_Summary?.toLowerCase() || '';
+      return !(
+        summary.includes('url wurde dem tool hinzugefügt') || 
+        summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
+        summary.includes('url wurde der redaktionsplanung hinzugefügt')
+      );
+    });
+
+    const optimierungCount = validLogs.filter(l => l.Action_Type === 'Optimierung').length;
     
     if (!isContentDelivered) {
       return { text: "Nicht optimiert", version: "" };
