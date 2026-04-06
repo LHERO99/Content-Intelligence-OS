@@ -294,7 +294,6 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
         Editor: record.get('Editor') as string[],
       };
     } catch (innerError: any) {
-      // Robust retry for Airtable 422 errors (computed fields)
       if (innerError.statusCode === 422 && (innerError.message?.includes('Action_Type') || innerError.message?.includes('Target_URL'))) {
         console.warn('[Airtable createContentLog] Computed field error, retrying without Action_Type/Target_URL');
         delete fields.Action_Type;
@@ -555,14 +554,6 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
   }
 }
 
-export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
-  try {
-    return { created: 0, updated: 0, errors: [] };
-  } catch (error) {
-    return { created: 0, updated: 0, errors: [String(error)] };
-  }
-}
-
 export async function bulkUpdateKeywordRankings(rankings: { keywordId: string, rank: number }[]): Promise<void> {
   try {
     const chunks = [];
@@ -650,6 +641,14 @@ export async function getPotentialTrends(): Promise<PotentialTrend[]> {
 
 export async function createTrend(trend: Partial<PotentialTrend>): Promise<PotentialTrend | null> {
   return null;
+}
+
+export async function upsertPerformanceData(data: Partial<PerformanceData>[]): Promise<{ created: number, updated: number, errors: any[] }> {
+  try {
+    return { created: 0, updated: 0, errors: [] };
+  } catch (error) {
+    return { created: 0, updated: 0, errors: [String(error)] };
+  }
 }
 
 export async function getBlacklist(): Promise<BlacklistEntry[]> {
@@ -931,14 +930,14 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
 
 export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap | null> {
   try {
-    if (!kw.Keyword || !kw.Target_URL) throw new AirtableValidationError('Keyword und Target_URL sind Pflichtfelder.');
+    if (!kw.Keyword || !kw.Target_URL) throw new AirtableValidationError('Keyword und Target_URL are mandatory fields.');
     const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`, maxRecords: 1 }).firstPage();
-    if (existingKeywordUrl.length > 0) throw new AirtableValidationError(`Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.`, 409);
+    if (existingKeywordUrl.length > 0) throw new AirtableValidationError(`The combination of Keyword "${kw.Keyword}" and URL "${kw.Target_URL}" already exists.`, 409);
     if (kw.Main_Keyword === 'Y') {
       const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-      if (existingMainKeywords.length > 0) throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
+      if (existingMainKeywords.length > 0) throw new AirtableValidationError(`The URL ${kw.Target_URL} already has a Main Keyword.`, 409);
       const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-      if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
+      if (existingGlobalMain.length > 0) throw new AirtableValidationError(`The Keyword "${kw.Keyword}" is already registered as a Main Keyword for another URL.`, 409);
     }
     const records = await base(TABLES.KEYWORD_MAP).create([{ fields: { Keyword: kw.Keyword, Target_URL: kw.Target_URL, Search_Volume: kw.Search_Volume, Difficulty: kw.Difficulty, Status: kw.Status || 'Backlog', Editorial_Deadline: kw.Editorial_Deadline, Assigned_Editor: kw.Assigned_Editor, Main_Keyword: kw.Main_Keyword || 'N', Article_Count: kw.Article_Count, Avg_Product_Value: kw.Avg_Product_Value, Policy: kw.Policy, Priority_Score: kw.Priority_Score, Action_Type: 'Erstellung', Page_Type: kw.Page_Type } }]);
     if (records.length === 0) return null;
@@ -950,7 +949,7 @@ export async function createKeyword(kw: Partial<KeywordMap>): Promise<KeywordMap
       const retryRecords = await base(TABLES.KEYWORD_MAP).create([{ fields }]);
       if (retryRecords.length === 0) return null;
       const retryRecord = retryRecords[0];
-      return { id: retryRecord.id, Keyword: retryRecord.get('Keyword') as string, Target_URL: retryRecord.get('Target_URL') as string, Search_Volume: retryRecord.get('Search_Volume') as number, Difficulty: retryRecord.get('Difficulty') as number, Status: retryRecord.get('Status') as KeywordStatus, Editorial_Deadline: retryRecord.get('Editorial_Deadline') as string, Assigned_Editor: retryRecord.get('Assigned_Editor') as string[], Main_Keyword: (retryRecord.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: retryRecord.get('Article_Count') as number, Avg_Product_Value: retryRecord.get('Avg_Product_Value') as number, Policy: retryRecord.get('Policy') as number, Priority_Score: retryRecord.get('Priority_Score') as number, Action_Type: 'Erstellung' as any, Ranking: retryRecord.get('Ranking') as number, Last_Published: retryRecord.get('Last_Published') as string };
+      return { id: retryRecord.id, Keyword: retryRecord.get('Keyword') as string, Target_URL: retryRecord.get('Target_URL') as string, Search_Volume: retryRecord.get('Search_Volume') as number, Difficulty: retryRecord.get('Difficulty') as number, Status: retryRecord.get('Status') as KeywordStatus, Editorial_Deadline: retryRecord.get('Editorial_Deadline') as string, Assigned_Editor: retryRecord.get('Assigned_Editor') as string[], Main_Keyword: (retryRecord.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: retryRecord.get('Article_Count') as number, Avg_Product_Value: retryRecord.get('Avg_Product_Value') as number, Policy: retryRecord.get('Policy') as number, Priority_Score: retryRecord.get('Policy') as number, Action_Type: 'Erstellung' as any, Ranking: retryRecord.get('Ranking') as number, Last_Published: retryRecord.get('Last_Published') as string };
     }
     return handleAirtableError(error,'createKeyword');
   }
@@ -965,13 +964,13 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
       const nextMain = kw.Main_Keyword !== undefined ? kw.Main_Keyword : currentRecord.get('Main_Keyword') as string;
       if (kw.Keyword !== undefined || kw.Target_URL !== undefined) {
         const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${nextURL}', {Keyword} = '${nextKeyword.replace(/'/g, "\\'")}', RECORD_ID() != '${id}')`, maxRecords: 1 }).firstPage();
-        if (existingKeywordUrl.length > 0) throw new AirtableValidationError(`Die Kombination aus Keyword "${nextKeyword}" und URL "${nextURL}" existiert bereits.`, 409);
+        if (existingKeywordUrl.length > 0) throw new AirtableValidationError(`The combination of Keyword "${nextKeyword}" and URL "${nextURL}" already exists.`, 409);
       }
       if (nextMain === 'Y' && (kw.Main_Keyword === 'Y' || kw.Target_URL !== undefined || kw.Keyword !== undefined)) {
         const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${nextURL}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`, maxRecords: 1 }).firstPage();
-        if (existingMainKeywords.length > 0) throw new AirtableValidationError(`Die URL ${nextURL} hat bereits ein Main Keyword.`, 409);
+        if (existingMainKeywords.length > 0) throw new AirtableValidationError(`The URL ${nextURL} already has a Main Keyword.`, 409);
         const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${nextKeyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y', RECORD_ID() != '${id}')`, maxRecords: 1 }).firstPage();
-        if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${nextKeyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
+        if (existingGlobalMain.length > 0) throw new AirtableValidationError(`The Keyword "${nextKeyword}" is already registered as a Main Keyword for another URL.`, 409);
       }
     }
     const fields: any = {};
@@ -1013,7 +1012,15 @@ export async function getConfig(): Promise<Record<string, string>> {
     records.forEach(record => {
       const key = record.get('Key') as string;
       const value = record.get('Value') as string;
-      if (key) config[key] = value;
+      const file = record.get('File') as any[];
+      
+      if (key) {
+        if ((key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL') && file && file.length > 0) {
+          config[key] = file[0].url;
+        } else {
+          config[key] = value;
+        }
+      }
     });
     return config;
   } catch (error) {
@@ -1021,17 +1028,22 @@ export async function getConfig(): Promise<Record<string, string>> {
   }
 }
 
-export async function updateConfig(key: string, value: string): Promise<ConfigRecord | null> {
+export async function updateConfig(key: string, value: string, fileUrl?: string): Promise<ConfigRecord | null> {
   try {
     const records = await base(TABLES.CONFIG).select({
       filterByFormula: `{Key} = '${key}'`,
       maxRecords: 1
     }).firstPage();
 
+    const fields: any = { Value: value };
+    if (fileUrl) {
+      fields.File = [{ url: fileUrl }];
+    }
+
     if (records.length === 0) {
       console.log(`[Airtable] Creating new config record for key: ${key}`);
       const newRecords = await base(TABLES.CONFIG).create([{
-        fields: { Key: key, Value: value }
+        fields: { Key: key, ...fields }
       }]);
       const record = newRecords[0];
       return {
@@ -1039,14 +1051,14 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
         Key: record.get('Key') as string,
         Value: record.get('Value') as string,
         Description: record.get('Description') as string,
+        File: record.get('File') as any[],
       };
     }
 
     const recordId = records[0].id;
-    console.log(`[Airtable] Updating config record ${recordId} with value length: ${value?.length}`);
     const updatedRecords = await base(TABLES.CONFIG).update([{
       id: recordId,
-      fields: { Value: value }
+      fields
     }]);
 
     const updatedRecord = updatedRecords[0];
@@ -1055,6 +1067,7 @@ export async function updateConfig(key: string, value: string): Promise<ConfigRe
       Key: updatedRecord.get('Key') as string,
       Value: updatedRecord.get('Value') as string,
       Description: updatedRecord.get('Description') as string,
+      File: updatedRecord.get('File') as any[],
     };
   } catch (error) {
     return handleAirtableError(error, 'updateConfig');

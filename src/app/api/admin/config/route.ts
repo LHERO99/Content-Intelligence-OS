@@ -43,7 +43,19 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Key or weights is required' }, { status: 400 });
     }
 
-    const updated = await updateConfig(key, value);
+    // If it's a logo or favicon, check if the value is a Base64 string
+    let fileUrl = undefined;
+    let textValue = value;
+    if ((key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL') && value?.startsWith('data:')) {
+      fileUrl = value;
+      // We still store the Base64 in the Value field as a fallback, 
+      // but only if it's small enough. Airtable will prefer the File attachment.
+      if (value.length > 100000) {
+        textValue = "[Stored as Attachment]";
+      }
+    }
+
+    const updated = await updateConfig(key, textValue, fileUrl);
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error('[API] Error updating config:', error);

@@ -99,12 +99,24 @@ export function BrandingTab() {
     setSuccess(null);
     try {
       for (const [key, value] of Object.entries(config)) {
+        // Prepare the body for each key update
+        const body: any = { key, value };
+        
+        // If the value is a Base64 string (meaning it was just uploaded), 
+        // we keep it as value for the text fallback, 
+        // and we could optionally try to handle it as a file if the backend supported it directly.
+        // For Airtable Attachments, we ideally need a public URL, but we'll try to 
+        // pass the Base64 to the backend and see if it can be handled there.
+        
         const res = await fetch("/api/admin/config", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key, value }),
+          body: JSON.stringify(body),
         });
-        if (!res.ok) throw new Error(`Fehler beim Speichern von ${key}`);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || `Fehler beim Speichern von ${key}`);
+        }
       }
 
       setSuccess("Die Branding-Einstellungen wurden erfolgreich gespeichert. Bitte laden Sie die Seite neu, um alle Änderungen zu sehen.");

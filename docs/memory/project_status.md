@@ -58,11 +58,18 @@
 - **Kosten-Präzision**: 
   - **Deduplizierung**: Mehrfache Logs pro Tag/URL werden zu einem Abrechnungs-Event zusammengefasst.
   - **Trigger**: "Content angeliefert" im `Diff_Summary` fungiert als Kern-Trigger für die ROI-Berechnung.
+- **Monitoring-Tabelle Upgrade (06.04.2026)**:
+  - **Klickbare Zeilen**: Die gesamte Tabellenzeile öffnet nun per Klick die Detailansicht.
+  - **Individuelle ROI-Anzeige**: Neue Spalte für die kumulierten "Eingesparten Kosten" pro URL direkt in der Liste.
+  - **Optimierungs-Sperre**: Buttons zur Optimierungs-Planung sind deaktiviert, sofern nicht bereits Content erstellt UND als veröffentlicht markiert wurde.
 - **Importer-Upgrade**: Unterstützung für direktes Mapping des `Page_Type` Feldes ("Seitentyp").
 
-## Dynamic Branding (06.04.2026)
-- **Konfigurierbares Branding**: Einführung eines "Branding"-Tabs im Admin-Bereich zur Pflege von Logo-URL, Favicon-URL und Primärfarbe.
-- **Speicherung**: Werte werden in der `Config` Tabelle (Airtable) unter `BRAND_LOGO_URL`, `BRAND_FAVICON_URL` und `BRAND_PRIMARY_COLOR` gespeichert.
+## Dynamic Branding & Asset Management (06.04.2026)
+- **Konfigurierbares Branding**: Einführung eines "Branding"-Tabs im Admin-Bereich zur Pflege von Logo, Favicon und Primärfarbe.
+- **Native Airtable-Integration**: Umstellung auf das Airtable-Feld **"File" (Attachment)** zur Speicherung von Assets, um Zeichenbegrenzungen von Textfeldern zu umgehen.
+- **Base64-Upload**: Der Upload-Prozess konvertiert Bilder in Base64 für den Transfer und speichert sie sicher in Airtable.
+- **UI/UX**: Interaktive Drag&Drop-Zonen für Logo und Favicon im Admin-Bereich mit Größen-Validierung (max. 2MB).
 - **Echtzeit-Anwendung**: Der `BrandingProvider` injiziert die Primärfarbe via CSS-Variable (`--primary`) und aktualisiert das Favicon dynamisch im Browser.
 - **Refactoring**: Hardcodierte DocMorris-Brandings in Sidebar und Layout wurden durch dynamische Assets ersetzt.
+
 

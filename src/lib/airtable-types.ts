@@ -111,6 +111,7 @@ export interface ConfigRecord {
   Value: string;
   Description?: string;
   Updated_At?: string;
+  File?: any[];
 }
 
 export interface UserRecord {

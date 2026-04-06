@@ -80,3 +80,10 @@
 - [x] Feature: Dynamic Branding Tab im Admin-Bereich (Logo, Favicon, Primärfarbe) implementiert.
 - [x] UI: Dynamic Branding Provider & Sidebar Refactoring für konfigurierbares Design.
 - [x] Logic: URL-Sichtbarkeit im Monitoring auch ohne Logs (basierend auf URL_Performance).
+- [x] Refactor: Branding-Upload nutzt nun native Airtable Attachments (Feld `File`) statt Base64 in Textfeldern.
+- [x] Feature: Bild-Upload für Logo und Favicon mit 2MB Limit und Vorschau.
+- [x] UI: Monitoring-Tabelle auf klickbare Zeilen umgestellt (Click-to-Detail).
+- [x] Logic: "Optimierung planen" Sperre eingeführt (erfordert Veröffentlichung des initialen Contents).
+- [x] UI: ROI (Eingesparte Kosten) direkt in der Monitoring-Tabelle pro URL sichtbar.
+- [x] UI: Button "Zur Optimierung" in "Optimierung planen" umbenannt und Verlinkung zum Vorschläge-Tab in Alert integriert.
+

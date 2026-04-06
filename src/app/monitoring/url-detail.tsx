@@ -23,14 +23,7 @@ import {
 import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
 import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
+import { HistoryList } from "@/features/shared/components/HistoryList";
 
 interface UrlDetailProps {
   url: string;
@@ -313,30 +306,10 @@ export function UrlDetail({ url }: UrlDetailProps) {
           <CardTitle>Content-Historie</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Datum</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Seitentyp</TableHead>
-                <TableHead>Zusammenfassung</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.history.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell>{new Date(log.Created_At).toLocaleDateString('de-DE')}</TableCell>
-                  <TableCell>
-                    <Badge variant={log.Action_Type === 'Erstellung' ? 'default' : 'outline'}>
-                      {log.Action_Type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{log.Page_Type}</TableCell>
-                  <TableCell className="max-w-md truncate">{log.Diff_Summary || 'Keine Zusammenfassung'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <HistoryList 
+            history={data.history} 
+            isLoading={false} 
+          />
         </CardContent>
       </Card>
     </div>

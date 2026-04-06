@@ -35,5 +35,15 @@
 ## Dynamic Branding & Theming (06.04.2026)
 - **CSS Variable Injection**: Nutzung von `--primary` als zentrale CSS-Variable für das Corporate Design, injiziert über den `BrandingProvider`.
 - **Dynamic Asset Hook**: Komponenten laden Logo- und Favicon-URLs über den `useBranding` Hook, der diese aus der globalen `Config` (Airtable) bezieht.
-- **Admin Tab Implementation**: Neuer Admin-Bereich für Branding-Einstellungen mit integriertem Farb-Picker und URL-Management.
+- **Airtable Attachment Storage Strategy**: 
+  - Da Airtable-Textfelder auf 100k Zeichen begrenzt sind, werden Logo und Favicon als native **Attachments** in der Spalte `File` gespeichert.
+  - Die API (`updateConfig`) nimmt Base64-Daten entgegen und lädt diese via Airtable-Proxy als Datei hoch.
+  - Fallback: Der Pfad wird zusätzlich als Text in `Value` gespeichert, sofern er keine Base64-Daten enthält.
+- **Admin Tab Implementation**: Neuer Admin-Bereich für Branding-Einstellungen mit integriertem Farb-Picker und Datei-Upload (max. 2MB).
 - **Tailwind Integration**: Tailwind wurde so konfiguriert (via `globals.css`), dass die `primary` Farbe direkt auf die CSS-Variable zugreift.
+
+## Monitoring UI & Workflow (06.04.2026)
+- **Optimierungs-Guard**: Planung einer Optimierung erfordert nun zwingend, dass bereits ein "Content angeliefert" oder "Content veröffentlicht" Event in der Historie existiert.
+- **Row-Action Pattern**: Umstellung von expliziten "Details"-Buttons auf zeilenbasiertes Klicken in der Monitoring-Tabelle zur Verbesserung der UX.
+- **ROI Data Injection**: Die Monitoring-Übersicht API berechnet nun aggregierte Kosten-Einsparungen pro URL on-the-fly, um sie in der Haupttabelle anzuzeigen.
+
