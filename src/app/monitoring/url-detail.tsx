@@ -76,10 +76,13 @@ export function UrlDetail({ url }: UrlDetailProps) {
   if (!data) return <div>Keine Daten gefunden.</div>;
 
   const getStatusInfo = () => {
-    const hasErstellung = data.history.some(l => l.Action_Type === 'Erstellung');
+    const isContentDelivered = data.history.some(l => 
+      l.Diff_Summary?.includes('Content angeliefert') || 
+      l.Diff_Summary?.includes('Content veröffentlicht')
+    );
     const optimierungCount = data.history.filter(l => l.Action_Type === 'Optimierung').length;
     
-    if (!hasErstellung && optimierungCount === 0) {
+    if (!isContentDelivered) {
       return { text: "Nicht optimiert", version: "" };
     }
     

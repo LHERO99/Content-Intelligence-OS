@@ -63,11 +63,22 @@ export async function GET() {
     };
 
     urlLogMap.forEach((urlLogs, url) => {
-      // Rule: Only count savings if an "Erstellung" log exists for this URL
-      const hasErstellung = urlLogs.some(l => l.Action_Type === 'Erstellung');
-      if (!hasErstellung) return;
+      // Rule: Only count savings if content was actually delivered/published
+      const isContentDelivered = urlLogs.some(l => 
+        l.Diff_Summary?.includes('Content angeliefert') || 
+        l.Diff_Summary?.includes('Content veröffentlicht')
+      );
+      
+      if (!isContentDelivered) return;
 
       urlLogs.forEach(log => {
+        // Skip logs that are just about tool/planning additions
+        if (log.Diff_Summary?.includes('URL wurde dem Tool hinzugefügt') || 
+            log.Diff_Summary?.includes('URL wurde dem Tab \'Vorschläge\' hinzugefügt') ||
+            log.Diff_Summary?.includes('URL wurde der Redaktionsplanung hinzugefügt')) {
+          return;
+        }
+
         const keywordId = log.Keyword_ID?.[0];
         const keyword = keywords.find(k => k.id === keywordId);
         

@@ -120,18 +120,9 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
             ) : (
               <Button
                 size="sm"
-                variant="outline"
-                className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                className="h-7 text-xs gap-1 min-w-[110px] justify-center border-none text-white font-bold bg-gradient-to-r from-[#00463c] via-[#006b58] to-[#00463c] bg-[length:200%_auto] hover:bg-right transition-all duration-500 shadow-md hover:shadow-lg active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Pre-log commissioning event if needed
-                  try {
-                    // We trigger the commission through the meta object which presumably calls an API
-                    // The API update to status 'Beauftragt' should be preceded or followed by a log
-                    // Looking at how handleCommissionContent works: it likely calls an API.
-                    // We'll add the log entry in the UI side before calling or within the API if possible.
-                    // However, 'Beauftragt' status isn't handled by the same transition logic in keywords/route.ts yet.
-                  } catch (e) {}
                   meta?.handleCommissionContent(id);
                 }}
                 disabled={isCommissioning}

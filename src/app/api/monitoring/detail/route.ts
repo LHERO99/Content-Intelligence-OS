@@ -48,11 +48,21 @@ export async function GET(request: NextRequest) {
     let totalAgency = 0;
     let totalOverhead = 0;
     
-    // Rule: Only display savings if an "Erstellung" log exists for this URL
-    const hasErstellung = history.some(l => l.Action_Type === 'Erstellung');
+    // Rule: Only display savings if content was actually delivered/published
+    const isContentDelivered = history.some(l => 
+      l.Diff_Summary?.includes('Content angeliefert') || 
+      l.Diff_Summary?.includes('Content veröffentlicht')
+    );
     
-    if (hasErstellung) {
+    if (isContentDelivered) {
       history.forEach(log => {
+        // Skip logs that are just about tool/planning additions
+        if (log.Diff_Summary?.includes('URL wurde dem Tool hinzugefügt') || 
+            log.Diff_Summary?.includes('URL wurde dem Tab \'Vorschläge\' hinzugefügt') ||
+            log.Diff_Summary?.includes('URL wurde der Redaktionsplanung hinzugefügt')) {
+          return;
+        }
+
         // Find associated keyword to get Page_Type and Action_Type if not in log
         const keywordId = log.Keyword_ID?.[0];
         const keyword = allKeywords.find(k => k.id === keywordId);
@@ -76,7 +86,7 @@ export async function GET(request: NextRequest) {
         }
       });
     } else {
-      console.log(`[API Monitoring Detail] No Erstellung log found for ${targetUrl}. Savings remain 0.`);
+      console.log(`[API Monitoring Detail] No delivery log found for ${targetUrl}. Savings remain 0.`);
     }
 
     return NextResponse.json({
