@@ -33,12 +33,18 @@ import {
   ChevronLeft,
   Wand2,
   Users,
-  AlertCircle
+  AlertCircle,
+  LayoutDashboard,
+  List,
+  Calendar as CalendarIcon,
+  RotateCcw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAlerts } from "@/components/alerts-provider";
 import { UrlDetail } from "./url-detail";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MonitoringData {
   metrics: {
@@ -69,6 +75,16 @@ export default function MonitoringPage() {
   const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('monitoring-active-tab') || "overview";
+    }
+    return "overview";
+  });
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     fetchData();
@@ -197,202 +213,312 @@ export default function MonitoringPage() {
           <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Monitoring & ROI</h1>
           <p className="text-muted-foreground">Analysieren Sie Performance, Sichtbarkeit und Effizienz Ihrer Content-Maßnahmen.</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={fetchData} 
-          className="border-[#00463c] text-[#00463c] hover:bg-[#00463c]/5"
-        >
-          <Loader2 className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Daten aktualisieren
-        </Button>
       </div>
 
-      {/* Global Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border-none shadow-sm bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-[#00463c]" />
-              Avg. Time to Rank
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#00463c]">{data?.metrics.avgTTR || 0} Tage</div>
-            <p className="text-xs text-muted-foreground">Von Veröffentlichung bis Top 10 Ranking</p>
-          </CardContent>
-        </Card>
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          setActiveTab(val);
+          localStorage.setItem('monitoring-active-tab', val);
+        }}
+        className="space-y-6"
+      >
+        <TabsList className="bg-[#e7f3ee] border-[#00463c]/10">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            KPI Übersicht
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+            <List className="mr-2 h-4 w-4" />
+            Performance-Liste
+          </TabsTrigger>
+        </TabsList>
 
-        <Card className="border-none shadow-sm bg-[#00463c] text-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Coins className="h-4 w-4" />
-              Eingesparte Agenturkosten
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data?.metrics.totalAgencySavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-            </div>
-            <p className="text-xs opacity-80">Gesamtvolumen durch KI-Workflow</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <MousePointer2 className="h-4 w-4 text-[#00463c]" />
-              Einsparung Overhead
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#00463c]">
-              {data?.metrics.totalOverheadSavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-            </div>
-            <p className="text-xs text-muted-foreground">Reduzierter interner Aufwand</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <LayoutList className="h-4 w-4 text-[#00463c]" />
-              Content-Updates
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#00463c]">
-              {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0) + (data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}
-            </div>
-            <div className="grid grid-cols-2 gap-x-2 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
-              <span>Ratgeber: { (data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0) }</span>
-              <span>Kategorie: { (data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0) }</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-none shadow-sm bg-white">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle>URL Performance Übersicht</CardTitle>
-              <CardDescription>Liste aller überwachten URLs mit aktuellen Performance-Werten.</CardDescription>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="URL suchen..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-[250px] h-9"
-                />
+        <TabsContent value="overview" className="space-y-6">
+          <Card className="bg-white border-none shadow-sm">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="global-start-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    Zeitraum von
+                  </Label>
+                  <Input
+                    id="global-start-date"
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="h-9 w-[160px] text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="global-end-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    bis
+                  </Label>
+                  <Input
+                    id="global-end-date"
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="h-9 w-[160px] text-sm"
+                  />
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setDateRange({
+                    start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0],
+                    end: new Date().toISOString().split('T')[0]
+                  })}
+                  className="h-9 gap-2 text-muted-foreground hover:text-[#00463c]"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
               </div>
-              <Button 
-                onClick={() => handleSubmitToSuggestions()} 
-                disabled={selectedUrls.length === 0 || submitting}
-                className="h-9 bg-[#00463c] hover:bg-[#00332c]"
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                Optimierung planen ({selectedUrls.length})
-              </Button>
-            </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-[#00463c]" />
+                  Avg. Time to Rank
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#00463c]">{data?.metrics.avgTTR || 0} Tage</div>
+                <p className="text-xs text-muted-foreground">Von Veröffentlichung bis Top 10 Ranking</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-[#00463c] text-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Coins className="h-4 w-4" />
+                  Eingesparte Agenturkosten
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {data?.metrics.totalAgencySavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                </div>
+                <p className="text-xs opacity-80">Gesamtvolumen durch KI-Workflow</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <MousePointer2 className="h-4 w-4 text-[#00463c]" />
+                  Einsparung Overhead
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#00463c]">
+                  {data?.metrics.totalOverheadSavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                </div>
+                <p className="text-xs text-muted-foreground">Reduzierter interner Aufwand</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <LayoutList className="h-4 w-4 text-[#00463c]" />
+                  Content-Updates
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#00463c]">
+                  {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0) + (data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}
+                </div>
+                <div className="grid grid-cols-2 gap-x-2 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
+                  <span>Ratgeber: { (data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0) }</span>
+                  <span>Kategorie: { (data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0) }</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                        <Checkbox 
-                          checked={selectedUrls.length === filteredUrls.length && filteredUrls.length > 0}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedUrls(filteredUrls.map(u => u.url));
-                            else setSelectedUrls([]);
-                          }}
-                        />
-                      </TableHead>
-                      <TableHead>URL</TableHead>
-                      <TableHead>Klicks (Woche)</TableHead>
-                      <TableHead>Sichtbarkeit (VI)</TableHead>
-                      <TableHead>Eingesparte Kosten</TableHead>
-                      <TableHead className="text-right">Letzte Aktion</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUrls.map((item) => (
-                      <TableRow 
-                        key={item.url} 
-                        className="group hover:bg-[#00463c]/5 cursor-pointer"
-                        onClick={() => setViewingUrl(item.url)}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox 
-                            checked={selectedUrls.includes(item.url)}
-                            onCheckedChange={(checked) => {
-                              if (checked) setSelectedUrls(prev => [...prev, item.url]);
-                              else setSelectedUrls(prev => prev.filter(u => u !== item.url));
-                            }}
-                            disabled={!item.isPublished || (item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung")}
-                          />
-                        </TableCell>
-                        <TableCell className="max-w-md">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium truncate">{item.url}</span>
-                            {item.lastActionDate && (
-                              <span className="text-[10px] text-muted-foreground">
-                                Update: {new Date(item.lastActionDate).toLocaleDateString('de-DE')}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {item.clicks}
-                            {item.clicksTrend !== 0 && (
-                              <span className={`text-[10px] flex items-center ${item.clicksTrend > 0 ? "text-green-600" : "text-red-600"}`}>
-                                {item.clicksTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
-                                {Math.abs(item.clicksTrend)}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {item.vi.toFixed(3)}
-                            {item.viTrend !== 0 && (
-                              <span className={`text-[10px] flex items-center ${item.viTrend > 0 ? "text-green-600" : "text-red-600"}`}>
-                                {item.viTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
-                                {Math.abs(item.viTrend).toFixed(3)}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-[#00463c]">
-                            {item.savings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant={item.lastAction === "Erstellung" ? "default" : "secondary"}>
-                            {item.lastAction}
-                          </Badge>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-[#00463c]" />
+                  Texte im Zeitraum
+                </CardTitle>
+                <CardDescription className="text-[10px]">Erstellt vs. Optimiert</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center h-[100px]">
+                <div className="flex justify-between items-end border-b pb-2">
+                  <span className="text-sm text-muted-foreground">Erstellt:</span>
+                  <span className="text-xl font-bold text-[#00463c]">0</span>
+                </div>
+                <div className="flex justify-between items-end pt-2">
+                  <span className="text-sm text-muted-foreground">Optimiert:</span>
+                  <span className="text-xl font-bold text-[#00463c]">0</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-[#00463c]" />
+                  Stabilitäts-Index
+                </CardTitle>
+                <CardDescription className="text-[10px]">Ø Optimierungen bis Peak-Performance</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center h-[100px]">
+                <div className="text-3xl font-bold text-[#00463c]">0.0</div>
+                <span className="ml-2 text-sm text-muted-foreground">Zyklen</span>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-[#00463c]" />
+                  Time-to-Performance
+                </CardTitle>
+                <CardDescription className="text-[10px]">Ø Tage bis signifikantem Klick-Anstieg</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center h-[100px]">
+                <div className="text-3xl font-bold text-[#00463c]">0</div>
+                <span className="ml-2 text-sm text-muted-foreground">Tage</span>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-6">
+          <Card className="border-none shadow-sm bg-white">
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>URL Performance Übersicht</CardTitle>
+                  <CardDescription>Liste aller überwachten URLs mit aktuellen Performance-Werten.</CardDescription>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="URL suchen..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 w-[250px] h-9"
+                    />
+                  </div>
+                  <Button 
+                    onClick={() => handleSubmitToSuggestions()} 
+                    disabled={selectedUrls.length === 0 || submitting}
+                    className="h-9 bg-[#00463c] hover:bg-[#00332c]"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                    Optimierung planen ({selectedUrls.length})
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox 
+                              checked={selectedUrls.length === filteredUrls.length && filteredUrls.length > 0}
+                              onCheckedChange={(checked) => {
+                                if (checked) setSelectedUrls(filteredUrls.map(u => u.url));
+                                else setSelectedUrls([]);
+                              }}
+                            />
+                          </TableHead>
+                          <TableHead>URL</TableHead>
+                          <TableHead>Klicks (Woche)</TableHead>
+                          <TableHead>Sichtbarkeit (VI)</TableHead>
+                          <TableHead>Eingesparte Kosten</TableHead>
+                          <TableHead className="text-right">Letzte Aktion</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUrls.map((item) => (
+                          <TableRow 
+                            key={item.url} 
+                            className="group hover:bg-[#00463c]/5 cursor-pointer"
+                            onClick={() => setViewingUrl(item.url)}
+                          >
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox 
+                                checked={selectedUrls.includes(item.url)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) setSelectedUrls(prev => [...prev, item.url]);
+                                  else setSelectedUrls(prev => prev.filter(u => u !== item.url));
+                                }}
+                                disabled={!item.isPublished || (item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung")}
+                              />
+                            </TableCell>
+                            <TableCell className="max-w-md">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-medium truncate">{item.url}</span>
+                                {item.lastActionDate && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Update: {new Date(item.lastActionDate).toLocaleDateString('de-DE')}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {item.clicks}
+                                {item.clicksTrend !== 0 && (
+                                  <span className={`text-[10px] flex items-center ${item.clicksTrend > 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {item.clicksTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
+                                    {Math.abs(item.clicksTrend)}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {item.vi.toFixed(3)}
+                                {item.viTrend !== 0 && (
+                                  <span className={`text-[10px] flex items-center ${item.viTrend > 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {item.viTrend > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
+                                    {Math.abs(item.viTrend).toFixed(3)}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-semibold text-[#00463c]">
+                                {item.savings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant={item.lastAction === "Erstellung" ? "default" : "secondary"}>
+                                {item.lastAction}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    {filteredUrls.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          {searchTerm ? "Keine URLs gefunden, die Ihrer Suche entsprechen." : "Noch keine Monitoring-Daten vorhanden."}
                         </TableCell>
                       </TableRow>
-                    ))}
-                {filteredUrls.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {searchTerm ? "Keine URLs gefunden, die Ihrer Suche entsprechen." : "Noch keine Monitoring-Daten vorhanden."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
