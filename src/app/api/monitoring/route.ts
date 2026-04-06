@@ -11,11 +11,28 @@ export async function GET() {
 
   try {
     const [keywords, performance, logs, costs] = await Promise.all([
-      getKeywordMap().catch(err => { console.error('[API Monitoring] Error fetching keywords:', err); throw err; }),
-      getPerformanceData().catch(err => { console.error('[API Monitoring] Error fetching performance:', err); throw err; }),
-      getContentLogs().catch(err => { console.error('[API Monitoring] Error fetching logs:', err); throw err; }),
-      getCostConfigs().catch(err => { console.error('[API Monitoring] Error fetching costs:', err); throw err; })
+      getKeywordMap().catch(err => { 
+        console.error('[API Monitoring] Critical error fetching keywords:', err); 
+        return []; 
+      }),
+      getPerformanceData().catch(err => { 
+        console.error('[API Monitoring] Error fetching performance (continuing with empty data):', err); 
+        return []; 
+      }),
+      getContentLogs().catch(err => { 
+        console.error('[API Monitoring] Error fetching logs (continuing with empty data):', err); 
+        return []; 
+      }),
+      getCostConfigs().catch(err => { 
+        console.error('[API Monitoring] Error fetching costs (continuing with empty data):', err); 
+        return []; 
+      })
     ]);
+
+    // Safety check: if keywords is empty, the entire dashboard is mostly useless
+    if (keywords.length === 0) {
+      console.warn('[API Monitoring] No keywords found. Dashboard will be empty.');
+    }
 
     // Aggregate Global Metrics
     const publishedLogs = logs.filter(l => 

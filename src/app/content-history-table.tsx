@@ -158,21 +158,21 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         const url = row.getValue("url") as string;
         const isBlacklisted = row.original.isBlacklisted;
         return (
-          <div className="flex items-center gap-2 max-w-[400px]">
-            <span className="font-medium truncate">{url}</span>
+          <div className="flex items-center gap-2 max-w-[600px]">
+            <span className="font-medium truncate flex-1">{url}</span>
             {url !== "Keine URL" && (
               <a 
                 href={url} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 onClick={(e) => e.stopPropagation()}
-                className="text-muted-foreground hover:text-[#00463c]"
+                className="text-muted-foreground hover:text-[#00463c] shrink-0"
               >
                 <ExternalLink className="h-3 w-3" />
               </a>
             )}
             {isBlacklisted && (
-              <Badge variant="destructive" className="text-[10px] h-4 px-1 font-bold bg-red-500/10 text-red-700 border-red-500/20">
+              <Badge variant="destructive" className="text-[10px] h-4 px-1 font-bold bg-red-500/10 text-red-700 border-red-500/20 shrink-0">
                 Blacklisted
               </Badge>
             )}

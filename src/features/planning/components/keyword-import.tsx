@@ -95,7 +95,7 @@ export function KeywordImport() {
       if (!newMapping["Search_Volume"] && (normalizedHeader === "volume" || normalizedHeader === "msv")) {
         newMapping["Search_Volume"] = header;
       }
-      if (!newMapping["Page_Type"] && (normalizedHeader === "seitentyp" || normalizedHeader === "type" || normalizedHeader === "pagetype")) {
+      if (!newMapping["Page_Type"] && (normalizedHeader === "seitentyp" || normalizedHeader === "pagetype" || normalizedHeader === "type")) {
         newMapping["Page_Type"] = header;
       }
     });

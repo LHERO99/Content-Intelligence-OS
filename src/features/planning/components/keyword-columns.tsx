@@ -47,8 +47,8 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
       return (
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
-              <div className="max-w-[200px] truncate text-muted-foreground text-xs">
+            <TooltipTrigger asChild>
+              <div className="max-w-[400px] truncate text-muted-foreground text-xs cursor-help">
                 {url}
               </div>
             </TooltipTrigger>
@@ -65,6 +65,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Main_Keyword",
     header: "Main",
+    size: 60,
     cell: ({ row }) => (
       <Badge variant="outline" className={row.getValue("Main_Keyword") === "Y" ? "border-[#00463c] text-[#00463c] bg-[#00463c]/10" : "border-slate-200 text-slate-400 bg-slate-50"}>
         {row.getValue("Main_Keyword")}
@@ -73,7 +74,8 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
   },
   {
     accessorKey: "Ranking",
-    header: "Ranking",
+    header: "Rank",
+    size: 60,
     cell: ({ row }) => {
       const val = row.getValue("Ranking") as number;
       return val ?? "-";

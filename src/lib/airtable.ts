@@ -892,7 +892,7 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
             Article_Count: kw.Article_Count, 
             Avg_Product_Value: kw.Avg_Product_Value, 
             Action_Type: kw.Action_Type || 'Erstellung',
-            Page_Type: kw.Page_Type
+            Page_Type: kw.Page_Type 
           } 
         })));
         records.forEach((record) => {
