@@ -70,14 +70,28 @@ export async function GET(request: NextRequest) {
         const keywordId = log.Keyword_ID?.[0];
         const keyword = allKeywords.find(k => k.id === keywordId);
 
-        const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
-        const actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+        const pageType = log.Page_Type || keyword?.Page_Type || 'Ratgeber';
+        let actionType = log.Action_Type || keyword?.Action_Type;
+
+        // Infer Action_Type from Diff_Summary if missing
+        if (!actionType) {
+          if (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) {
+            const previousLogs = history.filter(l => 
+              new Date(l.Created_At).getTime() < new Date(log.Created_At).getTime() &&
+              (l.Diff_Summary?.toLowerCase().includes('content angeliefert') || 
+               l.Diff_Summary?.toLowerCase().includes('content veröffentlicht'))
+            );
+            actionType = previousLogs.length > 0 ? 'Optimierung' : 'Erstellung';
+          } else {
+            actionType = 'Erstellung';
+          }
+        }
 
         console.log(`[API Monitoring Detail] Log ${log.id}: Page_Type=${pageType}, Action_Type=${actionType}`);
 
         const cost = costs.find(c => 
-          c.Page_Type === pageType && 
-          c.Action_Type === actionType
+          c.Page_Type?.toLowerCase() === pageType.toLowerCase() && 
+          c.Action_Type?.toLowerCase() === actionType.toLowerCase()
         );
 
         if (cost) {
@@ -85,7 +99,7 @@ export async function GET(request: NextRequest) {
           totalOverhead += cost.Overhead_Cost;
           console.log(`[API Monitoring Detail] Match found: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
         } else {
-          console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}`);
+          console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}. Available:`, costs.map(c => `${c.Page_Type}/${c.Action_Type}`).join(', '));
         }
       });
     } else {

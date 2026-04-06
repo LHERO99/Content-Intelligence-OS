@@ -93,7 +93,23 @@ export function UrlDetail({ url }: UrlDetailProps) {
       );
     });
 
-    const optimierungCount = validLogs.filter(l => l.Action_Type === 'Optimierung').length;
+    const optimierungCount = validLogs.filter((l, idx) => {
+      if (l.Action_Type === 'Optimierung') return true;
+      if (l.Action_Type === 'Erstellung') return false;
+      
+      // If Action_Type is missing, check if it's a delivery log and if there was one before it
+      const summary = l.Diff_Summary?.toLowerCase() || '';
+      if (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) {
+        // Find if there is an older delivery log
+        const hasOlderDelivery = validLogs.some(otherLog => {
+          const otherSummary = otherLog.Diff_Summary?.toLowerCase() || '';
+          return new Date(otherLog.Created_At).getTime() < new Date(l.Created_At).getTime() &&
+                 (otherSummary.includes('content angeliefert') || otherSummary.includes('content veröffentlicht'));
+        });
+        return hasOlderDelivery;
+      }
+      return false;
+    }).length;
     
     if (!isContentDelivered) {
       return { text: "Nicht optimiert", version: "" };

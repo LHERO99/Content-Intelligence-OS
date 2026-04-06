@@ -90,30 +90,43 @@ export async function GET() {
         const keywordId = log.Keyword_ID?.[0];
         const keyword = keywords.find(k => k.id === keywordId);
         
-        const pageType = log.Page_Type || keyword?.Page_Type || 'Andere';
-        let actionType = log.Action_Type || keyword?.Action_Type || 'Erstellung';
+        // Priority: Log field > Keyword field > Fallback
+        const pageType = log.Page_Type || keyword?.Page_Type || 'Ratgeber';
+        let actionType = log.Action_Type || keyword?.Action_Type;
 
-        // Infer Action_Type if not present but summary indicates content update
-        if (!log.Action_Type && summary.includes('content angeliefert')) {
-          // If it's the first log for this URL, it's likely "Erstellung"
-          // but if we want to be safe, we check if other logs exist.
-          // For now, follow the plan: 1 + [Number of Optimization Logs].
-          // If no Action_Type, we'll stick to the fallback.
+        // Infer Action_Type from Diff_Summary if missing
+        if (!actionType) {
+          if (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) {
+            // Check if there are previous logs for this URL to determine if it's an optimization
+            const previousLogs = urlLogs.filter(l => 
+              new Date(l.Created_At).getTime() < new Date(log.Created_At).getTime() &&
+              (l.Diff_Summary?.toLowerCase().includes('content angeliefert') || 
+               l.Diff_Summary?.toLowerCase().includes('content veröffentlicht'))
+            );
+            actionType = previousLogs.length > 0 ? 'Optimierung' : 'Erstellung';
+          } else {
+            actionType = 'Erstellung';
+          }
         }
 
+        console.log(`[API Monitoring] URL: ${url}, Log: ${log.id}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
+
         const cost = costs.find(c => 
-          c.Page_Type === pageType && 
-          c.Action_Type === actionType
+          c.Page_Type?.toLowerCase() === pageType.toLowerCase() && 
+          c.Action_Type?.toLowerCase() === actionType.toLowerCase()
         );
 
         if (cost) {
           totalAgencySavings += cost.Agency_Cost;
           totalOverheadSavings += cost.Overhead_Cost;
+          console.log(`[API Monitoring] Found cost match: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
+        } else {
+          console.warn(`[API Monitoring] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}. Available configs:`, costs.map(c => `${c.Page_Type}/${c.Action_Type}`).join(', '));
         }
         
         const pageTypeKey = pageType.toLowerCase();
         const actionTypeKey = actionType.toLowerCase();
-        const key = `${actionTypeKey}_${pageTypeKey}` as keyof typeof counts;
+        const key = `${actionTypeKey === 'optimierung' ? 'optimierung' : 'neuerstellung'}_${pageTypeKey === 'ratgeber' ? 'ratgeber' : 'kategorie'}` as keyof typeof counts;
         if (key in counts) counts[key]++;
       });
     });
