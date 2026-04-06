@@ -89,7 +89,7 @@ export async function GET() {
     urlLogMap.forEach((urlLogs, url) => {
       // Rule: Only count savings if content was actually delivered/published
       const deliveryLogs = urlLogs.filter(l => {
-        const summary = l.Diff_Summary?.toLowerCase() || '';
+        const summary = String(l.Diff_Summary || '').toLowerCase();
         return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
                !summary.includes('url wurde dem tool hinzugefügt') &&
                !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&
@@ -116,7 +116,7 @@ export async function GET() {
         const keyword = keywords.find(k => k.id === keywordId) || keywords.find(k => k.Target_URL === url);
         
         // Infer Page_Type from URL structure if missing from log and keyword
-        let pageType = log.Page_Type || keyword?.Page_Type;
+        let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
         if (!pageType) {
           if (url.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
           else if (url.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
@@ -124,18 +124,20 @@ export async function GET() {
         }
 
         // Action_Type: Use Action_Type from keyword if available, or infer from log/index
-        let actionType = index === 0 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung';
+        let actionType: string = String(index === 0 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung');
 
         console.log(`[API Monitoring] URL: ${url}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
 
-        const cost = costs.find(c => 
-          c.Page_Type?.toLowerCase() === pageType.toLowerCase() && 
-          c.Action_Type?.toLowerCase() === actionType.toLowerCase()
-        );
+        const cost = costs.find(c => {
+          const cPageType = String(c.Page_Type || '').toLowerCase();
+          const cActionType = String(c.Action_Type || '').toLowerCase();
+          return cPageType === pageType.toLowerCase() && 
+                 cActionType === actionType.toLowerCase();
+        });
 
         if (cost) {
-          totalAgencySavings += cost.Agency_Cost;
-          totalOverheadSavings += cost.Overhead_Cost;
+          totalAgencySavings += Number(cost.Agency_Cost || 0);
+          totalOverheadSavings += Number(cost.Overhead_Cost || 0);
         }
         
         // Robust key generation for counts object

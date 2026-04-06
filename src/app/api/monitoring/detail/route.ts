@@ -71,31 +71,32 @@ export async function GET(request: NextRequest) {
       });
 
       dailyLogs.forEach((log, index) => {
-        const summary = log.Diff_Summary?.toLowerCase() || '';
         const keywordId = log.Keyword_ID?.[0];
         const keyword = allKeywords.find(k => k.id === keywordId);
 
         // Infer Page_Type from URL structure if missing from log and keyword
-        let pageType = log.Page_Type || keyword?.Page_Type;
+        let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
         if (!pageType) {
           if (targetUrl.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
           else if (targetUrl.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
           else pageType = 'Ratgeber'; // Default fallback
         }
 
-        // Action_Type: First delivery is Erstellung, subsequent ones are Optimierung
-        const actionType = index === 0 ? 'Erstellung' : 'Optimierung';
+        // Action_Type: Use Action_Type from keyword if available, or infer from log/index
+        let actionType: string = String(index === 0 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung');
 
         console.log(`[API Monitoring Detail] URL: ${targetUrl}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
 
-        const cost = costs.find(c => 
-          c.Page_Type?.toLowerCase() === pageType.toLowerCase() && 
-          c.Action_Type?.toLowerCase() === actionType.toLowerCase()
-        );
+        const cost = costs.find(c => {
+          const cPageType = String(c.Page_Type || '').toLowerCase();
+          const cActionType = String(c.Action_Type || '').toLowerCase();
+          return cPageType === pageType.toLowerCase() && 
+                 cActionType === actionType.toLowerCase();
+        });
 
         if (cost) {
-          totalAgency += cost.Agency_Cost;
-          totalOverhead += cost.Overhead_Cost;
+          totalAgency += Number(cost.Agency_Cost || 0);
+          totalOverhead += Number(cost.Overhead_Cost || 0);
           console.log(`[API Monitoring Detail] Match found: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
         } else {
           console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}. Available:`, costs.map(c => `${c.Page_Type}/${c.Action_Type}`).join(', '));
