@@ -26,6 +26,11 @@ export async function POST(request: Request) {
     let body;
     try {
       body = JSON.parse(rawBody);
+      // Handle double-encoded JSON (n8n sometimes sends a stringified JSON string)
+      if (typeof body === 'string') {
+        console.log('[API] n8n callback body was double-encoded, parsing again...');
+        body = JSON.parse(body);
+      }
     } catch (e) {
       console.error('[API] Failed to parse n8n callback body as JSON:', e);
       return NextResponse.json({ error: 'Invalid JSON body', raw: rawBody.slice(0, 100) }, { status: 400 });
@@ -36,18 +41,19 @@ export async function POST(request: Request) {
     const content = body.content || body.contentBody || body.Content_Body;
     const reasoning = body.reasoning || body.reasoningChain || body.Reasoning_Chain;
     const status = body.status || body.Status;
+    const targetUrl = body.Target_URL || body.targetUrl || body.Logged_URL;
 
     if (!keywordId || !content) {
       console.error('[API] n8n callback missing fields:', { 
         keywordId: !!keywordId, 
         content: !!content,
-        receivedFields: Object.keys(body),
+        receivedFields: body && typeof body === 'object' ? Object.keys(body) : typeof body,
         bodyPreview: JSON.stringify(body).slice(0, 100)
       });
       return NextResponse.json({ 
         error: 'Missing keywordId or content',
         details: { keywordId: !!keywordId, content: !!content },
-        receivedKeys: Object.keys(body)
+        receivedKeys: body && typeof body === 'object' ? Object.keys(body) : []
       }, { status: 400 });
     }
 
@@ -62,11 +68,14 @@ export async function POST(request: Request) {
     }
 
     // 2. Create Content-Log entry
-    const isOptimization = status === 'Optimierung' || (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert'));
+    const isOptimization = status === 'Optimierung' || 
+                          status === 'Optimization' ||
+                          (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert')) ||
+                          (body.actionType && body.actionType === 'Optimierung');
     
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
-      // We don't pass Target_URL anymore as it's a computed field in Airtable
+      Logged_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
       Reasoning_Chain: reasoning || '',
