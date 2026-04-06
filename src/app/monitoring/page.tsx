@@ -9,6 +9,7 @@ import {
   CardTitle,
   CardDescription
 } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { 
   Table, 
   TableBody, 
@@ -31,7 +32,8 @@ import {
   ExternalLink,
   ChevronLeft,
   Wand2,
-  Users
+  Users,
+  AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAlerts } from "@/components/alerts-provider";
@@ -53,6 +55,7 @@ interface MonitoringData {
     viTrend: number;
     lastAction: string;
     lastActionDate: string | null;
+    isPublished: boolean;
   }>;
 }
 
@@ -87,6 +90,22 @@ export default function MonitoringPage() {
   const handleSubmitToSuggestions = async (urlsToSubmit?: string[]) => {
     const targetUrls = urlsToSubmit || selectedUrls;
     if (targetUrls.length === 0) return;
+
+    // Check if all target URLs have been created at least once
+    const invalidUrls = targetUrls.filter(url => {
+      const item = data?.urls.find(u => u.url === url);
+      return item && item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung";
+    });
+
+    if (invalidUrls.length > 0) {
+      addAlert({ 
+        type: "warning", 
+        message: "Optimierung nicht möglich",
+        description: "Eine Optimierung kann erst geplant werden, wenn für die URL bereits Content erstellt UND veröffentlicht wurde."
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/monitoring/suggest", {
@@ -127,7 +146,13 @@ export default function MonitoringPage() {
     );
   }
 
+  const isOptimizable = (url: string) => {
+    const item = data?.urls.find(u => u.url === url);
+    return item && (item.lastAction === "Erstellung" || item.lastAction === "Optimierung") && item.isPublished;
+  };
+
   if (viewingUrl) {
+    const detailOptimizable = isOptimizable(viewingUrl);
     return (
       <div className="space-y-6">
         <Button 
@@ -144,12 +169,21 @@ export default function MonitoringPage() {
           <Button 
             onClick={() => handleSubmitToSuggestions([viewingUrl])}
             disabled={submitting}
-            className="bg-[#00463c] hover:bg-[#00332c]"
+            className={`${detailOptimizable ? "bg-[#00463c] hover:bg-[#00332c]" : "bg-gray-400 cursor-not-allowed opacity-70"}`}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
             Optimierung planen
           </Button>
         </div>
+        {!detailOptimizable && (
+          <Alert className="bg-amber-50 border-amber-200 text-amber-900">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertTitle>Optimierung noch nicht möglich</AlertTitle>
+            <AlertDescription>
+              Diese URL kann erst zur Optimierung geplant werden, wenn bereits eine Content-Erstellung über das Tool stattgefunden hat und dieser Content als veröffentlicht markiert wurde.
+            </AlertDescription>
+          </Alert>
+        )}
         <UrlDetail url={viewingUrl} />
       </div>
     );
@@ -295,6 +329,7 @@ export default function MonitoringPage() {
                           if (checked) setSelectedUrls(prev => [...prev, item.url]);
                           else setSelectedUrls(prev => prev.filter(u => u !== item.url));
                         }}
+                        disabled={!item.isPublished || (item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung")}
                       />
                     </TableCell>
                     <TableCell className="max-w-md">

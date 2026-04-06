@@ -174,6 +174,10 @@ export async function GET() {
         viTrend: previous ? (latest?.Sistrix_VI || 0) - (previous?.Sistrix_VI || 0) : 0,
         lastAction: urlLogs[0]?.Action_Type || 'N/A',
         lastActionDate: urlLogs[0]?.Created_At || null,
+        isPublished: urlLogs.some(l => {
+          const summary = String(l.Diff_Summary || '').toLowerCase();
+          return summary.includes('content angeliefert') || summary.includes('content veröffentlicht');
+        })
       };
     });
 

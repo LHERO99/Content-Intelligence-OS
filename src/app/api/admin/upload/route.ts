@@ -31,11 +31,23 @@ export async function POST(request: Request) {
     // Determine filename and path
     const extension = file.name.split('.').pop();
     const filename = `${type}_${Date.now()}.${extension}`;
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
     
-    // Ensure upload directory exists
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
+    // In many serverless environments, /tmp is the only writable directory.
+    // However, for local development and standard servers, we use public/uploads.
+    // We try to find the project root correctly.
+    const rootDir = process.cwd();
+    const uploadDir = join(rootDir, 'public', 'uploads');
+    
+    try {
+      // Ensure upload directory exists
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true });
+      }
+    } catch (e) {
+      console.error('Directory creation failed, likely read-only filesystem:', e);
+      return NextResponse.json({ 
+        error: 'Dateisystem ist schreibgeschützt oder Pfad nicht verfügbar. Upload nicht möglich.' 
+      }, { status: 500 });
     }
 
     const path = join(uploadDir, filename);

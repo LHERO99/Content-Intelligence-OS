@@ -202,86 +202,76 @@ export function BrandingTab() {
               Laden Sie Ihr Logo und Favicon hoch (maximal 2MB).
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
+          <CardContent className="space-y-8">
+            <div className="space-y-3">
               <label className="text-sm font-medium">Anwendungs-Logo</label>
               <div className="flex flex-col gap-3">
-                <div className="flex gap-2">
-                  <Input 
-                    value={config.BRAND_LOGO_URL}
-                    onChange={(e) => setConfig({ ...config, BRAND_LOGO_URL: e.target.value })}
-                    placeholder="/logo.png"
-                    className="h-10"
-                  />
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="logo-upload"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e, 'logo')}
-                      disabled={uploading.logo}
+                <input
+                  type="file"
+                  id="logo-upload"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, 'logo')}
+                  disabled={uploading.logo}
+                />
+                <div 
+                  onClick={() => !uploading.logo && document.getElementById('logo-upload')?.click()}
+                  className={`relative flex items-center justify-center p-6 border-2 border-dashed rounded-xl transition-all cursor-pointer group
+                    ${uploading.logo ? 'bg-muted/20 border-muted' : 'bg-muted/50 border-muted-foreground/20 hover:border-[#00463c]/50 hover:bg-[#00463c]/5'}`}
+                >
+                  {uploading.logo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 rounded-xl">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center gap-2">
+                    <img 
+                      src={config.BRAND_LOGO_URL} 
+                      alt="Logo Vorschau" 
+                      className="max-h-32 w-auto object-contain transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/400x100?text=Klicken+zum+Upload';
+                      }}
                     />
-                    <Button 
-                      variant="outline"
-                      className="h-10 px-3"
-                      disabled={uploading.logo}
-                      onClick={() => document.getElementById('logo-upload')?.click()}
-                    >
-                      {uploading.logo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    </Button>
+                    <span className="text-xs text-muted-foreground mt-2 group-hover:text-[#00463c]">Klicken zum Ändern</span>
                   </div>
-                </div>
-                <div className="flex items-center justify-center p-4 border rounded-lg bg-muted/50 h-24">
-                  <img 
-                    src={config.BRAND_LOGO_URL} 
-                    alt="Logo Vorschau" 
-                    className="max-h-full max-w-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://placehold.co/200x50?text=Logo+Vorschau';
-                    }}
-                  />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3 pt-4 border-t">
               <label className="text-sm font-medium">Favicon</label>
-              <div className="flex gap-2">
-                <Input 
-                  value={config.BRAND_FAVICON_URL}
-                  onChange={(e) => setConfig({ ...config, BRAND_FAVICON_URL: e.target.value })}
-                  placeholder="/favicon.ico"
-                  className="h-10"
+              <div className="flex flex-col gap-3">
+                <input
+                  type="file"
+                  id="favicon-upload"
+                  className="hidden"
+                  accept="image/*,.ico"
+                  onChange={(e) => handleFileUpload(e, 'favicon')}
+                  disabled={uploading.favicon}
                 />
-                <div className="relative">
-                  <input
-                    type="file"
-                    id="favicon-upload"
-                    className="hidden"
-                    accept="image/*,.ico"
-                    onChange={(e) => handleFileUpload(e, 'favicon')}
-                    disabled={uploading.favicon}
-                  />
-                  <Button 
-                    variant="outline"
-                    className="h-10 px-3"
-                    disabled={uploading.favicon}
-                    onClick={() => document.getElementById('favicon-upload')?.click()}
-                  >
-                    {uploading.favicon ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  </Button>
+                <div 
+                  onClick={() => !uploading.favicon && document.getElementById('favicon-upload')?.click()}
+                  className={`relative flex items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all cursor-pointer group w-32 h-32 mx-auto
+                    ${uploading.favicon ? 'bg-muted/20 border-muted' : 'bg-muted/50 border-muted-foreground/20 hover:border-[#00463c]/50 hover:bg-[#00463c]/5'}`}
+                >
+                  {uploading.favicon && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 rounded-xl">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#00463c]" />
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center gap-2">
+                    <img 
+                      src={config.BRAND_FAVICON_URL} 
+                      alt="Favicon" 
+                      className="h-16 w-16 object-contain transition-transform group-hover:scale-110" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/%3E%3Cpath d="M21 3v5h-5"/%3E%3C/svg%3E';
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="h-10 w-10 flex items-center justify-center border rounded bg-background shrink-0">
-                  <img 
-                    src={config.BRAND_FAVICON_URL} 
-                    alt="Favicon" 
-                    className="h-6 w-6" 
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/%3E%3Cpath d="M21 3v5h-5"/%3E%3C/svg%3E';
-                    }}
-                  />
-                </div>
+                <p className="text-center text-xs text-muted-foreground">Klicken zum Ändern</p>
               </div>
             </div>
           </CardContent>
