@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPerformanceDataByUrl, getContentHistoryByUrl, getCostConfigs } from '@/lib/airtable';
+import { 
+  getPerformanceDataByUrl, 
+  getContentHistoryByUrl, 
+  getCostConfigs, 
+  getURLPerformanceHistory, 
+  getKeywordRankingHistory,
+  getKeywordMap 
+} from '@/lib/airtable';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -17,10 +24,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [performance, history, costs] = await Promise.all([
+    // 1. Fetch Keyword Map to identify associated keywords for this URL
+    const allKeywords = await getKeywordMap();
+    const relatedKeywords = allKeywords.filter(kw => kw.Target_URL === targetUrl);
+    const keywordIds = relatedKeywords.map(kw => kw.id);
+
+    // 2. Fetch Performance Data from all tables
+    const [
+      legacyPerformance, 
+      history, 
+      costs, 
+      urlPerformance, 
+      keywordRankingHistory
+    ] = await Promise.all([
       getPerformanceDataByUrl(targetUrl),
       getContentHistoryByUrl(targetUrl),
-      getCostConfigs()
+      getCostConfigs(),
+      getURLPerformanceHistory(targetUrl),
+      getKeywordRankingHistory(keywordIds)
     ]);
 
     // Calculate individual savings
@@ -36,7 +57,10 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      performance,
+      performance: legacyPerformance, // Backward compatibility
+      urlPerformance,
+      keywordRankings: keywordRankingHistory,
+      keywords: relatedKeywords,
       history,
       savings: {
         agency: totalAgency,
@@ -44,6 +68,7 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error: any) {
+    console.error('[API Monitoring Detail] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

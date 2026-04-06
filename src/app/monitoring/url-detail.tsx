@@ -20,8 +20,8 @@ import {
   ReferenceLine,
   Label
 } from 'recharts';
-import { PerformanceData, ContentLog } from "@/lib/airtable-types";
-import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft } from "lucide-react";
+import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
+import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
@@ -39,6 +39,9 @@ interface UrlDetailProps {
 export function UrlDetail({ url }: UrlDetailProps) {
   const [data, setData] = useState<{
     performance: PerformanceData[];
+    urlPerformance: URLPerformance[];
+    keywordRankings: KeywordRankingHistory[];
+    keywords: KeywordMap[];
     history: ContentLog[];
     savings: { agency: number; overhead: number };
   } | null>(null);
@@ -78,9 +81,23 @@ export function UrlDetail({ url }: UrlDetailProps) {
     label: log.Action_Type === 'Erstellung' ? 'E' : 'O'
   }));
 
+  // Prepare Keyword Ranking Chart Data
+  // We need to group rankings by date
+  const rankingDates = Array.from(new Set(data.keywordRankings.map(r => r.Date))).sort();
+  const keywordChartData = rankingDates.map(date => {
+    const entry: any = { Date: date };
+    data.keywords.forEach(kw => {
+      const ranking = data.keywordRankings.find(r => r.Date === date && r.Keyword_ID.includes(kw.id));
+      if (ranking) {
+        entry[kw.Keyword] = ranking.Ranking;
+      }
+    });
+    return entry;
+  });
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-white border-none shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -111,64 +128,118 @@ export function UrlDetail({ url }: UrlDetailProps) {
             <p className="text-xs text-muted-foreground">Letztes Update: {data.history[0] ? new Date(data.history[0].Created_At).toLocaleDateString('de-DE') : 'N/A'}</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-white border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Hash className="h-4 w-4 text-[#00463c]" />
+              Keywords
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold">{data.keywords.length} Keywords</div>
+            <div className="flex gap-2 mt-1">
+              <Badge variant="default" className="text-[10px] py-0">Main: {data.keywords.find(k => k.Main_Keyword === 'Y')?.Keyword || 'N/A'}</Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card className="bg-white border-none shadow-sm">
-        <CardHeader>
-          <CardTitle>Performance Verlauf & Marker</CardTitle>
-          <CardDescription>GSC Klicks (Links) und Sistrix VI (Rechts) mit Content-Event Markern.</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.performance}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis 
-                dataKey="Date" 
-                tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
-                fontSize={12}
-              />
-              <YAxis yAxisId="left" stroke="#00463c" fontSize={12} />
-              <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
-                labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
-              />
-              <Legend />
-              
-              {eventMarkers.map((marker, idx) => (
-                <ReferenceLine 
-                  key={idx} 
-                  x={marker.date} 
-                  yAxisId="left" 
-                  stroke={marker.type === 'Erstellung' ? '#00463c' : '#f59e0b'} 
-                  strokeDasharray="3 3"
-                >
-                  <Label value={marker.label} position="top" fill={marker.type === 'Erstellung' ? '#00463c' : '#f59e0b'} />
-                </ReferenceLine>
-              ))}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white border-none shadow-sm">
+          <CardHeader>
+            <CardTitle>URL Performance Verlauf</CardTitle>
+            <CardDescription>GSC Klicks (Links) und Sistrix VI (Rechts).</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={(data.urlPerformance.length > 0 ? data.urlPerformance : data.performance) as any[]}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey="Date" 
+                  tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                  fontSize={12}
+                />
+                <YAxis yAxisId="left" stroke="#00463c" fontSize={12} />
+                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
+                  labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
+                />
+                <Legend />
+                
+                {eventMarkers.map((marker, idx) => (
+                  <ReferenceLine 
+                    key={idx} 
+                    x={marker.date} 
+                    yAxisId="left" 
+                    stroke={marker.type === 'Erstellung' ? '#00463c' : '#f59e0b'} 
+                    strokeDasharray="3 3"
+                  >
+                    <Label value={marker.label} position="top" fill={marker.type === 'Erstellung' ? '#00463c' : '#f59e0b'} />
+                  </ReferenceLine>
+                ))}
 
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="GSC_Clicks" 
-                name="Klicks" 
-                stroke="#00463c" 
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line 
-                yAxisId="right"
-                type="monotone" 
-                dataKey="Sistrix_VI" 
-                name="Sistrix VI" 
-                stroke="#82ca9d" 
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="GSC_Clicks" 
+                  name="Klicks" 
+                  stroke="#00463c" 
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="Sistrix_VI" 
+                  name="Sistrix VI" 
+                  stroke="#82ca9d" 
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-none shadow-sm">
+          <CardHeader>
+            <CardTitle>Keyword Ranking Verlauf</CardTitle>
+            <CardDescription>Entwicklung der Rankings für Main & Secondaries (Niedriger ist besser).</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={keywordChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey="Date" 
+                  tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                  fontSize={12}
+                />
+                <YAxis reversed domain={[1, 'auto']} fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
+                  labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
+                />
+                <Legend />
+                
+                {data.keywords.map((kw, idx) => (
+                  <Line 
+                    key={kw.id}
+                    type="monotone" 
+                    dataKey={kw.Keyword} 
+                    name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '')}
+                    stroke={kw.Main_Keyword === 'Y' ? '#00463c' : `hsl(${(idx * 137) % 360}, 50%, 50%)`}
+                    strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
+                    dot={kw.Main_Keyword === 'Y'}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="bg-white border-none shadow-sm">
         <CardHeader>

@@ -62,3 +62,8 @@
 - [x] Schema: `Reasoning_Chain` systemweit entfernt (Airtable, Types, UI, Routen).
 - [x] Bugfix: Deployment-Fehler in `suggest/route.ts` durch verwaiste `Reasoning_Chain` behoben.
 - [x] Fix: Blacklist-Grund in `Diff_Summary` integriert nach Entfernung des Reasoning-Feldes.
+- [x] Refactor: Blacklist-Logik unterscheidet nun zwischen Keyword- und URL-Typ.
+- [x] Feature: Main Keyword Validierung beim Blacklisting (Schutz vor Löschung).
+- [x] Feature: Double Confirmation & Warnung bei URL-Blacklisting.
+- [x] UI: URL Wrapping im Blacklist-Modal (break-all).
+- [x] UI: Dynamische Blacklist-Badge Logik (Nur bei URL-Event "starts-with" Match).

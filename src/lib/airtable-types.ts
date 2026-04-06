@@ -52,6 +52,24 @@ export interface PerformanceData {
   Source?: 'GSC' | 'Sistrix' | 'Combined';
 }
 
+export interface URLPerformance {
+  id: string;
+  Target_URL: string;
+  Date: string;
+  GSC_Clicks?: number;
+  GSC_Impressions?: number;
+  Position?: number;
+  Sistrix_VI?: number;
+}
+
+export interface KeywordRankingHistory {
+  id: string;
+  Keyword_ID: string[]; // Link to Keyword-Map
+  Date: string;
+  Ranking?: number;
+  Target_URL?: string; // Lookup or direct
+}
+
 export interface CostConfig {
   id: string;
   Page_Type: 'Ratgeber' | 'Kategorie' | 'Andere';

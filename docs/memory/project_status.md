@@ -9,14 +9,19 @@
   4. **Content wurde beauftragt**: Zentrales Logging im n8n-Trigger-Proxy (`api/n8n/trigger/route.ts`) bei Klick auf "Beauftragen".
   5. **Content angeliefert**: Erfasst via n8n Callback Webhook (`api/n8n/callback/route.ts`).
   6. **Content veröffentlicht**: Log bei Status-Transition zu `Published`.
-  7. **URL der Blacklist hinzugefügt**: Automatisches Logging beim Verschieben oder Hinzufügen zur Blacklist.
+  7. **URL der Blacklist hinzugefügt**: Automatisches Logging beim Verschieben oder Hinzufügen zur Blacklist (nur bei Blacklist-Typ "URL").
   8. **URL von der Blacklist entfernt**: Logging bei Wiederherstellung aus der Blacklist.
+  9. **Keyword der Blacklist hinzugefügt**: Separates Logging für Keyword-spezifische Blacklist-Einträge ohne URL-Impact.
 
 ## Datenbank & API-Stabilität
 - **Airtable Service-Härtung**:
   - **Computed Field Fix**: Das Feld `Target_URL` in `Content-Log` wird beim Schreiben explizit ignoriert.
-  - **URL-Historie Persistenz**: `getContentHistoryByUrl` nutzt nun einen `OR`-Filter (`Target_URL` ODER `Logged_URL`), um Historie auch nach Keyword-Löschung (Blacklisting) anzuzeigen.
+  - **URL-Historie Persistenz**: `getContentHistoryByUrl` nutzt nun einen `OR`-Filter (`Target_URL` ODER `Logged_URL`), um Historie auch nach Keyword-Löschung (Blacklisting) anzuzeigen. Der "Blacklisted" Badge wird nur bei URL-Level Events angezeigt.
   - **Aggressives URL-Grouping**: Die UI (`content-history-table.tsx`) nutzt eine Fallback-Kette (Logged_URL -> Keyword-Map -> Target_URL), um Logs einer URL zuzuordnen.
+- **Blacklist-Sicherheitsmechanismen (06.04.2026)**:
+  - **Main Keyword Schutz**: Main Keywords können nicht einzeln blacklisted werden; erfordert URL-Blacklisting oder Neuzuweisung des Main Keywords.
+  - **Double Confirmation**: URL-Blacklisting erfordert eine zweite Bestätigung mit Datenverlust-Warnung.
+  - **UI Fix**: Lange URLs in der Blacklist-Bestätigung werden nun umgebrochen statt abgeschnitten.
 - **Schema-Cleanup (06.04.2026)**: Das Feld `Reasoning_Chain` wurde systemweit entfernt (Airtable, Types, Routen, UI), da es aus der Datenbank gelöscht wurde.
 - **n8n Callback Härtung**: Der n8n Callback (`api/n8n/callback`) beherrscht nun "Double-JSON Parsing", um robust gegen fehlerhafte Serialisierung in n8n-Workflows zu sein.
 - **Blacklist-Logging**: Manuelle Keyword-Erstellung und Monitoring-Vorschläge (Trends) triggern nun korrekt die "Vorschläge"-Historie.

@@ -5,6 +5,8 @@ import {
   KeywordMap, 
   ContentLog, 
   PerformanceData, 
+  URLPerformance,
+  KeywordRankingHistory,
   PotentialTrend, 
   AuditLog, 
   UserRecord,
@@ -38,6 +40,8 @@ export const TABLES = {
   BLACKLIST: 'Blacklist',
   CONFIG: 'Config',
   COST_CONFIG: 'Cost_Config',
+  URL_PERFORMANCE: 'URL_Performance',
+  KEYWORD_RANKING_HISTORY: 'Keyword_Ranking_History',
 } as const;
 
 // --- Error Handling ---
@@ -395,6 +399,46 @@ export async function getPerformanceDataByUrl(targetUrl: string): Promise<Perfor
   }
 }
 
+export async function getURLPerformanceHistory(targetUrl: string): Promise<URLPerformance[]> {
+  try {
+    const records = await base(TABLES.URL_PERFORMANCE).select({
+      filterByFormula: `{Target_URL} = '${targetUrl}'`,
+      sort: [{ field: 'Date', direction: 'asc' }]
+    }).all();
+    return records.map((record) => ({
+      id: record.id,
+      Target_URL: record.get('Target_URL') as string,
+      Date: record.get('Date') as string,
+      GSC_Clicks: record.get('GSC_Clicks') as number,
+      GSC_Impressions: record.get('GSC_Impressions') as number,
+      Position: record.get('Position') as number,
+      Sistrix_VI: record.get('Sistrix_VI') as number,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getURLPerformanceHistory');
+  }
+}
+
+export async function getKeywordRankingHistory(keywordIds: string[]): Promise<KeywordRankingHistory[]> {
+  try {
+    if (keywordIds.length === 0) return [];
+    const formula = `OR(${keywordIds.map(id => `SEARCH('${id}', ARRAYJOIN({Keyword_ID}))`).join(', ')})`;
+    const records = await base(TABLES.KEYWORD_RANKING_HISTORY).select({
+      filterByFormula: formula,
+      sort: [{ field: 'Date', direction: 'asc' }]
+    }).all();
+    return records.map((record) => ({
+      id: record.id,
+      Keyword_ID: record.get('Keyword_ID') as string[],
+      Date: record.get('Date') as string,
+      Ranking: record.get('Ranking') as number,
+      Target_URL: record.get('Target_URL') as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getKeywordRankingHistory');
+  }
+}
+
 export async function deleteKeyword(id: string): Promise<boolean> {
   try {
     await base(TABLES.KEYWORD_MAP).destroy([id]);
@@ -423,6 +467,82 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
     return true;
   } catch (error) {
     return handleAirtableError(error,'bulkDeleteFromBlacklist');
+  }
+}
+
+export async function upsertURLPerformance(data: Partial<URLPerformance>[]): Promise<{ created: number, updated: number, errors: any[] }> {
+  try {
+    let created = 0;
+    let updated = 0;
+    const errors: any[] = [];
+
+    for (const item of data) {
+      if (!item.Target_URL || !item.Date) continue;
+      try {
+        const formula = `AND({Target_URL} = '${item.Target_URL}', {Date} = '${item.Date}')`;
+        const existing = await base(TABLES.URL_PERFORMANCE).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
+
+        const fields: any = {
+          Target_URL: item.Target_URL,
+          Date: item.Date,
+          GSC_Clicks: item.GSC_Clicks,
+          GSC_Impressions: item.GSC_Impressions,
+          Position: item.Position,
+          Sistrix_VI: item.Sistrix_VI
+        };
+        Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
+
+        if (existing.length > 0) {
+          await base(TABLES.URL_PERFORMANCE).update(existing[0].id, fields);
+          updated++;
+        } else {
+          await base(TABLES.URL_PERFORMANCE).create([{ fields }]);
+          created++;
+        }
+      } catch (err: any) {
+        errors.push({ item, error: err.message });
+      }
+    }
+    return { created, updated, errors };
+  } catch (error) {
+    return handleAirtableError(error, 'upsertURLPerformance');
+  }
+}
+
+export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHistory>[]): Promise<{ created: number, updated: number, errors: any[] }> {
+  try {
+    let created = 0;
+    let updated = 0;
+    const errors: any[] = [];
+
+    for (const item of data) {
+      if (!item.Keyword_ID || !item.Date) continue;
+      try {
+        const keywordIdStr = Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : item.Keyword_ID;
+        const formula = `AND(SEARCH('${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`;
+        const existing = await base(TABLES.KEYWORD_RANKING_HISTORY).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
+
+        const fields: any = {
+          Keyword_ID: [keywordIdStr],
+          Date: item.Date,
+          Ranking: item.Ranking,
+        };
+        Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
+
+        if (existing.length > 0) {
+          await base(TABLES.KEYWORD_RANKING_HISTORY).update(existing[0].id, fields);
+          updated++;
+        } else {
+          await base(TABLES.KEYWORD_RANKING_HISTORY).create([{ fields }]);
+          created++;
+        }
+      } catch (err: any) {
+        errors.push({ item, error: err.message });
+      }
+    }
+    return { created, updated, errors };
+  } catch (error) {
+    return handleAirtableError(error, 'upsertKeywordRankingHistory');
   }
 }
 

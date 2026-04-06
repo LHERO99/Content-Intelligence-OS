@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertPerformanceData } from '@/lib/airtable';
+import { upsertPerformanceData, upsertURLPerformance, upsertKeywordRankingHistory } from '@/lib/airtable';
 
 /**
  * API Route for n8n to import performance data and keyword rankings.
  * 
- * Each ranking entry (Main or Secondary) results in a unique entry in Performance_Data
- * for that specific Keyword_ID and Date. URL metrics (clicks, impressions) are 
- * duplicated across these keyword-specific entries for easier per-keyword analysis.
+ * Data is split into:
+ * 1. URL_Performance (Aggregated metrics per URL/Date)
+ * 2. Keyword_Ranking_History (Rankings per Keyword/Date)
+ * 3. Performance_Data (Legacy table for backward compatibility)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -29,18 +30,23 @@ export async function POST(req: NextRequest) {
 
     const results: any = {
       keywordEntries: 0,
-      upsertResults: { created: 0, updated: 0, errorCount: 0 }
+      upsertResults: { created: 0, updated: 0, errorCount: 0 },
+      urlPerformanceResults: { created: 0, updated: 0, errorCount: 0 },
+      keywordRankingResults: { created: 0, updated: 0, errorCount: 0 }
     };
 
-    // Prepare a flat list of all performance records to upsert
-    // We create one record per (Keyword_ID + Date) combination.
-    const allKeywordPerformanceRecords: any[] = [];
+    // 1. Prepare URL Performance Records (Aggregate metrics per URL/Date)
+    const urlPerformanceRecords = performanceData.map(perf => ({
+      Target_URL: targetUrl,
+      Date: perf.date,
+      GSC_Clicks: perf.clicks,
+      GSC_Impressions: perf.impressions,
+      Position: perf.position,
+      Sistrix_VI: perf.sistrixVi || perf.vi
+    }));
 
-    // 1. Identify all keywords to process (Main + Secondaries)
-    // n8n sends rankings: [{ keywordId: "...", rank: 12 }, ...]
+    // 2. Identify all keywords to process (Main + Secondaries)
     const keywordsToProcess = rankings && Array.isArray(rankings) ? rankings : [];
-    
-    // If n8n sent a top-level keywordId but it's not in rankings, add it (fallback)
     if (keywordId && !keywordsToProcess.find((k: any) => k.keywordId === keywordId)) {
       keywordsToProcess.push({ keywordId, rank: body.rank || undefined });
     }
@@ -49,31 +55,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No keywordId or rankings provided' }, { status: 400 });
     }
 
-    // 2. Map performanceData to each keyword
+    // 3. Prepare Keyword Ranking Records (Ranking per Keyword/Date)
+    const keywordRankingRecords: any[] = [];
+    for (const kw of keywordsToProcess) {
+      for (const perf of performanceData) {
+        keywordRankingRecords.push({
+          Keyword_ID: [kw.keywordId],
+          Date: perf.date,
+          Ranking: kw.rank
+        });
+      }
+    }
+
+    // 4. Prepare Legacy Performance Records (Flat list)
+    const allKeywordPerformanceRecords: any[] = [];
     for (const kw of keywordsToProcess) {
       for (const perf of performanceData) {
         allKeywordPerformanceRecords.push({
           Keyword_ID: [kw.keywordId],
           Target_URL: targetUrl,
           Date: perf.date,
-          Ranking: kw.rank, // Use the rank provided for this keyword
+          Ranking: kw.rank,
           GSC_Clicks: perf.clicks,
           GSC_Impressions: perf.impressions,
-          Position: perf.position, // URL level average position
+          Position: perf.position,
           Sistrix_VI: perf.sistrixVi || perf.vi
         });
       }
     }
 
-    // 3. Execute Upsert
-    const upsertResult = await upsertPerformanceData(allKeywordPerformanceRecords);
+    // 5. Execute Upserts
+    const [legacyResult, urlResult, rankingResult] = await Promise.all([
+      upsertPerformanceData(allKeywordPerformanceRecords),
+      upsertURLPerformance(urlPerformanceRecords),
+      upsertKeywordRankingHistory(keywordRankingRecords)
+    ]);
     
     results.keywordEntries = keywordsToProcess.length;
     results.upsertResults = {
-      created: upsertResult.created,
-      updated: upsertResult.updated,
-      errorCount: upsertResult.errors.length,
-      errors: upsertResult.errors.length > 0 ? upsertResult.errors : undefined
+      created: legacyResult.created,
+      updated: legacyResult.updated,
+      errorCount: legacyResult.errors.length
+    };
+    results.urlPerformanceResults = {
+      created: urlResult.created,
+      updated: urlResult.updated,
+      errorCount: urlResult.errors.length
+    };
+    results.keywordRankingResults = {
+      created: rankingResult.created,
+      updated: rankingResult.updated,
+      errorCount: rankingResult.errors.length
     };
 
     return NextResponse.json({
