@@ -76,3 +76,7 @@
 - [x] Feature: Automatisierte `Page_Type` Herleitung über URL-Struktur in der Monitoring-API.
 - [x] UI: URL-Spaltenbreite in Historie auf 800px und Keyword-Map auf 500px erhöht.
 - [x] Logic: Tägliche Deduplizierung von Kosten-Events implementiert.
+- [x] Bugfix: `TypeError: toLowerCase is not a function` in Monitoring-API durch aggressives String-Casting behoben.
+- [x] Feature: Dynamic Branding Tab im Admin-Bereich (Logo, Favicon, Primärfarbe) implementiert.
+- [x] UI: Dynamic Branding Provider & Sidebar Refactoring für konfigurierbares Design.
+- [x] Logic: URL-Sichtbarkeit im Monitoring auch ohne Logs (basierend auf URL_Performance).

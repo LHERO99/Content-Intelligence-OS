@@ -11,11 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Save, Image as ImageIcon, Palette } from "lucide-react";
+import { Loader2, Save, Image as ImageIcon, Palette, Upload } from "lucide-react";
 
 export function BrandingTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<{ logo: boolean; favicon: boolean }>({ logo: false, favicon: false });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -45,6 +46,50 @@ export function BrandingTab() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit: 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Die Datei ist zu groß. Maximal 2MB erlaubt.");
+      return;
+    }
+
+    setUploading(prev => ({ ...prev, [type]: true }));
+    setError(null);
+    setSuccess(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Upload fehlgeschlagen');
+      }
+
+      const { url } = await res.json();
+      setConfig(prev => ({
+        ...prev,
+        [type === 'logo' ? 'BRAND_LOGO_URL' : 'BRAND_FAVICON_URL']: url
+      }));
+      setSuccess(`${type === 'logo' ? 'Logo' : 'Favicon'} erfolgreich hochgeladen.`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setUploading(prev => ({ ...prev, [type]: false }));
+      // Reset input
+      e.target.value = '';
     }
   };
 
@@ -154,32 +199,54 @@ export function BrandingTab() {
               Logos & Icons
             </CardTitle>
             <CardDescription>
-              Laden Sie Ihr Logo und Favicon hoch oder geben Sie die URL an.
+              Laden Sie Ihr Logo und Favicon hoch (maximal 2MB).
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Logo URL</label>
-              <Input 
-                value={config.BRAND_LOGO_URL}
-                onChange={(e) => setConfig({ ...config, BRAND_LOGO_URL: e.target.value })}
-                placeholder="/logo.png"
-                className="h-10"
-              />
-              <div className="mt-2 flex items-center justify-center p-4 border rounded-lg bg-muted/50 h-24">
-                <img 
-                  src={config.BRAND_LOGO_URL} 
-                  alt="Logo Vorschau" 
-                  className="max-h-full max-w-full object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/200x50?text=Ungültiges+Logo';
-                  }}
-                />
+              <label className="text-sm font-medium">Anwendungs-Logo</label>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <Input 
+                    value={config.BRAND_LOGO_URL}
+                    onChange={(e) => setConfig({ ...config, BRAND_LOGO_URL: e.target.value })}
+                    placeholder="/logo.png"
+                    className="h-10"
+                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, 'logo')}
+                      disabled={uploading.logo}
+                    />
+                    <Button 
+                      variant="outline"
+                      className="h-10 px-3"
+                      disabled={uploading.logo}
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                    >
+                      {uploading.logo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center p-4 border rounded-lg bg-muted/50 h-24">
+                  <img 
+                    src={config.BRAND_LOGO_URL} 
+                    alt="Logo Vorschau" 
+                    className="max-h-full max-w-full object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/200x50?text=Logo+Vorschau';
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Favicon URL</label>
+              <label className="text-sm font-medium">Favicon</label>
               <div className="flex gap-2">
                 <Input 
                   value={config.BRAND_FAVICON_URL}
@@ -187,8 +254,33 @@ export function BrandingTab() {
                   placeholder="/favicon.ico"
                   className="h-10"
                 />
-                <div className="h-10 w-10 flex items-center justify-center border rounded bg-background">
-                  <img src={config.BRAND_FAVICON_URL} alt="Favicon" className="h-6 w-6" />
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="favicon-upload"
+                    className="hidden"
+                    accept="image/*,.ico"
+                    onChange={(e) => handleFileUpload(e, 'favicon')}
+                    disabled={uploading.favicon}
+                  />
+                  <Button 
+                    variant="outline"
+                    className="h-10 px-3"
+                    disabled={uploading.favicon}
+                    onClick={() => document.getElementById('favicon-upload')?.click()}
+                  >
+                    {uploading.favicon ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div className="h-10 w-10 flex items-center justify-center border rounded bg-background shrink-0">
+                  <img 
+                    src={config.BRAND_FAVICON_URL} 
+                    alt="Favicon" 
+                    className="h-6 w-6" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/%3E%3Cpath d="M21 3v5h-5"/%3E%3C/svg%3E';
+                    }}
+                  />
                 </div>
               </div>
             </div>

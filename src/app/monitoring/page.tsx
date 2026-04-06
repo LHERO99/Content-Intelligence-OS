@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { 
   Card, 
@@ -56,6 +57,7 @@ interface MonitoringData {
 }
 
 export default function MonitoringPage() {
+  const router = useRouter();
   const { addAlert } = useAlerts();
   const [data, setData] = useState<MonitoringData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,21 +84,30 @@ export default function MonitoringPage() {
     }
   };
 
-  const handleSubmitToSuggestions = async () => {
-    if (selectedUrls.length === 0) return;
+  const handleSubmitToSuggestions = async (urlsToSubmit?: string[]) => {
+    const targetUrls = urlsToSubmit || selectedUrls;
+    if (targetUrls.length === 0) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/monitoring/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls: selectedUrls }),
+        body: JSON.stringify({ urls: targetUrls }),
       });
       if (!res.ok) throw new Error("Fehler beim Einreichen");
       addAlert({ 
         type: "success", 
-        message: `${selectedUrls.length} URLs wurden erfolgreich zur Content-Planung hinzugefügt.` 
+        message: "Die Auswahl wurde in die Vorschläge für die Redaktionsplanung mit aufgenommen",
+        description: (
+          <button 
+            onClick={() => router.push("/planning?tab=suggestions")}
+            className="text-white underline hover:no-underline font-medium"
+          >
+            Zum Vorschläge-Tab wechseln
+          </button>
+        ) as any,
       });
-      setSelectedUrls([]);
+      if (!urlsToSubmit) setSelectedUrls([]);
     } catch (err: any) {
       addAlert({ type: "error", message: err.message });
     } finally {
@@ -130,6 +141,14 @@ export default function MonitoringPage() {
           <h1 className="text-2xl font-bold tracking-tight text-[#00463c] break-all">
             {viewingUrl}
           </h1>
+          <Button 
+            onClick={() => handleSubmitToSuggestions([viewingUrl])}
+            disabled={submitting}
+            className="bg-[#00463c] hover:bg-[#00332c]"
+          >
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+            Optimierung planen
+          </Button>
         </div>
         <UrlDetail url={viewingUrl} />
       </div>
@@ -235,12 +254,12 @@ export default function MonitoringPage() {
                 />
               </div>
               <Button 
-                onClick={handleSubmitToSuggestions} 
+                onClick={() => handleSubmitToSuggestions()} 
                 disabled={selectedUrls.length === 0 || submitting}
                 className="h-9 bg-[#00463c] hover:bg-[#00332c]"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                Zur Optimierung ({selectedUrls.length})
+                Optimierung planen ({selectedUrls.length})
               </Button>
             </div>
           </div>

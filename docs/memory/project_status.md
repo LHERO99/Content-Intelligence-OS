@@ -51,11 +51,18 @@
 - **Icon-System**: Icons für Blacklist (`ShieldAlert` in Rot) und Vorschläge (`Lightbulb` in Amber).
 - **Editor-Tracking**: User-E-Mail wird bei fast allen Events erfasst.
 
-## Monitoring & Kosten-Berechnung (Aktuelle Entwicklung)
-- **Fehler-Resilienz**: In `api/monitoring/route.ts` wurden individuelle `.catch()` Blöcke für parallele Airtable-Anfragen implementiert, um Teilausfälle abzufangen und den Dashboard-Lockup zu verhindern.
-- **Programmatisches Page_Type Mapping**: Da das Airtable-Lookup oft leer ist, zieht die API den `Page_Type` nun primär aus der `Keyword-Map`. Ein URL-basiertes Fallback (Erkennung von `/ratgeber/` vs. `/kategorie/`) sorgt für korrekte Zuordnungen.
+## Monitoring & Kosten-Berechnung (Status: Stable)
+- **Fehler-Resilienz**: In `api/monitoring/route.ts` wurden individuelle `.catch()` Blöcke für parallele Airtable-Anfragen implementiert.
+- **Härtung gegen Datenfehler (06.04.2026)**: Die API nutzt nun aggressives String-Casting (`String(val)`) für alle Metadaten aus Airtable, um `TypeError: toLowerCase is not a function` bei unvollständigen Datensätzen zu verhindern.
+- **Programmatisches Page_Type Mapping**: Die API zieht den `Page_Type` primär aus der `Keyword-Map` oder nutzt ein URL-basiertes Fallback (`/ratgeber/` vs. `/kategorie/`).
 - **Kosten-Präzision**: 
   - **Deduplizierung**: Mehrfache Logs pro Tag/URL werden zu einem Abrechnungs-Event zusammengefasst.
   - **Trigger**: "Content angeliefert" im `Diff_Summary` fungiert als Kern-Trigger für die ROI-Berechnung.
-- **Importer-Upgrade**: Der Keyword-Importer unterstützt nun das Mapping des `Page_Type` Feldes inklusive automatischer Header-Erkennung ("Seitentyp").
-- **Tabellen-Layout**: URL-Spalten in der Historie und Keyword-Map wurden verbreitert, um die Lesbarkeit langer Pfade zu verbessern.
+- **Importer-Upgrade**: Unterstützung für direktes Mapping des `Page_Type` Feldes ("Seitentyp").
+
+## Dynamic Branding (06.04.2026)
+- **Konfigurierbares Branding**: Einführung eines "Branding"-Tabs im Admin-Bereich zur Pflege von Logo-URL, Favicon-URL und Primärfarbe.
+- **Speicherung**: Werte werden in der `Config` Tabelle (Airtable) unter `BRAND_LOGO_URL`, `BRAND_FAVICON_URL` und `BRAND_PRIMARY_COLOR` gespeichert.
+- **Echtzeit-Anwendung**: Der `BrandingProvider` injiziert die Primärfarbe via CSS-Variable (`--primary`) und aktualisiert das Favicon dynamisch im Browser.
+- **Refactoring**: Hardcodierte DocMorris-Brandings in Sidebar und Layout wurden durch dynamische Assets ersetzt.
+

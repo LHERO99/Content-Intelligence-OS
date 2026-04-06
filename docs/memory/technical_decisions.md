@@ -30,3 +30,10 @@
 - **Daily Billing Aggregation**: Um Kosten-Ausreißer durch technische Korrekturen zu vermeiden, werden alle Log-Ereignisse einer URL innerhalb eines Kalendertages als ein einziges Abrechnungs-Event gewertet.
 - **Case-Insensitive Config Lookup**: Alle Vergleiche gegen die `Cost_Config` (Page_Type, Action_Type) werden normalisiert (Lowercase) durchgeführt, um Fehler durch unterschiedliche Schreibweisen in Airtable zu eliminieren.
 - **Extended Target-Source for Monitoring**: Das Monitoring-Dashboard basiert nun primär auf der `URL_Performance` Tabelle. Sobald Daten für eine URL existieren, wird sie gelistet, unabhängig davon, ob bereits Logs vorliegen.
+- **Inbound Data Resilience (Monitoring API, 06.04.2026)**: Aggressives String-Casting (`String(val)`) in der Monitoring-API zur Vermeidung von `TypeError: toLowerCase is not a function` bei unvollständigen Airtable-Daten.
+
+## Dynamic Branding & Theming (06.04.2026)
+- **CSS Variable Injection**: Nutzung von `--primary` als zentrale CSS-Variable für das Corporate Design, injiziert über den `BrandingProvider`.
+- **Dynamic Asset Hook**: Komponenten laden Logo- und Favicon-URLs über den `useBranding` Hook, der diese aus der globalen `Config` (Airtable) bezieht.
+- **Admin Tab Implementation**: Neuer Admin-Bereich für Branding-Einstellungen mit integriertem Farb-Picker und URL-Management.
+- **Tailwind Integration**: Tailwind wurde so konfiguriert (via `globals.css`), dass die `primary` Farbe direkt auf die CSS-Variable zugreift.
