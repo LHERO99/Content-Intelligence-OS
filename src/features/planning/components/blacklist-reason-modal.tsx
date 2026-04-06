@@ -27,7 +27,7 @@ interface BlacklistReasonModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  keywords: { id: string; Keyword: string; Target_URL?: string }[];
+  keywords: { id: string; Keyword: string; Target_URL?: string; Main_Keyword?: string }[];
 }
 
 export function BlacklistReasonModal({
@@ -38,6 +38,7 @@ export function BlacklistReasonModal({
 }: BlacklistReasonModalProps) {
   const [reason, setReason] = React.useState('');
   const [type, setType] = React.useState<'Keyword' | 'URL'>('Keyword');
+  const [showUrlWarning, setShowUrlWarning] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const { addAlert } = useAlerts();
@@ -46,6 +47,20 @@ export function BlacklistReasonModal({
     setError(null);
     if (!reason.trim()) {
       setError('Bitte geben Sie einen Grund an.');
+      return;
+    }
+
+    // Check if blacklisting a Main Keyword as 'Keyword' type
+    if (type === 'Keyword') {
+      const hasMainKeyword = keywords.some((k) => k.Main_Keyword === 'Y');
+      if (hasMainKeyword) {
+        setError('Ein Main Keyword kann nicht einzeln blacklisted werden. Bitte blacklisten Sie entweder die gesamte URL oder vergeben Sie vorher ein neues Main Keyword für diese URL.');
+        return;
+      }
+    }
+
+    if (type === 'URL' && !showUrlWarning) {
+      setShowUrlWarning(true);
       return;
     }
 
@@ -75,6 +90,7 @@ export function BlacklistReasonModal({
       });
       
       setReason('');
+      setShowUrlWarning(false);
       setError(null);
       onSuccess();
       onClose();
@@ -90,6 +106,7 @@ export function BlacklistReasonModal({
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
         setError(null);
+        setShowUrlWarning(false);
         onClose();
       }
     }}>
@@ -103,7 +120,10 @@ export function BlacklistReasonModal({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="type">Blacklist-Typ *</Label>
-            <Select value={type} onValueChange={(v: any) => setType(v)}>
+            <Select value={type} onValueChange={(v: any) => {
+              setType(v);
+              setShowUrlWarning(false);
+            }}>
               <SelectTrigger id="type">
                 <SelectValue placeholder="Typ wählen" />
               </SelectTrigger>
@@ -121,11 +141,21 @@ export function BlacklistReasonModal({
               value={reason}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setReason(e.target.value);
+                setShowUrlWarning(false);
                 if (error) setError(null);
               }}
               className={error ? 'border-destructive' : ''}
             />
           </div>
+          {showUrlWarning && (
+            <Alert variant="destructive" className="py-3 bg-red-50 border-red-200">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <AlertTitle className="text-red-800 font-bold mb-1">Doppelte Bestätigung erforderlich</AlertTitle>
+              <AlertDescription className="text-red-700 text-xs leading-relaxed">
+                <strong>Achtung:</strong> Durch das Blacklisten auf URL-Ebene gehen alle historischen Daten und Verknüpfungen für diese URL unwiderruflich verloren. Möchten Sie wirklich fortfahren?
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant="destructive" className="py-2">
               <AlertCircle className="h-4 w-4" />
@@ -151,9 +181,13 @@ export function BlacklistReasonModal({
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-[#00463c] hover:bg-[#00332c]">
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting} 
+            className={showUrlWarning ? "bg-red-600 hover:bg-red-700" : "bg-[#00463c] hover:bg-[#00332c]"}
+          >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Bestätigen
+            {showUrlWarning ? "Endgültig bestätigen" : "Bestätigen"}
           </Button>
         </DialogFooter>
       </DialogContent>

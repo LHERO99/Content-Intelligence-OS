@@ -204,7 +204,8 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
                 keywords={selectedRows.map((r: any) => ({
                   id: r.original.id,
                   Keyword: r.original.Keyword,
-                  Target_URL: r.original.Target_URL
+                  Target_URL: r.original.Target_URL,
+                  Main_Keyword: r.original.Main_Keyword
                 }))}
               />
             </>
