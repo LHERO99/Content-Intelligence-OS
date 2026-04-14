@@ -122,3 +122,25 @@ export interface UserRecord {
   Password?: string;
   Password_Changed?: boolean;
 }
+
+export interface OptimizationRuleSettings {
+  AGE_DAYS: number;
+  TOP_RANK_THRESHOLD: number;
+  URL_MISMATCH_ENABLED: boolean;
+  DROP_WINDOW_DAYS: number;
+  DROP_THRESHOLD_PCT: number;
+  PERFORMANCE_WINDOW_DAYS: number;
+  MIN_IMPROVEMENT_PCT: number;
+}
+
+export interface OptimizationSuggestion {
+  keywordId: string;
+  keyword: string;
+  targetUrl: string;
+  actionType: 'Optimierung';
+  pageType?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
+  currentRanking?: number;
+  lastPublished?: string;
+  reasons: string[];
+  reasonCodes: string[];
+}

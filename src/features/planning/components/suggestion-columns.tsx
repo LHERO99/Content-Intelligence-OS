@@ -102,6 +102,28 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     },
   },
   {
+    id: "Optimization_Reasons",
+    header: "Optimierungsgründe",
+    enableSorting: false,
+    enableColumnFilter: false,
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as any;
+      const reasons = meta?.optimizationReasons?.[row.original.id] as string[] | undefined;
+      if (!reasons || reasons.length === 0) {
+        return <span className="text-xs text-muted-foreground">-</span>;
+      }
+      return (
+        <div className="flex flex-wrap gap-1 max-w-[420px]">
+          {reasons.map((reason) => (
+            <Badge key={`${row.original.id}-${reason}`} variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+              {reason}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "Search_Volume",
     header: "Suchvolumen",
     cell: ({ row }) => {
