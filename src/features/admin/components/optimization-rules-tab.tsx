@@ -18,6 +18,21 @@ const DEFAULT_SETTINGS: OptimizationRuleSettings = {
   MIN_IMPROVEMENT_PCT: 20,
 };
 
+const FIELD_CONSTRAINTS: Record<keyof OptimizationRuleSettings, { min: number; max: number; step?: number }> = {
+  AGE_DAYS: { min: 1, max: 730, step: 1 },
+  TOP_RANK_THRESHOLD: { min: 1, max: 100, step: 1 },
+  URL_MISMATCH_ENABLED: { min: 0, max: 1, step: 1 },
+  DROP_WINDOW_DAYS: { min: 7, max: 90, step: 1 },
+  DROP_THRESHOLD_PCT: { min: 1, max: 100, step: 1 },
+  PERFORMANCE_WINDOW_DAYS: { min: 14, max: 365, step: 1 },
+  MIN_IMPROVEMENT_PCT: { min: 1, max: 200, step: 1 },
+};
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
 export function OptimizationRulesTab() {
   const [settings, setSettings] = useState<OptimizationRuleSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -45,7 +60,25 @@ export function OptimizationRulesTab() {
   }, []);
 
   const updateField = (key: keyof OptimizationRuleSettings, value: number) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    const constraints = FIELD_CONSTRAINTS[key];
+    if (!constraints) {
+      setSettings((prev) => ({ ...prev, [key]: value }));
+      return;
+    }
+
+    setSettings((prev) => ({
+      ...prev,
+      [key]: clampNumber(value, constraints.min, constraints.max),
+    }));
+  };
+
+  const getInputProps = (key: Exclude<keyof OptimizationRuleSettings, 'URL_MISMATCH_ENABLED'>) => {
+    const constraints = FIELD_CONSTRAINTS[key];
+    return {
+      min: constraints.min,
+      max: constraints.max,
+      step: constraints.step ?? 1,
+    };
   };
 
   const save = async () => {
@@ -73,6 +106,7 @@ export function OptimizationRulesTab() {
       if (!res.ok) throw new Error('Fehler beim Speichern der Regeln');
 
       setSuccess('Regeln erfolgreich gespeichert.');
+      await loadSettings();
     } catch (err: any) {
       setError(err.message || 'Fehler beim Speichern');
     } finally {
@@ -110,30 +144,80 @@ export function OptimizationRulesTab() {
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Alter des Textes (Tage)</label>
-              <Input type="number" value={settings.AGE_DAYS} onChange={(e) => updateField('AGE_DAYS', Number(e.target.value || 0))} />
+          <div className="space-y-4">
+            <div className="rounded-md border p-4 space-y-2">
+              <p className="text-sm leading-6">
+                Zeige einen Optimierungsvorschlag, wenn der Text alter als
+                <Input
+                  type="number"
+                  className="mx-2 inline-flex h-8 w-28"
+                  value={settings.AGE_DAYS}
+                  onChange={(e) => updateField('AGE_DAYS', Number(e.target.value || 0))}
+                  {...getInputProps('AGE_DAYS')}
+                />
+                Tagen ist und das Main-Keyword schlechter als Top
+                <Input
+                  type="number"
+                  className="mx-2 inline-flex h-8 w-24"
+                  value={settings.TOP_RANK_THRESHOLD}
+                  onChange={(e) => updateField('TOP_RANK_THRESHOLD', Number(e.target.value || 0))}
+                  {...getInputProps('TOP_RANK_THRESHOLD')}
+                />
+                rankt.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Empfehlung fur Re-Optimierung bei alteren Inhalten ohne Spitzenranking.
+              </p>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Top-Rank Schwellwert</label>
-              <Input type="number" value={settings.TOP_RANK_THRESHOLD} onChange={(e) => updateField('TOP_RANK_THRESHOLD', Number(e.target.value || 0))} />
+
+            <div className="rounded-md border p-4 space-y-2">
+              <p className="text-sm leading-6">
+                Zeige einen Optimierungsvorschlag, wenn sich das Ranking im Vergleich der letzten
+                <Input
+                  type="number"
+                  className="mx-2 inline-flex h-8 w-24"
+                  value={settings.DROP_WINDOW_DAYS}
+                  onChange={(e) => updateField('DROP_WINDOW_DAYS', Number(e.target.value || 0))}
+                  {...getInputProps('DROP_WINDOW_DAYS')}
+                />
+                Tage um mindestens
+                <Input
+                  type="number"
+                  className="mx-2 inline-flex h-8 w-24"
+                  value={settings.DROP_THRESHOLD_PCT}
+                  onChange={(e) => updateField('DROP_THRESHOLD_PCT', Number(e.target.value || 0))}
+                  {...getInputProps('DROP_THRESHOLD_PCT')}
+                />
+                % verschlechtert.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Erkennt deutliche Verschlechterungen im jungsten Zeitraum.
+              </p>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ranking Drop Fenster (Tage)</label>
-              <Input type="number" value={settings.DROP_WINDOW_DAYS} onChange={(e) => updateField('DROP_WINDOW_DAYS', Number(e.target.value || 0))} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ranking Drop Schwellwert (%)</label>
-              <Input type="number" value={settings.DROP_THRESHOLD_PCT} onChange={(e) => updateField('DROP_THRESHOLD_PCT', Number(e.target.value || 0))} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Performance Fenster nach Publish (Tage)</label>
-              <Input type="number" value={settings.PERFORMANCE_WINDOW_DAYS} onChange={(e) => updateField('PERFORMANCE_WINDOW_DAYS', Number(e.target.value || 0))} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Mind. Verbesserung (%)</label>
-              <Input type="number" value={settings.MIN_IMPROVEMENT_PCT} onChange={(e) => updateField('MIN_IMPROVEMENT_PCT', Number(e.target.value || 0))} />
+
+            <div className="rounded-md border p-4 space-y-2">
+              <p className="text-sm leading-6">
+                Zeige einen Optimierungsvorschlag, wenn sich die Performance innerhalb von
+                <Input
+                  type="number"
+                  className="mx-2 inline-flex h-8 w-28"
+                  value={settings.PERFORMANCE_WINDOW_DAYS}
+                  onChange={(e) => updateField('PERFORMANCE_WINDOW_DAYS', Number(e.target.value || 0))}
+                  {...getInputProps('PERFORMANCE_WINDOW_DAYS')}
+                />
+                Tagen nach Veroffentlichung nicht um mindestens
+                <Input
+                  type="number"
+                  className="mx-2 inline-flex h-8 w-24"
+                  value={settings.MIN_IMPROVEMENT_PCT}
+                  onChange={(e) => updateField('MIN_IMPROVEMENT_PCT', Number(e.target.value || 0))}
+                  {...getInputProps('MIN_IMPROVEMENT_PCT')}
+                />
+                % verbessert.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Pruft, ob nach Veroffentlichung genug Fortschritt bei Klicks, Impressionen oder Position erzielt wurde.
+              </p>
             </div>
           </div>
         )}
