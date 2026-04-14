@@ -1,3 +1,11 @@
+## License
+
+Copyright © 2026 Lukas Wuttke. All rights reserved.
+
+This project and its original code are the sole property of Lukas Wuttke. 
+Unauthorized copying, modification, or distribution is strictly prohibited.
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
