@@ -24,6 +24,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const inferPageTypeFromUrl = (value?: string) => {
+      const normalized = String(value || '').toLowerCase();
+      if (normalized.includes('/ratgeber/')) return 'Ratgeber';
+      if (normalized.includes('/kategorie/')) return 'Kategorie';
+      if (normalized.includes('/marke/')) return 'Marke';
+      if (normalized.includes('/produkt/')) return 'Produkt';
+      return 'Kategorie';
+    };
+
     // 1. Fetch Keyword Map to identify associated keywords for this URL
     const allKeywords = await getKeywordMap();
     const relatedKeywords = allKeywords.filter(kw => kw.Target_URL === targetUrl);
@@ -77,9 +86,7 @@ export async function GET(request: NextRequest) {
         // Infer Page_Type from URL structure if missing from log and keyword
         let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
         if (!pageType) {
-          if (targetUrl.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
-          else if (targetUrl.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
-          else pageType = 'Ratgeber'; // Default fallback
+          pageType = inferPageTypeFromUrl(targetUrl);
         }
 
         // Action_Type: Use Action_Type from keyword if available, or infer from log/index

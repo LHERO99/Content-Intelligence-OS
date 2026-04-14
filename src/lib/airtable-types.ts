@@ -16,7 +16,7 @@ export interface KeywordMap {
   Priority_Score?: number;
   Ranking?: number;
   Action_Type?: 'Erstellung' | 'Optimierung';
-  Page_Type?: 'Ratgeber' | 'Kategorie' | 'Andere';
+  Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Last_Published?: string; // ISO Date String
 }
 
@@ -31,7 +31,7 @@ export interface ContentLog {
   Target_URL?: string; // New field for URL-based history (computed/lookup)
   Logged_URL?: string; // Direct field for storing URL if Target_URL is computed
   Action_Type: 'Planung' | 'Erstellung' | 'Optimierung';
-  Page_Type?: 'Ratgeber' | 'Kategorie' | 'Andere'; // Cost lookup
+  Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'; // Cost lookup
   Version: 'v1' | 'v2';
   Content_Body?: string;
   Diff_Summary?: string;
@@ -73,7 +73,7 @@ export interface KeywordRankingHistory {
 
 export interface CostConfig {
   id: string;
-  Page_Type: 'Ratgeber' | 'Kategorie' | 'Andere';
+  Page_Type: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Action_Type: 'Erstellung' | 'Optimierung';
   Agency_Cost: number;
   Overhead_Cost: number;

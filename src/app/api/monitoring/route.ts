@@ -76,6 +76,15 @@ export async function GET() {
 
     const avgTTR = ttrCount > 0 ? Math.round(totalTTR / ttrCount) : 0;
 
+    const inferPageTypeFromUrl = (value?: string) => {
+      const normalized = String(value || '').toLowerCase();
+      if (normalized.includes('/ratgeber/')) return 'Ratgeber';
+      if (normalized.includes('/kategorie/')) return 'Kategorie';
+      if (normalized.includes('/marke/')) return 'Marke';
+      if (normalized.includes('/produkt/')) return 'Produkt';
+      return 'Kategorie';
+    };
+
     // Savings calculation
     let totalAgencySavings = 0;
     let totalOverheadSavings = 0;
@@ -84,6 +93,10 @@ export async function GET() {
       optimierung_ratgeber: 0,
       neuerstellung_kategorie: 0,
       optimierung_kategorie: 0,
+      neuerstellung_marke: 0,
+      optimierung_marke: 0,
+      neuerstellung_produkt: 0,
+      optimierung_produkt: 0,
     };
 
     urlLogMap.forEach((urlLogs, url) => {
@@ -118,9 +131,7 @@ export async function GET() {
         // Infer Page_Type from URL structure if missing from log and keyword
         let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
         if (!pageType) {
-          if (url.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
-          else if (url.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
-          else pageType = 'Ratgeber'; // Default fallback
+          pageType = inferPageTypeFromUrl(url);
         }
 
         // Action_Type: Use Action_Type from keyword if available, or infer from log/index
@@ -141,7 +152,11 @@ export async function GET() {
         }
         
         // Robust key generation for counts object
-        const pageTypeKey = pageType.toLowerCase() === 'kategorie' ? 'kategorie' : 'ratgeber';
+        const normalizedPageType = pageType.toLowerCase();
+        let pageTypeKey: 'ratgeber' | 'kategorie' | 'marke' | 'produkt' = 'kategorie';
+        if (normalizedPageType === 'ratgeber') pageTypeKey = 'ratgeber';
+        else if (normalizedPageType === 'marke') pageTypeKey = 'marke';
+        else if (normalizedPageType === 'produkt') pageTypeKey = 'produkt';
         const actionTypeKey = actionType.toLowerCase() === 'optimierung' ? 'optimierung' : 'neuerstellung';
         const key = `${actionTypeKey}_${pageTypeKey}` as keyof typeof counts;
         
@@ -187,9 +202,7 @@ export async function GET() {
           
           let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
           if (!pageType && url) {
-            if (url.toLowerCase().includes('/ratgeber/')) pageType = 'Ratgeber';
-            else if (url.toLowerCase().includes('/kategorie/')) pageType = 'Kategorie';
-            else pageType = 'Ratgeber';
+            pageType = inferPageTypeFromUrl(url);
           }
 
           const actionType = seenDays.size === 1 ? (keyword?.Action_Type || 'Erstellung') : 'Optimierung';

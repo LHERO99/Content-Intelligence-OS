@@ -333,11 +333,20 @@ export default function MonitoringPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-[#00463c]">
-                  {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0) + (data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}
+                  {(data?.metrics.counts.neuerstellung_ratgeber || 0) +
+                    (data?.metrics.counts.optimierung_ratgeber || 0) +
+                    (data?.metrics.counts.neuerstellung_kategorie || 0) +
+                    (data?.metrics.counts.optimierung_kategorie || 0) +
+                    (data?.metrics.counts.neuerstellung_marke || 0) +
+                    (data?.metrics.counts.optimierung_marke || 0) +
+                    (data?.metrics.counts.neuerstellung_produkt || 0) +
+                    (data?.metrics.counts.optimierung_produkt || 0)}
                 </div>
-                <div className="grid grid-cols-2 gap-x-2 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
-                  <span>Ratgeber: { (data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0) }</span>
-                  <span>Kategorie: { (data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0) }</span>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
+                  <span>Ratgeber: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
+                  <span>Kategorie: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
+                  <span>Marke: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
+                  <span>Produkt: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
                 </div>
               </CardContent>
             </Card>

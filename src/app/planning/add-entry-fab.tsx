@@ -43,7 +43,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
   const [volume, setVolume] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [actionType, setActionType] = useState<'Erstellung' | 'Optimierung'>('Erstellung');
-  const [pageType, setPageType] = useState<'Ratgeber' | 'Kategorie' | 'Andere'>('Ratgeber');
+  const [pageType, setPageType] = useState<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>('Ratgeber');
   const [mainKeyword, setMainKeyword] = useState<'Y' | 'N'>('N');
   const [articleCount, setArticleCount] = useState('');
   const [avgProductValue, setAvgProductValue] = useState('');
@@ -234,14 +234,15 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pageType" className="text-sm font-semibold">Seitentyp *</Label>
-                    <Select value={pageType} onValueChange={(v) => setPageType(v as 'Ratgeber' | 'Kategorie' | 'Andere')}>
+                    <Select value={pageType} onValueChange={(v) => setPageType(v as 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt')}>
                       <SelectTrigger id="pageType" className="h-11 text-base">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Ratgeber">Ratgeber</SelectItem>
                         <SelectItem value="Kategorie">Kategorie</SelectItem>
-                        <SelectItem value="Andere">Andere</SelectItem>
+                        <SelectItem value="Marke">Marke</SelectItem>
+                        <SelectItem value="Produkt">Produkt</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

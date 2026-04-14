@@ -35,7 +35,7 @@ const SYSTEM_COLUMNS = [
   { id: "Main_Keyword", label: "Main Keyword (Y/N)", required: false },
   { id: "Article_Count", label: "Article Count", required: false },
   { id: "Avg_Product_Value", label: "Avg Product Value", required: false },
-  { id: "Page_Type", label: "Page Type (Ratgeber/Kategorie)", required: false },
+  { id: "Page_Type", label: "Page Type (Kategorie/Ratgeber/Marke/Produkt)", required: false },
   { id: "Cluster", label: "Cluster", required: false },
   { id: "Status", label: "Status", required: false },
 ];

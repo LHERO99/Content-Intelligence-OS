@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       Article_Count: Article_Count ? Number(Article_Count) : undefined,
       Avg_Product_Value: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
       Action_Type: 'Erstellung',
-      Page_Type: Page_Type || 'Andere',
+      Page_Type: Page_Type || 'Kategorie',
     });
 
     if (!result) {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         Target_URL: result.Target_URL,
         Logged_URL: result.Target_URL,
         Action_Type: result.Action_Type || 'Erstellung',
-        Page_Type: result.Page_Type || 'Andere',
+        Page_Type: result.Page_Type || 'Kategorie',
         Diff_Summary: 'URL wurde dem Tool hinzugefügt',
         Editor: editor
       });
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
             Target_URL: result.Target_URL,
             Logged_URL: result.Target_URL,
             Action_Type: result.Action_Type || 'Erstellung',
-            Page_Type: result.Page_Type || 'Andere',
+            Page_Type: result.Page_Type || 'Kategorie',
             Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
             Editor: editor
           });

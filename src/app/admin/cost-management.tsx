@@ -38,7 +38,7 @@ import { Loader2, Coins, Save, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CostConfig } from "@/lib/airtable-types";
 
-const PAGE_TYPES = ["Kategorie", "Ratgeber", "Marke"];
+const PAGE_TYPES = ["Kategorie", "Ratgeber", "Marke", "Produkt"];
 const ACTION_TYPES = ["Erstellung", "Optimierung"];
 
 export function CostManagement() {
