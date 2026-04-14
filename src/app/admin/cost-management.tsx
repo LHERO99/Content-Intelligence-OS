@@ -168,7 +168,7 @@ export function CostManagement() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-[#00463c]">
+          <CardTitle className="flex items-center gap-2 text-primary">
             <Coins className="h-5 w-5" />
             ROI & Kosten-Konfiguration
           </CardTitle>
@@ -258,7 +258,7 @@ export function CostManagement() {
                           size="sm" 
                           onClick={() => handleUpdate(config.id, config.Page_Type, config.Action_Type, config.Agency_Cost, config.Overhead_Cost)}
                           disabled={savingId === config.id}
-                          className="bg-[#00463c] hover:bg-[#00332c]"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                           {savingId === config.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
                           Speichern
@@ -291,7 +291,7 @@ export function CostManagement() {
 
       {/* FAB */}
       <Button
-        className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-xl bg-[#00463c] hover:bg-[#00332c] text-white z-50"
+        className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-50"
         size="icon"
         onClick={() => setIsAddDialogOpen(true)}
       >
@@ -364,7 +364,7 @@ export function CostManagement() {
             <Button 
               onClick={handleAdd} 
               disabled={isAdding}
-              className="bg-[#00463c] hover:bg-[#00332c]"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Hinzufügen

@@ -17,37 +17,37 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
 
   const getIcon = () => {
     const s = summary.toLowerCase();
-    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("tool hinzugefügt")) return <PlusCircle className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("vorschlägen hinzugefügt")) return <Lightbulb className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("angeliefert")) return <Zap className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-[#00463c]" />;
-    if (s.includes("blacklist")) return <ShieldAlert className="h-3 w-3 text-[#00463c]" />;
+    if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-primary" />;
+    if (s.includes("tool hinzugefügt")) return <PlusCircle className="h-3 w-3 text-primary" />;
+    if (s.includes("vorschlägen hinzugefügt")) return <Lightbulb className="h-3 w-3 text-primary" />;
+    if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-primary" />;
+    if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-primary" />;
+    if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-primary" />;
+    if (s.includes("angeliefert")) return <Zap className="h-3 w-3 text-primary" />;
+    if (s.includes("veröffentlicht")) return <CheckCircle className="h-3 w-3 text-primary" />;
+    if (s.includes("blacklist")) return <ShieldAlert className="h-3 w-3 text-primary" />;
     
-    return <FileText className="h-3 w-3 text-[#00463c]" />;
+    return <FileText className="h-3 w-3 text-primary" />;
   };
 
   return (
     <div className="relative pl-8 pb-4 last:pb-0">
       {!isLast && (
-        <div className="absolute left-[11px] top-6 bottom-0 w-[2px] bg-[#00463c]/10" />
+        <div className="absolute left-[11px] top-6 bottom-0 w-[2px] bg-primary/10" />
       )}
       
-      <div className="absolute left-0 top-1 h-6 w-6 rounded-full bg-white border-2 border-[#00463c]/20 flex items-center justify-center z-10 shadow-sm">
+      <div className="absolute left-0 top-1 h-6 w-6 rounded-full bg-white border-2 border-primary/20 flex items-center justify-center z-10 shadow-sm">
         {getIcon()}
       </div>
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-hidden">
-            <span className="text-sm font-bold text-[#00463c] truncate">
+            <span className="text-sm font-bold text-primary truncate">
               {summary}
             </span>
             {version && (
-              <Badge variant="outline" className="text-[10px] h-4 bg-[#00463c]/5 border-[#00463c]/10 px-1 font-bold">
+              <Badge variant="outline" className="text-[10px] h-4 bg-primary/5 border-primary/10 px-1 font-bold">
                 {version}
               </Badge>
             )}
@@ -68,7 +68,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
             <button 
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-1 text-[11px] font-bold text-[#00463c] hover:underline"
+              className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
             >
               {isExpanded ? (
                 <>Content einklappen <ChevronUp className="h-3 w-3" /></>
@@ -94,7 +94,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-[#00463c]/40" />
+        <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
       </div>
     );
   }
@@ -134,11 +134,11 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   return (
     <div className="space-y-4">
       <style dangerouslySetInnerHTML={{ __html: `
-        .html-content h1 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #00463c; }
-        .html-content h2 { font-size: 1.1rem; font-weight: bold; margin-top: 0.8rem; margin-bottom: 0.4rem; color: #00463c; }
+        .html-content h1 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--primary); }
+        .html-content h2 { font-size: 1.1rem; font-weight: bold; margin-top: 0.8rem; margin-bottom: 0.4rem; color: var(--primary); }
         .html-content h3 { font-size: 1rem; font-weight: bold; margin-top: 0.6rem; margin-bottom: 0.3rem; }
         .html-content p { margin-bottom: 0.75rem; }
-        .html-content a { color: #00463c; text-decoration: underline; font-weight: 500; }
+        .html-content a { color: var(--primary); text-decoration: underline; font-weight: 500; }
         .html-content ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; }
         .html-content ol { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.75rem; }
         .html-content li { margin-bottom: 0.25rem; }
@@ -147,8 +147,8 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
         .html-content em { font-style: italic; }
       `}} />
       {/* Latest Action Highlight */}
-      <div className="p-3 rounded-lg bg-[#00463c]/5 border border-[#00463c]/10">
-        <p className="text-xs font-bold text-[#00463c]">
+      <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+        <p className="text-xs font-bold text-primary">
           {lastUpdate ? (
             <>
               Status: {lastUpdate.Diff_Summary} am{" "}

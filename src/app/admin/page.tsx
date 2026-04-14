@@ -165,7 +165,7 @@ export default function AdminPage() {
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Admin-Bereich</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Admin-Bereich</h1>
       </div>
 
       {error && (
@@ -243,7 +243,7 @@ export default function AdminPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="w-full h-10 bg-[#00463c] hover:bg-[#00332c]" disabled={inviting}>
+                  <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={inviting}>
                     {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Einladung generieren"}
                   </Button>
                 </form>

@@ -1035,14 +1035,14 @@ export async function updateConfig(key: string, value: string, fileUrl?: string)
       maxRecords: 1
     }).firstPage();
 
-    const fields: any = { Value: value };
-    if (fileUrl) {
-      // Note: Airtable's API for attachments DOES NOT support Data URLs (Base64) directly.
-      // It requires a publicly accessible URL. Since we are using Base64, 
-      // we should ONLY store it in the 'Value' field (text field) and NOT 
-      // try to push it to the 'File' (Attachment) field.
-      // fields.File = [{ url: fileUrl }];
+    const isBrandAssetKey = key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL';
+    const fields: any = {};
+
+    if (isBrandAssetKey && fileUrl) {
+      fields.File = [{ url: fileUrl }];
       fields.Value = fileUrl;
+    } else {
+      fields.Value = value;
     }
 
     if (records.length === 0) {

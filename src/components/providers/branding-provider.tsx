@@ -1,15 +1,18 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { applyBrandingCssVariables, getBestForegroundColor, normalizeHexColor } from "@/lib/branding";
 
 interface BrandingConfig {
   primaryColor: string;
+  primaryForeground: string;
   logoUrl: string;
   faviconUrl: string;
 }
 
 const BrandingContext = createContext<BrandingConfig>({
   primaryColor: "#00463c",
+  primaryForeground: "#ffffff",
   logoUrl: "/docmorris-logo.png",
   faviconUrl: "/favicon.ico",
 });
@@ -19,6 +22,7 @@ export const useBranding = () => useContext(BrandingContext);
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<BrandingConfig>({
     primaryColor: "#00463c",
+    primaryForeground: "#ffffff",
     logoUrl: "/docmorris-logo.png",
     faviconUrl: "/favicon.ico",
   });
@@ -26,11 +30,13 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchBranding = async () => {
       try {
-        const res = await fetch("/api/admin/config");
+        const res = await fetch("/api/branding");
         if (res.ok) {
           const data = await res.json();
+          const normalizedPrimary = normalizeHexColor(data.BRAND_PRIMARY_COLOR);
           const newConfig = {
-            primaryColor: data.BRAND_PRIMARY_COLOR || "#00463c",
+            primaryColor: normalizedPrimary,
+            primaryForeground: getBestForegroundColor(normalizedPrimary),
             logoUrl: data.BRAND_LOGO_URL || "/docmorris-logo.png",
             faviconUrl: data.BRAND_FAVICON_URL || "/favicon.ico",
           };
@@ -43,11 +49,20 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     };
 
     fetchBranding();
+
+    const handleBrandingUpdated = () => {
+      fetchBranding();
+    };
+
+    window.addEventListener("branding-updated", handleBrandingUpdated);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdated);
+    };
   }, []);
 
   const applyBranding = (cfg: BrandingConfig) => {
-    // Apply CSS variable
-    document.documentElement.style.setProperty("--primary", cfg.primaryColor);
+    applyBrandingCssVariables(cfg.primaryColor);
     
     // Update Favicon
     let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;

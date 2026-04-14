@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getConfig, updateConfig } from '@/lib/airtable';
+import { normalizeHexColor } from '@/lib/branding';
 
 export async function GET() {
   try {
@@ -43,14 +44,15 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Key or weights is required' }, { status: 400 });
     }
 
-    // If it's a logo or favicon, check if the value is a Base64 string
     let fileUrl = undefined;
     let textValue = value;
-    if ((key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL') && value?.startsWith('data:')) {
+
+    if (key === 'BRAND_PRIMARY_COLOR') {
+      textValue = normalizeHexColor(value);
+    }
+
+    if ((key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL') && typeof value === 'string' && /^https?:\/\//.test(value)) {
       fileUrl = value;
-      // Note: We use the fileUrl parameter to pass the Base64 data, 
-      // which will now be stored in the Value field (text).
-      // We skip setting fileUrl in Airtable's 'File' field because it requires public URLs.
     }
 
     const updated = await updateConfig(key, textValue, fileUrl);

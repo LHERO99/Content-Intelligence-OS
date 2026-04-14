@@ -158,7 +158,7 @@ export default function MonitoringPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-[#00463c]" />
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -175,18 +175,18 @@ export default function MonitoringPage() {
         <Button 
           variant="ghost" 
           onClick={() => setViewingUrl(null)} 
-          className="flex items-center gap-2 text-[#00463c]"
+          className="flex items-center gap-2 text-primary"
         >
           <ChevronLeft className="h-4 w-4" /> Zurück zur Übersicht
         </Button>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-[#00463c] break-all">
+          <h1 className="text-2xl font-bold tracking-tight text-primary break-all">
             {viewingUrl}
           </h1>
           <Button 
             onClick={() => handleSubmitToSuggestions([viewingUrl])}
             disabled={submitting}
-            className={`${detailOptimizable ? "bg-[#00463c] hover:bg-[#00332c]" : "bg-gray-400 cursor-not-allowed opacity-70"}`}
+            className={`${detailOptimizable ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-gray-400 cursor-not-allowed opacity-70"}`}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
             Optimierung planen
@@ -210,7 +210,7 @@ export default function MonitoringPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Monitoring & ROI</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Content-Monitoring & ROI</h1>
           <p className="text-muted-foreground">Analysieren Sie Performance, Sichtbarkeit und Effizienz Ihrer Content-Maßnahmen.</p>
         </div>
       </div>
@@ -223,12 +223,12 @@ export default function MonitoringPage() {
         }}
         className="space-y-6"
       >
-        <TabsList className="bg-[#e7f3ee] border-[#00463c]/10">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+        <TabsList className="bg-primary/10 border-primary/10">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <LayoutDashboard className="mr-2 h-4 w-4" />
             KPI Übersicht
           </TabsTrigger>
-          <TabsTrigger value="performance" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+          <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <List className="mr-2 h-4 w-4" />
             Performance-Liste
           </TabsTrigger>
@@ -271,7 +271,7 @@ export default function MonitoringPage() {
                     start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0],
                     end: new Date().toISOString().split('T')[0]
                   })}
-                  className="h-9 gap-2 text-muted-foreground hover:text-[#00463c]"
+                  className="h-9 gap-2 text-muted-foreground hover:text-primary"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Reset
@@ -284,17 +284,17 @@ export default function MonitoringPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-[#00463c]" />
+                  <Clock className="h-4 w-4 text-primary" />
                   Avg. Time to Rank
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-[#00463c]">{data?.metrics.avgTTR || 0} Tage</div>
+                <div className="text-2xl font-bold text-primary">{data?.metrics.avgTTR || 0} Tage</div>
                 <p className="text-xs text-muted-foreground">Von Veröffentlichung bis Top 10 Ranking</p>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-[#00463c] text-white">
+            <Card className="border-none shadow-sm bg-primary text-primary-foreground">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Coins className="h-4 w-4" />
@@ -312,12 +312,12 @@ export default function MonitoringPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <MousePointer2 className="h-4 w-4 text-[#00463c]" />
+                  <MousePointer2 className="h-4 w-4 text-primary" />
                   Einsparung Overhead
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-[#00463c]">
+                <div className="text-2xl font-bold text-primary">
                   {data?.metrics.totalOverheadSavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                 </div>
                 <p className="text-xs text-muted-foreground">Reduzierter interner Aufwand</p>
@@ -327,12 +327,12 @@ export default function MonitoringPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <LayoutList className="h-4 w-4 text-[#00463c]" />
+                  <LayoutList className="h-4 w-4 text-primary" />
                   Content-Updates
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-[#00463c]">
+                <div className="text-2xl font-bold text-primary">
                   {(data?.metrics.counts.neuerstellung_ratgeber || 0) +
                     (data?.metrics.counts.optimierung_ratgeber || 0) +
                     (data?.metrics.counts.neuerstellung_kategorie || 0) +
@@ -356,7 +356,7 @@ export default function MonitoringPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Wand2 className="h-4 w-4 text-[#00463c]" />
+                  <Wand2 className="h-4 w-4 text-primary" />
                   Texte im Zeitraum
                 </CardTitle>
                 <CardDescription className="text-[10px]">Erstellt vs. Optimiert</CardDescription>
@@ -364,11 +364,11 @@ export default function MonitoringPage() {
               <CardContent className="flex flex-col justify-center h-[100px]">
                 <div className="flex justify-between items-end border-b pb-2">
                   <span className="text-sm text-muted-foreground">Erstellt:</span>
-                  <span className="text-xl font-bold text-[#00463c]">0</span>
+                  <span className="text-xl font-bold text-primary">0</span>
                 </div>
                 <div className="flex justify-between items-end pt-2">
                   <span className="text-sm text-muted-foreground">Optimiert:</span>
-                  <span className="text-xl font-bold text-[#00463c]">0</span>
+                  <span className="text-xl font-bold text-primary">0</span>
                 </div>
               </CardContent>
             </Card>
@@ -376,13 +376,13 @@ export default function MonitoringPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-[#00463c]" />
+                  <TrendingUp className="h-4 w-4 text-primary" />
                   Stabilitäts-Index
                 </CardTitle>
                 <CardDescription className="text-[10px]">Ø Optimierungen bis Peak-Performance</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center h-[100px]">
-                <div className="text-3xl font-bold text-[#00463c]">0.0</div>
+                <div className="text-3xl font-bold text-primary">0.0</div>
                 <span className="ml-2 text-sm text-muted-foreground">Zyklen</span>
               </CardContent>
             </Card>
@@ -390,13 +390,13 @@ export default function MonitoringPage() {
             <Card className="border-none shadow-sm bg-white">
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-[#00463c]" />
+                  <Clock className="h-4 w-4 text-primary" />
                   Time-to-Performance
                 </CardTitle>
                 <CardDescription className="text-[10px]">Ø Tage bis signifikantem Klick-Anstieg</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center h-[100px]">
-                <div className="text-3xl font-bold text-[#00463c]">0</div>
+                <div className="text-3xl font-bold text-primary">0</div>
                 <span className="ml-2 text-sm text-muted-foreground">Tage</span>
               </CardContent>
             </Card>
@@ -424,7 +424,7 @@ export default function MonitoringPage() {
                   <Button 
                     onClick={() => handleSubmitToSuggestions()} 
                     disabled={selectedUrls.length === 0 || submitting}
-                    className="h-9 bg-[#00463c] hover:bg-[#00332c]"
+                    className="h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
                     Optimierung planen ({selectedUrls.length})
@@ -457,7 +457,7 @@ export default function MonitoringPage() {
                         {filteredUrls.map((item) => (
                           <TableRow 
                             key={item.url} 
-                            className="group hover:bg-[#00463c]/5 cursor-pointer"
+                            className="group hover:bg-primary/5 cursor-pointer"
                             onClick={() => setViewingUrl(item.url)}
                           >
                             <TableCell onClick={(e) => e.stopPropagation()}>
@@ -503,7 +503,7 @@ export default function MonitoringPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="font-semibold text-[#00463c]">
+                              <div className="font-semibold text-primary">
                                 {item.savings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                               </div>
                             </TableCell>

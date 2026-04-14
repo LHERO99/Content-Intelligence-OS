@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Save, Image as ImageIcon, Palette, Upload } from "lucide-react";
+import { applyBrandingCssVariables, contrastRatio, getBestForegroundColor, normalizeHexColor } from "@/lib/branding";
 
 export function BrandingTab() {
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,11 @@ export function BrandingTab() {
     BRAND_FAVICON_URL: "/favicon.ico",
   });
 
+  const normalizedPrimary = normalizeHexColor(config.BRAND_PRIMARY_COLOR);
+  const computedForeground = getBestForegroundColor(normalizedPrimary);
+  const primaryContrast = contrastRatio(normalizedPrimary, computedForeground);
+  const isPrimaryColorValid = /^#([0-9a-fA-F]{6})$/.test(String(config.BRAND_PRIMARY_COLOR || '').trim());
+
   useEffect(() => {
     fetchConfig();
   }, []);
@@ -38,7 +44,7 @@ export function BrandingTab() {
       const data = await res.json();
       
       setConfig({
-        BRAND_PRIMARY_COLOR: data.BRAND_PRIMARY_COLOR || "#00463c",
+        BRAND_PRIMARY_COLOR: normalizeHexColor(data.BRAND_PRIMARY_COLOR),
         BRAND_LOGO_URL: data.BRAND_LOGO_URL || "/docmorris-logo.png",
         BRAND_FAVICON_URL: data.BRAND_FAVICON_URL || "/favicon.ico",
       });
@@ -94,6 +100,11 @@ export function BrandingTab() {
   };
 
   const handleSave = async () => {
+    if (!isPrimaryColorValid) {
+      setError("Bitte geben Sie eine gültige Hex-Farbe im Format #RRGGBB ein.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -119,10 +130,10 @@ export function BrandingTab() {
         }
       }
 
-      setSuccess("Die Branding-Einstellungen wurden erfolgreich gespeichert. Bitte laden Sie die Seite neu, um alle Änderungen zu sehen.");
-      
-      // Update CSS variable immediately for preview
-      document.documentElement.style.setProperty('--primary', config.BRAND_PRIMARY_COLOR);
+      const safePrimary = normalizeHexColor(config.BRAND_PRIMARY_COLOR);
+      applyBrandingCssVariables(safePrimary);
+      setSuccess("Die Branding-Einstellungen wurden erfolgreich gespeichert.");
+      window.dispatchEvent(new CustomEvent('branding-updated'));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -172,18 +183,34 @@ export function BrandingTab() {
               <div className="flex gap-4">
                 <Input 
                   type="color" 
-                  value={config.BRAND_PRIMARY_COLOR}
-                  onChange={(e) => setConfig({ ...config, BRAND_PRIMARY_COLOR: e.target.value })}
+                  value={normalizedPrimary}
+                  onChange={(e) => {
+                    const next = normalizeHexColor(e.target.value);
+                    setConfig({ ...config, BRAND_PRIMARY_COLOR: next });
+                    applyBrandingCssVariables(next);
+                  }}
                   className="h-10 w-20 p-1"
                 />
                 <Input 
                   type="text" 
                   value={config.BRAND_PRIMARY_COLOR}
-                  onChange={(e) => setConfig({ ...config, BRAND_PRIMARY_COLOR: e.target.value })}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setConfig({ ...config, BRAND_PRIMARY_COLOR: next });
+                    if (/^#([0-9a-fA-F]{6})$/.test(next.trim())) {
+                      applyBrandingCssVariables(next.trim());
+                    }
+                  }}
                   placeholder="#00463c"
                   className="h-10 font-mono"
                 />
               </div>
+              {!isPrimaryColorValid && (
+                <p className="text-xs text-red-600">Ungültiges Format. Bitte nutzen Sie #RRGGBB.</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Kontrast (Primärfarbe zu Text): {primaryContrast.toFixed(2)}:1
+              </p>
               <p className="text-xs text-muted-foreground">
                 Diese Farbe wird für Buttons, Navigation und Hervorhebungen verwendet.
               </p>
@@ -192,11 +219,11 @@ export function BrandingTab() {
             <div className="pt-4 border-t">
               <h4 className="text-sm font-medium mb-3">Vorschau</h4>
               <div className="flex flex-wrap gap-2">
-                <Button style={{ backgroundColor: config.BRAND_PRIMARY_COLOR }}>Button</Button>
-                <Button variant="outline" style={{ borderColor: config.BRAND_PRIMARY_COLOR, color: config.BRAND_PRIMARY_COLOR }}>Outline</Button>
+                <Button style={{ backgroundColor: normalizedPrimary, color: computedForeground }}>Button</Button>
+                <Button variant="outline" style={{ borderColor: normalizedPrimary, color: normalizedPrimary }}>Outline</Button>
                 <div 
                   className="h-10 w-10 rounded-full border shadow-sm" 
-                  style={{ backgroundColor: config.BRAND_PRIMARY_COLOR }}
+                  style={{ backgroundColor: normalizedPrimary }}
                 />
               </div>
             </div>
@@ -229,11 +256,11 @@ export function BrandingTab() {
                 <div 
                   onClick={() => !uploading.logo && document.getElementById('logo-upload')?.click()}
                   className={`relative flex items-center justify-center p-6 border-2 border-dashed rounded-xl transition-all cursor-pointer group
-                    ${uploading.logo ? 'bg-muted/20 border-muted' : 'bg-muted/50 border-muted-foreground/20 hover:border-[#00463c]/50 hover:bg-[#00463c]/5'}`}
+                    ${uploading.logo ? 'bg-muted/20 border-muted' : 'bg-muted/50 border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5'}`}
                 >
                   {uploading.logo && (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 rounded-xl">
-                      <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   )}
                   <div className="flex flex-col items-center gap-2">
@@ -245,7 +272,7 @@ export function BrandingTab() {
                         (e.target as HTMLImageElement).src = 'https://placehold.co/400x100?text=Klicken+zum+Upload';
                       }}
                     />
-                    <span className="text-xs text-muted-foreground mt-2 group-hover:text-[#00463c]">Klicken zum Ändern</span>
+                    <span className="text-xs text-muted-foreground mt-2 group-hover:text-primary">Klicken zum Ändern</span>
                   </div>
                 </div>
               </div>
@@ -265,11 +292,11 @@ export function BrandingTab() {
                 <div 
                   onClick={() => !uploading.favicon && document.getElementById('favicon-upload')?.click()}
                   className={`relative flex items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all cursor-pointer group w-32 h-32 mx-auto
-                    ${uploading.favicon ? 'bg-muted/20 border-muted' : 'bg-muted/50 border-muted-foreground/20 hover:border-[#00463c]/50 hover:bg-[#00463c]/5'}`}
+                    ${uploading.favicon ? 'bg-muted/20 border-muted' : 'bg-muted/50 border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5'}`}
                 >
                   {uploading.favicon && (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 rounded-xl">
-                      <Loader2 className="h-6 w-6 animate-spin text-[#00463c]" />
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   )}
                   <div className="flex flex-col items-center gap-2">
@@ -293,9 +320,9 @@ export function BrandingTab() {
       <div className="flex justify-end">
         <Button 
           onClick={handleSave} 
-          disabled={saving}
-          className="gap-2 bg-[#00463c] hover:bg-[#00332c]"
-          style={{ backgroundColor: config.BRAND_PRIMARY_COLOR }}
+          disabled={saving || !isPrimaryColorValid}
+          className="gap-2 bg-primary hover:bg-primary/90"
+          style={{ backgroundColor: normalizedPrimary, color: computedForeground }}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Einstellungen speichern

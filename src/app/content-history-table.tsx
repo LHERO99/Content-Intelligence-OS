@@ -149,7 +149,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-[#00463c] font-bold p-0 hover:bg-transparent"
+          className="text-primary font-bold p-0 hover:bg-transparent"
         >
           URL
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -167,7 +167,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
                 target="_blank" 
                 rel="noopener noreferrer" 
                 onClick={(e) => e.stopPropagation()}
-                className="text-muted-foreground hover:text-[#00463c] shrink-0"
+                className="text-muted-foreground hover:text-primary shrink-0"
               >
                 <ExternalLink className="h-3 w-3" />
               </a>
@@ -187,7 +187,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-[#00463c] font-bold p-0 hover:bg-transparent"
+          className="text-primary font-bold p-0 hover:bg-transparent"
         >
           Erstellt
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -209,14 +209,14 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-[#00463c] font-bold p-0 hover:bg-transparent"
+          className="text-primary font-bold p-0 hover:bg-transparent"
         >
           Zuletzt geändert
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="whitespace-nowrap font-medium text-[#00463c]">
+        <div className="whitespace-nowrap font-medium text-primary">
           {new Date(row.getValue("lastModified")).toLocaleString("de-DE", {
             day: "2-digit",
             month: "2-digit",
@@ -231,7 +231,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       id: "count",
       header: "Änderungen",
       cell: ({ row }) => (
-        <Badge variant="secondary" className="bg-[#00463c]/10 text-[#00463c] border-[#00463c]/20">
+        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
           {row.original.logs.length}
         </Badge>
       ),
@@ -257,7 +257,7 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00463c]/40" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
       </div>
     );
   }
@@ -282,14 +282,14 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
             onChange={(event) =>
               table.getColumn("url")?.setFilterValue(event.target.value)
             }
-            className="pl-10 h-10 border-[#00463c]/20 focus-visible:ring-[#00463c]"
+            className="pl-10 h-10 border-primary/20 focus-visible:ring-primary"
           />
         </div>
         {columnFilters.length > 0 && (
           <Button 
             variant="ghost" 
             onClick={() => table.resetColumnFilters()}
-            className="text-xs text-muted-foreground hover:text-[#00463c]"
+            className="text-xs text-muted-foreground hover:text-primary"
           >
             Filter zurücksetzen
             <X className="ml-2 h-3 w-3" />
@@ -297,9 +297,9 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
         )}
       </div>
 
-      <div className="rounded-md border border-[#00463c]/10 overflow-hidden">
+      <div className="rounded-md border border-primary/10 overflow-hidden">
         <Table>
-          <TableHeader className="bg-[#00463c]/5">
+          <TableHeader className="bg-primary/5">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -343,9 +343,9 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
 
       <Dialog open={!!selectedGroup} onOpenChange={(open) => !open && setSelectedGroup(null)}>
         <DialogContent className="sm:max-w-[700px] max-h-[85vh] p-0 overflow-hidden flex flex-col">
-          <DialogHeader className="p-6 pb-4 bg-[#00463c]/5 border-b border-[#00463c]/10">
+          <DialogHeader className="p-6 pb-4 bg-primary/5 border-b border-primary/10">
             <div className="space-y-1">
-              <DialogTitle className="text-[#00463c] font-bold text-xl flex items-center gap-2">
+              <DialogTitle className="text-primary font-bold text-xl flex items-center gap-2">
                 URL-Historie
               </DialogTitle>
               <DialogDescription className="break-all font-mono text-xs">

@@ -107,7 +107,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -187,12 +187,12 @@ export function UrlDetail({ url }: UrlDetailProps) {
         <Card className="bg-white border-none shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Coins className="h-4 w-4 text-[#00463c]" />
+              <Coins className="h-4 w-4 text-primary" />
               Eingesparte Kosten (Agentur & Overhead)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#00463c]">
+            <div className="text-2xl font-bold text-primary">
               {(data.savings.agency + data.savings.overhead).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
             </div>
             <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
@@ -205,7 +205,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
         <Card className="bg-white border-none shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <LayoutPanelLeft className="h-4 w-4 text-[#00463c]" />
+              <LayoutPanelLeft className="h-4 w-4 text-primary" />
               Content-Status
             </CardTitle>
           </CardHeader>
@@ -222,7 +222,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
         <Card className="bg-white border-none shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Hash className="h-4 w-4 text-[#00463c]" />
+              <Hash className="h-4 w-4 text-primary" />
               Keywords
             </CardTitle>
           </CardHeader>
@@ -234,7 +234,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   {/* Main Keyword */}
                   {data.keywords.filter(k => k.Main_Keyword === 'Y').map(k => (
                     <div key={k.id} className="flex items-center gap-2">
-                      <Badge variant="default" className="text-[10px] py-0 bg-[#00463c]">Main</Badge>
+                      <Badge variant="default" className="text-[10px] py-0 bg-primary text-primary-foreground">Main</Badge>
                       <span className="text-sm font-bold truncate" title={k.Keyword}>{k.Keyword}</span>
                     </div>
                   ))}
@@ -242,7 +242,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   {/* Secondary Keywords */}
                   <div className="flex flex-wrap gap-1 mt-1">
                     {data.keywords.filter(k => k.Main_Keyword !== 'Y').map(k => (
-                      <Badge key={k.id} variant="outline" className="text-[10px] py-0 border-[#00463c]/20" title={k.Keyword}>
+                      <Badge key={k.id} variant="outline" className="text-[10px] py-0 border-primary/20" title={k.Keyword}>
                         {k.Keyword}
                       </Badge>
                     ))}
@@ -258,13 +258,13 @@ export function UrlDetail({ url }: UrlDetailProps) {
         <Card className="bg-white border-none shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="h-4 w-4 text-[#00463c]" />
+              <Target className="h-4 w-4 text-primary" />
               Rankt für Main KW
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={`text-lg font-bold ${latestRanking?.Ranking ? 'text-[#00463c]' : 'text-slate-400'}`}>
+              <div className={`text-lg font-bold ${latestRanking?.Ranking ? 'text-primary' : 'text-slate-400'}`}>
                 {latestRanking?.Ranking ? 'Ja' : 'Nein'}
               </div>
               {latestRanking?.Ranking && (
@@ -313,7 +313,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
               variant="outline" 
               size="sm" 
               onClick={handleResetDates}
-              className="h-9 gap-2 text-muted-foreground hover:text-[#00463c]"
+              className="h-9 gap-2 text-muted-foreground hover:text-primary"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Reset
@@ -337,7 +337,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
-                <YAxis yAxisId="left" stroke="#00463c" fontSize={12} />
+                <YAxis yAxisId="left" stroke="var(--primary)" fontSize={12} />
                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
@@ -350,10 +350,10 @@ export function UrlDetail({ url }: UrlDetailProps) {
                     key={idx} 
                     x={marker.date} 
                     yAxisId="left" 
-                    stroke={marker.type === 'Erstellung' ? '#00463c' : '#f59e0b'} 
+                    stroke={marker.type === 'Erstellung' ? 'var(--primary)' : '#f59e0b'} 
                     strokeDasharray="3 3"
                   >
-                    <Label value={marker.label} position="top" fill={marker.type === 'Erstellung' ? '#00463c' : '#f59e0b'} />
+                    <Label value={marker.label} position="top" fill={marker.type === 'Erstellung' ? 'var(--primary)' : '#f59e0b'} />
                   </ReferenceLine>
                 ))}
 
@@ -362,7 +362,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   type="monotone" 
                   dataKey="GSC_Clicks" 
                   name="Klicks" 
-                  stroke="#00463c" 
+                  stroke="var(--primary)" 
                   strokeWidth={2}
                   dot={false}
                 />
@@ -407,7 +407,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                     type="monotone" 
                     dataKey={kw.Keyword} 
                     name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '')}
-                    stroke={kw.Main_Keyword === 'Y' ? '#00463c' : `hsl(${(idx * 137) % 360}, 50%, 50%)`}
+                    stroke={kw.Main_Keyword === 'Y' ? 'var(--primary)' : `hsl(${(idx * 137) % 360}, 50%, 50%)`}
                     strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
                     dot={kw.Main_Keyword === 'Y'}
                   />

@@ -244,7 +244,7 @@ export function KeywordImport() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger>
-        <Button variant="outline" className="border-[#00463c]/20 text-[#00463c] hover:bg-[#e7f3ee] h-10 px-4">
+        <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10 h-10 px-4">
           <Upload className="mr-2 h-4 w-4" />
           Keywords importieren
         </Button>
@@ -260,14 +260,14 @@ export function KeywordImport() {
         <div className="flex-1 overflow-hidden p-6">
           {step === "upload" && (
             <div 
-              className="border-2 border-dashed border-[#00463c]/20 rounded-xl p-12 text-center hover:bg-[#e7f3ee]/50 cursor-pointer transition-all group flex flex-col items-center justify-center gap-4 h-full min-h-[300px]"
+              className="border-2 border-dashed border-primary/20 rounded-xl p-12 text-center hover:bg-primary/10 cursor-pointer transition-all group flex flex-col items-center justify-center gap-4 h-full min-h-[300px]"
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="bg-[#e7f3ee] p-4 rounded-full group-hover:scale-110 transition-transform">
-                <Upload className="h-10 w-10 text-[#00463c]" />
+              <div className="bg-primary/10 p-4 rounded-full group-hover:scale-110 transition-transform">
+                <Upload className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-[#00463c]">Datei auswählen</p>
+                <p className="text-lg font-semibold text-primary">Datei auswählen</p>
                 <p className="text-sm text-muted-foreground mt-1">Klicken oder Datei hierher ziehen</p>
               </div>
               <div className="flex gap-4 mt-2">
@@ -290,9 +290,9 @@ export function KeywordImport() {
 
           {step === "mapping" && (
             <div className="flex flex-col h-full gap-4">
-              <div className="flex items-center justify-between bg-[#e7f3ee]/50 p-3 rounded-lg border border-[#00463c]/10">
+              <div className="flex items-center justify-between bg-primary/10 p-3 rounded-lg border border-primary/10">
                 <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-[#00463c]" />
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
                   <span className="font-medium text-sm truncate max-w-[200px]">{fileName}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">{fileData.length} Zeilen gefunden</span>
@@ -331,7 +331,7 @@ export function KeywordImport() {
                             });
                           }}
                         >
-                          <SelectTrigger className={`h-9 ${mapping[col.id] ? 'border-[#00463c]/40 bg-[#e7f3ee]/20' : ''}`}>
+                          <SelectTrigger className={`h-9 ${mapping[col.id] ? 'border-primary/40 bg-primary/10' : ''}`}>
                             <SelectValue placeholder="Nicht zugeordnet" />
                           </SelectTrigger>
                           <SelectContent>
@@ -352,9 +352,9 @@ export function KeywordImport() {
           {step === "importing" && (
             <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[300px]">
               <div className="relative">
-                <Loader2 className="h-16 w-16 animate-spin text-[#00463c]" />
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Upload className="h-6 w-6 text-[#00463c]/40" />
+                  <Upload className="h-6 w-6 text-primary/40" />
                 </div>
               </div>
               <div className="text-center">
@@ -373,8 +373,8 @@ export function KeywordImport() {
                 <p className="text-xl font-bold text-green-700">Import abgeschlossen!</p>
                 <div className="mt-4 w-full px-6">
                   <div className="grid grid-cols-2 gap-4 w-full text-center">
-                    <div className="bg-[#e7f3ee] border border-[#00463c]/20 p-4 rounded-xl">
-                      <p className="text-3xl font-bold text-[#00463c]">{importCount}</p>
+                    <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl">
+                      <p className="text-3xl font-bold text-primary">{importCount}</p>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mt-1">Importiert</p>
                     </div>
                     <div className={skippedCount > 0 ? "bg-amber-50 border border-amber-200 p-4 rounded-xl" : "bg-gray-50 border border-gray-200 p-4 rounded-xl"}>
@@ -416,7 +416,7 @@ export function KeywordImport() {
                 </div>
               </div>
               <Button 
-                className="bg-[#00463c] hover:bg-[#00332c] text-white px-8"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
                 onClick={() => {
                   setIsOpen(false);
                   window.location.reload();
@@ -456,7 +456,7 @@ export function KeywordImport() {
                   Abbrechen
                 </Button>
                 <Button 
-                  className="bg-[#00463c] hover:bg-[#00332c] text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleImport}
                   disabled={!mapping["Keyword"] || !mapping["Target_URL"]}
                 >
