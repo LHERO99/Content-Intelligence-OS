@@ -51,15 +51,15 @@ function KPICard({
   icon: any 
 }) {
   return (
-    <Card className="bg-white border-mint-mist/20 shadow-sm">
+    <Card className="bg-white border-primary/20 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-deep-forest/70">
+        <CardTitle className="text-sm font-medium text-primary/70">
           {title}
         </CardTitle>
-        <Icon className="h-4 w-4 text-deep-forest" />
+        <Icon className="h-4 w-4 text-primary" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-deep-forest">{value}</div>
+        <div className="text-2xl font-bold text-primary">{value}</div>
         <p className="text-xs text-muted-foreground mt-1">
           {description}
         </p>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             size="sm" 
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="border-deep-forest/20 text-deep-forest"
+            className="border-primary/20 text-primary"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Aktualisieren
@@ -224,7 +224,7 @@ export default function DashboardPage() {
       </div>
 
       <Tabs defaultValue="performance" className="space-y-4">
-        <TabsList className="bg-white border border-mint-mist/20">
+        <TabsList className="bg-white border border-primary/20">
           <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Performance</TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <History className="h-4 w-4 mr-2" />
@@ -235,9 +235,9 @@ export default function DashboardPage() {
         <TabsContent value="performance" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-7">
             {/* Performance Chart */}
-            <Card className="col-span-4 bg-white border-mint-mist/20">
+            <Card className="col-span-4 bg-white border-primary/20">
               <CardHeader>
-                <CardTitle className="text-deep-forest">Sichtbarkeitsindex Trend</CardTitle>
+                <CardTitle className="text-primary">Sichtbarkeitsindex Trend</CardTitle>
                 <CardDescription>Historische Performance über alle Keywords</CardDescription>
               </CardHeader>
               <CardContent className="pl-2">
@@ -285,19 +285,19 @@ export default function DashboardPage() {
             </Card>
 
             {/* Alerts Feed */}
-            <Card className="col-span-3 bg-white border-mint-mist/20">
+            <Card className="col-span-3 bg-white border-primary/20">
               <CardHeader>
-                <CardTitle className="text-deep-forest">Aktuelle Warnmeldungen</CardTitle>
+                <CardTitle className="text-primary">Aktuelle Warnmeldungen</CardTitle>
                 <CardDescription>Closed Loop Diagnosen & Systemaktionen</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {alerts.length > 0 ? (
                     alerts.map((log) => (
-                      <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-mint-mist/10 hover:bg-mint-mist/5'}`}>
-                        <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-deep-forest'}`} />
+                      <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-primary/10 hover:bg-primary/5'}`}>
+                        <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-primary'}`} />
                         <div className="flex-1 space-y-1">
-                          <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-deep-forest'}`}>
+                          <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-primary'}`}>
                             {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Aktion'}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -318,9 +318,9 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          <Card className="bg-white border-mint-mist/20">
+          <Card className="bg-white border-primary/20">
             <CardHeader>
-              <CardTitle className="text-deep-forest">Globale Content-Historie</CardTitle>
+              <CardTitle className="text-primary">Globale Content-Historie</CardTitle>
               <CardDescription>Letzte Erstellungen und Optimierungen über alle URLs</CardDescription>
             </CardHeader>
             <CardContent>

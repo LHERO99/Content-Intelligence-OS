@@ -277,7 +277,7 @@ export function AIEditorWorkspace({
                       font-style: italic !important;
                     }
                     .preview-content a {
-                      color: #059669 !important;
+                      color: var(--primary) !important;
                       text-decoration: underline !important;
                     }
                   `}</style>
