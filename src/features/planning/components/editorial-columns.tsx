@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { KeywordMap } from "@/lib/airtable-types";
+import { textColumnFilterFn } from "./filter-utils";
 
 export const editorialColumns: ColumnDef<KeywordMap>[] = [
   {
@@ -38,11 +39,13 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Keyword",
     header: "Keyword",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Target_URL",
     header: "URL",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const url = row.getValue("Target_URL") as string;
       if (!url) return "-";
@@ -97,6 +100,7 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Status",
     header: "Status",
+    filterFn: textColumnFilterFn,
     cell: ({ row, table }) => {
       const id = (row.original as any).id;
       const meta = table.options.meta as any;
@@ -142,6 +146,7 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Action_Type",
     header: "Typ",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const type = row.getValue("Action_Type") as string || "Erstellung";
       return (
@@ -168,6 +173,7 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Assigned_Editor",
     header: "Editor",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const editor = row.getValue("Assigned_Editor") as any[];
       return (

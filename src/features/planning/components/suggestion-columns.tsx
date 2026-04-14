@@ -7,6 +7,7 @@ import { KeywordMap } from "@/lib/airtable-types";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap, ExternalLink } from "lucide-react";
 import { PlanningService } from "../services/planning-service";
+import { textColumnFilterFn } from "./filter-utils";
 
 const AddToEditorialButton = ({ row }: { row: any }) => {
   const [loading, setLoading] = React.useState(false);
@@ -52,11 +53,13 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Keyword",
     header: "Keyword",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Action_Type",
     header: "Typ",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const type = row.getValue("Action_Type") as string || "Erstellung";
       return (
@@ -147,6 +150,7 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Target_URL",
     header: "URL",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const url = row.getValue("Target_URL") as string;
       if (!url) return "-";

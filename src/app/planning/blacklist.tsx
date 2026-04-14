@@ -24,7 +24,10 @@ import {
   Filter,
   X,
   GripVertical,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Calendar
 } from 'lucide-react';
 import { BlacklistEntry } from '@/lib/airtable-types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -52,7 +55,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlerts } from "@/components/alerts-provider";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -71,6 +74,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { DateFilterOp, DateFilterValue, TextFilterOp, TextFilterValue, dateColumnFilterFn, textColumnFilterFn } from '@/features/planning/components/filter-utils';
 
 // DND Kit Imports
 import {
@@ -418,17 +422,54 @@ interface FilterBarProps {
 function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
   const [selectedColumn, setSelectedColumn] = React.useState<string>("");
   const [filterValue, setFilterValue] = React.useState<string>("");
+  const [textFilterOp, setTextFilterOp] = React.useState<TextFilterOp>("contains");
+  const [dateFilterOp, setDateFilterOp] = React.useState<DateFilterOp>("on");
 
   const columnFilters = table.getState().columnFilters;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
   const { addAlert } = useAlerts();
 
+  const getAccessorKey = React.useCallback((columnId: string) => {
+    const columnDef = columns.find((col) => (col.id || (col as any).accessorKey) === columnId) as any;
+    if (!columnDef) return columnId;
+    return columnDef.accessorKey || columnDef.id || columnId;
+  }, [columns]);
+
+  const isDateColumn = React.useCallback((columnId: string) => {
+    if (!columnId) return false;
+    return getAccessorKey(columnId) === 'Added_At';
+  }, [getAccessorKey]);
+
+  const isTextColumn = React.useCallback((columnId: string) => {
+    if (!columnId || isDateColumn(columnId)) return false;
+    const accessorKey = getAccessorKey(columnId);
+    const values = table.getCoreRowModel().flatRows
+      .map((row: any) => row.original?.[accessorKey])
+      .filter((val: any) => val !== null && val !== undefined && val !== "");
+
+    if (!values.length) return true;
+    return values.some((val: any) => typeof val === 'string' || Array.isArray(val));
+  }, [getAccessorKey, isDateColumn, table]);
+
+  const isSelectedDateColumn = React.useMemo(() => isDateColumn(selectedColumn), [isDateColumn, selectedColumn]);
+  const isSelectedTextColumn = React.useMemo(() => isTextColumn(selectedColumn), [isTextColumn, selectedColumn]);
+
   const addFilter = () => {
     if (!selectedColumn || !filterValue) return;
-    table.getColumn(selectedColumn)?.setFilterValue(filterValue);
+    if (isSelectedDateColumn) {
+      const payload: DateFilterValue = { type: 'date', op: dateFilterOp, value: filterValue };
+      table.getColumn(selectedColumn)?.setFilterValue(payload);
+    } else if (isSelectedTextColumn) {
+      const payload: TextFilterValue = { type: 'text', op: textFilterOp, value: filterValue };
+      table.getColumn(selectedColumn)?.setFilterValue(payload);
+    } else {
+      table.getColumn(selectedColumn)?.setFilterValue(filterValue);
+    }
     setSelectedColumn("");
     setFilterValue("");
+    setTextFilterOp('contains');
+    setDateFilterOp('on');
   };
 
   const removeFilter = (columnId: string) => {
@@ -470,12 +511,14 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
 
   const suggestions = React.useMemo(() => {
     if (!selectedColumn) return [];
-    const allData = table.getCoreRowModel().flatRows.map((row: any) => row.original[selectedColumn]);
+    if (isDateColumn(selectedColumn) || isTextColumn(selectedColumn)) return [];
+    const accessorKey = getAccessorKey(selectedColumn);
+    const allData = table.getCoreRowModel().flatRows.map((row: any) => row.original[accessorKey]);
     const uniqueValues = Array.from(new Set(allData))
       .filter(val => val !== null && val !== undefined && val !== "")
       .sort();
     return uniqueValues;
-  }, [selectedColumn, table]);
+  }, [getAccessorKey, isDateColumn, isTextColumn, selectedColumn, table]);
 
   return (
     <div className="flex flex-col gap-4 py-4 border-b border-primary/10">
@@ -484,6 +527,8 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           <Select value={selectedColumn} onValueChange={(v) => {
             setSelectedColumn(v || "");
             setFilterValue("");
+            setTextFilterOp('contains');
+            setDateFilterOp('on');
           }}>
             <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
               <Filter className="h-4 w-4 mr-2 text-primary" />
@@ -500,7 +545,51 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
 
           <div className="h-4 w-[1px] bg-primary/20 mx-1" />
 
-          {suggestions.length > 0 ? (
+          {isSelectedDateColumn && selectedColumn ? (
+            <>
+              <Select value={dateFilterOp} onValueChange={(v) => setDateFilterOp((v as DateFilterOp) || 'on')}>
+                <SelectTrigger className="w-[120px] h-9 border-none bg-transparent focus:ring-0">
+                  <SelectValue placeholder="Datum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="on">ist am</SelectItem>
+                  <SelectItem value="before">vor</SelectItem>
+                  <SelectItem value="after">nach</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="h-4 w-[1px] bg-primary/20 mx-1" />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="date"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  className="w-[220px] h-9 border-none bg-transparent focus-visible:ring-0 pl-9"
+                  onKeyDown={(e) => e.key === "Enter" && addFilter()}
+                />
+              </div>
+            </>
+          ) : isSelectedTextColumn && selectedColumn ? (
+            <>
+              <Select value={textFilterOp} onValueChange={(v) => setTextFilterOp((v as TextFilterOp) || 'contains')}>
+                <SelectTrigger className="w-[130px] h-9 border-none bg-transparent focus:ring-0">
+                  <SelectValue placeholder="Operator" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contains">enthält</SelectItem>
+                  <SelectItem value="equals">ist genau</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="h-4 w-[1px] bg-primary/20 mx-1" />
+              <Input
+                placeholder="Text eingeben..."
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+                className="w-[220px] h-9 border-none bg-transparent focus-visible:ring-0"
+                onKeyDown={(e) => e.key === "Enter" && addFilter()}
+              />
+            </>
+          ) : suggestions.length > 0 ? (
             <Select value={filterValue} onValueChange={(v) => setFilterValue(v || "")}>
               <SelectTrigger className="w-[200px] h-9 border-none bg-transparent focus:ring-0">
                 <SelectValue placeholder="Wert wählen..." />
@@ -581,22 +670,23 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                 Spalten <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-64 p-1">
               {table
                 .getAllColumns()
                 .filter((column: any) => column.getCanHide())
                 .map((column: any) => {
                   return (
-                    <DropdownMenuCheckboxItem
+                    <DropdownMenuItem
                       key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
+                      className="capitalize flex items-center justify-between gap-2"
+                      onClick={() => column.toggleVisibility(!column.getIsVisible())}
                     >
-                      {column.id.replace(/_/g, " ")}
-                    </DropdownMenuCheckboxItem>
+                      <span>{column.id.replace(/_/g, " ")}</span>
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        {column.getIsVisible() ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        {column.getIsVisible() ? "Sichtbar" : "Ausgeblendet"}
+                      </span>
+                    </DropdownMenuItem>
                   );
                 })}
             </DropdownMenuContent>
@@ -610,9 +700,18 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           {columnFilters.map((filter: any) => {
             const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
             const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
+            const filterObj = filter.value && typeof filter.value === 'object' ? filter.value : null;
+            let valueLabel = String(filter.value);
+            if (filterObj?.type === 'text') {
+              valueLabel = `${filterObj.op === 'equals' ? 'ist genau' : 'enthält'}: ${filterObj.value}`;
+            }
+            if (filterObj?.type === 'date') {
+              const dateLabel = filterObj.op === 'before' ? 'vor' : filterObj.op === 'after' ? 'nach' : 'ist am';
+              valueLabel = `${dateLabel}: ${filterObj.value}`;
+            }
             return (
               <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border-primary/20">
-                <span className="font-semibold">{label}:</span> {filter.value}
+                <span className="font-semibold">{label}:</span> {valueLabel}
                 <button 
                   onClick={() => removeFilter(filter.id)}
                   className="ml-1 hover:bg-primary/20 rounded-full p-0.5 transition-colors"
@@ -670,11 +769,13 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   {
     accessorKey: "Keyword",
     header: "Eintrag",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Type",
     header: "Typ",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const type = row.getValue("Type") as string;
       return (
@@ -687,11 +788,13 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   {
     accessorKey: "Reason",
     header: "Grund",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => <div>{row.getValue("Reason") || "-"}</div>,
   },
   {
     accessorKey: "Added_At",
     header: "Hinzugefügt am",
+    filterFn: dateColumnFilterFn,
     cell: ({ row }) => {
       const date = row.getValue("Added_At") as string;
       return <div>{date ? new Date(date).toLocaleDateString('de-DE') : "-"}</div>;

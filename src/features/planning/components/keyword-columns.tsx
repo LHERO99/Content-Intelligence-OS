@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
+import { textColumnFilterFn } from "./filter-utils";
 
 export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
@@ -37,11 +38,13 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Keyword",
     header: "Keyword",
+    filterFn: textColumnFilterFn,
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Target_URL",
     header: "Target URL",
+    filterFn: textColumnFilterFn,
     size: 400,
     cell: ({ row }) => {
       const url = row.getValue("Target_URL") as string;
@@ -66,6 +69,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
     accessorKey: "Main_Keyword",
     header: "Main",
+    filterFn: textColumnFilterFn,
     size: 60,
     cell: ({ row }) => (
       <Badge variant="outline" className={row.getValue("Main_Keyword") === "Y" ? "border-primary text-primary bg-primary/10" : "border-slate-200 text-slate-400 bg-slate-50"}>
