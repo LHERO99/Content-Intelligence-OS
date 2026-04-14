@@ -85,7 +85,7 @@ export default function CreationPage() {
   const creationMode = latestLogWithAction?.Action_Type || 'Erstellung';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 text-[#00463c]">
+    <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 text-primary">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Content-Erstellung</h1>
@@ -95,25 +95,25 @@ export default function CreationPage() {
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
           {/* Left Side: Aufträge List */}
-          <Card className="lg:col-span-4 flex flex-col overflow-hidden border-emerald-100 h-full">
-            <CardHeader className="bg-emerald-50/50 border-b border-emerald-100 py-4 shrink-0">
-              <CardTitle className="text-lg font-bold text-[#00463c] flex items-center gap-2">
-                <Zap className="h-5 w-5 fill-emerald-600 text-emerald-600" />
+          <Card className="lg:col-span-4 flex flex-col overflow-hidden border-primary/20 h-full">
+            <CardHeader className="bg-primary/10 border-b border-primary/20 py-4 shrink-0">
+              <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
+                <Zap className="h-5 w-5 fill-primary text-primary" />
                 Aufträge
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-hidden">
               <ScrollArea className="h-full">
                 <Table>
-                  <TableHeader className="bg-emerald-50/30 sticky top-0 z-10">
+                  <TableHeader className="bg-primary/5 sticky top-0 z-10">
                     <TableRow>
-                      <TableHead className="text-[#00463c] font-bold">Keyword</TableHead>
-                      <TableHead className="text-[#00463c] font-bold text-right">Status</TableHead>
+                      <TableHead className="text-primary font-bold">Keyword</TableHead>
+                      <TableHead className="text-primary font-bold text-right">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -122,9 +122,9 @@ export default function CreationPage() {
                         <TableRow 
                           key={kw.id} 
                           className={cn(
-                            "cursor-pointer transition-all hover:bg-emerald-50/50 relative",
+                            "cursor-pointer transition-all hover:bg-primary/10 relative",
                             selectedKeywordId === kw.id 
-                              ? "bg-emerald-50/80 !bg-emerald-50 border-l-4 border-l-emerald-600 shadow-[inset_4px_0_0_0_#059669]" 
+                              ? "bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]" 
                               : "border-l-4 border-l-transparent"
                           )}
                           onClick={() => setSelectedKeywordId(kw.id)}
@@ -173,12 +173,12 @@ export default function CreationPage() {
                                 (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
                                   ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                   : kw.Status === 'Angeliefert'
-                                  ? 'bg-[#00463c] text-white border-[#00463c]'
+                                  ? 'bg-primary text-primary-foreground border-primary'
                                   : kw.Status === 'Review' 
                                   ? 'bg-purple-100 text-purple-700 border-purple-200'
                                   : kw.Status === 'Optimierung'
                                   ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                                  : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                  : 'bg-primary/15 text-primary border-primary/25'
                               )}
                             >
                               {(kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit') ? 'In Arbeit' : kw.Status}
@@ -202,14 +202,14 @@ export default function CreationPage() {
           {/* Right Side: Editor & Preview */}
           <div className="lg:col-span-8 flex flex-col gap-4 overflow-hidden h-full">
             {!selectedKeywordId ? (
-              <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-emerald-200 rounded-xl bg-white/50">
-                <Send className="w-12 h-12 text-emerald-300 mb-4" />
-                <h2 className="text-xl font-medium text-emerald-800">Wählen Sie einen Auftrag aus der Liste</h2>
+              <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-primary/30 rounded-xl bg-white/50">
+                <Send className="w-12 h-12 text-primary/40 mb-4" />
+                <h2 className="text-xl font-medium text-primary">Wählen Sie einen Auftrag aus der Liste</h2>
               </div>
             ) : (
               <div className="flex flex-col gap-4 flex-1 min-h-0 h-full">
                 <div className="flex items-center justify-between shrink-0">
-                  <h3 className="text-lg font-bold text-[#00463c] flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-primary flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     Content-Vorschau: {selectedKeyword?.Keyword}
                   </h3>
@@ -218,7 +218,7 @@ export default function CreationPage() {
                 <div className="flex-1 min-h-0">
                   {!v2Content ? (
                     <div className="flex flex-col items-center justify-center h-full border rounded-lg bg-muted/10">
-                      <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                       <p className="text-sm text-muted-foreground">KI generiert gerade den Content...</p>
                       <p className="text-[10px] text-muted-foreground mt-1 italic">Dies kann einige Minuten dauern.</p>
                     </div>

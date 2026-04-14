@@ -117,12 +117,12 @@ const DraggableTableHeader = ({ header }: { header: any }) => {
     <TableHead
       ref={setNodeRef}
       style={style}
-      className="text-[#00463c] font-bold whitespace-nowrap pb-2"
+      className="text-primary font-bold whitespace-nowrap pb-2"
     >
       <div className="flex items-center gap-2">
         {header.column.getCanSort() ? (
           <div
-            className="-ml-3 h-8 text-[#00463c] font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
+            className="-ml-3 h-8 text-primary font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
             onClick={header.column.getToggleSortingHandler()}
           >
             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -192,7 +192,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+            <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
               Blacklist-Eintrag bearbeiten
             </DialogTitle>
             <DialogDescription>
@@ -248,7 +248,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Abbrechen
             </Button>
-            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
+            <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Speichern
             </Button>
@@ -316,7 +316,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+            <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
               Eintrag wiederherstellen
             </DialogTitle>
             <DialogDescription>
@@ -396,7 +396,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Abbrechen
             </Button>
-            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
+            <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Wiederherstellen
             </Button>
@@ -478,15 +478,15 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
   }, [selectedColumn, table]);
 
   return (
-    <div className="flex flex-col gap-4 py-4 border-b border-[#00463c]/10">
+    <div className="flex flex-col gap-4 py-4 border-b border-primary/10">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border border-[#00463c]/10">
+        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border border-primary/10">
           <Select value={selectedColumn} onValueChange={(v) => {
             setSelectedColumn(v || "");
             setFilterValue("");
           }}>
             <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
-              <Filter className="h-4 w-4 mr-2 text-[#00463c]" />
+              <Filter className="h-4 w-4 mr-2 text-primary" />
               <SelectValue placeholder="Spalte" />
             </SelectTrigger>
             <SelectContent>
@@ -498,7 +498,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             </SelectContent>
           </Select>
 
-          <div className="h-4 w-[1px] bg-[#00463c]/20 mx-1" />
+          <div className="h-4 w-[1px] bg-primary/20 mx-1" />
 
           {suggestions.length > 0 ? (
             <Select value={filterValue} onValueChange={(v) => setFilterValue(v || "")}>
@@ -529,7 +529,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           <Button 
             onClick={addFilter} 
             size="sm" 
-            className="bg-[#00463c] hover:bg-[#00332c] h-8 px-3 ml-1"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 ml-1"
             disabled={!selectedColumn || !filterValue}
           >
             Anwenden
@@ -567,7 +567,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           {selectedRows.length === 1 && (
             <Button 
               variant="outline" 
-              className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
+              className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10"
               onClick={onRestoreClick}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -577,7 +577,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Button variant="outline" className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]">
+              <Button variant="outline" className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10">
                 Spalten <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -611,11 +611,11 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
             const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
             return (
-              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-[#00463c]/10 text-[#00463c] border-[#00463c]/20">
+              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border-primary/20">
                 <span className="font-semibold">{label}:</span> {filter.value}
                 <button 
                   onClick={() => removeFilter(filter.id)}
-                  className="ml-1 hover:bg-[#00463c]/20 rounded-full p-0.5 transition-colors"
+                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -626,7 +626,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             variant="ghost" 
             size="sm" 
             onClick={() => table.resetColumnFilters()}
-            className="h-7 text-xs text-muted-foreground hover:text-[#00463c]"
+            className="h-7 text-xs text-muted-foreground hover:text-primary"
           >
             Alle löschen
           </Button>
@@ -935,7 +935,7 @@ export function Blacklist() {
   return (
     <div className="w-full space-y-6">
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-[#00463c]">
+        <div className="flex items-center gap-2 text-primary">
           <ShieldAlert className="h-6 w-6" />
           <h3 className="text-xl font-semibold">Blacklist</h3>
         </div>
@@ -956,7 +956,7 @@ export function Blacklist() {
         }}
       />
 
-      <Card className="border-[#00463c]/10 overflow-hidden">
+      <Card className="border-primary/10 overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <DndContext
@@ -968,7 +968,7 @@ export function Blacklist() {
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
+                    <TableRow key={headerGroup.id} className="hover:bg-transparent border-primary/10">
                       <SortableContext
                         items={columnOrder}
                         strategy={horizontalListSortingStrategy}
@@ -984,7 +984,7 @@ export function Blacklist() {
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={columns.length} className="h-24 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#00463c]" />
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                       </TableCell>
                     </TableRow>
                   ) : table.getRowModel().rows?.length ? (
@@ -992,7 +992,7 @@ export function Blacklist() {
                       <TableRow
                         key={row.id}
                         data-state={row.getIsSelected() && "selected"}
-                        className="hover:bg-muted/50 border-[#00463c]/5 cursor-pointer"
+                        className="hover:bg-muted/50 border-primary/5 cursor-pointer"
                         onClick={() => {
                           setEditingEntry(row.original);
                           setIsEditModalOpen(true);
@@ -1036,7 +1036,7 @@ export function Blacklist() {
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="border-[#00463c]/20"
+            className="border-primary/20"
           >
             Zurück
           </Button>
@@ -1045,7 +1045,7 @@ export function Blacklist() {
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="border-[#00463c]/20"
+            className="border-primary/20"
           >
             Weiter
           </Button>

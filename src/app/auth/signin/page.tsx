@@ -49,7 +49,7 @@ function SignInForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#e7f3ee]">
+    <div className="flex min-h-screen items-center justify-center bg-primary/10">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
         <div className="text-center flex flex-col items-center">
           <div className="mb-6">
@@ -62,7 +62,7 @@ function SignInForm() {
               className="h-auto w-auto"
             />
           </div>
-          <h2 className="text-3xl font-bold text-[#00463c]">SEO Content Intelligence OS</h2>
+          <h2 className="text-3xl font-bold text-primary">SEO Content Intelligence OS</h2>
           <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -80,7 +80,7 @@ function SignInForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
-                className="h-11 border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
+                className="h-11 border-gray-300 focus:border-primary focus:ring-primary"
               />
             </div>
             <div>
@@ -91,7 +91,7 @@ function SignInForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                className="h-11 border-gray-300 focus:border-[#00463c] focus:ring-[#00463c]"
+                className="h-11 border-gray-300 focus:border-primary focus:ring-primary"
               />
             </div>
           </div>
@@ -100,7 +100,7 @@ function SignInForm() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-11 bg-[#00463c] hover:bg-[#00332b] text-white"
+              className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </Button>

@@ -184,7 +184,7 @@ export function BlacklistReasonModal({
           <Button 
             onClick={handleSubmit} 
             disabled={isSubmitting} 
-            className={showUrlWarning ? "bg-red-600 hover:bg-red-700" : "bg-[#00463c] hover:bg-[#00332c]"}
+            className={showUrlWarning ? "bg-red-600 hover:bg-red-700" : "bg-primary hover:bg-primary/90 text-primary-foreground"}
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {showUrlWarning ? "Endgültig bestätigen" : "Bestätigen"}

@@ -68,7 +68,7 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     header: "Main",
     size: 60,
     cell: ({ row }) => (
-      <Badge variant="outline" className={row.getValue("Main_Keyword") === "Y" ? "border-[#00463c] text-[#00463c] bg-[#00463c]/10" : "border-slate-200 text-slate-400 bg-slate-50"}>
+      <Badge variant="outline" className={row.getValue("Main_Keyword") === "Y" ? "border-primary text-primary bg-primary/10" : "border-slate-200 text-slate-400 bg-slate-50"}>
         {row.getValue("Main_Keyword")}
       </Badge>
     ),

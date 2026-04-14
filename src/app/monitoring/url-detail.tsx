@@ -340,7 +340,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 <YAxis yAxisId="left" stroke="var(--primary)" fontSize={12} />
                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
                   labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
                 />
                 <Legend />
@@ -396,7 +396,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 />
                 <YAxis reversed domain={[1, 'auto']} fontSize={12} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
                   labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
                 />
                 <Legend />

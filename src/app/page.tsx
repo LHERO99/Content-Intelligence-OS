@@ -186,7 +186,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h1>
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
@@ -225,8 +225,8 @@ export default function DashboardPage() {
 
       <Tabs defaultValue="performance" className="space-y-4">
         <TabsList className="bg-white border border-mint-mist/20">
-          <TabsTrigger value="performance" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">Performance</TabsTrigger>
-          <TabsTrigger value="history" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+          <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Performance</TabsTrigger>
+          <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <History className="h-4 w-4 mr-2" />
             Content-Historie
           </TabsTrigger>
@@ -245,32 +245,32 @@ export default function DashboardPage() {
                   {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7f3ee" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="color-mix(in oklab, var(--primary) 20%, white)" />
                         <XAxis 
                           dataKey="date" 
-                          stroke="#00463c" 
+                          stroke="var(--primary)" 
                           fontSize={12} 
                           tickLine={false} 
                           axisLine={false}
                           tickFormatter={(value) => new Date(value).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
                         />
                         <YAxis 
-                          stroke="#00463c" 
+                          stroke="var(--primary)" 
                           fontSize={12} 
                           tickLine={false} 
                           axisLine={false} 
                           tickFormatter={(value) => `${value}`}
                         />
                         <Tooltip 
-                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7f3ee' }}
-                          labelStyle={{ color: '#00463c', fontWeight: 'bold' }}
+                          contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
+                          labelStyle={{ color: 'var(--primary)', fontWeight: 'bold' }}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="vi" 
-                          stroke="#00463c" 
+                          stroke="var(--primary)" 
                           strokeWidth={2} 
-                          dot={{ r: 4, fill: '#00463c' }} 
+                          dot={{ r: 4, fill: 'var(--primary)' }} 
                           activeDot={{ r: 6 }} 
                         />
                       </LineChart>

@@ -54,7 +54,7 @@ export default function PlanningPage() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function PlanningPage() {
   return (
     <div className="flex-1 space-y-8 relative">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-[#00463c]">Content-Planung</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Content-Planung</h1>
       </div>
 
       <Tabs
@@ -84,20 +84,20 @@ export default function PlanningPage() {
         }}
         className="space-y-4"
       >
-        <TabsList className="bg-[#e7f3ee] border-[#00463c]/10">
-          <TabsTrigger value="editorial" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+        <TabsList className="bg-primary/10 border-primary/10">
+          <TabsTrigger value="editorial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Calendar className="mr-2 h-4 w-4" />
             Redaktions-Planung
           </TabsTrigger>
-          <TabsTrigger value="suggestions" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+          <TabsTrigger value="suggestions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Sparkles className="mr-2 h-4 w-4" />
             Vorschläge
           </TabsTrigger>
-          <TabsTrigger value="keyword-map" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+          <TabsTrigger value="keyword-map" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Map className="mr-2 h-4 w-4" />
             Keyword-Map
           </TabsTrigger>
-          <TabsTrigger value="blacklist" className="data-[state=active]:bg-[#00463c] data-[state=active]:text-white">
+          <TabsTrigger value="blacklist" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <ShieldAlert className="mr-2 h-4 w-4" />
             Blacklist
           </TabsTrigger>

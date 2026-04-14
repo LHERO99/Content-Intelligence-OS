@@ -103,10 +103,10 @@ export function EditEditorialModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-6 pb-4 bg-[#00463c]/5 border-b border-[#00463c]/10">
+          <DialogHeader className="p-6 pb-4 bg-primary/5 border-b border-primary/10">
             <div className="flex items-center justify-between pr-8">
               <div className="space-y-1">
-                <DialogTitle className="text-[#00463c] font-bold text-2xl flex items-center gap-2">
+                <DialogTitle className="text-primary font-bold text-2xl flex items-center gap-2">
                   {keyword?.Keyword}
                 </DialogTitle>
                 <DialogDescription className="flex items-start gap-2">
@@ -115,7 +115,7 @@ export function EditEditorialModal({
                       href={keyword.Target_URL} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs text-[#00463c] hover:underline flex items-start gap-1 break-all line-clamp-3"
+                      className="text-xs text-primary hover:underline flex items-start gap-1 break-all line-clamp-3"
                     >
                       <ExternalLink className="h-3 w-3 mt-0.5 shrink-0" />
                       {keyword.Target_URL}
@@ -133,13 +133,13 @@ export function EditEditorialModal({
               {/* SEO Metrics Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                     <BarChart3 className="h-3.5 w-3.5" />
                     Metriken
                   </h4>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="flex flex-col items-center justify-center bg-[#00463c] text-white p-3 rounded-lg shadow-sm border border-[#00463c]/20">
+                  <div className="flex flex-col items-center justify-center bg-primary text-primary-foreground p-3 rounded-lg shadow-sm border border-primary/20">
                     <p className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-1">Priority Score</p>
                     <span className="text-2xl font-black tabular-nums leading-none">
                       {keyword?.Priority_Score?.toFixed(1) || "0.0"}
@@ -169,11 +169,11 @@ export function EditEditorialModal({
                 </div>
               </div>
 
-              <Separator className="bg-[#00463c]/10" />
+              <Separator className="bg-primary/10" />
 
               {/* Editable Fields Section */}
               <div className="space-y-4">
-                <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                   <Settings2 className="h-3.5 w-3.5" />
                   Planungs-Details
                 </h4>
@@ -185,7 +185,7 @@ export function EditEditorialModal({
                       value={formData.Action_Type} 
                       onValueChange={(v) => setFormData({ ...formData, Action_Type: v as any })}
                     >
-                      <SelectTrigger id="edit-type" className="h-10 border-[#00463c]/20 focus:ring-[#00463c]">
+                      <SelectTrigger id="edit-type" className="h-10 border-primary/20 focus:ring-primary">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -201,7 +201,7 @@ export function EditEditorialModal({
                       <Input
                         id="edit-deadline"
                         type="date"
-                        className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
+                        className="h-10 pl-10 border-primary/20 focus:ring-primary"
                         value={formData.Editorial_Deadline || ""}
                         onChange={(e) => setFormData({ ...formData, Editorial_Deadline: e.target.value })}
                       />
@@ -217,7 +217,7 @@ export function EditEditorialModal({
                       <Input
                         id="edit-editor"
                         placeholder="Editor Name..."
-                        className="h-10 pl-10 border-[#00463c]/20 focus:ring-[#00463c]"
+                        className="h-10 pl-10 border-primary/20 focus:ring-primary"
                         value={formData.Assigned_Editor?.[0] || ""}
                         onChange={(e) => setFormData({ ...formData, Assigned_Editor: e.target.value ? [e.target.value] : [] })}
                       />
@@ -237,7 +237,7 @@ export function EditEditorialModal({
                         step={1}
                         className="flex-1"
                       />
-                      <Badge variant="secondary" className="bg-[#00463c]/10 text-[#00463c] font-bold min-w-[45px] justify-center">
+                      <Badge variant="secondary" className="bg-primary/10 text-primary font-bold min-w-[45px] justify-center">
                         {formData.Policy || 0}%
                       </Badge>
                     </div>
@@ -250,7 +250,7 @@ export function EditEditorialModal({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="w-full border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white"
+                      className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                       onClick={() => {
                         if (keyword) {
                           onCommission(keyword.id);
@@ -269,9 +269,9 @@ export function EditEditorialModal({
                 </div>
               </div>
 
-              <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
+              <div className="border-t border-primary/10 pt-4 mt-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5" />
                     Content-Historie
                   </h4>
@@ -307,7 +307,7 @@ export function EditEditorialModal({
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
               Abbrechen
             </Button>
-            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c] min-w-[120px]">
+            <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[120px]">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Speichern
             </Button>

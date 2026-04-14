@@ -104,7 +104,7 @@ export function ApiKeysManagement() {
                 onChange={(e) => setSistrixKey(e.target.value)}
                 className="h-10"
               />
-              <Button onClick={() => handleSave("SISTRIX_API_KEY", sistrixKey)} disabled={saving === "SISTRIX_API_KEY"} className="h-10 bg-[#00463c] hover:bg-[#00332c]">
+              <Button onClick={() => handleSave("SISTRIX_API_KEY", sistrixKey)} disabled={saving === "SISTRIX_API_KEY"} className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground">
                 {saving === "SISTRIX_API_KEY" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Speichern
               </Button>
@@ -128,7 +128,7 @@ export function ApiKeysManagement() {
                 onChange={(e) => setBqCredentials(e.target.value)}
                 className="h-10"
               />
-              <Button onClick={() => handleSave("BIGQUERY_CREDENTIALS", bqCredentials)} disabled={saving === "BIGQUERY_CREDENTIALS"} className="h-10 bg-[#00463c] hover:bg-[#00332c]">
+              <Button onClick={() => handleSave("BIGQUERY_CREDENTIALS", bqCredentials)} disabled={saving === "BIGQUERY_CREDENTIALS"} className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground">
                 {saving === "BIGQUERY_CREDENTIALS" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Speichern
               </Button>

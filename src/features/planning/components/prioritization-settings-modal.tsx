@@ -136,7 +136,7 @@ return (
     <DialogContent className="sm:max-w-[425px]">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <Settings2 className="h-5 w-5 text-[#00463c]" />
+          <Settings2 className="h-5 w-5 text-primary" />
           Priorisierungseinstellungen
         </DialogTitle>
         <DialogDescription>
@@ -146,7 +146,7 @@ return (
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-[#00463c]" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <ScrollArea className="max-h-[60vh] pr-4">
@@ -154,7 +154,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Suchvolumen</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_search_volume}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_search_volume}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_search_volume]}
@@ -167,7 +167,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Schwierigkeit (Invertiert)</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_difficulty}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_difficulty}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_difficulty]}
@@ -180,7 +180,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Ranking (Striking Distance)</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_ranking}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_ranking}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_ranking]}
@@ -193,7 +193,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Anzahl Artikel</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_article_count}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_article_count}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_article_count]}
@@ -206,7 +206,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Durchschn. Artikelwert</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_avg_value}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_avg_value}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_avg_value]}
@@ -219,7 +219,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Politik / Strategie</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_policy}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_policy}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_policy]}
@@ -232,7 +232,7 @@ return (
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <Label>Aktualität (Recency)</Label>
-                  <span className="text-sm font-medium text-[#00463c]">{weights.weight_recency}%</span>
+                  <span className="text-sm font-medium text-primary">{weights.weight_recency}%</span>
                 </div>
                 <Slider
                   value={[weights.weight_recency]}
@@ -252,7 +252,7 @@ return (
           <Button 
             onClick={handleSave} 
             disabled={isSaving || isLoading}
-            className="bg-[#00463c] hover:bg-[#00332c]"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Einstellungen speichern

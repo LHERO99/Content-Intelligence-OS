@@ -66,7 +66,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleHeading({ level: 1 }).run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 1 }) ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 1 }) ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <Heading1 className="h-4 w-4" />
       </Button>
@@ -76,7 +76,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleHeading({ level: 2 }).run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 2 }) ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 2 }) ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <Heading2 className="h-4 w-4" />
       </Button>
@@ -86,7 +86,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleHeading({ level: 3 }).run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 3 }) ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('heading', { level: 3 }) ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <Heading3 className="h-4 w-4" />
       </Button>
@@ -96,7 +96,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().setParagraph().run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('paragraph') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('paragraph') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
         title="In Text umwandeln"
       >
         <Pilcrow className="h-4 w-4" />
@@ -108,7 +108,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleBold().run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('bold') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('bold') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <Bold className="h-4 w-4" />
       </Button>
@@ -118,7 +118,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleItalic().run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('italic') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('italic') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <Italic className="h-4 w-4" />
       </Button>
@@ -128,7 +128,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={setLink}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('link') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('link') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <LinkIcon className="h-4 w-4" />
       </Button>
@@ -139,7 +139,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleBulletList().run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('bulletList') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('bulletList') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <List className="h-4 w-4" />
       </Button>
@@ -149,7 +149,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().toggleOrderedList().run())}
-        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('orderedList') ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 w-8 p-0 transition-all', editor.isActive('orderedList') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
       >
         <ListOrdered className="h-4 w-4" />
       </Button>
@@ -182,7 +182,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         size="sm"
         type="button"
         onClick={(e) => { e.preventDefault(); setShowCode(!showCode); }}
-        className={cn('h-8 gap-2 px-3 transition-all', showCode ? 'bg-[#00463c] text-white' : 'text-slate-500 hover:bg-slate-200')}
+        className={cn('h-8 gap-2 px-3 transition-all', showCode ? 'bg-primary text-primary-foreground' : 'text-slate-500 hover:bg-slate-200')}
       >
         {showCode ? <Type className="h-4 w-4" /> : <Code className="h-4 w-4" />}
         <span className="text-xs font-bold">{showCode ? 'Editor' : 'Code'}</span>
@@ -201,7 +201,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-emerald-600 underline cursor-pointer',
+          class: 'text-primary underline cursor-pointer',
         },
       }),
       Placeholder.configure({
@@ -211,7 +211,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
     content: content,
     editorProps: {
       attributes: {
-        class: 'focus:outline-none p-8 min-h-[500px] prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-[#00463c] prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-emerald-600 prose-emerald font-poppins',
+        class: 'focus:outline-none p-8 min-h-[500px] prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-primary prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-primary font-poppins',
       },
     },
   });
@@ -268,7 +268,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 font-weight: 800 !important;
                 margin-top: 0 !important;
                 margin-bottom: 0.5rem !important;
-                color: #00463c !important;
+                color: var(--primary) !important;
                 display: block !important;
               }
               .ProseMirror h2 {
@@ -277,7 +277,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 font-weight: 700 !important;
                 margin-top: 1.25rem !important;
                 margin-bottom: 0.5rem !important;
-                color: #00463c !important;
+                color: var(--primary) !important;
                 display: block !important;
               }
               .ProseMirror h3 {
@@ -286,7 +286,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
                 font-weight: 600 !important;
                 margin-top: 1.25rem !important;
                 margin-bottom: 0.5rem !important;
-                color: #00463c !important;
+                color: var(--primary) !important;
                 display: block !important;
               }
               .ProseMirror p {
@@ -327,7 +327,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
             }
           }} 
           disabled={isSaving}
-          className="bg-[#00463c] hover:bg-[#00332c] text-white gap-2 h-9"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-9"
         >
           {isSaving ? (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

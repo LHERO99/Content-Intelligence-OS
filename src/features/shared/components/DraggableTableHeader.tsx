@@ -39,12 +39,12 @@ export const DraggableTableHeader = <TData, TValue>({
     <TableHead
       ref={setNodeRef}
       style={style}
-      className="text-[#00463c] font-bold whitespace-nowrap pb-2"
+      className="text-primary font-bold whitespace-nowrap pb-2"
     >
       <div className="flex items-center gap-2">
         {header.column.getCanSort() ? (
           <div
-            className="-ml-3 h-8 text-[#00463c] font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
+            className="-ml-3 h-8 text-primary font-bold flex items-center cursor-pointer hover:bg-accent/50 px-3 rounded-md transition-colors"
             onClick={header.column.getToggleSortingHandler()}
           >
             {flexRender(header.column.columnDef.header, header.getContext())}

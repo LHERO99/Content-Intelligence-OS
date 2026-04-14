@@ -96,15 +96,15 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
   }, [selectedColumn, table]);
 
   return (
-    <div className="flex flex-col gap-4 py-4 border-b border-[#00463c]/10">
+    <div className="flex flex-col gap-4 py-4 border-b border-primary/10">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border border-[#00463c]/10">
+        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border border-primary/10">
           <Select value={selectedColumn} onValueChange={(v) => {
             setSelectedColumn(v || "");
             setFilterValue("");
           }}>
             <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
-              <Filter className="h-4 w-4 mr-2 text-[#00463c]" />
+              <Filter className="h-4 w-4 mr-2 text-primary" />
               <SelectValue placeholder="Spalte" />
             </SelectTrigger>
             <SelectContent>
@@ -116,7 +116,7 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
             </SelectContent>
           </Select>
 
-          <div className="h-4 w-[1px] bg-[#00463c]/20 mx-1" />
+          <div className="h-4 w-[1px] bg-primary/20 mx-1" />
 
           {suggestions.length > 0 ? (
             <Select value={filterValue} onValueChange={(v) => setFilterValue(v || "")}>
@@ -147,7 +147,7 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
           <Button 
             onClick={addFilter} 
             size="sm" 
-            className="bg-[#00463c] hover:bg-[#00332c] h-8 px-3 ml-1"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 ml-1"
             disabled={!selectedColumn || !filterValue}
           >
             Anwenden
@@ -184,7 +184,7 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
           
           <Button 
             variant="outline" 
-            className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]"
+            className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10"
             onClick={() => setIsPrioritizationModalOpen(true)}
           >
             <Settings2 className="h-4 w-4 mr-2" />
@@ -193,7 +193,7 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
 
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Button variant="outline" className="border-[#00463c]/20 h-10 px-4 text-[#00463c] hover:bg-[#e7f3ee]">
+              <Button variant="outline" className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10">
                 Spalten <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -227,11 +227,11 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
             const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
             const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
             return (
-              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-[#00463c]/10 text-[#00463c] border-[#00463c]/20">
+              <Badge key={filter.id} variant="secondary" className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary border-primary/20">
                 <span className="font-semibold">{label}:</span> {filter.value}
                 <button 
                   onClick={() => removeFilter(filter.id)}
-                  className="ml-1 hover:bg-[#00463c]/20 rounded-full p-0.5 transition-colors"
+                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -242,7 +242,7 @@ export function EditorialFilterBar({ table, columns }: EditorialFilterBarProps) 
             variant="ghost" 
             size="sm" 
             onClick={() => table.resetColumnFilters()}
-            className="h-7 text-xs text-muted-foreground hover:text-[#00463c]"
+            className="h-7 text-xs text-muted-foreground hover:text-primary"
           >
             Alle löschen
           </Button>

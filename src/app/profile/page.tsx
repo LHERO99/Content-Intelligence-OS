@@ -62,7 +62,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold text-[#00463c]">Benutzerprofil</h1>
+      <h1 className="text-3xl font-bold text-primary">Benutzerprofil</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-1">
@@ -136,7 +136,7 @@ export default function ProfilePage() {
                   minLength={8}
                 />
               </div>
-              <Button type="submit" className="h-10 bg-[#00463c] hover:bg-[#00332c]" disabled={loading}>
+              <Button type="submit" className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Passwort aktualisieren
               </Button>

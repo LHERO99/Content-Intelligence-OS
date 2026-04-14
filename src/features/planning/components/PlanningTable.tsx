@@ -44,7 +44,7 @@ export function PlanningTable<TData>({
   onRowClick,
 }: PlanningTableProps<TData>) {
   return (
-    <Card className="border-[#00463c]/10 overflow-hidden">
+    <Card className="border-primary/10 overflow-hidden">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <DndContext
@@ -56,7 +56,7 @@ export function PlanningTable<TData>({
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#00463c]/10">
+                  <TableRow key={headerGroup.id} className="hover:bg-transparent border-primary/10">
                     <SortableContext
                       items={columnOrder}
                       strategy={horizontalListSortingStrategy}
@@ -74,7 +74,7 @@ export function PlanningTable<TData>({
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && "selected"}
-                      className="hover:bg-muted/50 border-[#00463c]/5 cursor-pointer"
+                      className="hover:bg-muted/50 border-primary/5 cursor-pointer"
                       onClick={() => onRowClick?.(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (

@@ -33,7 +33,7 @@ const AddToEditorialButton = ({ row }: { row: any }) => {
       <Button 
         size="sm" 
         variant="outline" 
-        className="h-7 text-xs gap-1 min-w-[110px] justify-center border-[#00463c] text-[#00463c] hover:bg-[#00463c] hover:text-white transition-colors"
+        className="h-7 text-xs gap-1 min-w-[110px] justify-center border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
         onClick={handleAdd}
         disabled={loading}
       >
@@ -133,7 +133,7 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
           href={url} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-[#00463c] hover:underline flex items-center gap-1 max-w-[200px] truncate"
+          className="text-primary hover:underline flex items-center gap-1 max-w-[200px] truncate"
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="h-3 w-3 shrink-0" />

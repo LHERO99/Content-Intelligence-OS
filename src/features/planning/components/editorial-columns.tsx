@@ -51,7 +51,7 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
           href={url} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-[#00463c] hover:underline flex items-center gap-1 max-w-[200px] truncate"
+          className="text-primary hover:underline flex items-center gap-1 max-w-[200px] truncate"
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="h-3 w-3 shrink-0" />
@@ -120,7 +120,7 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
             ) : (
               <Button
                 size="sm"
-                className="h-7 text-xs gap-1 min-w-[110px] justify-center border-none text-white font-bold bg-gradient-to-r from-[#00463c] via-[#006b58] to-[#00463c] bg-[length:200%_auto] hover:bg-right transition-all duration-500 shadow-md hover:shadow-lg active:scale-95"
+                className="h-7 text-xs gap-1 min-w-[110px] justify-center border-none text-primary-foreground font-bold bg-primary hover:bg-primary/90 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
                   meta?.handleCommissionContent(id);

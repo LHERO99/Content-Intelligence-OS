@@ -110,7 +110,7 @@ export function AIEditorWorkspace({
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-lg border border-emerald-100 shadow-sm shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-lg border border-primary/20 shadow-sm shrink-0">
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md">
           <Button
             variant="ghost"
@@ -118,7 +118,7 @@ export function AIEditorWorkspace({
             onClick={() => setActiveMode('preview')}
             className={cn(
               "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'preview' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+              activeMode === 'preview' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
             <Eye className="h-3.5 w-3.5" />
@@ -130,7 +130,7 @@ export function AIEditorWorkspace({
             onClick={() => setActiveMode('edit')}
             className={cn(
               "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'edit' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+              activeMode === 'edit' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
             <Edit3 className="h-3.5 w-3.5" />
@@ -142,10 +142,10 @@ export function AIEditorWorkspace({
             onClick={() => setActiveMode('ai-chat')}
             className={cn(
               "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'ai-chat' ? "bg-white text-[#00463c] shadow-sm" : "text-slate-500 hover:text-slate-700"
+              activeMode === 'ai-chat' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
-            <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
             KI-Optimierung
           </Button>
         </div>
@@ -163,7 +163,7 @@ export function AIEditorWorkspace({
                       isPublished 
                         ? "bg-green-600 hover:bg-green-700 text-white" 
                         : currentStatus === 'Angeliefert'
-                        ? "bg-[#00463c] hover:bg-[#00332c] text-white"
+                        ? "bg-primary hover:bg-primary/90 text-primary-foreground"
                         : "bg-slate-300 text-slate-500 cursor-not-allowed border-slate-200"
                     )}
                   >
@@ -197,7 +197,7 @@ export function AIEditorWorkspace({
           <div className="rounded-md border bg-white overflow-hidden animate-in fade-in duration-300 h-full flex flex-col">
             {mode === 'Erstellung' ? (
               <>
-                <div className="border-b bg-emerald-50/50 p-3 text-sm font-bold text-[#00463c] flex items-center gap-2 shrink-0">
+                <div className="border-b bg-primary/10 p-3 text-sm font-bold text-primary flex items-center gap-2 shrink-0">
                   <FileText className="h-4 w-4" />
                   Neu erstellter Content
                 </div>
@@ -212,7 +212,7 @@ export function AIEditorWorkspace({
                       color: #334155;
                     }
                     .preview-content h1, .preview-content h2, .preview-content h3 {
-                      color: #00463c !important;
+                      color: var(--primary) !important;
                       font-family: 'Poppins', sans-serif !important;
                       display: block !important;
                       visibility: visible !important;
@@ -294,7 +294,7 @@ export function AIEditorWorkspace({
                     <Layout className="h-4 w-4" />
                     v1 (Aktuell)
                   </div>
-                  <div className="p-3 flex items-center gap-2 text-emerald-700">
+                  <div className="p-3 flex items-center gap-2 text-primary">
                     <ArrowLeftRight className="h-4 w-4" />
                     v2 (KI Vorschlag / Edit)
                   </div>
@@ -340,7 +340,7 @@ export function AIEditorWorkspace({
                 <FileText className="h-3.5 w-3.5" />
                 Aktueller Arbeitsstand
               </div>
-              <div className="flex-1 overflow-y-auto p-8 prose prose-emerald max-w-none prose-sm sm:prose-base custom-scrollbar min-h-0">
+              <div className="flex-1 overflow-y-auto p-8 prose max-w-none prose-sm sm:prose-base custom-scrollbar min-h-0">
                 <style jsx global>{`
                   .ai-chat-preview h1 {
                     font-size: 2.25rem !important;
@@ -348,7 +348,7 @@ export function AIEditorWorkspace({
                     font-weight: 800 !important;
                     margin-top: 0 !important;
                     margin-bottom: 0.5rem !important;
-                    color: #00463c !important;
+                    color: var(--primary) !important;
                     display: block !important;
                   }
                   .ai-chat-preview h2 {
@@ -357,7 +357,7 @@ export function AIEditorWorkspace({
                     font-weight: 700 !important;
                     margin-top: 1.25rem !important;
                     margin-bottom: 0.5rem !important;
-                    color: #00463c !important;
+                    color: var(--primary) !important;
                     display: block !important;
                   }
                   .ai-chat-preview h3 {
@@ -366,7 +366,7 @@ export function AIEditorWorkspace({
                     font-weight: 600 !important;
                     margin-top: 1.25rem !important;
                     margin-bottom: 0.5rem !important;
-                    color: #00463c !important;
+                    color: var(--primary) !important;
                     display: block !important;
                   }
                   .ai-chat-preview p {

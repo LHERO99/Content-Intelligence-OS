@@ -105,7 +105,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-[#00463c] flex items-center gap-2 font-bold text-xl">
+            <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
               Keyword bearbeiten
             </DialogTitle>
             <DialogDescription>
@@ -217,9 +217,9 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                 </div>
               </div>
 
-              <div className="border-t border-[#00463c]/10 pt-4 mt-2 space-y-4">
+              <div className="border-t border-primary/10 pt-4 mt-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-[#00463c] uppercase tracking-widest flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5" />
                     Content-Historie
                   </h4>
@@ -255,7 +255,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
             <Button type="button" variant="outline" onClick={closeDialog} disabled={loading}>
               Abbrechen
             </Button>
-            <Button type="submit" disabled={loading} className="bg-[#00463c] hover:bg-[#00332c]">
+            <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Speichern
             </Button>

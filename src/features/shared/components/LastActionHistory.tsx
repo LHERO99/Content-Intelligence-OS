@@ -11,7 +11,7 @@ export const LastActionHistory = ({ history, isLoading }: LastActionHistoryProps
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-2">
-        <Loader2 className="h-3 w-3 animate-spin text-[#00463c]/40" />
+        <Loader2 className="h-3 w-3 animate-spin text-primary/40" />
         <span className="text-xs text-muted-foreground italic">Historie wird geladen...</span>
       </div>
     );
@@ -38,7 +38,7 @@ export const LastActionHistory = ({ history, isLoading }: LastActionHistoryProps
   const label = lastPublishedLog.Action_Type === 'Optimierung' ? 'Zuletzt optimiert' : 'Zuletzt erstellt';
 
   return (
-    <div className="flex items-center gap-2 py-2 text-[#00463c]">
+    <div className="flex items-center gap-2 py-2 text-primary">
       <CheckCircle className="h-3.5 w-3.5" />
       <span className="text-xs font-bold uppercase tracking-tight">
         {label} am {date}
