@@ -516,6 +516,21 @@ export function AgentWorkflowV2Management() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<BezierDataEdge>([]);
 
+  const sameIds = useCallback((a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }, []);
+
+  const handleSelectionChangeEdges = useCallback(
+    (edgeIds: string[]) => {
+      setSelectedEdgeIds((prev) => (sameIds(prev, edgeIds) ? prev : edgeIds));
+    },
+    [sameIds]
+  );
+
   const nodeRecordMap = useMemo(() => {
     const map = new Map<string, WorkflowNodeRecord>();
     nodes.forEach((node) => {
@@ -1142,7 +1157,7 @@ export function AgentWorkflowV2Management() {
             onCanvasInteraction={() => setContextMenu(null)}
             onDropNode={addNode}
             onAddNodeInView={addNode}
-            onSelectionChangeEdges={setSelectedEdgeIds}
+            onSelectionChangeEdges={handleSelectionChangeEdges}
           />
         </div>
 

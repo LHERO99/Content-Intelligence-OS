@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, PlugZap, Save, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
 
-type IntegrationProvider = "sistrix" | "openai" | "openrouter" | "gemini" | "dataforseo";
+type IntegrationProvider = "sistrix" | "openai" | "openrouter" | "gemini" | "dataforseo" | "vertex_legal";
+
+type DiscoverableProvider = "openai" | "openrouter" | "gemini";
 
 type ProviderField = {
   key: string;
@@ -35,6 +37,16 @@ type ApiResponse = {
   integrations: IntegrationState[];
 };
 
+type DiscoveredModel = {
+  id: string;
+  label: string;
+  contextWindow?: number;
+};
+
+function isDiscoverableProvider(providerId: IntegrationProvider): providerId is DiscoverableProvider {
+  return providerId === "openai" || providerId === "openrouter" || providerId === "gemini";
+}
+
 export function IntegrationsManagement() {
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [integrations, setIntegrations] = useState<IntegrationState[]>([]);
@@ -45,6 +57,9 @@ export function IntegrationsManagement() {
   const [savingProvider, setSavingProvider] = useState<IntegrationProvider | null>(null);
   const [testingProvider, setTestingProvider] = useState<IntegrationProvider | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string }>>({});
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
+  const [loadingModelsProvider, setLoadingModelsProvider] = useState<IntegrationProvider | null>(null);
+  const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
 
   const stateByProvider = useMemo(() => {
     const map: Record<string, IntegrationState> = {};
@@ -165,6 +180,42 @@ export function IntegrationsManagement() {
     }
   };
 
+  const loadModels = async (provider: ProviderDefinition, refresh = false) => {
+    if (!isDiscoverableProvider(provider.id)) return;
+
+    try {
+      setLoadingModelsProvider(provider.id);
+      setError(null);
+      setModelErrorsByProvider((prev) => {
+        const next = { ...prev };
+        delete next[provider.id];
+        return next;
+      });
+
+      const refreshQuery = refresh ? "?refresh=1" : "";
+      const res = await fetch(`/api/admin/integrations/${provider.id}/models${refreshQuery}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Modelle für ${provider.name} konnten nicht geladen werden`);
+      }
+
+      const models = Array.isArray(data?.models) ? (data.models as DiscoveredModel[]) : [];
+      setModelsByProvider((prev) => ({
+        ...prev,
+        [provider.id]: models,
+      }));
+    } catch (err: any) {
+      const message = err.message || `Modelle für ${provider.name} konnten nicht geladen werden`;
+      setModelErrorsByProvider((prev) => ({
+        ...prev,
+        [provider.id]: message,
+      }));
+    } finally {
+      setLoadingModelsProvider(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -195,6 +246,10 @@ export function IntegrationsManagement() {
           const integrationState = stateByProvider[provider.id];
           const configured = Boolean(integrationState?.configured);
           const result = testResult[provider.id];
+          const discoveredModels = modelsByProvider[provider.id] || [];
+          const modelError = modelErrorsByProvider[provider.id];
+          const modelsLoading = loadingModelsProvider === provider.id;
+          const canDiscoverModels = isDiscoverableProvider(provider.id);
 
           return (
             <Card key={provider.id}>
@@ -259,6 +314,54 @@ export function IntegrationsManagement() {
                       {result.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                       {result.message}
                     </span>
+                  </div>
+                )}
+
+                {canDiscoverModels && (
+                  <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">Verfügbare Modelle</p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadModels(provider, false)}
+                          disabled={!configured || modelsLoading}
+                        >
+                          {modelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Modelle laden"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => loadModels(provider, true)}
+                          disabled={!configured || modelsLoading}
+                        >
+                          <RefreshCcw className="mr-1 h-4 w-4" />
+                          Aktualisieren
+                        </Button>
+                      </div>
+                    </div>
+
+                    {modelError && <p className="text-xs text-red-600">{modelError}</p>}
+
+                    {discoveredModels.length > 0 ? (
+                      <div className="max-h-48 overflow-auto rounded border">
+                        <div className="divide-y">
+                          {discoveredModels.map((model) => (
+                            <div key={model.id} className="flex items-center justify-between px-3 py-2 text-xs">
+                              <span className="font-mono">{model.id}</span>
+                              {model.contextWindow ? (
+                                <span className="text-muted-foreground">{model.contextWindow.toLocaleString("de-DE")} ctx</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Noch keine Modelle geladen.</p>
+                    )}
                   </div>
                 )}
               </CardContent>

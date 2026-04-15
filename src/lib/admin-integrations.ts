@@ -129,6 +129,14 @@ export type IntegrationState = {
   maskedValues: Record<string, string>;
 };
 
+export type DiscoverableModelProvider = 'openai' | 'openrouter' | 'gemini';
+
+export type DiscoveredModel = {
+  id: string;
+  label: string;
+  contextWindow?: number;
+};
+
 function maskValue(raw: string | undefined): string {
   const value = (raw || '').trim();
   if (!value) return '';
@@ -186,4 +194,167 @@ export async function getProviderConfigValues(providerId: IntegrationProvider): 
   }
 
   return values;
+}
+
+const DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const modelDiscoveryCache = new Map<string, { expiresAt: number; models: DiscoveredModel[] }>();
+
+function isDiscoverableProvider(providerId: IntegrationProvider): providerId is DiscoverableModelProvider {
+  return providerId === 'openai' || providerId === 'openrouter' || providerId === 'gemini';
+}
+
+function cacheFingerprint(value: string): string {
+  const sanitized = String(value || '').trim();
+  if (!sanitized) return 'empty';
+  return `${sanitized.length}:${sanitized.slice(-4)}`;
+}
+
+function sortAndDedupeModels(models: DiscoveredModel[]): DiscoveredModel[] {
+  const byId = new Map<string, DiscoveredModel>();
+  models.forEach((model) => {
+    const id = String(model.id || '').trim();
+    if (!id) return;
+    byId.set(id, {
+      id,
+      label: String(model.label || id),
+      contextWindow: model.contextWindow,
+    });
+  });
+
+  return Array.from(byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+async function discoverOpenAIModels(apiKey: string): Promise<DiscoveredModel[]> {
+  const response = await fetch('https://api.openai.com/v1/models', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI Modelle konnten nicht geladen werden (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const models = Array.isArray(payload?.data) ? payload.data : [];
+  return sortAndDedupeModels(
+    models.map((model: any) => ({
+      id: String(model?.id || ''),
+      label: String(model?.id || ''),
+    }))
+  );
+}
+
+async function discoverOpenRouterModels(apiKey: string): Promise<DiscoveredModel[]> {
+  const response = await fetch('https://openrouter.ai/api/v1/models', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter Modelle konnten nicht geladen werden (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const models = Array.isArray(payload?.data) ? payload.data : [];
+
+  return sortAndDedupeModels(
+    models.map((model: any) => ({
+      id: String(model?.id || ''),
+      label: String(model?.name || model?.id || ''),
+      contextWindow: Number.isFinite(model?.context_length) ? Number(model.context_length) : undefined,
+    }))
+  );
+}
+
+async function discoverGeminiModels(apiKey: string): Promise<DiscoveredModel[]> {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini Modelle konnten nicht geladen werden (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const models = Array.isArray(payload?.models) ? payload.models : [];
+
+  const generationCapable = models.filter((model: any) => {
+    const methods = Array.isArray(model?.supportedGenerationMethods) ? model.supportedGenerationMethods : [];
+    return methods.includes('generateContent') || methods.includes('generateText');
+  });
+
+  return sortAndDedupeModels(
+    generationCapable.map((model: any) => {
+      const rawName = String(model?.name || '');
+      const modelId = rawName.startsWith('models/') ? rawName.slice('models/'.length) : rawName;
+      return {
+        id: modelId,
+        label: String(model?.displayName || modelId),
+        contextWindow: Number.isFinite(model?.inputTokenLimit) ? Number(model.inputTokenLimit) : undefined,
+      };
+    })
+  );
+}
+
+export async function discoverProviderModels(providerId: IntegrationProvider, forceRefresh = false): Promise<DiscoveredModel[]> {
+  if (!isDiscoverableProvider(providerId)) {
+    throw new Error('Für diesen Provider ist keine Modellabfrage verfügbar.');
+  }
+
+  const config = await getProviderConfigValues(providerId);
+
+  let cacheKey: string = providerId;
+  let models: DiscoveredModel[] = [];
+
+  if (providerId === 'openai') {
+    const apiKey = String(config.OPENAI_API_KEY || '').trim();
+    if (!apiKey) throw new Error('OpenAI API-Key fehlt.');
+    cacheKey = `${providerId}:${cacheFingerprint(apiKey)}`;
+
+    if (!forceRefresh) {
+      const cached = modelDiscoveryCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.models;
+    }
+
+    models = await discoverOpenAIModels(apiKey);
+  }
+
+  if (providerId === 'openrouter') {
+    const apiKey = String(config.OPENROUTER_API_KEY || '').trim();
+    if (!apiKey) throw new Error('OpenRouter API-Key fehlt.');
+    cacheKey = `${providerId}:${cacheFingerprint(apiKey)}`;
+
+    if (!forceRefresh) {
+      const cached = modelDiscoveryCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.models;
+    }
+
+    models = await discoverOpenRouterModels(apiKey);
+  }
+
+  if (providerId === 'gemini') {
+    const apiKey = String(config.GEMINI_API_KEY || '').trim();
+    if (!apiKey) throw new Error('Gemini API-Key fehlt.');
+    cacheKey = `${providerId}:${cacheFingerprint(apiKey)}`;
+
+    if (!forceRefresh) {
+      const cached = modelDiscoveryCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.models;
+    }
+
+    models = await discoverGeminiModels(apiKey);
+  }
+
+  const sanitizedModels = sortAndDedupeModels(models);
+  modelDiscoveryCache.set(cacheKey, {
+    expiresAt: Date.now() + DISCOVERY_CACHE_TTL_MS,
+    models: sanitizedModels,
+  });
+
+  return sanitizedModels;
 }
