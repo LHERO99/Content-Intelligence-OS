@@ -44,12 +44,18 @@ interface GroupedHistory {
 interface ContentHistoryTableProps {
   logs: ContentLog[];
   loading?: boolean;
+  initialUrl?: string;
 }
 
-export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps) {
+function normalizeUrl(value: string): string {
+  return value.trim().toLowerCase().replace(/\/$/, '');
+}
+
+export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistoryTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "lastModified", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [selectedGroup, setSelectedGroup] = React.useState<GroupedHistory | null>(null);
+  const hasAppliedInitialUrlRef = React.useRef(false);
 
   const groupedData = React.useMemo(() => {
     const groups: Record<string, GroupedHistory> = {};
@@ -253,6 +259,20 @@ export function ContentHistoryTable({ logs, loading }: ContentHistoryTableProps)
       columnFilters,
     },
   });
+
+  React.useEffect(() => {
+    if (!initialUrl || hasAppliedInitialUrlRef.current || groupedData.length === 0) return;
+
+    const normalizedInitial = normalizeUrl(initialUrl);
+    const match = groupedData.find((group) => normalizeUrl(group.url) === normalizedInitial);
+
+    if (match) {
+      setSelectedGroup(match);
+      table.getColumn('url')?.setFilterValue(initialUrl);
+    }
+
+    hasAppliedInitialUrlRef.current = true;
+  }, [groupedData, initialUrl, table]);
 
   if (loading) {
     return (

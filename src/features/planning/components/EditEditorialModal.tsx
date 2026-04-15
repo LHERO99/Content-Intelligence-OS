@@ -43,6 +43,7 @@ interface EditEditorialModalProps {
   onCommission: (id: string) => Promise<void>;
   isCommissioning: boolean;
   commissionedIds: Set<string>;
+  editorOptions: Array<{ id: string; name: string; email: string; role: 'Admin' | 'Editor' | 'Viewer' }>;
 }
 
 export function EditEditorialModal({ 
@@ -52,7 +53,8 @@ export function EditEditorialModal({
   onSave, 
   onCommission, 
   isCommissioning, 
-  commissionedIds 
+  commissionedIds,
+  editorOptions
 }: EditEditorialModalProps) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -213,14 +215,28 @@ export function EditEditorialModal({
                   <div className="space-y-2">
                     <Label htmlFor="edit-editor" className="text-xs font-bold">Editor</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="edit-editor"
-                        placeholder="Editor Name..."
-                        className="h-10 pl-10 border-primary/20 focus:ring-primary"
-                        value={formData.Assigned_Editor?.[0] || ""}
-                        onChange={(e) => setFormData({ ...formData, Assigned_Editor: e.target.value ? [e.target.value] : [] })}
-                      />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                      <Select
+                        value={formData.Assigned_Editor?.[0] || "__none__"}
+                        onValueChange={(value) => {
+                          setFormData({
+                            ...formData,
+                            Assigned_Editor: value === "__none__" ? [] : [value],
+                          });
+                        }}
+                      >
+                        <SelectTrigger id="edit-editor" className="h-10 pl-10 border-primary/20 focus:ring-primary">
+                          <SelectValue placeholder="Editor auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
+                          {editorOptions.map((editor) => (
+                            <SelectItem key={editor.id} value={editor.email}>
+                              {editor.name} ({editor.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="space-y-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ContentLog } from '@/lib/airtable-types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { History } from "lucide-react";
@@ -9,9 +10,11 @@ import { useAlerts } from "@/components/alerts-provider";
 
 // Remove the 'refreshing' state and the button
 export default function HistoryPage() {
+  const searchParams = useSearchParams();
   const [logs, setLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const { addAlert } = useAlerts();
+  const initialUrl = searchParams.get('url') || undefined;
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -52,7 +55,7 @@ export default function HistoryPage() {
           <CardDescription>Vollständige Liste aller Erstellungen und Optimierungen gruppiert nach URL.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ContentHistoryTable logs={logs} loading={loading} />
+          <ContentHistoryTable logs={logs} loading={loading} initialUrl={initialUrl} />
         </CardContent>
       </Card>
     </div>

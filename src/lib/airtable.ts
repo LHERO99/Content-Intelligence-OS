@@ -294,9 +294,15 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
         Editor: record.get('Editor') as string[],
       };
     } catch (innerError: any) {
-      if (innerError.statusCode === 422 && (innerError.message?.includes('Action_Type') || innerError.message?.includes('Target_URL'))) {
-        console.warn('[Airtable createContentLog] Computed field error, retrying without Action_Type/Target_URL');
+      if (
+        innerError.statusCode === 422 &&
+        (innerError.message?.includes('Action_Type') ||
+          innerError.message?.includes('Target_URL') ||
+          innerError.message?.includes('Page_Type'))
+      ) {
+        console.warn('[Airtable createContentLog] Computed field error, retrying without Action_Type/Target_URL/Page_Type');
         delete fields.Action_Type;
+        delete fields.Page_Type;
         const retryRecords = await base(TABLES.CONTENT_LOG).create([{ fields }]);
         if (retryRecords.length === 0) return null;
         const retryRecord = retryRecords[0];

@@ -43,6 +43,13 @@ interface EditorialPlanningProps {
   keywords: KeywordMap[];
 }
 
+interface EditorOption {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Editor' | 'Viewer';
+}
+
 export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const { addAlert } = useAlerts();
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "Priority_Score", desc: true }]);
@@ -58,6 +65,7 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [isCommissioning, setIsCommissioning] = React.useState<string | null>(null);
   const [commissionedIds, setCommissionedIds] = React.useState<Set<string>>(new Set());
+  const [editorOptions, setEditorOptions] = React.useState<EditorOption[]>([]);
 
   const plannedKeywords = React.useMemo(() => {
     // Show active planning workflow, but exclude Backlog and Published
@@ -73,6 +81,23 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       throw error;
     }
   };
+
+  React.useEffect(() => {
+    const loadEditors = async () => {
+      try {
+        const res = await fetch('/api/planning/editors');
+        if (!res.ok) {
+          throw new Error('Editoren konnten nicht geladen werden');
+        }
+        const users = await res.json();
+        setEditorOptions(Array.isArray(users) ? users : []);
+      } catch (error) {
+        setEditorOptions([]);
+      }
+    };
+
+    loadEditors();
+  }, []);
 
   const handleCommissionContent = async (id: string) => {
     try {
@@ -172,7 +197,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         onSave={updateData} 
         onCommission={handleCommissionContent} 
         isCommissioning={!!isCommissioning} 
-        commissionedIds={commissionedIds} 
+        commissionedIds={commissionedIds}
+        editorOptions={editorOptions}
       />
     </div>
   );
