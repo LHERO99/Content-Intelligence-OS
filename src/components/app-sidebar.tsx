@@ -55,6 +55,11 @@ const adminItems = [
     url: "/agent-workflow",
     icon: Workflow,
   },
+  {
+    title: "Agent-Workflow V2",
+    url: "/agent-workflow-v2",
+    icon: Workflow,
+  },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
