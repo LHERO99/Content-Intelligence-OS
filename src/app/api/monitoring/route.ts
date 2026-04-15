@@ -181,6 +181,14 @@ export async function GET() {
       const previous = urlPerf[1];
       const urlLogs = logs.filter(l => l.Target_URL === url).sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
 
+      const openOptimizationStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung']);
+      const hasOpenOptimizationRequest = keywords.some((keyword) =>
+        keyword.Target_URL === url &&
+        keyword.Action_Type === 'Optimierung' &&
+        keyword.Status &&
+        openOptimizationStatuses.has(keyword.Status)
+      );
+
       // Calculate individual URL savings
       let urlSavings = 0;
       const deliveryLogs = urlLogs.filter(l => {
@@ -220,6 +228,17 @@ export async function GET() {
         }
       });
       
+      const isPublished = urlLogs.some(l => {
+        const summary = String(l.Diff_Summary || '').toLowerCase();
+        return summary.includes('content angeliefert') || summary.includes('content veröffentlicht');
+      });
+
+      const optimizationEligibility = !isPublished
+        ? 'NO_PUBLISHED_CONTENT'
+        : hasOpenOptimizationRequest
+          ? 'ALREADY_IN_WORKFLOW'
+          : 'ELIGIBLE';
+
       return {
         url,
         clicks: latest?.GSC_Clicks || 0,
@@ -228,10 +247,9 @@ export async function GET() {
         viTrend: previous ? (latest?.Sistrix_VI || 0) - (previous?.Sistrix_VI || 0) : 0,
         lastAction: urlLogs[0]?.Action_Type || 'N/A',
         lastActionDate: urlLogs[0]?.Created_At || null,
-        isPublished: urlLogs.some(l => {
-          const summary = String(l.Diff_Summary || '').toLowerCase();
-          return summary.includes('content angeliefert') || summary.includes('content veröffentlicht');
-        }),
+        isPublished,
+        hasOpenOptimizationRequest,
+        optimizationEligibility,
         savings: urlSavings
       };
     });

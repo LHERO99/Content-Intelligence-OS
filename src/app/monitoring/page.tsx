@@ -62,9 +62,22 @@ interface MonitoringData {
     lastAction: string;
     lastActionDate: string | null;
     isPublished: boolean;
+    hasOpenOptimizationRequest: boolean;
+    optimizationEligibility: 'ELIGIBLE' | 'NO_PUBLISHED_CONTENT' | 'ALREADY_IN_WORKFLOW';
     savings: number;
   }>;
 }
+
+const ELIGIBILITY_MESSAGES = {
+  NO_PUBLISHED_CONTENT: {
+    title: "Optimierung noch nicht möglich",
+    description: "Diese URL kann erst zur Optimierung geplant werden, wenn bereits eine Content-Erstellung über das Tool stattgefunden hat und dieser Content als veröffentlicht markiert wurde.",
+  },
+  ALREADY_IN_WORKFLOW: {
+    title: "Optimierung bereits in Bearbeitung",
+    description: "Für diese URL läuft bereits eine beauftragte Optimierung in der Content-Planung. Eine erneute Beauftragung ist erst möglich, wenn der aktuelle Vorgang abgeschlossen und veröffentlicht wurde.",
+  },
+} as const;
 
 export default function MonitoringPage() {
   const router = useRouter();
@@ -108,17 +121,32 @@ export default function MonitoringPage() {
     const targetUrls = urlsToSubmit || selectedUrls;
     if (targetUrls.length === 0) return;
 
-    // Check if all target URLs have been created at least once
-    const invalidUrls = targetUrls.filter(url => {
-      const item = data?.urls.find(u => u.url === url);
-      return item && item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung";
-    });
+    const blockingEntries = targetUrls
+      .map((url) => data?.urls.find((entry) => entry.url === url))
+      .filter((entry): entry is NonNullable<typeof entry> => {
+        if (!entry) return false;
+        return entry.optimizationEligibility !== 'ELIGIBLE';
+      });
 
-    if (invalidUrls.length > 0) {
+    if (blockingEntries.length > 0) {
+      const firstBlocked = blockingEntries[0];
+      const state = firstBlocked.optimizationEligibility;
+      const message = state === 'ALREADY_IN_WORKFLOW' ? ELIGIBILITY_MESSAGES.ALREADY_IN_WORKFLOW : ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT;
+
       addAlert({ 
         type: "warning", 
-        message: "Optimierung nicht möglich",
-        description: "Eine Optimierung kann erst geplant werden, wenn für die URL bereits Content erstellt UND veröffentlicht wurde."
+        message: message.title,
+        description: (
+          <span>
+            {message.description}{" "}
+            <button
+              onClick={() => router.push(`/history?url=${encodeURIComponent(firstBlocked.url)}`)}
+              className="underline hover:no-underline font-medium"
+            >
+              Zur Content-Historie
+            </button>
+          </span>
+        ) as any,
       });
       return;
     }
@@ -165,11 +193,20 @@ export default function MonitoringPage() {
 
   const isOptimizable = (url: string) => {
     const item = data?.urls.find(u => u.url === url);
-    return item && (item.lastAction === "Erstellung" || item.lastAction === "Optimierung") && item.isPublished;
+    return item?.optimizationEligibility === 'ELIGIBLE';
+  };
+
+  const getEligibilityState = (url: string): 'NO_PUBLISHED_CONTENT' | 'ALREADY_IN_WORKFLOW' | null => {
+    const item = data?.urls.find((entry) => entry.url === url);
+    if (!item || item.optimizationEligibility === 'ELIGIBLE') return null;
+    if (item.optimizationEligibility === 'ALREADY_IN_WORKFLOW') return 'ALREADY_IN_WORKFLOW';
+    return 'NO_PUBLISHED_CONTENT';
   };
 
   if (viewingUrl) {
     const detailOptimizable = isOptimizable(viewingUrl);
+    const eligibilityState = getEligibilityState(viewingUrl);
+    const eligibilityMessage = eligibilityState ? ELIGIBILITY_MESSAGES[eligibilityState] : null;
     return (
       <div className="space-y-6">
         <Button 
@@ -195,9 +232,15 @@ export default function MonitoringPage() {
         {!detailOptimizable && (
           <Alert className="bg-amber-50 border-amber-200 text-amber-900">
             <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertTitle>Optimierung noch nicht möglich</AlertTitle>
+            <AlertTitle>{eligibilityMessage?.title || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.title}</AlertTitle>
             <AlertDescription>
-              Diese URL kann erst zur Optimierung geplant werden, wenn bereits eine Content-Erstellung über das Tool stattgefunden hat und dieser Content als veröffentlicht markiert wurde.
+              {eligibilityMessage?.description || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.description}{" "}
+              <button
+                onClick={() => router.push(`/history?url=${encodeURIComponent(viewingUrl)}`)}
+                className="underline hover:no-underline font-medium"
+              >
+                Zur Content-Historie
+              </button>
             </AlertDescription>
           </Alert>
         )}
@@ -467,7 +510,7 @@ export default function MonitoringPage() {
                                   if (checked) setSelectedUrls(prev => [...prev, item.url]);
                                   else setSelectedUrls(prev => prev.filter(u => u !== item.url));
                                 }}
-                                disabled={!item.isPublished || (item.lastAction !== "Erstellung" && item.lastAction !== "Optimierung")}
+                                disabled={item.optimizationEligibility !== 'ELIGIBLE'}
                               />
                             </TableCell>
                             <TableCell className="max-w-md">
