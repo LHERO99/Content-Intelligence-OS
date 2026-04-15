@@ -3,7 +3,7 @@ export type TenantId = string;
 export type WorkflowMode = 'default' | 'custom';
 export type WorkflowState = 'draft' | 'published' | 'archived';
 
-export type AgentStepType = 'orchestrator' | 'research' | 'analysis' | 'briefing' | 'draft' | 'review';
+export type AgentStepType = 'orchestrator' | 'research' | 'analysis' | 'briefing' | 'draft' | 'review' | 'custom';
 export type AgentProvider = 'openrouter' | 'gemini' | 'vertex_legal';
 
 export type RunStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';

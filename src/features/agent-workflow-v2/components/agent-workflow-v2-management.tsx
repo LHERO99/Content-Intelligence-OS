@@ -19,6 +19,7 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  useStore,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -58,10 +59,11 @@ import {
   Sparkles,
   SquareTerminal,
   Trash2,
+  X,
   Wand2,
 } from "lucide-react";
 
-type AgentStepType = "orchestrator" | "research" | "analysis" | "briefing" | "draft" | "review";
+type AgentStepType = "orchestrator" | "research" | "analysis" | "briefing" | "draft" | "review" | "custom";
 type AgentProvider = "openrouter" | "gemini" | "vertex_legal";
 type RunState = "idle" | "running" | "success" | "failed";
 
@@ -152,7 +154,16 @@ type AgentNodeData = {
   isFocused?: boolean;
 };
 
-const STEP_TYPES: AgentStepType[] = ["research", "analysis", "briefing", "draft", "review"];
+const STEP_TYPES: AgentStepType[] = ["research", "analysis", "briefing", "draft", "review", "custom"];
+
+const TOOLBOX_NODE_TYPES: Array<{ type: AgentStepType; label: string }> = [
+  { type: "research", label: "Research" },
+  { type: "analysis", label: "Analysis" },
+  { type: "briefing", label: "Briefing-Creator" },
+  { type: "draft", label: "Conent-Creator" },
+  { type: "review", label: "Reviewer" },
+  { type: "custom", label: "Custom" },
+];
 
 const NODE_STYLE_BY_TYPE: Record<AgentStepType, { color: string; glow: string; icon: "trigger" | "agent" | "tool" }> = {
   orchestrator: { color: "#8B5CF6", glow: "rgba(139,92,246,0.35)", icon: "trigger" },
@@ -161,6 +172,7 @@ const NODE_STYLE_BY_TYPE: Record<AgentStepType, { color: string; glow: string; i
   briefing: { color: "#14B8A6", glow: "rgba(20,184,166,0.35)", icon: "tool" },
   draft: { color: "#F59E0B", glow: "rgba(245,158,11,0.35)", icon: "trigger" },
   review: { color: "#22C55E", glow: "rgba(34,197,94,0.35)", icon: "tool" },
+  custom: { color: "#6366F1", glow: "rgba(99,102,241,0.35)", icon: "agent" },
 };
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
@@ -281,17 +293,17 @@ function NodePalette({ onAddNode }: { onAddNode: (type: AgentStepType) => void }
         <CardDescription className="text-slate-400">Neue Agenten-Nodes hinzufügen</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {STEP_TYPES.map((type) => (
+        {TOOLBOX_NODE_TYPES.map((entry) => (
           <Button
-            key={type}
+            key={entry.type}
             draggable
-            onDragStart={(event) => handleDragStart(event, type)}
+            onDragStart={(event) => handleDragStart(event, entry.type)}
             variant="outline"
             className="w-full justify-start border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-            onClick={() => onAddNode(type)}
+            onClick={() => onAddNode(entry.type)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            {type}
+            {entry.label}
           </Button>
         ))}
       </CardContent>
@@ -309,6 +321,7 @@ function FlowCanvas({
   onNodeContextMenu,
   onCanvasInteraction,
   onDropNode,
+  onEdgeClick,
 }: {
   nodes: Node<AgentNodeData>[];
   edges: BezierDataEdge[];
@@ -319,6 +332,7 @@ function FlowCanvas({
   onNodeContextMenu: (nodeId: string, position: { x: number; y: number }) => void;
   onCanvasInteraction: () => void;
   onDropNode: (type: AgentStepType, position: { x: number; y: number }) => void;
+  onEdgeClick: (edgeId: string, position: { x: number; y: number }) => void;
 }) {
   const reactFlowInstance = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -359,6 +373,10 @@ function FlowCanvas({
         onNodeContextMenu={(event, node) => {
           event.preventDefault();
           onNodeContextMenu(node.id, { x: event.clientX, y: event.clientY });
+        }}
+        onEdgeClick={(event, edge) => {
+          event.preventDefault();
+          onEdgeClick(edge.id, { x: event.clientX, y: event.clientY });
         }}
         onPaneClick={onCanvasInteraction}
         fitView
@@ -450,6 +468,7 @@ export function AgentWorkflowV2Management() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
+  const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
 
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -724,6 +743,12 @@ export function AgentWorkflowV2Management() {
   }, []);
 
   useEffect(() => {
+    const closeEdgeMenu = () => setEdgeMenu(null);
+    window.addEventListener("click", closeEdgeMenu);
+    return () => window.removeEventListener("click", closeEdgeMenu);
+  }, []);
+
+  useEffect(() => {
     if (!activeWorkflowId) return;
     const workflow = workflows.find((entry) => entry.id === activeWorkflowId);
     const version = workflow?.draftVersion || workflow?.activeVersion;
@@ -830,6 +855,60 @@ export function AgentWorkflowV2Management() {
       }));
 
       return [...alignedParent, ...alignedOthers];
+    });
+  };
+
+  const alignNodesPyramid = () => {
+    setNodes((prev) => {
+      if (prev.length === 0) return prev;
+
+      const parentNode = prev.find((node) => node.data.isParent || node.data.type === "orchestrator");
+      const otherNodes = prev
+        .filter((node) => node.id !== parentNode?.id)
+        .sort((a, b) => {
+          if (a.position.y !== b.position.y) return a.position.y - b.position.y;
+          return a.position.x - b.position.x;
+        });
+
+      const baseX = parentNode?.position.x ?? 320;
+      const baseY = 80;
+      const levelGapY = 190;
+      const horizontalGap = 260;
+
+      const levels: Node<AgentNodeData>[][] = [];
+      let cursor = 0;
+      let width = 2;
+
+      while (cursor < otherNodes.length) {
+        levels.push(otherNodes.slice(cursor, cursor + width));
+        cursor += width;
+        width += 1;
+      }
+
+      const aligned: Node<AgentNodeData>[] = [];
+
+      if (parentNode) {
+        aligned.push({
+          ...parentNode,
+          position: { x: baseX, y: baseY },
+        });
+      }
+
+      levels.forEach((levelNodes, levelIndex) => {
+        const totalWidth = (levelNodes.length - 1) * horizontalGap;
+        const startX = baseX - totalWidth / 2;
+        levelNodes.forEach((node, idx) => {
+          aligned.push({
+            ...node,
+            position: {
+              x: startX + idx * horizontalGap,
+              y: baseY + levelGapY * (levelIndex + 1),
+            },
+          });
+        });
+      });
+
+      return aligned;
     });
   };
 
@@ -1079,6 +1158,9 @@ export function AgentWorkflowV2Management() {
                 <Button variant="outline" onClick={alignNodesVertical} disabled={nodes.length < 2}>
                   Vertikal ausrichten
                 </Button>
+                <Button variant="outline" onClick={alignNodesPyramid} disabled={nodes.length < 3}>
+                  Pyramide ausrichten
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -1097,7 +1179,13 @@ export function AgentWorkflowV2Management() {
               setSelectedNodeId(nodeId);
               setContextMenu({ nodeId, ...position });
             }}
-            onCanvasInteraction={() => setContextMenu(null)}
+            onEdgeClick={(edgeId, position) => {
+              setEdgeMenu({ edgeId, ...position });
+            }}
+            onCanvasInteraction={() => {
+              setContextMenu(null);
+              setEdgeMenu(null);
+            }}
             onDropNode={addNode}
           />
         </div>
@@ -1137,6 +1225,25 @@ export function AgentWorkflowV2Management() {
             >
               <Trash2 className="h-4 w-4" />
               Löschen
+            </button>
+          </div>
+        )}
+
+        {edgeMenu && (
+          <div
+            className="fixed z-[120] min-w-[180px] rounded-lg border border-white/15 bg-[#0f172a] shadow-2xl p-1"
+            style={{ top: edgeMenu.y, left: edgeMenu.x }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm text-red-200 hover:bg-red-500/15"
+              onClick={() => {
+                setEdges((prev) => prev.filter((edge) => edge.id !== edgeMenu.edgeId));
+                setEdgeMenu(null);
+              }}
+            >
+              <X className="h-4 w-4" />
+              Verbindung löschen
             </button>
           </div>
         )}
