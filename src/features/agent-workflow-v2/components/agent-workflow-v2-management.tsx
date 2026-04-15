@@ -239,6 +239,7 @@ function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
 type BezierDataEdge = Edge<{ label?: string; streaming?: boolean }>;
 
 function StreamingBezierEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data }: any) {
+  const { setEdges } = useReactFlow();
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -260,12 +261,24 @@ function StreamingBezierEdge({ id, sourceX, sourceY, targetX, targetY, sourcePos
       />
       <EdgeLabelRenderer>
         <div
-          className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded bg-[#0f172a] border border-white/10 px-1.5 py-0.5 text-[10px] text-slate-200"
+          className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex items-center gap-1 rounded bg-[#0f172a] border border-white/10 px-1.5 py-0.5 text-[10px] text-slate-200"
           style={{
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
           }}
         >
-          {data?.label || "message"}
+          <span>{data?.label || "message"}</span>
+          <button
+            type="button"
+            className="inline-flex h-4 w-4 items-center justify-center rounded hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              setEdges((prev) => prev.filter((edge) => edge.id !== id));
+            }}
+            aria-label="Verbindung löschen"
+            title="Verbindung löschen"
+          >
+            <X className="h-3 w-3" />
+          </button>
         </div>
       </EdgeLabelRenderer>
     </>
@@ -280,7 +293,7 @@ const edgeTypes = {
   streamingBezier: StreamingBezierEdge,
 };
 
-function NodePalette({ onAddNode }: { onAddNode: (type: AgentStepType) => void }) {
+function NodePalette() {
   const handleDragStart = (event: React.DragEvent, type: AgentStepType) => {
     event.dataTransfer.setData("application/agent-node-type", type);
     event.dataTransfer.effectAllowed = "move";
@@ -300,7 +313,9 @@ function NodePalette({ onAddNode }: { onAddNode: (type: AgentStepType) => void }
             onDragStart={(event) => handleDragStart(event, entry.type)}
             variant="outline"
             className="w-full justify-start border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-            onClick={() => onAddNode(entry.type)}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("agent-builder:add-node", { detail: { type: entry.type } }));
+            }}
           >
             <Plus className="h-4 w-4 mr-2" />
             {entry.label}
@@ -321,7 +336,8 @@ function FlowCanvas({
   onNodeContextMenu,
   onCanvasInteraction,
   onDropNode,
-  onEdgeClick,
+  onAddNodeInView,
+  onSelectionChangeEdges,
 }: {
   nodes: Node<AgentNodeData>[];
   edges: BezierDataEdge[];
@@ -332,7 +348,8 @@ function FlowCanvas({
   onNodeContextMenu: (nodeId: string, position: { x: number; y: number }) => void;
   onCanvasInteraction: () => void;
   onDropNode: (type: AgentStepType, position: { x: number; y: number }) => void;
-  onEdgeClick: (edgeId: string, position: { x: number; y: number }) => void;
+  onAddNodeInView: (type: AgentStepType, position: { x: number; y: number }) => void;
+  onSelectionChangeEdges: (edgeIds: string[]) => void;
 }) {
   const reactFlowInstance = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -342,6 +359,17 @@ function FlowCanvas({
     event.dataTransfer.dropEffect = "move";
   }, []);
 
+  const getVisibleCenter = useCallback(() => {
+    if (!wrapperRef.current) {
+      return reactFlowInstance.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    }
+    const bounds = wrapperRef.current.getBoundingClientRect();
+    return reactFlowInstance.screenToFlowPosition({
+      x: bounds.left + bounds.width / 2,
+      y: bounds.top + bounds.height / 2,
+    });
+  }, [reactFlowInstance]);
+
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -350,14 +378,27 @@ function FlowCanvas({
 
       const bounds = wrapperRef.current.getBoundingClientRect();
       const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
+        x: event.clientX,
+        y: event.clientY,
       });
 
       onDropNode(type, position);
     },
     [onDropNode, reactFlowInstance]
   );
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const customEvent = event as CustomEvent<{ type: AgentStepType }>;
+      const type = customEvent?.detail?.type;
+      if (!type) return;
+      const center = getVisibleCenter();
+      onAddNodeInView(type, center);
+    };
+
+    window.addEventListener("agent-builder:add-node", listener as EventListener);
+    return () => window.removeEventListener("agent-builder:add-node", listener as EventListener);
+  }, [getVisibleCenter, onAddNodeInView]);
 
   return (
     <div ref={wrapperRef} className="h-[72vh] rounded-2xl border border-white/10 bg-[#0a101d] overflow-hidden" onDragOver={onDragOver} onDrop={onDrop}>
@@ -374,11 +415,8 @@ function FlowCanvas({
           event.preventDefault();
           onNodeContextMenu(node.id, { x: event.clientX, y: event.clientY });
         }}
-        onEdgeClick={(event, edge) => {
-          event.preventDefault();
-          onEdgeClick(edge.id, { x: event.clientX, y: event.clientY });
-        }}
         onPaneClick={onCanvasInteraction}
+        onSelectionChange={({ edges: selectedEdges }) => onSelectionChangeEdges(selectedEdges.map((edge) => edge.id))}
         fitView
         snapToGrid
         snapGrid={[16, 16]}
@@ -468,7 +506,7 @@ export function AgentWorkflowV2Management() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
-  const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
 
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -743,10 +781,21 @@ export function AgentWorkflowV2Management() {
   }, []);
 
   useEffect(() => {
-    const closeEdgeMenu = () => setEdgeMenu(null);
-    window.addEventListener("click", closeEdgeMenu);
-    return () => window.removeEventListener("click", closeEdgeMenu);
-  }, []);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Backspace" && event.key !== "Delete") return;
+      if (selectedEdgeIds.length === 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      event.preventDefault();
+      setEdges((prev) => prev.filter((edge) => !selectedEdgeIds.includes(edge.id)));
+      setSelectedEdgeIds([]);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedEdgeIds]);
 
   useEffect(() => {
     if (!activeWorkflowId) return;
@@ -827,89 +876,6 @@ export function AgentWorkflowV2Management() {
       setSelectedNodeId(null);
       setDrawerOpen(false);
     }
-  };
-
-  const alignNodesVertical = () => {
-    setNodes((prev) => {
-      if (prev.length === 0) return prev;
-
-      const parentNode = prev.find((node) => node.data.isParent || node.data.type === "orchestrator");
-      const otherNodes = prev
-        .filter((node) => node.id !== parentNode?.id)
-        .sort((a, b) => {
-          if (a.position.y !== b.position.y) return a.position.y - b.position.y;
-          return a.position.x - b.position.x;
-        });
-
-      const baseX = parentNode?.position.x ?? 320;
-      const baseY = 80;
-      const gapY = 180;
-
-      const alignedParent = parentNode
-        ? [{ ...parentNode, position: { x: baseX, y: baseY } }]
-        : [];
-
-      const alignedOthers = otherNodes.map((node, index) => ({
-        ...node,
-        position: { x: baseX, y: baseY + gapY * (index + 1) },
-      }));
-
-      return [...alignedParent, ...alignedOthers];
-    });
-  };
-
-  const alignNodesPyramid = () => {
-    setNodes((prev) => {
-      if (prev.length === 0) return prev;
-
-      const parentNode = prev.find((node) => node.data.isParent || node.data.type === "orchestrator");
-      const otherNodes = prev
-        .filter((node) => node.id !== parentNode?.id)
-        .sort((a, b) => {
-          if (a.position.y !== b.position.y) return a.position.y - b.position.y;
-          return a.position.x - b.position.x;
-        });
-
-      const baseX = parentNode?.position.x ?? 320;
-      const baseY = 80;
-      const levelGapY = 190;
-      const horizontalGap = 260;
-
-      const levels: Node<AgentNodeData>[][] = [];
-      let cursor = 0;
-      let width = 2;
-
-      while (cursor < otherNodes.length) {
-        levels.push(otherNodes.slice(cursor, cursor + width));
-        cursor += width;
-        width += 1;
-      }
-
-      const aligned: Node<AgentNodeData>[] = [];
-
-      if (parentNode) {
-        aligned.push({
-          ...parentNode,
-          position: { x: baseX, y: baseY },
-        });
-      }
-
-      levels.forEach((levelNodes, levelIndex) => {
-        const totalWidth = (levelNodes.length - 1) * horizontalGap;
-        const startX = baseX - totalWidth / 2;
-        levelNodes.forEach((node, idx) => {
-          aligned.push({
-            ...node,
-            position: {
-              x: startX + idx * horizontalGap,
-              y: baseY + levelGapY * (levelIndex + 1),
-            },
-          });
-        });
-      });
-
-      return aligned;
-    });
   };
 
   const updateSelectedNode = (patcher: (node: Node<AgentNodeData>) => Node<AgentNodeData>) => {
@@ -1135,7 +1101,7 @@ export function AgentWorkflowV2Management() {
 
         <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
           <div className="space-y-4">
-            <NodePalette onAddNode={addNode} />
+            <NodePalette />
 
             <Card>
               <CardHeader>
@@ -1155,12 +1121,6 @@ export function AgentWorkflowV2Management() {
                   {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                   Run starten
                 </Button>
-                <Button variant="outline" onClick={alignNodesVertical} disabled={nodes.length < 2}>
-                  Vertikal ausrichten
-                </Button>
-                <Button variant="outline" onClick={alignNodesPyramid} disabled={nodes.length < 3}>
-                  Pyramide ausrichten
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -1179,14 +1139,10 @@ export function AgentWorkflowV2Management() {
               setSelectedNodeId(nodeId);
               setContextMenu({ nodeId, ...position });
             }}
-            onEdgeClick={(edgeId, position) => {
-              setEdgeMenu({ edgeId, ...position });
-            }}
-            onCanvasInteraction={() => {
-              setContextMenu(null);
-              setEdgeMenu(null);
-            }}
+            onCanvasInteraction={() => setContextMenu(null)}
             onDropNode={addNode}
+            onAddNodeInView={addNode}
+            onSelectionChangeEdges={setSelectedEdgeIds}
           />
         </div>
 
@@ -1225,25 +1181,6 @@ export function AgentWorkflowV2Management() {
             >
               <Trash2 className="h-4 w-4" />
               Löschen
-            </button>
-          </div>
-        )}
-
-        {edgeMenu && (
-          <div
-            className="fixed z-[120] min-w-[180px] rounded-lg border border-white/15 bg-[#0f172a] shadow-2xl p-1"
-            style={{ top: edgeMenu.y, left: edgeMenu.x }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm text-red-200 hover:bg-red-500/15"
-              onClick={() => {
-                setEdges((prev) => prev.filter((edge) => edge.id !== edgeMenu.edgeId));
-                setEdgeMenu(null);
-              }}
-            >
-              <X className="h-4 w-4" />
-              Verbindung löschen
             </button>
           </div>
         )}
@@ -1364,26 +1301,30 @@ export function AgentWorkflowV2Management() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Typ</Label>
-                    <Select
-                      value={selectedNodeRecord.type}
-                      onValueChange={(value) =>
-                        updateSelectedNode((node) => ({
-                          ...node,
-                          data: {
-                            ...node.data,
-                            type: value as AgentStepType,
-                            icon: NODE_STYLE_BY_TYPE[value as AgentStepType].icon,
-                          },
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {STEP_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {selectedNodeRecord.isParent ? (
+                      <Input value="orchestrator" disabled className="bg-[#0f172a] border-white/10 text-slate-300" />
+                    ) : (
+                      <Select
+                        value={selectedNodeRecord.type}
+                        onValueChange={(value) =>
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: {
+                              ...node.data,
+                              type: value as AgentStepType,
+                              icon: NODE_STYLE_BY_TYPE[value as AgentStepType].icon,
+                            },
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {STEP_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Provider</Label>
