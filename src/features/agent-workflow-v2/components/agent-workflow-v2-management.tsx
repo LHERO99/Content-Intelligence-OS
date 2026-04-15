@@ -1,6 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  addEdge,
+  Background,
+  BackgroundVariant,
+  BaseEdge,
+  Connection,
+  Controls,
+  Edge,
+  EdgeLabelRenderer,
+  getBezierPath,
+  Handle,
+  MarkerType,
+  MiniMap,
+  Node,
+  NodeProps,
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,12 +33,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Loader2, Play, Save, Sparkles, Workflow, Plus, MessageSquare, Plug2, Send } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Bot,
+  Brain,
+  CircleDot,
+  GitBranch,
+  Loader2,
+  MessageSquare,
+  Play,
+  Plus,
+  Save,
+  Send,
+  Sparkles,
+  SquareTerminal,
+  Wand2,
+} from "lucide-react";
 
 type AgentStepType = "research" | "analysis" | "briefing" | "draft" | "review";
 type AgentProvider = "openrouter" | "gemini";
+type RunState = "idle" | "running" | "success" | "failed";
 
-type WorkflowNode = {
+type WorkflowNodeRecord = {
   id: string;
   name: string;
   type: AgentStepType;
@@ -31,7 +77,7 @@ type WorkflowNode = {
   };
 };
 
-type WorkflowEdge = {
+type WorkflowEdgeRecord = {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
@@ -41,8 +87,8 @@ type WorkflowEdge = {
 
 type WorkflowVersion = {
   id: string;
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
+  nodes: WorkflowNodeRecord[];
+  edges: WorkflowEdgeRecord[];
 };
 
 type WorkflowRecord = {
@@ -55,17 +101,6 @@ type WorkflowRecord = {
   activeVersion?: WorkflowVersion;
 };
 
-type RunStep = {
-  id: string;
-  nodeName: string;
-  nodeType: AgentStepType;
-  status: "pending" | "running" | "success" | "failed" | "skipped";
-  provider: AgentProvider;
-  model: string;
-  durationMs?: number;
-  error?: string;
-};
-
 type RunRecord = {
   id: string;
   status: "pending" | "running" | "success" | "failed" | "cancelled";
@@ -73,16 +108,50 @@ type RunRecord = {
   durationMs?: number;
 };
 
+type RunStep = {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  nodeType: AgentStepType;
+  status: "pending" | "running" | "success" | "failed" | "skipped";
+  provider: AgentProvider;
+  model: string;
+  output?: Record<string, unknown>;
+  durationMs?: number;
+  error?: string;
+};
+
 type RunMessage = {
   id: string;
+  fromNodeId: string;
   fromNodeName: string;
+  toNodeId: string;
   toNodeName: string;
   channel: string;
   targetInputKey: string;
+  payload?: Record<string, unknown>;
   createdAt: string;
 };
 
+type AgentNodeData = {
+  label: string;
+  type: AgentStepType;
+  status: RunState;
+  outputPreview?: string;
+  provider: AgentProvider;
+  icon: "trigger" | "agent" | "tool";
+  isFocused?: boolean;
+};
+
 const STEP_TYPES: AgentStepType[] = ["research", "analysis", "briefing", "draft", "review"];
+
+const NODE_STYLE_BY_TYPE: Record<AgentStepType, { color: string; glow: string; icon: "trigger" | "agent" | "tool" }> = {
+  research: { color: "#3B82F6", glow: "rgba(59,130,246,0.35)", icon: "agent" },
+  analysis: { color: "#2563EB", glow: "rgba(37,99,235,0.35)", icon: "agent" },
+  briefing: { color: "#14B8A6", glow: "rgba(20,184,166,0.35)", icon: "tool" },
+  draft: { color: "#F59E0B", glow: "rgba(245,158,11,0.35)", icon: "trigger" },
+  review: { color: "#22C55E", glow: "rgba(34,197,94,0.35)", icon: "tool" },
+};
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   if (status === "success") return "default";
@@ -91,11 +160,258 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "secondary";
 }
 
+function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
+  const style = NODE_STYLE_BY_TYPE[data.type];
+  const statusColor =
+    data.status === "success"
+      ? "#22C55E"
+      : data.status === "failed"
+        ? "#EF4444"
+        : data.status === "running"
+          ? "#F59E0B"
+          : "#94A3B8";
+
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-[#111828]/95 backdrop-blur-sm min-w-[240px] p-3 text-white shadow-2xl"
+      style={{
+        boxShadow: selected ? `0 0 0 1px ${style.color}, 0 0 24px ${style.glow}` : undefined,
+      }}
+    >
+      <Handle type="target" position={Position.Left} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${style.color}33` }}>
+            {data.icon === "trigger" ? (
+              <Wand2 className="h-4 w-4" style={{ color: style.color }} />
+            ) : data.icon === "tool" ? (
+              <SquareTerminal className="h-4 w-4" style={{ color: style.color }} />
+            ) : (
+              <Brain className="h-4 w-4" style={{ color: style.color }} />
+            )}
+          </div>
+          <div>
+            <div className="text-sm font-semibold leading-tight">{data.label}</div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">{data.type}</div>
+          </div>
+        </div>
+        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
+      </div>
+
+      <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[10px] text-slate-300">
+        <div className="font-semibold text-slate-200">Last Output</div>
+        <div className="truncate">{data.outputPreview || "Noch kein Run"}</div>
+      </div>
+
+      <Handle type="source" position={Position.Right} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
+    </div>
+  );
+}
+
+type BezierDataEdge = Edge<{ label?: string; streaming?: boolean }>;
+
+function StreamingBezierEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data }: any) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+  });
+
+  const isStreaming = Boolean(data?.streaming);
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        markerEnd={markerEnd}
+        className={isStreaming ? "agentic-edge-streaming" : "agentic-edge"}
+      />
+      <EdgeLabelRenderer>
+        <div
+          className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded bg-[#0f172a] border border-white/10 px-1.5 py-0.5 text-[10px] text-slate-200"
+          style={{
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+          }}
+        >
+          {data?.label || "message"}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+const nodeTypes = {
+  agentNode: AgentNodeCard,
+};
+
+const edgeTypes = {
+  streamingBezier: StreamingBezierEdge,
+};
+
+function NodePalette({ onAddNode }: { onAddNode: (type: AgentStepType) => void }) {
+  const handleDragStart = (event: React.DragEvent, type: AgentStepType) => {
+    event.dataTransfer.setData("application/agent-node-type", type);
+    event.dataTransfer.effectAllowed = "move";
+  };
+
+  return (
+    <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+      <CardHeader>
+        <CardTitle className="text-base">Toolbox</CardTitle>
+        <CardDescription className="text-slate-400">Neue Agenten-Nodes hinzufügen</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {STEP_TYPES.map((type) => (
+          <Button
+            key={type}
+            draggable
+            onDragStart={(event) => handleDragStart(event, type)}
+            variant="outline"
+            className="w-full justify-start border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
+            onClick={() => onAddNode(type)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {type}
+          </Button>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FlowCanvas({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
+  onNodeClick,
+  onDropNode,
+}: {
+  nodes: Node<AgentNodeData>[];
+  edges: BezierDataEdge[];
+  onNodesChange: any;
+  onEdgesChange: any;
+  onConnect: (connection: Connection) => void;
+  onNodeClick: (nodeId: string) => void;
+  onDropNode: (type: AgentStepType, position: { x: number; y: number }) => void;
+}) {
+  const reactFlowInstance = useReactFlow();
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const type = event.dataTransfer.getData("application/agent-node-type") as AgentStepType;
+      if (!type || !wrapperRef.current) return;
+
+      const bounds = wrapperRef.current.getBoundingClientRect();
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+      });
+
+      onDropNode(type, position);
+    },
+    [onDropNode, reactFlowInstance]
+  );
+
+  return (
+    <div ref={wrapperRef} className="h-[72vh] rounded-2xl border border-white/10 bg-[#0a101d] overflow-hidden" onDragOver={onDragOver} onDrop={onDrop}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={(_, node) => onNodeClick(node.id)}
+        fitView
+        snapToGrid
+        snapGrid={[16, 16]}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
+        connectionLineStyle={{ stroke: "#60a5fa", strokeWidth: 2 }}
+      >
+        <MiniMap pannable zoomable nodeColor={() => "#1e293b"} className="!bg-[#0f172a] !border !border-white/10" />
+        <Controls className="!bg-[#0f172a] !border !border-white/10 !text-slate-200" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.4} color="rgba(148,163,184,0.35)" />
+      </ReactFlow>
+    </div>
+  );
+}
+
+function DataMappingBuilder({
+  outputSchema,
+  inputMappings,
+  onAssign,
+}: {
+  outputSchema: string[];
+  inputMappings: Array<{ key: string; value: string }>;
+  onAssign: (inputKey: string, value: string) => void;
+}) {
+  const onDragStart = (event: React.DragEvent, pill: string) => {
+    event.dataTransfer.setData("application/mapping-pill", pill);
+    event.dataTransfer.effectAllowed = "copy";
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-slate-300">Output Schema</div>
+        <div className="space-y-1.5">
+          {outputSchema.map((pill) => (
+            <button
+              key={pill}
+              draggable
+              onDragStart={(event) => onDragStart(event, pill)}
+              className="w-full rounded-md border border-blue-500/40 bg-blue-500/10 px-2 py-1 text-left text-[11px] text-blue-100 cursor-grab active:cursor-grabbing"
+            >
+              {pill}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-slate-300">Input Mapping</div>
+        <div className="space-y-1.5">
+          {inputMappings.map((mapping) => (
+            <div
+              key={mapping.key}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                const pill = event.dataTransfer.getData("application/mapping-pill");
+                if (!pill) return;
+                onAssign(mapping.key, pill);
+              }}
+              className="rounded-md border border-white/15 bg-black/20 px-2 py-1.5 text-[11px] text-slate-200"
+            >
+              <div className="font-semibold text-[10px] uppercase tracking-wider text-slate-400">{mapping.key}</div>
+              <div className="mt-0.5">{mapping.value || "Drop value here"}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AgentWorkflowV2Management() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [running, setRunning] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -103,28 +419,98 @@ export function AgentWorkflowV2Management() {
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [newWorkflowName, setNewWorkflowName] = useState("");
 
-  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
-  const [edges, setEdges] = useState<WorkflowEdge[]>([]);
+  const [runStateByNode, setRunStateByNode] = useState<Record<string, RunState>>({});
+  const [outputPreviewByNode, setOutputPreviewByNode] = useState<Record<string, string>>({});
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
 
-  const activeWorkflow = useMemo(() => workflows.find((workflow) => workflow.id === activeWorkflowId) || null, [workflows, activeWorkflowId]);
-  const selectedNode = useMemo(() => nodes.find((node) => node.id === selectedNodeId) || null, [nodes, selectedNodeId]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentNodeData>>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<BezierDataEdge>([]);
 
-  const nodeLabelMap = useMemo(() => {
-    const map = new Map<string, string>();
-    nodes.forEach((node) => map.set(node.id, node.name));
+  const nodeRecordMap = useMemo(() => {
+    const map = new Map<string, WorkflowNodeRecord>();
+    nodes.forEach((node) => {
+      map.set(node.id, {
+        id: node.id,
+        name: node.data.label,
+        type: node.data.type,
+        position: 0,
+        x: node.position.x,
+        y: node.position.y,
+        config: {
+          instruction: (node.data as any).instruction || "",
+          provider: node.data.provider,
+          model: (node.data as any).model || "openai/gpt-4o-mini",
+          timeoutMs: Number((node.data as any).timeoutMs || 45000),
+          retries: Number((node.data as any).retries || 1),
+          enabled: Boolean((node.data as any).enabled ?? true),
+        },
+      });
+    });
     return map;
   }, [nodes]);
 
+  const selectedNodeRecord = selectedNodeId ? nodeRecordMap.get(selectedNodeId) || null : null;
+
+  const toFlowNodes = (workflowNodes: WorkflowNodeRecord[]): Node<AgentNodeData>[] =>
+    workflowNodes
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((node) => ({
+        id: node.id,
+        type: "agentNode",
+        position: { x: node.x, y: node.y },
+        data: {
+          label: node.name,
+          type: node.type,
+          status: runStateByNode[node.id] || "idle",
+          outputPreview: outputPreviewByNode[node.id],
+          provider: node.config.provider,
+          icon: NODE_STYLE_BY_TYPE[node.type].icon,
+          instruction: node.config.instruction,
+          model: node.config.model,
+          timeoutMs: node.config.timeoutMs,
+          retries: node.config.retries,
+          enabled: node.config.enabled,
+        } as any,
+      }));
+
+  const toFlowEdges = (workflowEdges: WorkflowEdgeRecord[]): BezierDataEdge[] =>
+    workflowEdges.map((edge) => {
+      const fromRunning = runStateByNode[edge.sourceNodeId] === "running";
+      return {
+        id: edge.id,
+        source: edge.sourceNodeId,
+        target: edge.targetNodeId,
+        type: "streamingBezier",
+        animated: fromRunning,
+        data: {
+          label: edge.channel,
+          streaming: fromRunning,
+          targetInputKey: edge.targetInputKey,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: "#60a5fa",
+        },
+      };
+    });
+
+  const activeWorkflow = useMemo(
+    () => workflows.find((workflow) => workflow.id === activeWorkflowId) || null,
+    [workflows, activeWorkflowId]
+  );
+
   const loadWorkflows = async () => {
-    const res = await fetch("/api/agent-workflows-v2");
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Workflows konnten nicht geladen werden");
+    const response = await fetch("/api/agent-workflows-v2");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || "Workflows konnten nicht geladen werden");
 
     const list = (data?.workflows || []) as WorkflowRecord[];
     setWorkflows(list);
@@ -137,11 +523,11 @@ export function AgentWorkflowV2Management() {
     if (selectedId) {
       const workflow = list.find((entry) => entry.id === selectedId);
       const version = workflow?.draftVersion || workflow?.activeVersion;
-      const versionNodes = version?.nodes?.slice().sort((a, b) => a.position - b.position) || [];
-      const versionEdges = version?.edges || [];
-      setNodes(versionNodes);
-      setEdges(versionEdges);
-      setSelectedNodeId(versionNodes[0]?.id || null);
+      const nodes = version?.nodes || [];
+      const edges = version?.edges || [];
+      setNodes(toFlowNodes(nodes));
+      setEdges(toFlowEdges(edges));
+      setSelectedNodeId(nodes[0]?.id || null);
     } else {
       setNodes([]);
       setEdges([]);
@@ -150,25 +536,45 @@ export function AgentWorkflowV2Management() {
   };
 
   const loadRuns = async () => {
-    const res = await fetch("/api/agent-workflows-v2/runs?limit=50");
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Runs konnten nicht geladen werden");
+    const response = await fetch("/api/agent-workflows-v2/runs?limit=50");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || "Runs konnten nicht geladen werden");
     setRuns(data?.runs || []);
   };
 
   const loadRunDetails = async (runId: string) => {
-    const [runRes, messageRes] = await Promise.all([
+    const [runResponse, messageResponse] = await Promise.all([
       fetch(`/api/agent-workflows-v2/runs/${runId}`),
       fetch(`/api/agent-workflows-v2/runs/${runId}/messages`),
     ]);
-    const runData = await runRes.json();
-    const messageData = await messageRes.json();
-    if (!runRes.ok) throw new Error(runData?.error || "Run-Details konnten nicht geladen werden");
-    if (!messageRes.ok) throw new Error(messageData?.error || "Nachrichten konnten nicht geladen werden");
 
+    const runData = await runResponse.json();
+    const messageData = await messageResponse.json();
+    if (!runResponse.ok) throw new Error(runData?.error || "Run-Details konnten nicht geladen werden");
+    if (!messageResponse.ok) throw new Error(messageData?.error || "Messages konnten nicht geladen werden");
+
+    const steps = (runData?.run?.steps || []) as RunStep[];
     setSelectedRunId(runId);
-    setRunSteps(runData?.run?.steps || []);
+    setRunSteps(steps);
     setRunMessages(messageData?.messages || []);
+
+    const nextStatus: Record<string, RunState> = {};
+    const nextPreview: Record<string, string> = {};
+    steps.forEach((step) => {
+      nextStatus[step.nodeId] =
+        step.status === "success"
+          ? "success"
+          : step.status === "failed"
+            ? "failed"
+            : step.status === "running"
+              ? "running"
+              : "idle";
+      const raw = step.output ? JSON.stringify(step.output).slice(0, 90) : "";
+      nextPreview[step.nodeId] = raw || (step.error ? `Error: ${step.error}` : "-");
+    });
+
+    setRunStateByNode(nextStatus);
+    setOutputPreviewByNode(nextPreview);
   };
 
   useEffect(() => {
@@ -186,47 +592,89 @@ export function AgentWorkflowV2Management() {
     load();
   }, []);
 
-  const addNode = (type: AgentStepType = "research") => {
+  useEffect(() => {
+    if (!activeWorkflowId) return;
+    const workflow = workflows.find((entry) => entry.id === activeWorkflowId);
+    const version = workflow?.draftVersion || workflow?.activeVersion;
+    if (!version) return;
+    setNodes(toFlowNodes(version.nodes || []));
+    setEdges(toFlowEdges(version.edges || []));
+    setSelectedNodeId(version.nodes?.[0]?.id || null);
+  }, [activeWorkflowId, workflows]);
+
+  const buildEdgeRecord = (connection: Connection): WorkflowEdgeRecord | null => {
+    if (!connection.source || !connection.target) return null;
+    const sourceNode = nodeRecordMap.get(connection.source);
+    const targetNode = nodeRecordMap.get(connection.target);
+    if (!sourceNode || !targetNode) return null;
+    return {
+      id: crypto.randomUUID(),
+      sourceNodeId: connection.source,
+      targetNodeId: connection.target,
+      channel: `${sourceNode.type}.output`,
+      targetInputKey: `${targetNode.type}Input`,
+    };
+  };
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      const edgeRecord = buildEdgeRecord(connection);
+      if (!edgeRecord) return;
+      const flowEdge = toFlowEdges([edgeRecord])[0];
+      setEdges((eds) => addEdge(flowEdge, eds));
+    },
+    [nodeRecordMap]
+  );
+
+  const addNode = (type: AgentStepType, position?: { x: number; y: number }) => {
     const id = crypto.randomUUID();
-    const index = nodes.length;
-    setNodes((prev) => [
-      ...prev,
-      {
-        id,
-        name: `${type} agent ${index + 1}`,
+    const style = NODE_STYLE_BY_TYPE[type];
+    const defaultPosition = {
+      x: position?.x ?? 120 + nodes.length * 120,
+      y: position?.y ?? 80 + (nodes.length % 3) * 120,
+    };
+
+    const newNode: Node<AgentNodeData> = {
+      id,
+      type: "agentNode",
+      position: defaultPosition,
+      data: {
+        label: `${type} agent ${nodes.length + 1}`,
         type,
-        position: index,
-        x: 120 + index * 220,
-        y: 80 + (index % 2) * 120,
-        config: {
-          instruction: "Beschreiben Sie die Aufgabe dieses Agenten.",
-          provider: "openrouter",
-          model: "openai/gpt-4o-mini",
-          timeoutMs: 45000,
-          retries: 1,
-          enabled: true,
-        },
-      },
-    ]);
+        status: "idle",
+        outputPreview: "Noch kein Run",
+        provider: "openrouter",
+        icon: style.icon,
+        instruction: "Beschreiben Sie die Aufgabe dieses Agenten.",
+        model: "openai/gpt-4o-mini",
+        timeoutMs: 45000,
+        retries: 1,
+        enabled: true,
+      } as any,
+    };
+
+    setNodes((prev) => [...prev, newNode]);
     setSelectedNodeId(id);
+    setDrawerOpen(true);
   };
 
   const removeNode = (nodeId: string) => {
-    const nextNodes = nodes.filter((node) => node.id !== nodeId);
-    setNodes(nextNodes);
-    setEdges((prev) => prev.filter((edge) => edge.sourceNodeId !== nodeId && edge.targetNodeId !== nodeId));
+    setNodes((prev) => prev.filter((node) => node.id !== nodeId));
+    setEdges((prev) => prev.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     if (selectedNodeId === nodeId) {
-      setSelectedNodeId(nextNodes[0]?.id || null);
+      setSelectedNodeId(null);
+      setDrawerOpen(false);
     }
   };
 
-  const updateNode = (nodeId: string, updater: (node: WorkflowNode) => WorkflowNode) => {
-    setNodes((prev) => prev.map((node) => (node.id === nodeId ? updater(node) : node)));
+  const updateSelectedNode = (patcher: (node: Node<AgentNodeData>) => Node<AgentNodeData>) => {
+    if (!selectedNodeId) return;
+    setNodes((prev) => prev.map((node) => (node.id === selectedNodeId ? patcher(node) : node)));
   };
 
   const createCustomWorkflow = async () => {
     if (!newWorkflowName.trim()) {
-      setError("Bitte einen Namen für den Workflow eingeben.");
+      setError("Bitte einen Namen eingeben.");
       return;
     }
 
@@ -234,13 +682,13 @@ export function AgentWorkflowV2Management() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch("/api/agent-workflows-v2", {
+      const response = await fetch("/api/agent-workflows-v2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newWorkflowName.trim(), mode: "custom" }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Workflow konnte nicht erstellt werden");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht erstellt werden");
 
       setSuccess("Custom Workflow V2 erstellt.");
       setNewWorkflowName("");
@@ -255,19 +703,48 @@ export function AgentWorkflowV2Management() {
 
   const saveWorkflow = async () => {
     if (!activeWorkflow) return;
+
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      const normalizedNodes = nodes.map((node, index) => ({ ...node, position: index }));
-      const res = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}`, {
+      const payloadNodes = nodes.map((node, index) => ({
+        id: node.id,
+        name: node.data.label,
+        type: node.data.type,
+        position: index,
+        x: node.position.x,
+        y: node.position.y,
+        config: {
+          instruction: (node.data as any).instruction || "",
+          provider: node.data.provider,
+          model: (node.data as any).model || "openai/gpt-4o-mini",
+          timeoutMs: Number((node.data as any).timeoutMs || 45000),
+          retries: Number((node.data as any).retries || 1),
+          enabled: Boolean((node.data as any).enabled ?? true),
+        },
+      }));
+
+      const payloadEdges = edges.map((edge) => ({
+        id: edge.id,
+        sourceNodeId: edge.source,
+        targetNodeId: edge.target,
+        channel: String(edge.data?.label || "message"),
+        targetInputKey: String((edge.data as any)?.targetInputKey || "input"),
+      }));
+
+      const response = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nodes: normalizedNodes, edges }),
+        body: JSON.stringify({
+          nodes: payloadNodes,
+          edges: payloadEdges,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Workflow konnte nicht gespeichert werden");
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht gespeichert werden");
 
       setSuccess("Workflow gespeichert.");
       await loadWorkflows();
@@ -284,10 +761,9 @@ export function AgentWorkflowV2Management() {
       setPublishing(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}/publish`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Workflow konnte nicht publiziert werden");
-
+      const response = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}/publish`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht publiziert werden");
       setSuccess("Workflow publiziert.");
       await loadWorkflows();
     } catch (err: any) {
@@ -303,27 +779,35 @@ export function AgentWorkflowV2Management() {
       setRunning(true);
       setError(null);
       setSuccess(null);
-      const res = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}/run`, {
+
+      const pendingStatus: Record<string, RunState> = {};
+      nodes.forEach((node) => {
+        pendingStatus[node.id] = "running";
+      });
+      setRunStateByNode(pendingStatus);
+
+      const response = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idempotencyKey: crypto.randomUUID(),
           input: {
             workflowName: activeWorkflow.name,
-            source: "agent-workflow-v2-page",
+            source: "agent-workflow-v2-canvas",
           },
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Ausführung fehlgeschlagen");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Run fehlgeschlagen");
 
-      setSuccess("Workflow wurde ausgeführt.");
+      setSuccess("Workflow erfolgreich ausgeführt.");
       await loadRuns();
       if (data?.run?.id) {
         await loadRunDetails(data.run.id);
       }
     } catch (err: any) {
-      setError(err.message || "Ausführung fehlgeschlagen");
+      setError(err.message || "Run fehlgeschlagen");
+      setRunStateByNode({});
     } finally {
       setRunning(false);
     }
@@ -337,224 +821,245 @@ export function AgentWorkflowV2Management() {
     );
   }
 
+  const outputSchemaPills = [
+    "research.summary",
+    "analysis.keyFindings",
+    "briefing.outline",
+    "draft.content",
+    "review.todo",
+  ];
+
+  const inputMappingState = [
+    { key: "context", value: "" },
+    { key: "constraints", value: "" },
+    { key: "previousOutput", value: "" },
+  ];
+
   return (
-    <div className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Fehler</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert>
-          <AlertTitle>Erfolg</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            Agent Workflow V2
-          </CardTitle>
-          <CardDescription>
-            n8n/Make-inspirierter Builder mit Agent-to-Agent Kommunikation via Message-Edges.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="space-y-2 min-w-[260px]">
-            <Label>Aktiver Workflow</Label>
-            <Select value={activeWorkflowId || ""} onValueChange={(value) => setActiveWorkflowId(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Workflow wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {workflows.map((workflow) => (
-                  <SelectItem key={workflow.id} value={workflow.id}>
-                    {workflow.name} ({workflow.mode})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <ReactFlowProvider>
+      <div className="space-y-6 text-slate-100">
+        <div className="rounded-2xl border border-white/10 bg-[#0b1220] p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-2 min-w-[260px]">
+              <Label className="text-slate-200">Aktiver Workflow</Label>
+              <Select value={activeWorkflowId || ""} onValueChange={(value) => setActiveWorkflowId(value)}>
+                <SelectTrigger className="bg-[#0f172a] border-white/10 text-slate-100">
+                  <SelectValue placeholder="Workflow wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {workflows.map((workflow) => (
+                    <SelectItem key={workflow.id} value={workflow.id}>
+                      {workflow.name} ({workflow.mode})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 min-w-[260px]">
+              <Label className="text-slate-200">Neuer Custom Workflow</Label>
+              <Input
+                value={newWorkflowName}
+                onChange={(event) => setNewWorkflowName(event.target.value)}
+                placeholder="z. B. Research-to-Review Loop"
+                className="bg-[#0f172a] border-white/10 text-slate-100"
+              />
+            </div>
+            <Button variant="outline" className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10" onClick={createCustomWorkflow}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom erstellen"}
+            </Button>
+            {activeWorkflow && (
+              <>
+                <Badge variant="secondary">Mode: {activeWorkflow.mode}</Badge>
+                <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>Status: {activeWorkflow.state}</Badge>
+              </>
+            )}
           </div>
-          <div className="space-y-2 min-w-[260px]">
-            <Label>Neuer Custom Workflow</Label>
-            <Input value={newWorkflowName} onChange={(e) => setNewWorkflowName(e.target.value)} placeholder="z. B. Product Optimization Flow" />
-          </div>
-          <Button variant="outline" onClick={createCustomWorkflow} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom erstellen"}
-          </Button>
-          {activeWorkflow && (
-            <>
-              <Badge variant="secondary">Mode: {activeWorkflow.mode}</Badge>
-              <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>Status: {activeWorkflow.state}</Badge>
-            </>
-          )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {activeWorkflow && (
-        <div className="grid gap-4 lg:grid-cols-12">
-          <Card className="lg:col-span-2">
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Fehler</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {success && (
+          <Alert>
+            <AlertTitle>Erfolg</AlertTitle>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+          <div className="space-y-4">
+            <NodePalette onAddNode={addNode} />
+
+            <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+              <CardHeader>
+                <CardTitle className="text-base">Run Controls</CardTitle>
+                <CardDescription className="text-slate-400">Save, Publish, Execute</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2">
+                <Button onClick={saveWorkflow} disabled={!activeWorkflow || saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Speichern
+                </Button>
+                <Button variant="outline" className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10" onClick={publishWorkflow} disabled={!activeWorkflow || publishing}>
+                  {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4 mr-2" />}
+                  Publizieren
+                </Button>
+                <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
+                  {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                  Run starten
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <FlowCanvas
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={(nodeId) => {
+              setSelectedNodeId(nodeId);
+              setDrawerOpen(true);
+            }}
+            onDropNode={addNode}
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
             <CardHeader>
-              <CardTitle className="text-base">Node Palette</CardTitle>
-              <CardDescription>Agent-Nodes hinzufügen</CardDescription>
+              <CardTitle className="text-base">Executions</CardTitle>
+              <CardDescription className="text-slate-400">Runs und Node Outputs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {STEP_TYPES.map((type) => (
-                <Button key={type} variant="outline" className="w-full justify-start" onClick={() => addNode(type)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {type}
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-7">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Workflow className="h-4 w-4" />
-                Canvas Board (V2)
-              </CardTitle>
-              <CardDescription>
-                Nodes auswählen, verschieben (x/y), verbinden und Kommunikationskanäle definieren.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {nodes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Keine Nodes vorhanden. Fügen Sie links einen Agenten hinzu.</p>
+              {runs.length === 0 ? (
+                <p className="text-sm text-slate-400">Keine Runs vorhanden.</p>
               ) : (
-                <div className="grid gap-2 md:grid-cols-2">
-                  {nodes
-                    .slice()
-                    .sort((a, b) => a.position - b.position)
-                    .map((node) => (
-                      <button
-                        key={node.id}
-                        type="button"
-                        onClick={() => setSelectedNodeId(node.id)}
-                        className={`rounded-md border p-3 text-left transition-colors ${selectedNodeId === node.id ? "border-primary bg-primary/5" : "hover:bg-muted/30"}`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Bot className="h-4 w-4" />
-                            <span className="text-sm font-medium">{node.name}</span>
-                          </div>
-                          <Badge variant={node.config.enabled ? "default" : "secondary"}>{node.type}</Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Position: ({Math.round(node.x)}, {Math.round(node.y)})
-                        </div>
-                      </button>
-                    ))}
-                </div>
+                runs.map((run) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => loadRunDetails(run.id)}
+                    className={`w-full rounded-md border p-3 text-left transition-colors ${
+                      selectedRunId === run.id ? "border-blue-400/70 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
+                      <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">
+                      Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
+                    </div>
+                  </button>
+                ))
               )}
 
-              <Separator />
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Plug2 className="h-4 w-4" />
-                  Agent-Verbindungen (A2A)
-                </Label>
-                {edges.length === 0 && <p className="text-xs text-muted-foreground">Keine Edges vorhanden.</p>}
-                {edges.map((edge) => (
-                  <div key={edge.id} className="rounded border p-2 space-y-2">
-                    <div className="grid gap-2 md:grid-cols-2">
-                      <Select
-                        value={edge.sourceNodeId}
-                        onValueChange={(value) => {
-                          if (!value) return;
-                          setEdges((prev) => prev.map((entry) => (entry.id === edge.id ? { ...entry, sourceNodeId: value } : entry)));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Von Agent" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {nodes.map((node) => (
-                            <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={edge.targetNodeId}
-                        onValueChange={(value) => {
-                          if (!value) return;
-                          setEdges((prev) => prev.map((entry) => (entry.id === edge.id ? { ...entry, targetNodeId: value } : entry)));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Zu Agent" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {nodes.map((node) => (
-                            <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      <Input
-                        value={edge.channel}
-                        onChange={(e) => setEdges((prev) => prev.map((entry) => (entry.id === edge.id ? { ...entry, channel: e.target.value } : entry)))}
-                        placeholder="channel z. B. analysis.output"
-                      />
-                      <Input
-                        value={edge.targetInputKey}
-                        onChange={(e) => setEdges((prev) => prev.map((entry) => (entry.id === edge.id ? { ...entry, targetInputKey: e.target.value } : entry)))}
-                        placeholder="targetInputKey"
-                      />
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setEdges((prev) => prev.filter((entry) => entry.id !== edge.id))}>
-                      Verbindung entfernen
-                    </Button>
-                  </div>
-                ))}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (nodes.length < 2) return;
-                    setEdges((prev) => [
-                      ...prev,
-                      {
-                        id: crypto.randomUUID(),
-                        sourceNodeId: nodes[0].id,
-                        targetNodeId: nodes[nodes.length - 1].id,
-                        channel: `${nodes[0].type}.output`,
-                        targetInputKey: `${nodes[nodes.length - 1].type}Input`,
-                      },
-                    ]);
-                  }}
-                >
-                  Verbindung hinzufügen
-                </Button>
-              </div>
+              {selectedRunId && (
+                <div className="rounded-md border border-white/10 p-3 space-y-2">
+                  <h4 className="text-sm font-semibold">Node Outputs (Preview)</h4>
+                  {runSteps.length === 0 ? (
+                    <p className="text-xs text-slate-400">Keine Step-Daten vorhanden.</p>
+                  ) : (
+                    runSteps.map((step) => (
+                      <div key={step.id} className="rounded border border-white/10 p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">{step.nodeName}</span>
+                          <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
+                        </div>
+                        <div className="text-xs text-slate-400">{step.nodeType} | {step.provider} / {step.model}</div>
+                        <div className="mt-1 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-300 overflow-x-auto">
+                          {step.output ? JSON.stringify(step.output, null, 2) : step.error || "-"}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-3">
+          <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
             <CardHeader>
-              <CardTitle className="text-base">Node Inspector</CardTitle>
-              <CardDescription>Konfiguration des selektierten Agenten.</CardDescription>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Agent-to-Agent Messages
+              </CardTitle>
+              <CardDescription className="text-slate-400">Datenfluss zwischen Nodes pro Run</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {!selectedNode ? (
-                <p className="text-sm text-muted-foreground">Node im Canvas auswählen.</p>
+            <CardContent className="space-y-2">
+              {!selectedRunId ? (
+                <p className="text-sm text-slate-400">Wähle einen Run, um Messages zu sehen.</p>
+              ) : runMessages.length === 0 ? (
+                <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
               ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label>Name</Label>
-                    <Input value={selectedNode.name} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, name: e.target.value }))} />
+                runMessages.map((message) => (
+                  <div key={message.id} className="rounded border border-white/10 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium flex items-center gap-1">
+                        <Send className="h-3.5 w-3.5" />
+                        {message.fromNodeName} → {message.toNodeName}
+                      </span>
+                      <Badge variant="outline">{message.channel}</Badge>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      targetInput: <span className="font-mono">{message.targetInputKey}</span>
+                    </div>
+                    <div className="text-xs text-slate-400">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
                   </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetContent side="right" className="sm:max-w-[480px] bg-[#0b1220] text-slate-100 border-white/10">
+            <SheetHeader>
+              <SheetTitle>Node Konfiguration</SheetTitle>
+              <SheetDescription className="text-slate-400">Inputs, Provider, Prompt, Mapping</SheetDescription>
+            </SheetHeader>
+
+            {!selectedNodeRecord ? (
+              <div className="px-4 pb-4 text-sm text-slate-400">Kein Node selektiert.</div>
+            ) : (
+              <div className="px-4 pb-4 space-y-4 overflow-y-auto">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input
+                    value={selectedNodeRecord.name}
+                    onChange={(event) =>
+                      updateSelectedNode((node) => ({
+                        ...node,
+                        data: { ...node.data, label: event.target.value },
+                      }))
+                    }
+                    className="bg-[#0f172a] border-white/10"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Typ</Label>
-                    <Select value={selectedNode.type} onValueChange={(value) => updateNode(selectedNode.id, (prev) => ({ ...prev, type: value as AgentStepType }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={selectedNodeRecord.type}
+                      onValueChange={(value) =>
+                        updateSelectedNode((node) => ({
+                          ...node,
+                          data: {
+                            ...node.data,
+                            type: value as AgentStepType,
+                            icon: NODE_STYLE_BY_TYPE[value as AgentStepType].icon,
+                          },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {STEP_TYPES.map((type) => (
                           <SelectItem key={type} value={type}>{type}</SelectItem>
@@ -562,164 +1067,115 @@ export function AgentWorkflowV2Management() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>X</Label>
-                      <Input type="number" value={selectedNode.x} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, x: Number(e.target.value || 0) }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Y</Label>
-                      <Input type="number" value={selectedNode.y} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, y: Number(e.target.value || 0) }))} />
-                    </div>
-                  </div>
                   <div className="space-y-2">
                     <Label>Provider</Label>
-                    <Select value={selectedNode.config.provider} onValueChange={(value) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, provider: value as AgentProvider } }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={selectedNodeRecord.config.provider}
+                      onValueChange={(value) =>
+                        updateSelectedNode((node) => ({
+                          ...node,
+                          data: { ...node.data, provider: value as AgentProvider },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="openrouter">OpenRouter</SelectItem>
                         <SelectItem value="gemini">Gemini</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Model</Label>
+                  <Input
+                    value={selectedNodeRecord.config.model}
+                    onChange={(event) =>
+                      updateSelectedNode((node) => ({
+                        ...node,
+                        data: { ...node.data, model: event.target.value } as any,
+                      }))
+                    }
+                    className="bg-[#0f172a] border-white/10"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Model</Label>
-                    <Input value={selectedNode.config.model} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, model: e.target.value } }))} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Timeout</Label>
-                      <Input type="number" value={selectedNode.config.timeoutMs} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, timeoutMs: Number(e.target.value || 0) } }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Retries</Label>
-                      <Input type="number" value={selectedNode.config.retries} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, retries: Number(e.target.value || 0) } }))} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Instruction</Label>
-                    <textarea
-                      value={selectedNode.config.instruction}
-                      onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, instruction: e.target.value } }))}
-                      className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm min-h-24"
+                    <Label>Timeout (ms)</Label>
+                    <Input
+                      type="number"
+                      value={selectedNodeRecord.config.timeoutMs}
+                      onChange={(event) =>
+                        updateSelectedNode((node) => ({
+                          ...node,
+                          data: { ...node.data, timeoutMs: Number(event.target.value || 0) } as any,
+                        }))
+                      }
+                      className="bg-[#0f172a] border-white/10"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant={selectedNode.config.enabled ? "default" : "outline"} size="sm" onClick={() => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, enabled: !prev.config.enabled } }))}>
-                      {selectedNode.config.enabled ? "Aktiv" : "Inaktiv"}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => removeNode(selectedNode.id)}>Entfernen</Button>
+                  <div className="space-y-2">
+                    <Label>Retries</Label>
+                    <Input
+                      type="number"
+                      value={selectedNodeRecord.config.retries}
+                      onChange={(event) =>
+                        updateSelectedNode((node) => ({
+                          ...node,
+                          data: { ...node.data, retries: Number(event.target.value || 0) } as any,
+                        }))
+                      }
+                      className="bg-[#0f172a] border-white/10"
+                    />
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                </div>
 
-      {activeWorkflow && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Workflow Aktionen</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button onClick={saveWorkflow} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Speichern
-            </Button>
-            <Button variant="outline" onClick={publishWorkflow} disabled={publishing}>
-              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publizieren"}
-            </Button>
-            <Button variant="secondary" onClick={runWorkflow} disabled={running}>
-              {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-              Run starten
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+                <div className="space-y-2">
+                  <Label>Prompt / Instruction</Label>
+                  <textarea
+                    value={selectedNodeRecord.config.instruction}
+                    onChange={(event) =>
+                      updateSelectedNode((node) => ({
+                        ...node,
+                        data: { ...node.data, instruction: event.target.value } as any,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-28"
+                  />
+                </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ausführungen</CardTitle>
-            <CardDescription>Run-Status und Step-Details.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {runs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine Ausführungen vorhanden.</p>
-            ) : (
-              runs.map((run) => (
-                <button
-                  key={run.id}
-                  type="button"
-                  onClick={() => loadRunDetails(run.id)}
-                  className={`w-full rounded-md border p-3 text-left transition-colors ${selectedRunId === run.id ? "border-primary bg-primary/5" : "hover:bg-muted/30"}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
-                    <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                <Separator className="bg-white/10" />
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold flex items-center gap-2">
+                    <CircleDot className="h-4 w-4" />
+                    Data Mapping (Drag-and-Drop Simulation)
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
-                  </div>
-                </button>
-              ))
-            )}
-            {selectedRunId && (
-              <div className="rounded-md border p-3 space-y-2">
-                <h4 className="text-sm font-semibold">Step-Status</h4>
-                {runSteps.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Keine Step-Daten vorhanden.</p>
-                ) : (
-                  runSteps.map((step) => (
-                    <div key={step.id} className="rounded border p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{step.nodeName}</span>
-                        <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">{step.nodeType} | {step.provider} / {step.model}</div>
-                      {step.error && <div className="text-xs text-red-600 mt-1">{step.error}</div>}
-                    </div>
-                  ))
-                )}
+                  <DataMappingBuilder
+                    outputSchema={outputSchemaPills}
+                    inputMappings={inputMappingState}
+                    onAssign={(inputKey, value) => {
+                      updateSelectedNode((node) => ({
+                        ...node,
+                        data: {
+                          ...node.data,
+                          instruction: `${(node.data as any).instruction || ""}\nMapping: ${inputKey} <- ${value}`,
+                        } as any,
+                      }));
+                    }}
+                  />
+                </div>
+
+                <Button variant="outline" className="border-red-500/40 text-red-200 hover:bg-red-500/10" onClick={() => removeNode(selectedNodeRecord.id)}>
+                  Node entfernen
+                </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Agent-to-Agent Kommunikation
-            </CardTitle>
-            <CardDescription>Message Trace zwischen Nodes innerhalb eines Runs.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {!selectedRunId ? (
-              <p className="text-sm text-muted-foreground">Wählen Sie einen Run, um Nachrichten zu sehen.</p>
-            ) : runMessages.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine Nachrichten für diesen Run.</p>
-            ) : (
-              runMessages.map((msg) => (
-                <div key={msg.id} className="rounded border p-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium flex items-center gap-1">
-                      <Send className="h-3.5 w-3.5" />
-                      {msg.fromNodeName} → {msg.toNodeName}
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">{msg.channel}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Ziel-Input: <span className="font-mono">{msg.targetInputKey}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{new Date(msg.createdAt).toLocaleString("de-DE")}</div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+          </SheetContent>
+        </Sheet>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 }
