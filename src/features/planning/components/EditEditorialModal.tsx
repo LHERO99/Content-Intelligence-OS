@@ -219,9 +219,10 @@ export function EditEditorialModal({
                       <Select
                         value={formData.Assigned_Editor?.[0] || "__none__"}
                         onValueChange={(value) => {
+                          const selectedEditorEmail = value && value !== "__none__" ? value : undefined;
                           setFormData({
                             ...formData,
-                            Assigned_Editor: value === "__none__" ? [] : [value],
+                            Assigned_Editor: selectedEditorEmail ? [selectedEditorEmail] : [],
                           });
                         }}
                       >
