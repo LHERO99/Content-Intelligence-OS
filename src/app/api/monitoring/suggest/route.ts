@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createContentLog, getKeywordMap } from '@/lib/airtable';
+import { createContentLog, getKeywordMap, updateKeyword } from '@/lib/airtable';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -39,8 +39,12 @@ export async function POST(request: NextRequest) {
           Logged_URL: keyword.Target_URL || url,
           Action_Type: 'Optimierung',
           Page_Type: keyword.Page_Type,
-          Diff_Summary: 'Manuell beauftragt (Monitoring)',
+          Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)",
           Editor: editor,
+        });
+
+        await updateKeyword(keyword.id, {
+          Action_Type: 'Optimierung',
         });
 
         return { url, logged: true, keywordId: keyword.id };

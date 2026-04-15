@@ -77,7 +77,13 @@ function hasOpenManualMonitoringRequest(keywordId: string, targetUrl: string, lo
   });
 
   const manualLogs = relevantLogs
-    .filter((log) => String(log.Diff_Summary || '') === 'Manuell beauftragt (Monitoring)')
+    .filter((log) => {
+      const summary = String(log.Diff_Summary || '');
+      return (
+        summary === 'Manuell beauftragt (Monitoring)' ||
+        summary === "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)"
+      );
+    })
     .map((log) => new Date(String(log.Created_At || '')).getTime())
     .filter((value) => Number.isFinite(value));
 

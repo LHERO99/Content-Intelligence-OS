@@ -679,7 +679,10 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                     <DropdownMenuItem
                       key={column.id}
                       className="capitalize flex items-center justify-between gap-2"
-                      onClick={() => column.toggleVisibility(!column.getIsVisible())}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        column.toggleVisibility(!column.getIsVisible());
+                      }}
                     >
                       <span>{column.id.replace(/_/g, " ")}</span>
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">

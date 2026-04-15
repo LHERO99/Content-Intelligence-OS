@@ -280,7 +280,10 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
                     <DropdownMenuItem
                       key={column.id}
                       className="capitalize flex items-center justify-between gap-2"
-                      onClick={() => column.toggleVisibility(!isVisible)}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        column.toggleVisibility(!isVisible);
+                      }}
                     >
                       <span>{column.id.replace(/_/g, " ")}</span>
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">

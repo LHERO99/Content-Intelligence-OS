@@ -17,7 +17,6 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KeywordMap } from "@/lib/airtable-types";
 import { useAlerts } from "@/components/alerts-provider";
-import { Badge } from "@/components/ui/badge";
 
 // DND Kit Imports
 import {
@@ -176,26 +175,6 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
         onDragEnd={handleDragEnd} 
         onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
       />
-      {Object.keys(optimizationSuggestions).length > 0 && (
-        <div className="rounded-lg border border-primary/20 p-4 bg-primary/5 space-y-3">
-          <p className="text-sm font-semibold text-primary">Regelbasierte Optimierungsgründe (Published Content)</p>
-          <div className="space-y-2">
-            {suggestionData
-              .filter((k) => optimizationSuggestions[k.id])
-              .slice(0, 20)
-              .map((k) => (
-                <div key={k.id} className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-semibold text-primary">{k.Keyword}</span>
-                  {optimizationSuggestions[k.id].reasons.map((reason) => (
-                    <Badge key={`${k.id}-${reason}`} variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                      {reason}
-                    </Badge>
-                  ))}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} von {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.

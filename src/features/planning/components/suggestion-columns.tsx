@@ -60,8 +60,10 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Action_Type",
     header: "Typ",
     filterFn: textColumnFilterFn,
-    cell: ({ row }) => {
-      const type = row.getValue("Action_Type") as string || "Erstellung";
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as any;
+      const hasOptimizationReasons = Array.isArray(meta?.optimizationReasons?.[row.original.id]) && meta.optimizationReasons[row.original.id].length > 0;
+      const type = hasOptimizationReasons ? "Optimierung" : ((row.getValue("Action_Type") as string) || "Erstellung");
       return (
         <Badge variant="outline" className="border-slate-200 text-slate-600 bg-slate-50 font-medium">
           {type}
@@ -139,9 +141,9 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     header: "Letzte Änderung",
     cell: ({ row }) => {
       const date = row.getValue("Last_Published") as string;
-      if (!date) return <span className="text-muted-foreground italic text-[10px]">Neu</span>;
+      if (!date) return <span className="text-sm text-muted-foreground">Neu</span>;
       return (
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {new Date(date).toLocaleDateString("de-DE")}
         </span>
       );
