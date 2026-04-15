@@ -13,25 +13,36 @@ function isProvider(value: string): value is IntegrationProvider {
 }
 
 async function testSistrix(apiKey: string): Promise<void> {
-  const response = await fetch(`https://api.sistrix.com/domain.overview?api_key=${encodeURIComponent(apiKey)}&domain=example.com`, {
+  const sanitizedKey = String(apiKey || '').trim();
+  if (!sanitizedKey) {
+    throw new Error('Sistrix API-Key ist leer oder ungultig.');
+  }
+
+  const response = await fetch(`https://api.sistrix.com/credits?api_key=${encodeURIComponent(sanitizedKey)}&format=json`, {
     method: 'GET',
   });
 
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(`Sistrix Test fehlgeschlagen (${response.status})`);
+    throw new Error(`Sistrix Test fehlgeschlagen (${response.status}). Bitte API-Key und API-Rechte prufen.`);
   }
 
   if (!text.includes('<answer') && !text.includes('{')) {
     throw new Error('Sistrix Antwort konnte nicht validiert werden.');
   }
+
+  const lower = text.toLowerCase();
+  if (lower.includes('error') || lower.includes('denied') || lower.includes('invalid')) {
+    throw new Error('Sistrix Antwort enthalt einen Fehler. Bitte API-Key und Kontostatus prufen.');
+  }
 }
 
 async function testOpenAI(apiKey: string): Promise<void> {
+  const sanitizedKey = String(apiKey || '').trim();
   const response = await fetch('https://api.openai.com/v1/models', {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${sanitizedKey}`,
     },
   });
 
@@ -41,10 +52,11 @@ async function testOpenAI(apiKey: string): Promise<void> {
 }
 
 async function testOpenRouter(apiKey: string): Promise<void> {
+  const sanitizedKey = String(apiKey || '').trim();
   const response = await fetch('https://openrouter.ai/api/v1/models', {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${sanitizedKey}`,
     },
   });
 
@@ -54,7 +66,8 @@ async function testOpenRouter(apiKey: string): Promise<void> {
 }
 
 async function testGemini(apiKey: string): Promise<void> {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+  const sanitizedKey = String(apiKey || '').trim();
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(sanitizedKey)}`, {
     method: 'GET',
   });
 
@@ -64,7 +77,9 @@ async function testGemini(apiKey: string): Promise<void> {
 }
 
 async function testDataforseo(username: string, password: string): Promise<void> {
-  const token = Buffer.from(`${username}:${password}`).toString('base64');
+  const sanitizedUser = String(username || '').trim();
+  const sanitizedPass = String(password || '').trim();
+  const token = Buffer.from(`${sanitizedUser}:${sanitizedPass}`).toString('base64');
   const response = await fetch('https://api.dataforseo.com/v3/appendix/user_data', {
     method: 'GET',
     headers: {

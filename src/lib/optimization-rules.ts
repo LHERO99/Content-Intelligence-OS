@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: OptimizationRuleSettings = {
 };
 
 const RULE_LABELS: Record<string, string> = {
+  MANUAL_REQUEST: 'Manuell beauftragt',
   AGE_AND_NOT_TOP: 'Text älter als Schwellwert und Main Keyword nicht in Top-Rank',
   URL_MISMATCH_UNAVAILABLE: 'Main-Keyword URL-Mismatch (deaktiviert: rankende URL nicht verlässlich verfügbar)',
   RANK_DROP: 'Main-Keyword Ranking in den letzten 14 Tagen deutlich verschlechtert',
@@ -66,6 +67,31 @@ function latestPublishedDateForKeyword(keywordId: string, targetUrl: string, log
     .map((log) => String(log.Created_At || ''))
     .filter(Boolean)
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+}
+
+function hasOpenManualMonitoringRequest(keywordId: string, targetUrl: string, logs: any[]): boolean {
+  const relevantLogs = logs.filter((log) => {
+    const url = String(log.Target_URL || log.Logged_URL || '');
+    const hasKeyword = Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(keywordId);
+    return hasKeyword || (targetUrl && url === targetUrl);
+  });
+
+  const manualLogs = relevantLogs
+    .filter((log) => String(log.Diff_Summary || '') === 'Manuell beauftragt (Monitoring)')
+    .map((log) => new Date(String(log.Created_At || '')).getTime())
+    .filter((value) => Number.isFinite(value));
+
+  if (!manualLogs.length) return false;
+
+  const latestManual = Math.max(...manualLogs);
+
+  const planningLogs = relevantLogs
+    .filter((log) => String(log.Diff_Summary || '') === 'URL wurde der Redaktionsplanung hinzugefügt')
+    .map((log) => new Date(String(log.Created_At || '')).getTime())
+    .filter((value) => Number.isFinite(value));
+
+  if (!planningLogs.length) return true;
+  return latestManual > Math.max(...planningLogs);
 }
 
 function getCurrentRanking(keyword: KeywordMap, rankingHistory: any[]): number | undefined {
@@ -215,6 +241,11 @@ export async function evaluateOptimizationSuggestions(): Promise<OptimizationSug
     const currentRanking = getCurrentRanking(keyword, rankingHistory);
     const reasons: string[] = [];
     const reasonCodes: string[] = [];
+
+    if (hasOpenManualMonitoringRequest(keyword.id, targetUrl, logs)) {
+      reasonCodes.push('MANUAL_REQUEST');
+      reasons.push(RULE_LABELS.MANUAL_REQUEST);
+    }
 
     if (evaluateAgeAndTopRule(keyword, lastPublished, currentRanking, settings, now)) {
       reasonCodes.push('AGE_AND_NOT_TOP');
