@@ -51,13 +51,8 @@ const items = [
 
 const adminItems = [
   {
-    title: "Agent-Workflow",
-    url: "/agent-workflow",
-    icon: Workflow,
-  },
-  {
-    title: "Agent-Workflow V2",
-    url: "/agent-workflow-v2",
+    title: "Content-Agent Builder",
+    url: "/content-agent-builder",
     icon: Workflow,
   },
 ]

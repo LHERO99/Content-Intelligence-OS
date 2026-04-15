@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AgentWorkflowV2Management } from "@/features/agent-workflow-v2/components/agent-workflow-v2-management";
 
-export default function AgentWorkflowV2Page() {
+export default function ContentAgentBuilderPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
@@ -30,7 +30,7 @@ export default function AgentWorkflowV2Page() {
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">Agent-Workflow V2</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Content-Agent Builder</h1>
       </div>
       <AgentWorkflowV2Management />
     </div>

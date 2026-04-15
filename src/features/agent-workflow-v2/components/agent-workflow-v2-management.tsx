@@ -690,7 +690,7 @@ export function AgentWorkflowV2Management() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht erstellt werden");
 
-      setSuccess("Custom Workflow V2 erstellt.");
+      setSuccess("Custom Content-Agent Flow erstellt.");
       setNewWorkflowName("");
       await loadWorkflows();
       setActiveWorkflowId(data?.workflow?.id || null);
@@ -793,7 +793,7 @@ export function AgentWorkflowV2Management() {
           idempotencyKey: crypto.randomUUID(),
           input: {
             workflowName: activeWorkflow.name,
-            source: "agent-workflow-v2-canvas",
+            source: "content-agent-builder-canvas",
           },
         }),
       });

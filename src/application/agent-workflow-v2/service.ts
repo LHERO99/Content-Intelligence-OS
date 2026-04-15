@@ -122,7 +122,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
 
     const created = await this.workflows.create({
       tenantId,
-      name: 'Default Agent Workflow V2',
+      name: 'Default Content-Agent Builder Workflow',
       description: 'Canvas-basierter Standard-Workflow mit Agent-to-Agent Kommunikation.',
       mode: 'default',
     });
