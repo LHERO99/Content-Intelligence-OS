@@ -30,11 +30,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot } from "lucide-react";
 import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
 import { IntegrationsManagement } from "./integrations-management";
+import { AgentWorkflowManagement } from "./agent-workflow-management";
 
 interface User {
   id: string;
@@ -198,6 +199,10 @@ export default function AdminPage() {
           <TabsTrigger value="integrations" className="flex items-center gap-2">
             <PlugZap className="h-4 w-4" />
             Integrationen
+          </TabsTrigger>
+          <TabsTrigger value="agent-workflow" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Agent-Workflow
           </TabsTrigger>
         </TabsList>
 
@@ -424,6 +429,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="integrations">
           <IntegrationsManagement />
+        </TabsContent>
+        <TabsContent value="agent-workflow">
+          <AgentWorkflowManagement />
         </TabsContent>
       </Tabs>
     </div>
