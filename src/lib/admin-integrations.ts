@@ -1,6 +1,14 @@
 import { getConfig, updateConfig } from '@/lib/airtable';
 
-export type IntegrationProvider = 'sistrix' | 'openai' | 'openrouter' | 'gemini' | 'dataforseo' | 'vertex_legal';
+export type IntegrationProvider =
+  | 'sistrix'
+  | 'openai'
+  | 'openrouter'
+  | 'gemini'
+  | 'copilot'
+  | 'perplexity'
+  | 'dataforseo'
+  | 'vertex_legal';
 
 export type ProviderFieldType = 'password' | 'text';
 
@@ -72,6 +80,32 @@ export const PROVIDERS: ProviderDefinition[] = [
     ],
   },
   {
+    id: 'copilot',
+    name: 'Copilot (GitHub Models)',
+    description: 'GitHub Models Katalog und Inference über models.github.ai.',
+    fields: [
+      {
+        key: 'GITHUB_MODELS_API_KEY',
+        label: 'API-Key (PAT)',
+        type: 'password',
+        placeholder: 'github_pat_... (models:read)',
+      },
+    ],
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    description: 'Perplexity Agent/Sonar API für webgestützte Antworten.',
+    fields: [
+      {
+        key: 'PERPLEXITY_API_KEY',
+        label: 'API-Key',
+        type: 'password',
+        placeholder: 'pplx-...',
+      },
+    ],
+  },
+  {
     id: 'dataforseo',
     name: 'DataForSEO',
     description: 'Performance- und SEO-Datenquellen.',
@@ -129,7 +163,7 @@ export type IntegrationState = {
   maskedValues: Record<string, string>;
 };
 
-export type DiscoverableModelProvider = 'openai' | 'openrouter' | 'gemini';
+export type DiscoverableModelProvider = 'openai' | 'openrouter' | 'gemini' | 'copilot' | 'perplexity';
 
 export type DiscoveredModel = {
   id: string;
@@ -201,7 +235,13 @@ const DISCOVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 const modelDiscoveryCache = new Map<string, { expiresAt: number; models: DiscoveredModel[] }>();
 
 function isDiscoverableProvider(providerId: IntegrationProvider): providerId is DiscoverableModelProvider {
-  return providerId === 'openai' || providerId === 'openrouter' || providerId === 'gemini';
+  return (
+    providerId === 'openai' ||
+    providerId === 'openrouter' ||
+    providerId === 'gemini' ||
+    providerId === 'copilot' ||
+    providerId === 'perplexity'
+  );
 }
 
 function cacheFingerprint(value: string): string {
@@ -301,6 +341,57 @@ async function discoverGeminiModels(apiKey: string): Promise<DiscoveredModel[]> 
   );
 }
 
+async function discoverCopilotModels(apiKey: string): Promise<DiscoveredModel[]> {
+  const response = await fetch('https://models.github.ai/catalog/models', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Copilot Modelle konnten nicht geladen werden (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const models = Array.isArray(payload) ? payload : [];
+
+  return sortAndDedupeModels(
+    models.map((model: any) => ({
+      id: String(model?.id || ''),
+      label: String(model?.name || model?.id || ''),
+      contextWindow: Number.isFinite(model?.limits?.max_input_tokens)
+        ? Number(model.limits.max_input_tokens)
+        : undefined,
+    }))
+  );
+}
+
+async function discoverPerplexityModels(apiKey: string): Promise<DiscoveredModel[]> {
+  const response = await fetch('https://api.perplexity.ai/v1/models', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Perplexity Modelle konnten nicht geladen werden (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const models = Array.isArray(payload?.data) ? payload.data : [];
+
+  return sortAndDedupeModels(
+    models.map((model: any) => ({
+      id: String(model?.id || ''),
+      label: String(model?.id || ''),
+    }))
+  );
+}
+
 export async function discoverProviderModels(providerId: IntegrationProvider, forceRefresh = false): Promise<DiscoveredModel[]> {
   if (!isDiscoverableProvider(providerId)) {
     throw new Error('Für diesen Provider ist keine Modellabfrage verfügbar.');
@@ -348,6 +439,32 @@ export async function discoverProviderModels(providerId: IntegrationProvider, fo
     }
 
     models = await discoverGeminiModels(apiKey);
+  }
+
+  if (providerId === 'copilot') {
+    const apiKey = String(config.GITHUB_MODELS_API_KEY || '').trim();
+    if (!apiKey) throw new Error('Copilot API-Key fehlt.');
+    cacheKey = `${providerId}:${cacheFingerprint(apiKey)}`;
+
+    if (!forceRefresh) {
+      const cached = modelDiscoveryCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.models;
+    }
+
+    models = await discoverCopilotModels(apiKey);
+  }
+
+  if (providerId === 'perplexity') {
+    const apiKey = String(config.PERPLEXITY_API_KEY || '').trim();
+    if (!apiKey) throw new Error('Perplexity API-Key fehlt.');
+    cacheKey = `${providerId}:${cacheFingerprint(apiKey)}`;
+
+    if (!forceRefresh) {
+      const cached = modelDiscoveryCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) return cached.models;
+    }
+
+    models = await discoverPerplexityModels(apiKey);
   }
 
   const sanitizedModels = sortAndDedupeModels(models);

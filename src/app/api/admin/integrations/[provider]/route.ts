@@ -76,6 +76,36 @@ async function testGemini(apiKey: string): Promise<void> {
   }
 }
 
+async function testCopilot(apiKey: string): Promise<void> {
+  const sanitizedKey = String(apiKey || '').trim();
+  const response = await fetch('https://models.github.ai/catalog/models', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${sanitizedKey}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Copilot (GitHub Models) Test fehlgeschlagen (${response.status})`);
+  }
+}
+
+async function testPerplexity(apiKey: string): Promise<void> {
+  const sanitizedKey = String(apiKey || '').trim();
+  const response = await fetch('https://api.perplexity.ai/v1/models', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${sanitizedKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Perplexity Test fehlgeschlagen (${response.status})`);
+  }
+}
+
 async function testDataforseo(username: string, password: string): Promise<void> {
   const sanitizedUser = String(username || '').trim();
   const sanitizedPass = String(password || '').trim();
@@ -142,6 +172,16 @@ async function testProviderConnection(provider: IntegrationProvider, values: Rec
 
   if (provider === 'gemini') {
     await testGemini(values.GEMINI_API_KEY || '');
+    return;
+  }
+
+  if (provider === 'copilot') {
+    await testCopilot(values.GITHUB_MODELS_API_KEY || '');
+    return;
+  }
+
+  if (provider === 'perplexity') {
+    await testPerplexity(values.PERPLEXITY_API_KEY || '');
     return;
   }
 

@@ -330,6 +330,11 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
 }
 
 export class AirtableIntegrationSecretProviderV2 implements IntegrationSecretProviderV2 {
+  async getOpenAIApiKey(): Promise<string | null> {
+    const config = await getConfig();
+    return (config.OPENAI_API_KEY || '').trim() || null;
+  }
+
   async getOpenRouterApiKey(): Promise<string | null> {
     const config = await getConfig();
     return (config.OPENROUTER_API_KEY || '').trim() || null;
@@ -362,12 +367,52 @@ export class LlmAgentModelRunnerV2 implements AgentModelRunnerV2 {
   constructor(private readonly secrets: IntegrationSecretProviderV2) {}
 
   async runStep(input: {
-    provider: 'openrouter' | 'gemini' | 'vertex_legal';
+    provider: 'openai' | 'openrouter' | 'gemini' | 'vertex_legal';
     model: string;
     instruction: string;
     payload: Record<string, unknown>;
     timeoutMs: number;
   }): Promise<Record<string, unknown>> {
+    if (input.provider === 'openai') {
+      const key = await this.secrets.getOpenAIApiKey();
+      if (!key) throw new Error('OPENAI_API_KEY ist nicht hinterlegt.');
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: input.model,
+            messages: [
+              { role: 'system', content: input.instruction },
+              { role: 'user', content: JSON.stringify(input.payload) },
+            ],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`OpenAI Fehler (${response.status})`);
+        }
+
+        const json = await response.json();
+        const content = json?.choices?.[0]?.message?.content || '';
+        return {
+          provider: 'openai',
+          model: input.model,
+          text: content,
+          response: json,
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     if (input.provider === 'openrouter') {
       const key = await this.secrets.getOpenRouterApiKey();
       if (!key) throw new Error('OPENROUTER_API_KEY ist nicht hinterlegt.');

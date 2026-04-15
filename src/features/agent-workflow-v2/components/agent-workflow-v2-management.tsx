@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   addEdge,
   Background,
@@ -54,6 +55,7 @@ import {
   Play,
   Plus,
   Pencil,
+  RefreshCcw,
   Save,
   Send,
   Sparkles,
@@ -64,8 +66,14 @@ import {
 } from "lucide-react";
 
 type AgentStepType = "orchestrator" | "research" | "analysis" | "briefing" | "draft" | "review" | "custom";
-type AgentProvider = "openrouter" | "gemini" | "vertex_legal";
+type AgentProvider = "openai" | "openrouter" | "gemini" | "vertex_legal";
 type RunState = "idle" | "running" | "success" | "failed";
+
+type DiscoveredModel = {
+  id: string;
+  label: string;
+  contextWindow?: number;
+};
 
 type WorkflowNodeRecord = {
   id: string;
@@ -512,9 +520,52 @@ export function AgentWorkflowV2Management() {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
+  const [modelsLoadingByProvider, setModelsLoadingByProvider] = useState<Record<string, boolean>>({});
+  const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<BezierDataEdge>([]);
+
+  const isModelDiscoverySupported = useCallback((provider: AgentProvider) => {
+    return provider === "openai" || provider === "openrouter" || provider === "gemini";
+  }, []);
+
+  const loadProviderModels = useCallback(
+    async (provider: AgentProvider, refresh = false) => {
+      if (!isModelDiscoverySupported(provider)) return;
+
+      setModelsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
+      setModelErrorsByProvider((prev) => {
+        const next = { ...prev };
+        delete next[provider];
+        return next;
+      });
+
+      try {
+        const query = refresh ? "?refresh=1" : "";
+        const response = await fetch(`/api/admin/integrations/${provider}/models${query}`);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || `Modelle für ${provider} konnten nicht geladen werden.`);
+        }
+
+        const models = Array.isArray(data?.models) ? (data.models as DiscoveredModel[]) : [];
+        setModelsByProvider((prev) => ({
+          ...prev,
+          [provider]: models,
+        }));
+      } catch (err: any) {
+        setModelErrorsByProvider((prev) => ({
+          ...prev,
+          [provider]: err.message || `Modelle für ${provider} konnten nicht geladen werden.`,
+        }));
+      } finally {
+        setModelsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
+      }
+    },
+    [isModelDiscoverySupported]
+  );
 
   const sameIds = useCallback((a: string[], b: string[]) => {
     if (a.length !== b.length) return false;
@@ -556,6 +607,10 @@ export function AgentWorkflowV2Management() {
   }, [nodes]);
 
   const selectedNodeRecord = selectedNodeId ? nodeRecordMap.get(selectedNodeId) || null : null;
+  const selectedProvider = (selectedNodeRecord?.config.provider || "openrouter") as AgentProvider;
+  const selectedProviderModels = modelsByProvider[selectedProvider] || [];
+  const selectedProviderModelsLoading = Boolean(modelsLoadingByProvider[selectedProvider]);
+  const selectedProviderModelError = modelErrorsByProvider[selectedProvider] || null;
 
   const sanitizeParentNode = () => {
     const parentNodes = nodes.filter((node) => node.data.isParent || node.data.type === "orchestrator");
@@ -794,6 +849,21 @@ export function AgentWorkflowV2Management() {
     window.addEventListener("click", closeMenu);
     return () => window.removeEventListener("click", closeMenu);
   }, []);
+
+  useEffect(() => {
+    if (!selectedNodeRecord) return;
+    const provider = selectedNodeRecord.config.provider;
+    if (!isModelDiscoverySupported(provider)) return;
+    if ((modelsByProvider[provider] || []).length > 0) return;
+    if (modelsLoadingByProvider[provider]) return;
+    void loadProviderModels(provider, false);
+  }, [
+    selectedNodeRecord,
+    isModelDiscoverySupported,
+    modelsByProvider,
+    modelsLoadingByProvider,
+    loadProviderModels,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1345,15 +1415,23 @@ export function AgentWorkflowV2Management() {
                     <Label>Provider</Label>
                     <Select
                       value={selectedNodeRecord.config.provider}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
+                        const nextProvider = value as AgentProvider;
+                        const knownModels = modelsByProvider[nextProvider] || [];
                         updateSelectedNode((node) => ({
                           ...node,
-                          data: { ...node.data, provider: value as AgentProvider },
-                        }))
-                      }
+                          data: {
+                            ...node.data,
+                            provider: nextProvider,
+                            model: knownModels[0]?.id || (node.data as any).model || "",
+                          },
+                        }));
+                        void loadProviderModels(nextProvider, false);
+                      }}
                     >
                       <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="openai">OpenAI</SelectItem>
                         <SelectItem value="openrouter">OpenRouter</SelectItem>
                         <SelectItem value="gemini">Gemini</SelectItem>
                         <SelectItem value="vertex_legal">Vertex Legal Agent</SelectItem>
@@ -1373,16 +1451,92 @@ export function AgentWorkflowV2Management() {
 
                 <div className="space-y-2">
                   <Label>Model</Label>
-                  <Input
-                    value={selectedNodeRecord.config.model}
-                    onChange={(event) =>
-                      updateSelectedNode((node) => ({
-                        ...node,
-                        data: { ...node.data, model: event.target.value } as any,
-                      }))
-                    }
-                    className="bg-[#0f172a] border-white/10"
-                  />
+                  {isModelDiscoverySupported(selectedProvider) && selectedProviderModels.length > 0 ? (
+                    <Select
+                      value={
+                        selectedProviderModels.some((model) => model.id === selectedNodeRecord.config.model)
+                          ? selectedNodeRecord.config.model
+                          : undefined
+                      }
+                      onValueChange={(value) =>
+                        updateSelectedNode((node) => ({
+                          ...node,
+                          data: { ...node.data, model: value } as any,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue placeholder="Modell wählen" /></SelectTrigger>
+                      <SelectContent>
+                        {selectedProviderModels.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.label !== model.id ? `${model.label} (${model.id})` : model.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={selectedNodeRecord.config.model}
+                      onChange={(event) =>
+                        updateSelectedNode((node) => ({
+                          ...node,
+                          data: { ...node.data, model: event.target.value } as any,
+                        }))
+                      }
+                      className="bg-[#0f172a] border-white/10"
+                    />
+                  )}
+
+                  {isModelDiscoverySupported(selectedProvider) && (
+                    <div className="rounded-md border border-white/10 bg-black/20 p-2 text-xs text-slate-300 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 border-white/20 bg-transparent text-slate-200 hover:bg-white/10"
+                          onClick={() => loadProviderModels(selectedProvider, false)}
+                          disabled={selectedProviderModelsLoading}
+                        >
+                          {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Modelle laden"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-slate-300 hover:bg-white/10"
+                          onClick={() => loadProviderModels(selectedProvider, true)}
+                          disabled={selectedProviderModelsLoading}
+                        >
+                          <RefreshCcw className="mr-1 h-3.5 w-3.5" />
+                          Aktualisieren
+                        </Button>
+                        <span className="text-slate-400">{selectedProviderModels.length} Modelle geladen</span>
+                      </div>
+
+                      {selectedProviderModelError && (
+                        <div className="rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-amber-100">
+                          {selectedProviderModelError}
+                          <div className="mt-1">
+                            <Link href="/admin" className="underline underline-offset-2">
+                              Im Admin-Panel unter Integrationen Provider anbinden und Modelle laden
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+
+                      {!selectedProviderModelError && selectedProviderModels.length === 0 && !selectedProviderModelsLoading && (
+                        <div className="rounded border border-blue-400/30 bg-blue-500/10 px-2 py-1.5 text-blue-100">
+                          Keine Modelle gefunden. Bitte Provider im Admin-Panel konfigurieren und Modelle laden.
+                          <div className="mt-1">
+                            <Link href="/admin" className="underline underline-offset-2">
+                              Zu Integrationen
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

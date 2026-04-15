@@ -8,9 +8,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Loader2, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
 
-type IntegrationProvider = "sistrix" | "openai" | "openrouter" | "gemini" | "dataforseo" | "vertex_legal";
+type IntegrationProvider =
+  | "sistrix"
+  | "openai"
+  | "openrouter"
+  | "gemini"
+  | "copilot"
+  | "perplexity"
+  | "dataforseo"
+  | "vertex_legal";
 
-type DiscoverableProvider = "openai" | "openrouter" | "gemini";
+type DiscoverableProvider = "openai" | "openrouter" | "gemini" | "copilot" | "perplexity";
 
 type ProviderField = {
   key: string;
@@ -44,19 +52,26 @@ type DiscoveredModel = {
 };
 
 function isDiscoverableProvider(providerId: IntegrationProvider): providerId is DiscoverableProvider {
-  return providerId === "openai" || providerId === "openrouter" || providerId === "gemini";
+  return (
+    providerId === "openai" ||
+    providerId === "openrouter" ||
+    providerId === "gemini" ||
+    providerId === "copilot" ||
+    providerId === "perplexity"
+  );
 }
 
 export function IntegrationsManagement() {
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [integrations, setIntegrations] = useState<IntegrationState[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<IntegrationProvider | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Record<string, Record<string, string>>>({});
   const [savingProvider, setSavingProvider] = useState<IntegrationProvider | null>(null);
   const [testingProvider, setTestingProvider] = useState<IntegrationProvider | null>(null);
-  const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string }>>({});
+  const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string; testedAt: string }>>({});
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [loadingModelsProvider, setLoadingModelsProvider] = useState<IntegrationProvider | null>(null);
   const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
@@ -82,6 +97,12 @@ export function IntegrationsManagement() {
 
       setProviders(data.providers || []);
       setIntegrations(data.integrations || []);
+      setSelectedProviderId((prev) => {
+        const nextProviders = data.providers || [];
+        if (!nextProviders.length) return null;
+        if (prev && nextProviders.some((provider) => provider.id === prev)) return prev;
+        return nextProviders[0].id;
+      });
     } catch (err: any) {
       setError(err.message || "Fehler beim Laden der Integrationen");
     } finally {
@@ -163,6 +184,7 @@ export function IntegrationsManagement() {
         [provider.id]: {
           ok: true,
           message: data?.message || "Verbindung erfolgreich getestet.",
+          testedAt: new Date().toISOString(),
         },
       }));
     } catch (err: any) {
@@ -172,6 +194,7 @@ export function IntegrationsManagement() {
         [provider.id]: {
           ok: false,
           message,
+          testedAt: new Date().toISOString(),
         },
       }));
       setError(message);
@@ -224,150 +247,211 @@ export function IntegrationsManagement() {
     );
   }
 
+  const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) || null;
+  const selectedIntegrationState = selectedProvider ? stateByProvider[selectedProvider.id] : null;
+  const selectedConfigured = Boolean(selectedIntegrationState?.configured);
+  const selectedTestResult = selectedProvider ? testResult[selectedProvider.id] : undefined;
+  const selectedModels = selectedProvider ? modelsByProvider[selectedProvider.id] || [] : [];
+  const selectedModelError = selectedProvider ? modelErrorsByProvider[selectedProvider.id] : undefined;
+  const selectedModelsLoading = selectedProvider ? loadingModelsProvider === selectedProvider.id : false;
+  const selectedCanDiscoverModels = selectedProvider ? isDiscoverableProvider(selectedProvider.id) : false;
+
   return (
     <div className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Fehler</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <PlugZap className="h-5 w-5" />
+              Provider
+            </CardTitle>
+            <CardDescription>Wähle links einen Provider und konfiguriere ihn im Detailbereich.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {providers.map((provider) => {
+              const integrationState = stateByProvider[provider.id];
+              const configured = Boolean(integrationState?.configured);
+              const result = testResult[provider.id];
+              const modelCount = (modelsByProvider[provider.id] || []).length;
+              const isActive = selectedProviderId === provider.id;
 
-      {success && (
-        <Alert>
-          <ShieldCheck className="h-4 w-4" />
-          <AlertTitle>Gespeichert</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {providers.map((provider) => {
-          const integrationState = stateByProvider[provider.id];
-          const configured = Boolean(integrationState?.configured);
-          const result = testResult[provider.id];
-          const discoveredModels = modelsByProvider[provider.id] || [];
-          const modelError = modelErrorsByProvider[provider.id];
-          const modelsLoading = loadingModelsProvider === provider.id;
-          const canDiscoverModels = isDiscoverableProvider(provider.id);
-
-          return (
-            <Card key={provider.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <PlugZap className="h-5 w-5" />
-                    {provider.name}
-                  </span>
-                  <Badge variant={configured ? "default" : "secondary"}>
-                    {configured ? "Verbunden" : "Nicht verbunden"}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>{provider.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {provider.fields.map((field) => {
-                  const masked = integrationState?.maskedValues?.[field.key] || "";
-                  return (
-                    <div key={field.key} className="space-y-2">
-                      <label className="text-sm font-medium">{field.label}</label>
-                      <Input
-                        type={field.type}
-                        placeholder={field.placeholder}
-                        value={formValues[provider.id]?.[field.key] || ""}
-                        onChange={(e) => setProviderField(provider.id, field.key, e.target.value)}
-                        className="h-10"
-                      />
-                      {masked ? (
-                        <p className="text-xs text-muted-foreground">Aktueller Wert: {masked}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Noch kein Wert hinterlegt.</p>
-                      )}
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  onClick={() => setSelectedProviderId(provider.id)}
+                  className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                    isActive ? "border-primary/50 bg-primary/10" : "border-border hover:bg-muted/60"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium">{provider.name}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-1">{provider.description}</div>
                     </div>
-                  );
-                })}
+                    <Badge variant={configured ? "default" : "secondary"}>{configured ? "Verbunden" : "Offen"}</Badge>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{result ? `Letzter Test: ${result.ok ? "OK" : "Fehler"}` : "Noch nicht getestet"}</span>
+                    {isDiscoverableProvider(provider.id) ? <span>{modelCount} Modelle</span> : <span>-</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => saveProvider(provider)}
-                    disabled={savingProvider === provider.id}
-                    className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    {savingProvider === provider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                    Speichern
-                  </Button>
+        {!selectedProvider ? (
+          <Card>
+            <CardContent className="py-10 text-sm text-muted-foreground">Kein Provider ausgewählt.</CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-3">
+                <span>{selectedProvider.name}</span>
+                <Badge variant={selectedConfigured ? "default" : "secondary"}>
+                  {selectedConfigured ? "Verbunden" : "Nicht verbunden"}
+                </Badge>
+              </CardTitle>
+              <CardDescription>{selectedProvider.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertTitle>Fehler</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
+              {success && (
+                <Alert>
+                  <ShieldCheck className="h-4 w-4" />
+                  <AlertTitle>Gespeichert</AlertTitle>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold">1) Zugangsdaten</h3>
+                  <p className="text-xs text-muted-foreground">Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {selectedProvider.fields.map((field) => {
+                    const masked = selectedIntegrationState?.maskedValues?.[field.key] || "";
+                    return (
+                      <div key={field.key} className="space-y-2">
+                        <label className="text-sm font-medium">{field.label}</label>
+                        <Input
+                          type={field.type}
+                          placeholder={field.placeholder}
+                          value={formValues[selectedProvider.id]?.[field.key] || ""}
+                          onChange={(e) => setProviderField(selectedProvider.id, field.key, e.target.value)}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {masked ? `Aktueller Wert: ${masked}` : "Noch kein Wert hinterlegt."}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  onClick={() => saveProvider(selectedProvider)}
+                  disabled={savingProvider === selectedProvider.id}
+                  className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Speichern
+                </Button>
+              </section>
+
+              <section className="space-y-4 border-t pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">2) Verbindung testen</h3>
+                  <p className="text-xs text-muted-foreground">Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
                   <Button
                     variant="outline"
-                    onClick={() => testProvider(provider)}
-                    disabled={testingProvider === provider.id || !configured}
+                    onClick={() => testProvider(selectedProvider)}
+                    disabled={testingProvider === selectedProvider.id || !selectedConfigured}
                     className="h-10"
                   >
-                    {testingProvider === provider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                    {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
                     Verbindung testen
                   </Button>
+                  {selectedTestResult && (
+                    <span className="text-xs text-muted-foreground">
+                      Letzter Test: {new Date(selectedTestResult.testedAt).toLocaleString("de-DE")}
+                    </span>
+                  )}
                 </div>
-
-                {result && (
-                  <div className={`text-sm rounded-md border px-3 py-2 ${result.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
+                {selectedTestResult && (
+                  <div className={`text-sm rounded-md border px-3 py-2 ${selectedTestResult.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
                     <span className="inline-flex items-center gap-1">
-                      {result.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                      {result.message}
+                      {selectedTestResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {selectedTestResult.message}
                     </span>
                   </div>
                 )}
+              </section>
 
-                {canDiscoverModels && (
-                  <div className="space-y-2 rounded-md border border-dashed border-border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium">Verfügbare Modelle</p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => loadModels(provider, false)}
-                          disabled={!configured || modelsLoading}
-                        >
-                          {modelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Modelle laden"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => loadModels(provider, true)}
-                          disabled={!configured || modelsLoading}
-                        >
-                          <RefreshCcw className="mr-1 h-4 w-4" />
-                          Aktualisieren
-                        </Button>
+              {selectedCanDiscoverModels && (
+                <section className="space-y-4 border-t pt-5">
+                  <div>
+                    <h3 className="text-sm font-semibold">3) Verfügbare Modelle</h3>
+                    <p className="text-xs text-muted-foreground">Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadModels(selectedProvider, false)}
+                      disabled={!selectedConfigured || selectedModelsLoading}
+                    >
+                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Modelle laden"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => loadModels(selectedProvider, true)}
+                      disabled={!selectedConfigured || selectedModelsLoading}
+                    >
+                      <RefreshCcw className="mr-1 h-4 w-4" />
+                      Aktualisieren
+                    </Button>
+                  </div>
+
+                  {selectedModelError && <p className="text-xs text-red-600">{selectedModelError}</p>}
+
+                  {selectedModels.length > 0 ? (
+                    <div className="max-h-72 overflow-auto rounded border">
+                      <div className="divide-y">
+                        {selectedModels.map((model) => (
+                          <div key={model.id} className="flex items-center justify-between px-3 py-2 text-xs">
+                            <div>
+                              <div className="font-mono">{model.id}</div>
+                              {model.label !== model.id && <div className="text-muted-foreground">{model.label}</div>}
+                            </div>
+                            {model.contextWindow ? (
+                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString("de-DE")} ctx</span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
-
-                    {modelError && <p className="text-xs text-red-600">{modelError}</p>}
-
-                    {discoveredModels.length > 0 ? (
-                      <div className="max-h-48 overflow-auto rounded border">
-                        <div className="divide-y">
-                          {discoveredModels.map((model) => (
-                            <div key={model.id} className="flex items-center justify-between px-3 py-2 text-xs">
-                              <span className="font-mono">{model.id}</span>
-                              {model.contextWindow ? (
-                                <span className="text-muted-foreground">{model.contextWindow.toLocaleString("de-DE")} ctx</span>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Noch keine Modelle geladen.</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Noch keine Modelle geladen.</p>
+                  )}
+                </section>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

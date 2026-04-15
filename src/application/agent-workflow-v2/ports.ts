@@ -30,6 +30,7 @@ export interface WorkflowRunRepositoryV2 {
 }
 
 export interface IntegrationSecretProviderV2 {
+  getOpenAIApiKey(): Promise<string | null>;
   getOpenRouterApiKey(): Promise<string | null>;
   getGeminiApiKey(): Promise<string | null>;
   getVertexLegalConfig(): Promise<{ projectId: string; location: string; endpointId: string; accessToken?: string } | null>;
@@ -37,7 +38,7 @@ export interface IntegrationSecretProviderV2 {
 
 export interface AgentModelRunnerV2 {
   runStep(input: {
-    provider: 'openrouter' | 'gemini' | 'vertex_legal';
+    provider: 'openai' | 'openrouter' | 'gemini' | 'vertex_legal';
     model: string;
     instruction: string;
     payload: Record<string, unknown>;
