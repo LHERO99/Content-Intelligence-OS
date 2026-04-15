@@ -85,6 +85,9 @@ type WorkflowNodeRecord = {
   isParent?: boolean;
   config: {
     instruction: string;
+    purpose: string;
+    inputContract: string;
+    outputContract: string;
     provider: AgentProvider;
     model: string;
     timeoutMs: number;
@@ -132,6 +135,9 @@ type RunStep = {
   nodeName: string;
   nodeType: AgentStepType;
   status: "pending" | "running" | "success" | "failed" | "skipped";
+  round?: number;
+  phase?: "orchestrator_decision" | "subagent_execution";
+  correlationId?: string;
   provider: AgentProvider;
   model: string;
   output?: Record<string, unknown>;
@@ -146,6 +152,9 @@ type RunMessage = {
   toNodeId: string;
   toNodeName: string;
   channel: string;
+  messageType?: "task_request" | "task_result" | "control";
+  correlationId?: string;
+  round?: number;
   targetInputKey: string;
   payload?: Record<string, unknown>;
   createdAt: string;
@@ -160,6 +169,9 @@ type AgentNodeData = {
   icon: "trigger" | "agent" | "tool";
   isParent?: boolean;
   isFocused?: boolean;
+  purpose?: string;
+  inputContract?: string;
+  outputContract?: string;
 };
 
 const STEP_TYPES: AgentStepType[] = ["research", "analysis", "briefing", "draft", "review", "custom"];
@@ -595,6 +607,9 @@ export function AgentWorkflowV2Management() {
         isParent: Boolean(node.data.isParent),
         config: {
           instruction: (node.data as any).instruction || "",
+          purpose: (node.data as any).purpose || "",
+          inputContract: (node.data as any).inputContract || "",
+          outputContract: (node.data as any).outputContract || "",
           provider: node.data.provider,
           model: (node.data as any).model || "openai/gpt-4o-mini",
           timeoutMs: Number((node.data as any).timeoutMs || 45000),
@@ -632,6 +647,12 @@ export function AgentWorkflowV2Management() {
           icon: NODE_STYLE_BY_TYPE.orchestrator.icon,
           isParent: true,
           instruction: "Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.",
+          purpose:
+            "Du bist der Orchestrator und entscheidest in jeder Runde, welcher Subagent als nächstes die höchste Priorität hat.",
+          inputContract:
+            "Du erhältst runInput, agentCatalog, workingMemory, completedTasks und lastTaskResult.",
+          outputContract:
+            '{"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
           model: "openai/gpt-4o-mini",
           timeoutMs: 45000,
           retries: 1,
@@ -713,6 +734,9 @@ export function AgentWorkflowV2Management() {
           icon: NODE_STYLE_BY_TYPE[node.type].icon,
           isParent: Boolean(node.isParent),
           instruction: node.config.instruction,
+          purpose: (node.config as any).purpose || "",
+          inputContract: (node.config as any).inputContract || "",
+          outputContract: (node.config as any).outputContract || "",
           model: node.config.model,
           timeoutMs: node.config.timeoutMs,
           retries: node.config.retries,
@@ -964,6 +988,9 @@ export function AgentWorkflowV2Management() {
         icon: style.icon,
         isParent: false,
         instruction: "Beschreiben Sie die Aufgabe dieses Agenten.",
+        purpose: "Beschreibe klar, wofür dieser Subagent verantwortlich ist.",
+        inputContract: "Erhält task objective, runInput, workingMemory und letzte Ergebnisse als Kontext.",
+        outputContract: "Liefert strukturiertes JSON mit Ergebnis, Annahmen, offenen Fragen und nextHints.",
         model: "openai/gpt-4o-mini",
         timeoutMs: 45000,
         retries: 1,
@@ -1052,6 +1079,9 @@ export function AgentWorkflowV2Management() {
         isParent: Boolean(node.data.isParent),
         config: {
           instruction: (node.data as any).instruction || "",
+          purpose: (node.data as any).purpose || "",
+          inputContract: (node.data as any).inputContract || "",
+          outputContract: (node.data as any).outputContract || "",
           provider: node.data.provider,
           model: (node.data as any).model || "openai/gpt-4o-mini",
           timeoutMs: Number((node.data as any).timeoutMs || 45000),
@@ -1339,10 +1369,14 @@ export function AgentWorkflowV2Management() {
                           <span className="text-sm font-medium">{step.nodeName}</span>
                           <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
                         </div>
-                        <div className="text-xs text-slate-400">{step.nodeType} | {step.provider} / {step.model}</div>
-                        <div className="mt-1 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-300 overflow-x-auto">
-                          {step.output ? JSON.stringify(step.output, null, 2) : step.error || "-"}
-                        </div>
+                    <div className="text-xs text-slate-400">{step.nodeType} | {step.provider} / {step.model}</div>
+                    <div className="text-[11px] text-slate-500">
+                      Runde: {step.round ?? "-"} | Phase: {step.phase || "-"}
+                      {step.correlationId ? ` | Correlation: ${step.correlationId.slice(0, 8)}` : ""}
+                    </div>
+                    <div className="mt-1 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-300 overflow-x-auto">
+                      {step.output ? JSON.stringify(step.output, null, 2) : step.error || "-"}
+                    </div>
                       </div>
                     ))
                   )}
@@ -1376,6 +1410,11 @@ export function AgentWorkflowV2Management() {
                     </div>
                     <div className="text-xs text-slate-400">
                       targetInput: <span className="font-mono">{message.targetInputKey}</span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      type: <span className="font-mono">{message.messageType || "message"}</span>
+                      {message.round ? ` | round: ${message.round}` : ""}
+                      {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
                     </div>
                     <div className="text-xs text-slate-400">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
                   </div>
@@ -1526,10 +1565,21 @@ export function AgentWorkflowV2Management() {
                             }))
                           }
                         >
-                          <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue placeholder="Modell wählen" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectTrigger className="w-full bg-[#0f172a] border-white/10 text-slate-100">
+                            <SelectValue placeholder="Modell wählen" />
+                          </SelectTrigger>
+                          <SelectContent
+                            side="bottom"
+                            align="start"
+                            sideOffset={6}
+                            className="border border-white/10 bg-[#0b1220] text-slate-100 shadow-2xl"
+                          >
                             {selectedProviderModels.map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
+                              <SelectItem
+                                key={model.id}
+                                value={model.id}
+                                className="text-slate-100 focus:bg-white/10 focus:text-slate-100"
+                              >
                                 {model.label !== model.id ? `${model.label} (${model.id})` : model.id}
                               </SelectItem>
                             ))}
@@ -1625,6 +1675,56 @@ export function AgentWorkflowV2Management() {
                     className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-28"
                   />
                 </div>
+
+                {!selectedNodeRecord.isParent && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Subagent Purpose</Label>
+                      <textarea
+                        value={(selectedNodeRecord.config as any).purpose || ""}
+                        onChange={(event) =>
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: { ...node.data, purpose: event.target.value } as any,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
+                        placeholder="Wofür ist dieser Agent zuständig?"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-2">
+                        <Label>Input Contract</Label>
+                        <textarea
+                          value={(selectedNodeRecord.config as any).inputContract || ""}
+                          onChange={(event) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: { ...node.data, inputContract: event.target.value } as any,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
+                          placeholder="Welche Inputs erwartet der Agent?"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Output Contract</Label>
+                        <textarea
+                          value={(selectedNodeRecord.config as any).outputContract || ""}
+                          onChange={(event) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: { ...node.data, outputContract: event.target.value } as any,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
+                          placeholder="Wie soll der Agent strukturierte Ergebnisse zurückgeben?"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <Separator className="bg-white/10" />
 

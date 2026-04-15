@@ -11,6 +11,9 @@ export type StepStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped
 
 export interface WorkflowNodeConfig {
   instruction: string;
+  purpose: string;
+  inputContract: string;
+  outputContract: string;
   provider: AgentProvider;
   model: string;
   timeoutMs: number;
@@ -102,6 +105,9 @@ export interface WorkflowRunStepV2 {
   model: string;
   attempt: number;
   status: StepStatus;
+  round?: number;
+  phase?: 'orchestrator_decision' | 'subagent_execution';
+  correlationId?: string;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
   error?: string;
@@ -121,6 +127,9 @@ export interface WorkflowMessageV2 {
   toNodeId: string;
   toNodeName: string;
   channel: string;
+  messageType?: 'task_request' | 'task_result' | 'control';
+  correlationId?: string;
+  round?: number;
   targetInputKey: string;
   payload: Record<string, unknown>;
   createdAt: string;

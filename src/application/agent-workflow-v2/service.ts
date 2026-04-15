@@ -65,17 +65,93 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function resolveEdgesBySource(version: WorkflowVersionV2): Map<string, typeof version.edges> {
-  const map = new Map<string, typeof version.edges>();
-  version.edges.forEach((edge) => {
-    const list = map.get(edge.sourceNodeId) || [];
-    map.set(edge.sourceNodeId, [...list, edge]);
-  });
-  return map;
+const MAX_ORCHESTRATOR_ROUNDS = 12;
+
+type OrchestratorDecision = {
+  finalize: boolean;
+  summary?: string;
+  next?: {
+    targetNodeId: string;
+    objective: string;
+    expectedOutput?: string;
+  };
+  memoryPatch?: Record<string, unknown>;
+};
+
+function tryParseJsonObject(raw: string): Record<string, unknown> | null {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-function resolveIncomingMessages(messages: WorkflowMessageV2[], nodeId: string): WorkflowMessageV2[] {
-  return messages.filter((message) => message.toNodeId === nodeId);
+function extractDecisionFromOutput(output?: Record<string, unknown>): OrchestratorDecision | null {
+  if (!output) return null;
+
+  const directDecision = output.decision as Record<string, unknown> | undefined;
+  const outputText = typeof output.text === 'string' ? output.text : '';
+  const fromText = outputText ? tryParseJsonObject(outputText) : null;
+  const candidate = directDecision || fromText;
+  if (!candidate) return null;
+
+  const finalize = Boolean(candidate.finalize);
+  const summary = typeof candidate.summary === 'string' ? candidate.summary : undefined;
+  const nextRaw = candidate.next;
+  const memoryPatch =
+    candidate.memoryPatch && typeof candidate.memoryPatch === 'object' && !Array.isArray(candidate.memoryPatch)
+      ? (candidate.memoryPatch as Record<string, unknown>)
+      : undefined;
+
+  if (!finalize) {
+    if (!nextRaw || typeof nextRaw !== 'object' || Array.isArray(nextRaw)) return null;
+    const targetNodeId = String((nextRaw as any).targetNodeId || '').trim();
+    const objective = String((nextRaw as any).objective || '').trim();
+    const expectedOutput = String((nextRaw as any).expectedOutput || '').trim() || undefined;
+    if (!targetNodeId || !objective) return null;
+    return {
+      finalize,
+      summary,
+      next: {
+        targetNodeId,
+        objective,
+        expectedOutput,
+      },
+      memoryPatch,
+    };
+  }
+
+  return {
+    finalize,
+    summary,
+    memoryPatch,
+  };
+}
+
+function buildAgentCatalog(nodes: WorkflowNodeV2[]): Array<{
+  nodeId: string;
+  name: string;
+  type: AgentStepType;
+  purpose: string;
+  inputContract: string;
+  outputContract: string;
+}> {
+  return nodes
+    .filter((node) => !(node.isParent || node.type === 'orchestrator'))
+    .map((node) => ({
+      nodeId: node.id,
+      name: node.name,
+      type: node.type,
+      purpose: String((node.config as any).purpose || ''),
+      inputContract: String((node.config as any).inputContract || ''),
+      outputContract: String((node.config as any).outputContract || ''),
+    }));
 }
 
 function topologicalSort(nodes: WorkflowNodeV2[], edges: WorkflowVersionV2['edges']): WorkflowNodeV2[] {
@@ -135,6 +211,12 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       isParent: true,
       config: {
         instruction: 'Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.',
+        purpose:
+          'Du bist der Orchestrator. Entscheide in jeder Runde, welcher Subagent als nächstes die höchste Priorität hat, basierend auf Agent-Katalog und bisherigen Ergebnissen.',
+        inputContract:
+          'Du erhältst runInput, agentCatalog, workingMemory, completedTasks und lastTaskResult. Nutze diese, um die nächste Aufgabe zu planen.',
+        outputContract:
+          'Antworte NUR als JSON: {"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
         provider: 'openrouter' as const,
         model: 'openai/gpt-4o-mini',
         timeoutMs: 45000,
@@ -211,6 +293,9 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
         isParent: nodeDef.type === 'orchestrator',
         config: {
         instruction: nodeDef.instruction,
+        purpose: `Verantwortlich für ${nodeDef.type} in der Content-Pipeline.`,
+        inputContract: 'Erhält task objective, runInput, workingMemory und letzte Ergebnisse als Kontext.',
+        outputContract: 'Liefert strukturiertes JSON mit Ergebnis, Annahmen, offenen Fragen und nextHints.',
         provider: 'openrouter' as const,
         model: 'openai/gpt-4o-mini',
         timeoutMs: 45000,
@@ -261,6 +346,9 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
           isParent: false,
           config: {
             instruction: nodeDef.instruction,
+            purpose: `Verantwortlich für ${nodeDef.type} in der Content-Pipeline.`,
+            inputContract: 'Erhält task objective, runInput, workingMemory und letzte Ergebnisse als Kontext.',
+            outputContract: 'Liefert strukturiertes JSON mit Ergebnis, Annahmen, offenen Fragen und nextHints.',
             provider: 'openrouter' as const,
             model: 'openai/gpt-4o-mini',
             timeoutMs: 45000,
@@ -319,7 +407,12 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     throw new Error('Workflow hat keine ausführbare Version.');
   }
 
-  private async executeNodeWithRetry(run: WorkflowRunV2, node: WorkflowNodeV2, inputPayload: Record<string, unknown>): Promise<WorkflowRunStepV2> {
+  private async executeNodeWithRetry(
+    run: WorkflowRunV2,
+    node: WorkflowNodeV2,
+    inputPayload: Record<string, unknown>,
+    meta?: { round?: number; phase?: 'orchestrator_decision' | 'subagent_execution'; correlationId?: string }
+  ): Promise<WorkflowRunStepV2> {
     const maxAttempts = Math.max(1, node.config.retries + 1);
     let attempt = 1;
     let lastError: string | undefined;
@@ -361,6 +454,9 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       model: node.config.model,
       attempt,
       status,
+      round: meta?.round,
+      phase: meta?.phase,
+      correlationId: meta?.correlationId,
       input: inputPayload,
       output,
       error: lastError,
@@ -410,65 +506,239 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     await this.runs.createRun(run);
 
     const nodes = topologicalSort(version.nodes.filter((node) => node.config.enabled), version.edges);
-    nodes.sort((a, b) => {
-      if (a.type === 'orchestrator') return -1;
-      if (b.type === 'orchestrator') return 1;
-      return a.position - b.position;
-    });
-    const edgesBySource = resolveEdgesBySource(version);
+    const orchestrator = nodes.find((node) => node.isParent || node.type === 'orchestrator');
+    if (!orchestrator) {
+      throw new Error('Kein Parent Agent (Orchestrator) im Workflow gefunden.');
+    }
+
+    const subAgents = nodes.filter((node) => node.id !== orchestrator.id);
+    const subAgentById = new Map(subAgents.map((node) => [node.id, node]));
+    const agentCatalog = buildAgentCatalog(nodes);
 
     const messages: WorkflowMessageV2[] = [];
     let hasFailed = false;
+    let round = 1;
+    let finalized = false;
+    let lastTaskResult: Record<string, unknown> | null = null;
+    const completedTasks: Array<Record<string, unknown>> = [];
+    const workingMemory: Record<string, unknown> = {
+      runInput: input.input || {},
+      notes: [],
+      decisions: [],
+    };
 
-    for (const node of nodes) {
-      const incomingMessages = resolveIncomingMessages(messages, node.id);
-      const incomingPayload = incomingMessages.reduce<Record<string, unknown>>((acc, message) => {
-        acc[message.targetInputKey] = message.payload;
-        return acc;
-      }, {});
-
-      const stepPayload: Record<string, unknown> = {
+    while (!finalized && round <= MAX_ORCHESTRATOR_ROUNDS) {
+      const decisionPayload: Record<string, unknown> = {
         runInput: input.input || {},
-        nodeContext: {
-          nodeId: node.id,
-          nodeName: node.name,
-          nodeType: node.type,
+        round,
+        orchestratorContract: {
+          requiredFormat:
+            '{"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
+          rules: [
+            'Wähle exakt einen nächsten Subagenten pro Runde oder finalize=true.',
+            'Nutze nur targetNodeId aus dem agentCatalog.',
+            'Schreibe ausschließlich valides JSON ohne Markdown.',
+          ],
         },
-        incoming: incomingPayload,
+        agentCatalog,
+        workingMemory,
+        completedTasks,
+        lastTaskResult,
       };
 
-      const step = await this.executeNodeWithRetry(run, node, stepPayload);
+      const orchestratorStep = await this.executeNodeWithRetry(run, orchestrator, decisionPayload, {
+        round,
+        phase: 'orchestrator_decision',
+      });
 
-      if (step.status === 'failed') {
+      if (orchestratorStep.status === 'failed') {
         hasFailed = true;
         break;
       }
 
-      const outgoingEdges = edgesBySource.get(node.id) || [];
-      for (const edge of outgoingEdges) {
-        const targetNode = nodes.find((entry) => entry.id === edge.targetNodeId);
-        if (!targetNode) continue;
-
-        const message: WorkflowMessageV2 = {
+      const decision = extractDecisionFromOutput(orchestratorStep.output);
+      if (!decision) {
+        hasFailed = true;
+        await this.runs.createMessage({
           id: crypto.randomUUID(),
           tenantId,
           runId: run.id,
-          fromNodeId: node.id,
-          fromNodeName: node.name,
-          toNodeId: targetNode.id,
-          toNodeName: targetNode.name,
-          channel: edge.channel,
-          targetInputKey: edge.targetInputKey,
+          fromNodeId: orchestrator.id,
+          fromNodeName: orchestrator.name,
+          toNodeId: orchestrator.id,
+          toNodeName: orchestrator.name,
+          channel: 'control.invalid_orchestrator_decision',
+          messageType: 'control',
+          round,
+          targetInputKey: 'decision',
           payload: {
-            channel: edge.channel,
-            data: step.output || {},
+            error: 'Orchestrator lieferte kein valides Entscheidungs-JSON.',
+            raw: orchestratorStep.output || {},
           },
           createdAt: nowIso(),
-        };
-
-        await this.runs.createMessage(message);
-        messages.push(message);
+        });
+        break;
       }
+
+      if (decision.memoryPatch) {
+        Object.assign(workingMemory, decision.memoryPatch);
+      }
+
+      if (decision.summary) {
+        const notes = Array.isArray(workingMemory.notes) ? workingMemory.notes : [];
+        notes.push({ round, summary: decision.summary });
+        workingMemory.notes = notes;
+      }
+
+      if (decision.finalize) {
+        finalized = true;
+        break;
+      }
+
+      const targetNodeId = decision.next?.targetNodeId || '';
+      const targetNode = subAgentById.get(targetNodeId);
+      if (!targetNode) {
+        hasFailed = true;
+        await this.runs.createMessage({
+          id: crypto.randomUUID(),
+          tenantId,
+          runId: run.id,
+          fromNodeId: orchestrator.id,
+          fromNodeName: orchestrator.name,
+          toNodeId: orchestrator.id,
+          toNodeName: orchestrator.name,
+          channel: 'control.unknown_target',
+          messageType: 'control',
+          round,
+          targetInputKey: 'decision.next.targetNodeId',
+          payload: {
+            error: `Unbekannter targetNodeId: ${targetNodeId}`,
+            decision,
+          },
+          createdAt: nowIso(),
+        });
+        break;
+      }
+
+      const correlationId = crypto.randomUUID();
+      const requestMessage: WorkflowMessageV2 = {
+        id: crypto.randomUUID(),
+        tenantId,
+        runId: run.id,
+        fromNodeId: orchestrator.id,
+        fromNodeName: orchestrator.name,
+        toNodeId: targetNode.id,
+        toNodeName: targetNode.name,
+        channel: 'task.request',
+        messageType: 'task_request',
+        round,
+        correlationId,
+        targetInputKey: 'task',
+        payload: {
+          objective: decision.next?.objective || '',
+          expectedOutput: decision.next?.expectedOutput || String((targetNode.config as any).outputContract || ''),
+          context: {
+            runInput: input.input || {},
+            workingMemory,
+            completedTasks,
+            lastTaskResult,
+          },
+        },
+        createdAt: nowIso(),
+      };
+      await this.runs.createMessage(requestMessage);
+      messages.push(requestMessage);
+
+      const subagentPayload: Record<string, unknown> = {
+        runInput: input.input || {},
+        round,
+        nodeContext: {
+          nodeId: targetNode.id,
+          nodeName: targetNode.name,
+          nodeType: targetNode.type,
+          purpose: (targetNode.config as any).purpose || '',
+          inputContract: (targetNode.config as any).inputContract || '',
+          outputContract: (targetNode.config as any).outputContract || '',
+        },
+        task: requestMessage.payload,
+      };
+
+      const subagentStep = await this.executeNodeWithRetry(run, targetNode, subagentPayload, {
+        round,
+        phase: 'subagent_execution',
+        correlationId,
+      });
+
+      if (subagentStep.status === 'failed') {
+        hasFailed = true;
+        break;
+      }
+
+      const resultMessage: WorkflowMessageV2 = {
+        id: crypto.randomUUID(),
+        tenantId,
+        runId: run.id,
+        fromNodeId: targetNode.id,
+        fromNodeName: targetNode.name,
+        toNodeId: orchestrator.id,
+        toNodeName: orchestrator.name,
+        channel: 'task.result',
+        messageType: 'task_result',
+        round,
+        correlationId,
+        targetInputKey: 'lastTaskResult',
+        payload: {
+          taskObjective: decision.next?.objective || '',
+          output: subagentStep.output || {},
+          nodeId: targetNode.id,
+          nodeName: targetNode.name,
+          nodeType: targetNode.type,
+        },
+        createdAt: nowIso(),
+      };
+      await this.runs.createMessage(resultMessage);
+      messages.push(resultMessage);
+
+      lastTaskResult = {
+        round,
+        correlationId,
+        nodeId: targetNode.id,
+        nodeName: targetNode.name,
+        output: subagentStep.output || {},
+      };
+      completedTasks.push(lastTaskResult);
+
+      const decisions = Array.isArray(workingMemory.decisions) ? workingMemory.decisions : [];
+      decisions.push({
+        round,
+        targetNodeId: targetNode.id,
+        objective: decision.next?.objective || '',
+        correlationId,
+      });
+      workingMemory.decisions = decisions;
+
+      round += 1;
+    }
+
+    if (!hasFailed && !finalized && round > MAX_ORCHESTRATOR_ROUNDS) {
+      hasFailed = true;
+      await this.runs.createMessage({
+        id: crypto.randomUUID(),
+        tenantId,
+        runId: run.id,
+        fromNodeId: orchestrator.id,
+        fromNodeName: orchestrator.name,
+        toNodeId: orchestrator.id,
+        toNodeName: orchestrator.name,
+        channel: 'control.max_rounds_reached',
+        messageType: 'control',
+        round: MAX_ORCHESTRATOR_ROUNDS,
+        targetInputKey: 'runControl',
+        payload: {
+          maxRounds: MAX_ORCHESTRATOR_ROUNDS,
+        },
+        createdAt: nowIso(),
+      });
     }
 
     const finishedAt = nowIso();
