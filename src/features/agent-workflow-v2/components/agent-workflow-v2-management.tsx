@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
   SheetContent,
@@ -186,7 +187,7 @@ function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
         boxShadow: selected ? `0 0 0 1px ${style.color}, 0 0 24px ${style.glow}` : undefined,
       }}
     >
-      <Handle type="target" position={Position.Left} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
+      <Handle type="target" position={Position.Top} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${style.color}33` }}>
@@ -217,7 +218,7 @@ function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
         <div className="truncate">{data.outputPreview || "Noch kein Run"}</div>
       </div>
 
-      <Handle type="source" position={Position.Right} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
+      <Handle type="source" position={Position.Bottom} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
     </div>
   );
 }
@@ -442,6 +443,7 @@ export function AgentWorkflowV2Management() {
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [newWorkflowName, setNewWorkflowName] = useState("");
   const [newFlowMode, setNewFlowMode] = useState<FlowMode>("custom");
+  const [activeFlowTab, setActiveFlowTab] = useState<FlowMode>("default");
 
   const [runStateByNode, setRunStateByNode] = useState<Record<string, RunState>>({});
   const [outputPreviewByNode, setOutputPreviewByNode] = useState<Record<string, string>>({});
@@ -607,6 +609,8 @@ export function AgentWorkflowV2Management() {
           type: MarkerType.ArrowClosed,
           color: "#60a5fa",
         },
+        sourcePosition: Position.Bottom,
+        targetPosition: Position.Top,
       };
     });
 
@@ -614,6 +618,9 @@ export function AgentWorkflowV2Management() {
     () => workflows.find((workflow) => workflow.id === activeWorkflowId) || null,
     [workflows, activeWorkflowId]
   );
+
+  const defaultFlowOptions = useMemo(() => workflows.filter((workflow) => workflow.mode === "default"), [workflows]);
+  const customFlowOptions = useMemo(() => workflows.filter((workflow) => workflow.mode === "custom"), [workflows]);
 
   const loadWorkflows = async () => {
     const response = await fetch("/api/agent-workflows-v2");
@@ -636,6 +643,11 @@ export function AgentWorkflowV2Management() {
       setNodes(toFlowNodes(nodes));
       setEdges(toFlowEdges(edges));
       setSelectedNodeId(nodes[0]?.id || null);
+
+      const selectedWorkflow = list.find((entry) => entry.id === selectedId);
+      if (selectedWorkflow?.mode) {
+        setActiveFlowTab(selectedWorkflow.mode);
+      }
     } else {
       setNodes([]);
       setEdges([]);
@@ -750,8 +762,8 @@ export function AgentWorkflowV2Management() {
     const id = crypto.randomUUID();
     const style = NODE_STYLE_BY_TYPE[type];
     const defaultPosition = {
-      x: position?.x ?? 120 + nodes.length * 120,
-      y: position?.y ?? 80 + (nodes.length % 3) * 120,
+      x: position?.x ?? 320,
+      y: position?.y ?? 180 + nodes.length * 160,
     };
 
     const newNode: Node<AgentNodeData> = {
@@ -859,6 +871,7 @@ export function AgentWorkflowV2Management() {
       setNewWorkflowName("");
       await loadWorkflows();
       setActiveWorkflowId(data?.workflow?.id || null);
+      setActiveFlowTab(newFlowMode);
     } catch (err: any) {
       setError(err.message || "Workflow konnte nicht erstellt werden");
     } finally {
@@ -1004,55 +1017,96 @@ export function AgentWorkflowV2Management() {
   return (
     <ReactFlowProvider>
       <div className="space-y-6 text-slate-100">
-        <div className="rounded-2xl border border-white/10 bg-[#0b1220] p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-2 min-w-[260px]">
-              <Label className="text-slate-200">Aktiver Workflow</Label>
-              <Select value={activeWorkflowId || ""} onValueChange={(value) => setActiveWorkflowId(value)}>
-                <SelectTrigger className="bg-[#0f172a] border-white/10 text-slate-100">
-                  <SelectValue placeholder="Workflow wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workflows.map((workflow) => (
-                    <SelectItem key={workflow.id} value={workflow.id}>
-                      {workflow.name} ({workflow.mode})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <Tabs value={activeFlowTab} onValueChange={(value) => {
+          const next = (value as FlowMode) || "default";
+          setActiveFlowTab(next);
+          const options = next === "default" ? defaultFlowOptions : customFlowOptions;
+          if (options.length > 0) {
+            setActiveWorkflowId(options[0].id);
+          } else {
+            setActiveWorkflowId(null);
+          }
+        }}>
+          <TabsList>
+            <TabsTrigger value="default">Default Flow</TabsTrigger>
+            <TabsTrigger value="custom">Custom Flow</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="default" className="space-y-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-2 min-w-[260px]">
+                <Label className="text-slate-200">Default Workflow</Label>
+                <Select
+                  value={activeWorkflow?.mode === "default" ? activeWorkflowId || "" : ""}
+                  onValueChange={(value) => setActiveWorkflowId(value)}
+                >
+                  <SelectTrigger className="bg-[#0f172a] border-white/10 text-slate-100">
+                    <SelectValue placeholder="Default Flow wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {defaultFlowOptions.map((workflow) => (
+                      <SelectItem key={workflow.id} value={workflow.id}>
+                        {workflow.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {activeWorkflow?.mode === "default" && (
+                <>
+                  <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>Status: {activeWorkflow.state}</Badge>
+                </>
+              )}
             </div>
-            <div className="space-y-2 min-w-[260px]">
-              <Label className="text-slate-200">Neuer Custom Workflow</Label>
-              <Input
-                value={newWorkflowName}
-                onChange={(event) => setNewWorkflowName(event.target.value)}
-                placeholder="z. B. Research-to-Review Loop"
-                className="bg-[#0f172a] border-white/10 text-slate-100"
-              />
+          </TabsContent>
+
+          <TabsContent value="custom" className="space-y-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-2 min-w-[260px]">
+                <Label className="text-slate-200">Custom Workflow</Label>
+                <Select
+                  value={activeWorkflow?.mode === "custom" ? activeWorkflowId || "" : ""}
+                  onValueChange={(value) => setActiveWorkflowId(value)}
+                >
+                  <SelectTrigger className="bg-[#0f172a] border-white/10 text-slate-100">
+                    <SelectValue placeholder="Custom Flow wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customFlowOptions.map((workflow) => (
+                      <SelectItem key={workflow.id} value={workflow.id}>
+                        {workflow.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 min-w-[260px]">
+                <Label className="text-slate-200">Neuer Custom Workflow</Label>
+                <Input
+                  value={newWorkflowName}
+                  onChange={(event) => setNewWorkflowName(event.target.value)}
+                  placeholder="z. B. Research-to-Review Loop"
+                  className="bg-[#0f172a] border-white/10 text-slate-100"
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
+                onClick={() => {
+                  setNewFlowMode("custom");
+                  createCustomWorkflow();
+                }}
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom erstellen"}
+              </Button>
+              {activeWorkflow?.mode === "custom" && (
+                <>
+                  <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>Status: {activeWorkflow.state}</Badge>
+                </>
+              )}
             </div>
-            <div className="space-y-2 min-w-[180px]">
-              <Label className="text-slate-200">Flow-Typ</Label>
-              <Select value={newFlowMode} onValueChange={(value) => setNewFlowMode((value as FlowMode) || "custom")}>
-                <SelectTrigger className="bg-[#0f172a] border-white/10 text-slate-100">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Default Flow</SelectItem>
-                  <SelectItem value="custom">Custom Flow</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline" className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10" onClick={createCustomWorkflow}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom erstellen"}
-            </Button>
-            {activeWorkflow && (
-              <>
-                <Badge variant="secondary">Mode: {activeWorkflow.mode}</Badge>
-                <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>Status: {activeWorkflow.state}</Badge>
-              </>
-            )}
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
 
         {error && (
           <Alert variant="destructive">
@@ -1068,7 +1122,7 @@ export function AgentWorkflowV2Management() {
           </Alert>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
           <div className="space-y-4">
             <NodePalette onAddNode={addNode} />
 
