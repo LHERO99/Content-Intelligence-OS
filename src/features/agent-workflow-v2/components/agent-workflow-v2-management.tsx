@@ -611,6 +611,9 @@ export function AgentWorkflowV2Management() {
   const selectedProviderModels = modelsByProvider[selectedProvider] || [];
   const selectedProviderModelsLoading = Boolean(modelsLoadingByProvider[selectedProvider]);
   const selectedProviderModelError = modelErrorsByProvider[selectedProvider] || null;
+  const selectedProviderSupportsDiscovery = isModelDiscoverySupported(selectedProvider);
+  const selectedProviderHasModels = selectedProviderModels.length > 0;
+  const selectedModelInProviderList = selectedProviderModels.some((model) => model.id === selectedNodeRecord?.config.model);
 
   const sanitizeParentNode = () => {
     const parentNodes = nodes.filter((node) => node.data.isParent || node.data.type === "orchestrator");
@@ -863,6 +866,30 @@ export function AgentWorkflowV2Management() {
     modelsByProvider,
     modelsLoadingByProvider,
     loadProviderModels,
+  ]);
+
+  useEffect(() => {
+    if (!selectedNodeRecord) return;
+    if (!selectedProviderSupportsDiscovery) return;
+    if (!selectedProviderHasModels) return;
+    if (selectedModelInProviderList) return;
+
+    const fallbackModel = selectedProviderModels[0]?.id;
+    if (!fallbackModel) return;
+
+    updateSelectedNode((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        model: fallbackModel,
+      } as any,
+    }));
+  }, [
+    selectedNodeRecord,
+    selectedProviderSupportsDiscovery,
+    selectedProviderHasModels,
+    selectedModelInProviderList,
+    selectedProviderModels,
   ]);
 
   useEffect(() => {
@@ -1451,29 +1478,95 @@ export function AgentWorkflowV2Management() {
 
                 <div className="space-y-2">
                   <Label>Model</Label>
-                  {isModelDiscoverySupported(selectedProvider) && selectedProviderModels.length > 0 ? (
-                    <Select
-                      value={
-                        selectedProviderModels.some((model) => model.id === selectedNodeRecord.config.model)
-                          ? selectedNodeRecord.config.model
-                          : undefined
-                      }
-                      onValueChange={(value) =>
-                        updateSelectedNode((node) => ({
-                          ...node,
-                          data: { ...node.data, model: value } as any,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue placeholder="Modell wählen" /></SelectTrigger>
-                      <SelectContent>
-                        {selectedProviderModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.label !== model.id ? `${model.label} (${model.id})` : model.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {selectedProviderSupportsDiscovery ? (
+                    <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-slate-400">
+                          {selectedProviderHasModels
+                            ? `${selectedProviderModels.length} verfügbare Modelle`
+                            : selectedProviderModelsLoading
+                              ? "Lade Modelle..."
+                              : "Noch keine Modelle geladen"}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {!selectedProviderHasModels && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 border-white/20 bg-transparent text-slate-200 hover:bg-white/10"
+                              onClick={() => loadProviderModels(selectedProvider, false)}
+                              disabled={selectedProviderModelsLoading}
+                            >
+                              {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Laden"}
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-300 hover:bg-white/10"
+                            onClick={() => loadProviderModels(selectedProvider, true)}
+                            disabled={selectedProviderModelsLoading}
+                            title="Modelle aktualisieren"
+                            aria-label="Modelle aktualisieren"
+                          >
+                            {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {selectedProviderHasModels ? (
+                        <Select
+                          value={selectedModelInProviderList ? selectedNodeRecord.config.model : undefined}
+                          onValueChange={(value) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: { ...node.data, model: value } as any,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue placeholder="Modell wählen" /></SelectTrigger>
+                          <SelectContent>
+                            {selectedProviderModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.label !== model.id ? `${model.label} (${model.id})` : model.id}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={selectedNodeRecord.config.model}
+                          onChange={(event) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: { ...node.data, model: event.target.value } as any,
+                            }))
+                          }
+                          className="bg-[#0f172a] border-white/10"
+                          placeholder="Model-ID manuell eingeben"
+                        />
+                      )}
+
+                      {selectedProviderModelError && (
+                        <div className="rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-100">
+                          <div>{selectedProviderModelError}</div>
+                          <Link href="/admin" className="mt-1 inline-block underline underline-offset-2">
+                            Im Admin-Panel Provider anbinden und Modelle laden
+                          </Link>
+                        </div>
+                      )}
+
+                      {!selectedProviderModelError && !selectedProviderHasModels && !selectedProviderModelsLoading && (
+                        <div className="rounded-md border border-blue-400/30 bg-blue-500/10 px-2 py-1.5 text-[11px] text-blue-100">
+                          Keine Modelle gefunden.
+                          <Link href="/admin" className="ml-1 underline underline-offset-2">
+                            Zu Integrationen
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <Input
                       value={selectedNodeRecord.config.model}
@@ -1485,57 +1578,6 @@ export function AgentWorkflowV2Management() {
                       }
                       className="bg-[#0f172a] border-white/10"
                     />
-                  )}
-
-                  {isModelDiscoverySupported(selectedProvider) && (
-                    <div className="rounded-md border border-white/10 bg-black/20 p-2 text-xs text-slate-300 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 border-white/20 bg-transparent text-slate-200 hover:bg-white/10"
-                          onClick={() => loadProviderModels(selectedProvider, false)}
-                          disabled={selectedProviderModelsLoading}
-                        >
-                          {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Modelle laden"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-slate-300 hover:bg-white/10"
-                          onClick={() => loadProviderModels(selectedProvider, true)}
-                          disabled={selectedProviderModelsLoading}
-                        >
-                          <RefreshCcw className="mr-1 h-3.5 w-3.5" />
-                          Aktualisieren
-                        </Button>
-                        <span className="text-slate-400">{selectedProviderModels.length} Modelle geladen</span>
-                      </div>
-
-                      {selectedProviderModelError && (
-                        <div className="rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-amber-100">
-                          {selectedProviderModelError}
-                          <div className="mt-1">
-                            <Link href="/admin" className="underline underline-offset-2">
-                              Im Admin-Panel unter Integrationen Provider anbinden und Modelle laden
-                            </Link>
-                          </div>
-                        </div>
-                      )}
-
-                      {!selectedProviderModelError && selectedProviderModels.length === 0 && !selectedProviderModelsLoading && (
-                        <div className="rounded border border-blue-400/30 bg-blue-500/10 px-2 py-1.5 text-blue-100">
-                          Keine Modelle gefunden. Bitte Provider im Admin-Panel konfigurieren und Modelle laden.
-                          <div className="mt-1">
-                            <Link href="/admin" className="underline underline-offset-2">
-                              Zu Integrationen
-                            </Link>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   )}
                 </div>
 
