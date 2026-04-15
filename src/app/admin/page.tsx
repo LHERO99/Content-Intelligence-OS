@@ -30,10 +30,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap } from "lucide-react";
 import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
+import { IntegrationsManagement } from "./integrations-management";
 
 interface User {
   id: string;
@@ -193,6 +194,10 @@ export default function AdminPage() {
           <TabsTrigger value="optimization-rules" className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4" />
             Optimierungsregeln
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-2">
+            <PlugZap className="h-4 w-4" />
+            Integrationen
           </TabsTrigger>
         </TabsList>
 
@@ -416,6 +421,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="optimization-rules">
           <OptimizationRulesTab />
+        </TabsContent>
+        <TabsContent value="integrations">
+          <IntegrationsManagement />
         </TabsContent>
       </Tabs>
     </div>
