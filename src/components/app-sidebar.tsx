@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
@@ -49,6 +49,14 @@ const items = [
   },
 ]
 
+const adminItems = [
+  {
+    title: "Agent-Workflow",
+    url: "/agent-workflow",
+    icon: Workflow,
+  },
+]
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   const { logoUrl, primaryColor } = useBranding()
@@ -87,6 +95,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+
+            {session?.user?.role === "Admin" && (
+              <>
+                <Separator className="my-2" />
+                <SidebarMenu>
+                  {adminItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton render={<Link href={item.url} />}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

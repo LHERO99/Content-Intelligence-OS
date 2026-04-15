@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Loader2, Play, Save, Sparkles, Workflow } from "lucide-react";
+import { Bot, Loader2, Play, Save, Sparkles, Workflow, Plus, ArrowRight } from "lucide-react";
 
 type AgentStepType = "research" | "analysis" | "briefing" | "draft" | "review";
 type AgentProvider = "openrouter" | "gemini";
@@ -117,8 +117,10 @@ export function AgentWorkflowManagement() {
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [draftNodes, setDraftNodes] = useState<WorkflowNode[]>([]);
   const [draftEdges, setDraftEdges] = useState<WorkflowEdge[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const activeWorkflow = useMemo(() => workflows.find((workflow) => workflow.id === activeWorkflowId) || null, [workflows, activeWorkflowId]);
+  const selectedNode = useMemo(() => draftNodes.find((node) => node.id === selectedNodeId) || null, [draftNodes, selectedNodeId]);
 
   const loadWorkflows = async () => {
     const res = await fetch("/api/agent-workflows");
@@ -137,8 +139,10 @@ export function AgentWorkflowManagement() {
     if (selectedId) {
       const selected = list.find((entry) => entry.id === selectedId);
       const editableVersion = selected?.draftVersion || selected?.activeVersion;
-      setDraftNodes(editableVersion?.nodes?.slice().sort((a, b) => a.position - b.position) || []);
+      const nodes = editableVersion?.nodes?.slice().sort((a, b) => a.position - b.position) || [];
+      setDraftNodes(nodes);
       setDraftEdges(editableVersion?.edges || []);
+      setSelectedNodeId(nodes[0]?.id || null);
     }
   };
 
@@ -169,8 +173,10 @@ export function AgentWorkflowManagement() {
   useEffect(() => {
     if (!activeWorkflow) return;
     const editableVersion = activeWorkflow.draftVersion || activeWorkflow.activeVersion;
-    setDraftNodes(editableVersion?.nodes?.slice().sort((a, b) => a.position - b.position) || []);
+    const nodes = editableVersion?.nodes?.slice().sort((a, b) => a.position - b.position) || [];
+    setDraftNodes(nodes);
     setDraftEdges(editableVersion?.edges || []);
+    setSelectedNodeId(nodes[0]?.id || null);
   }, [activeWorkflow]);
 
   const createCustomWorkflow = async () => {
@@ -209,31 +215,43 @@ export function AgentWorkflowManagement() {
     setDraftNodes((prev) => prev.map((node) => (node.id === nodeId ? updater(node) : node)));
   };
 
-  const addNode = () => {
+  const addNode = (type: AgentStepType = "research") => {
     const nextPosition = draftNodes.length;
     const id = crypto.randomUUID();
-    setDraftNodes((prev) => [
-      ...prev,
-      {
-        id,
-        name: `Step ${nextPosition + 1}`,
-        type: "research",
-        position: nextPosition,
-        config: {
-          instruction: "Beschreiben Sie den Zweck dieses Schritts.",
-          provider: "openrouter",
-          model: "openai/gpt-4o-mini",
-          timeoutMs: 45000,
-          retries: 1,
-          enabled: true,
-        },
+    const label = {
+      research: "Recherche",
+      analysis: "Analyse",
+      briefing: "Briefing",
+      draft: "Text-Entwurf",
+      review: "Prüfung",
+    }[type];
+
+    const newNode: WorkflowNode = {
+      id,
+      name: `${label} ${nextPosition + 1}`,
+      type,
+      position: nextPosition,
+      config: {
+        instruction: "Beschreiben Sie den Zweck dieses Schritts.",
+        provider: "openrouter",
+        model: "openai/gpt-4o-mini",
+        timeoutMs: 45000,
+        retries: 1,
+        enabled: true,
       },
-    ]);
+    };
+
+    setDraftNodes((prev) => [...prev, newNode]);
+    setSelectedNodeId(id);
   };
 
   const removeNode = (nodeId: string) => {
     setDraftNodes((prev) => prev.filter((node) => node.id !== nodeId));
     setDraftEdges((prev) => prev.filter((edge) => edge.sourceNodeId !== nodeId && edge.targetNodeId !== nodeId));
+    if (selectedNodeId === nodeId) {
+      const remaining = draftNodes.filter((node) => node.id !== nodeId);
+      setSelectedNodeId(remaining[0]?.id || null);
+    }
   };
 
   const saveWorkflowConfig = async () => {
@@ -303,7 +321,7 @@ export function AgentWorkflowManagement() {
           idempotencyKey: crypto.randomUUID(),
           input: {
             workflowName: activeWorkflow.name,
-            source: "manual-agent-workflow-tab",
+            source: "agent-workflow-page",
           },
         }),
       });
@@ -363,15 +381,15 @@ export function AgentWorkflowManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            Workflow Setup
+            Agent-Workflow Studio
           </CardTitle>
           <CardDescription>
-            Nutzen Sie den Default-Workflow sofort oder erstellen Sie eigene Multi-Agent Workflows.
+            n8n-inspirierter Aufbau: links Agent-Palette, in der Mitte Flow-Canvas, rechts Step-Inspector und unten Ausführungen.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-2 min-w-[280px]">
+            <div className="space-y-2 min-w-[260px]">
               <Label>Aktiver Workflow</Label>
               <Select value={activeWorkflowId || ""} onValueChange={(value) => setActiveWorkflowId(value)}>
                 <SelectTrigger>
@@ -386,202 +404,101 @@ export function AgentWorkflowManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 min-w-[280px]">
+
+            <div className="space-y-2 min-w-[260px]">
               <Label>Neuer Custom Workflow</Label>
               <Input
-                placeholder="z. B. Kategorie Optimierung V2"
+                placeholder="z. B. Kategorie-Optimierung"
                 value={newWorkflowName}
                 onChange={(e) => setNewWorkflowName(e.target.value)}
               />
             </div>
-            <Button variant="outline" onClick={createCustomWorkflow} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom Workflow erstellen"}
-            </Button>
-          </div>
 
-          {activeWorkflow && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">Modus: {activeWorkflow.mode === "default" ? "Default" : "Custom"}</Badge>
-              <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>
-                Status: {activeWorkflow.state}
-              </Badge>
-            </div>
-          )}
+            <Button variant="outline" onClick={createCustomWorkflow} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom erstellen"}
+            </Button>
+
+            {activeWorkflow && (
+              <>
+                <Badge variant="secondary">Modus: {activeWorkflow.mode === "default" ? "Default" : "Custom"}</Badge>
+                <Badge variant={activeWorkflow.state === "published" ? "default" : "outline"}>Status: {activeWorkflow.state}</Badge>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {activeWorkflow && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Workflow className="h-5 w-5" />
-              Custom Multi-Agent Setup
-            </CardTitle>
-            <CardDescription>
-              Konfigurieren Sie die Agenten-Schritte, Modelle und Reihenfolge. Verbindungen werden als Basis-DAG gespeichert.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {draftNodes.length === 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Keine Steps vorhanden.</p>
-                <Button variant="outline" size="sm" onClick={addNode}>Ersten Step hinzufügen</Button>
-              </div>
-            ) : (
-              draftNodes
-                .slice()
-                .sort((a, b) => a.position - b.position)
-                .map((node, index) => (
-                  <div key={node.id} className="rounded-md border p-4 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-medium text-sm flex items-center gap-2">
-                        <Bot className="h-4 w-4" />
-                        Step {index + 1}: {node.name}
-                      </div>
-                      <Badge variant="outline">{node.type}</Badge>
-                    </div>
+        <div className="grid gap-4 lg:grid-cols-12">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-base">Agent-Palette</CardTitle>
+              <CardDescription>Fügen Sie neue Steps hinzu.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {STEP_TYPES.map((stepType) => (
+                <Button key={stepType} variant="outline" className="w-full justify-start" onClick={() => addNode(stepType)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {stepType}
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Name</Label>
-                        <Input
-                          value={node.name}
-                          onChange={(e) => updateNode(node.id, (prev) => ({ ...prev, name: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Step-Typ</Label>
-                        <Select
-                          value={node.type}
-                          onValueChange={(value) => updateNode(node.id, (prev) => ({ ...prev, type: value as AgentStepType }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STEP_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Provider</Label>
-                        <Select
-                          value={node.config.provider}
-                          onValueChange={(value) =>
-                            updateNode(node.id, (prev) => ({
-                              ...prev,
-                              config: { ...prev.config, provider: value as AgentProvider },
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openrouter">OpenRouter</SelectItem>
-                            <SelectItem value="gemini">Gemini</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Model</Label>
-                        <Input
-                          value={node.config.model}
-                          onChange={(e) =>
-                            updateNode(node.id, (prev) => ({
-                              ...prev,
-                              config: { ...prev.config, model: e.target.value },
-                            }))
-                          }
-                          placeholder={node.config.provider === "gemini" ? "gemini-1.5-flash" : "openai/gpt-4o-mini"}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Timeout (ms)</Label>
-                        <Input
-                          type="number"
-                          value={node.config.timeoutMs}
-                          onChange={(e) =>
-                            updateNode(node.id, (prev) => ({
-                              ...prev,
-                              config: { ...prev.config, timeoutMs: Number(e.target.value || 0) },
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Retries</Label>
-                        <Input
-                          type="number"
-                          value={node.config.retries}
-                          onChange={(e) =>
-                            updateNode(node.id, (prev) => ({
-                              ...prev,
-                              config: { ...prev.config, retries: Number(e.target.value || 0) },
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Instruction</Label>
-                      <textarea
-                        value={node.config.instruction}
-                        onChange={(e) =>
-                          updateNode(node.id, (prev) => ({
-                            ...prev,
-                            config: { ...prev.config, instruction: e.target.value },
-                          }))
-                        }
-                        className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm min-h-24"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={node.config.enabled ? "default" : "outline"}
-                        size="sm"
-                        onClick={() =>
-                          updateNode(node.id, (prev) => ({
-                            ...prev,
-                            config: { ...prev.config, enabled: !prev.config.enabled },
-                          }))
-                        }
+          <Card className="lg:col-span-6">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Workflow className="h-4 w-4" />
+                Flow-Canvas (MVP)
+              </CardTitle>
+              <CardDescription>Node-Reihenfolge und Verbindungen wie in einer Pipeline.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {draftNodes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Noch keine Steps im Workflow. Fügen Sie links einen Agenten hinzu.</p>
+              ) : (
+                <div className="space-y-2">
+                  {draftNodes
+                    .slice()
+                    .sort((a, b) => a.position - b.position)
+                    .map((node, index) => (
+                      <button
+                        type="button"
+                        key={node.id}
+                        onClick={() => setSelectedNodeId(node.id)}
+                        className={`w-full rounded-md border p-3 text-left transition-colors ${selectedNodeId === node.id ? "border-primary bg-primary/5" : "hover:bg-muted/30"}`}
                       >
-                        {node.config.enabled ? "Aktiv" : "Inaktiv"}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => removeNode(node.id)}>
-                        Entfernen
-                      </Button>
-                    </div>
-                  </div>
-                ))
-            )}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4" />
+                            <span className="font-medium text-sm">{node.name}</span>
+                            <Badge variant="outline" className="text-[10px]">{node.type}</Badge>
+                          </div>
+                          <Badge variant={node.config.enabled ? "default" : "secondary"}>{node.config.enabled ? "Aktiv" : "Inaktiv"}</Badge>
+                        </div>
+                        {index < draftNodes.length - 1 && (
+                          <div className="mt-2 flex items-center text-xs text-muted-foreground gap-1">
+                            <ArrowRight className="h-3.5 w-3.5" />
+                            Weiter zu Step {index + 2}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                </div>
+              )}
 
-            <Separator />
+              <Separator />
 
-            <Button variant="outline" size="sm" onClick={addNode}>
-              Step hinzufügen
-            </Button>
-
-            <div className="space-y-2">
-              <Label>Verbindungen (Basis-DAG)</Label>
               <div className="space-y-2">
-                {draftEdges.length === 0 && <p className="text-sm text-muted-foreground">Keine Verbindungen definiert.</p>}
+                <Label>Verbindungen (Basis-DAG)</Label>
+                {draftEdges.length === 0 && <p className="text-xs text-muted-foreground">Keine Verbindungen definiert.</p>}
                 {draftEdges.map((edge) => (
                   <div key={edge.id} className="grid gap-2 md:grid-cols-2">
                     <Select
                       value={edge.sourceNodeId}
                       onValueChange={(value) => {
                         if (!value) return;
-                        setDraftEdges((prev) =>
-                          prev.map((entry) => (entry.id === edge.id ? { ...entry, sourceNodeId: value } : entry))
-                        );
+                        setDraftEdges((prev) => prev.map((entry) => (entry.id === edge.id ? { ...entry, sourceNodeId: value } : entry)));
                       }}
                     >
                       <SelectTrigger>
@@ -589,19 +506,16 @@ export function AgentWorkflowManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         {draftNodes.map((node) => (
-                          <SelectItem key={node.id} value={node.id}>
-                            {node.name}
-                          </SelectItem>
+                          <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
                     <Select
                       value={edge.targetNodeId}
                       onValueChange={(value) => {
                         if (!value) return;
-                        setDraftEdges((prev) =>
-                          prev.map((entry) => (entry.id === edge.id ? { ...entry, targetNodeId: value } : entry))
-                        );
+                        setDraftEdges((prev) => prev.map((entry) => (entry.id === edge.id ? { ...entry, targetNodeId: value } : entry)));
                       }}
                     >
                       <SelectTrigger>
@@ -609,47 +523,140 @@ export function AgentWorkflowManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         {draftNodes.map((node) => (
-                          <SelectItem key={node.id} value={node.id}>
-                            {node.name}
-                          </SelectItem>
+                          <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (draftNodes.length < 2) return;
+                    setDraftEdges((prev) => [
+                      ...prev,
+                      {
+                        id: crypto.randomUUID(),
+                        sourceNodeId: draftNodes[0].id,
+                        targetNodeId: draftNodes[draftNodes.length - 1].id,
+                      },
+                    ]);
+                  }}
+                >
+                  Verbindung hinzufügen
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (draftNodes.length < 2) return;
-                  setDraftEdges((prev) => [
-                    ...prev,
-                    {
-                      id: crypto.randomUUID(),
-                      sourceNodeId: draftNodes[0].id,
-                      targetNodeId: draftNodes[draftNodes.length - 1].id,
-                    },
-                  ]);
-                }}
-              >
-                Verbindung hinzufügen
-              </Button>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={saveWorkflowConfig} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Speichern
-              </Button>
-              <Button variant="outline" onClick={publishWorkflow} disabled={publishing}>
-                {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publizieren"}
-              </Button>
-              <Button variant="secondary" onClick={runWorkflow} disabled={running}>
-                {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                Jetzt ausführen
-              </Button>
-            </div>
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-base">Step-Inspector</CardTitle>
+              <CardDescription>Konfiguration des ausgewählten Agenten.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!selectedNode ? (
+                <p className="text-sm text-muted-foreground">Wählen Sie einen Step im Canvas aus.</p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input value={selectedNode.name} onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Step-Typ</Label>
+                    <Select value={selectedNode.type} onValueChange={(value) => updateNode(selectedNode.id, (prev) => ({ ...prev, type: value as AgentStepType }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STEP_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Provider</Label>
+                    <Select
+                      value={selectedNode.config.provider}
+                      onValueChange={(value) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, provider: value as AgentProvider } }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openrouter">OpenRouter</SelectItem>
+                        <SelectItem value="gemini">Gemini</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Model</Label>
+                    <Input
+                      value={selectedNode.config.model}
+                      onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, model: e.target.value } }))}
+                    />
+                  </div>
+                  <div className="grid gap-2 grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Timeout</Label>
+                      <Input
+                        type="number"
+                        value={selectedNode.config.timeoutMs}
+                        onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, timeoutMs: Number(e.target.value || 0) } }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Retries</Label>
+                      <Input
+                        type="number"
+                        value={selectedNode.config.retries}
+                        onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, retries: Number(e.target.value || 0) } }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Instruction</Label>
+                    <textarea
+                      value={selectedNode.config.instruction}
+                      onChange={(e) => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, instruction: e.target.value } }))}
+                      className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm min-h-28"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={selectedNode.config.enabled ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateNode(selectedNode.id, (prev) => ({ ...prev, config: { ...prev.config, enabled: !prev.config.enabled } }))}
+                    >
+                      {selectedNode.config.enabled ? "Aktiv" : "Inaktiv"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => removeNode(selectedNode.id)}>
+                      Entfernen
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeWorkflow && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Workflow Aktionen</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button onClick={saveWorkflowConfig} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Speichern
+            </Button>
+            <Button variant="outline" onClick={publishWorkflow} disabled={publishing}>
+              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publizieren"}
+            </Button>
+            <Button variant="secondary" onClick={runWorkflow} disabled={running}>
+              {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+              Jetzt ausführen
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -668,9 +675,7 @@ export function AgentWorkflowManagement() {
                 <button
                   key={run.id}
                   onClick={() => loadRunDetail(run.id)}
-                  className={`w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/40 ${
-                    selectedRunId === run.id ? "border-primary" : "border-border"
-                  }`}
+                  className={`w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/40 ${selectedRunId === run.id ? "border-primary" : "border-border"}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-sm font-medium">Run {run.id.slice(0, 8)}</div>
