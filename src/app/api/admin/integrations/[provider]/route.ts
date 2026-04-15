@@ -92,6 +92,38 @@ async function testDataforseo(username: string, password: string): Promise<void>
   }
 }
 
+async function testVertexLegal(projectId: string, location: string, endpointId: string, accessToken: string): Promise<void> {
+  const sanitizedProject = String(projectId || '').trim();
+  const sanitizedLocation = String(location || '').trim();
+  const sanitizedEndpoint = String(endpointId || '').trim();
+  const sanitizedToken = String(accessToken || '').trim();
+
+  if (!sanitizedProject || !sanitizedLocation || !sanitizedEndpoint || !sanitizedToken) {
+    throw new Error('Vertex Legal Test fehlgeschlagen: Project, Location, Endpoint und Access Token sind erforderlich.');
+  }
+
+  const url = `https://${sanitizedLocation}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(sanitizedProject)}/locations/${encodeURIComponent(sanitizedLocation)}/endpoints/${encodeURIComponent(sanitizedEndpoint)}:predict`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${sanitizedToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      instances: [
+        {
+          ping: true,
+          source: 'content-agent-builder-healthcheck',
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Vertex Legal Test fehlgeschlagen (${response.status})`);
+  }
+}
+
 async function testProviderConnection(provider: IntegrationProvider, values: Record<string, string>): Promise<void> {
   if (provider === 'sistrix') {
     await testSistrix(values.SISTRIX_API_KEY || '');
@@ -115,6 +147,16 @@ async function testProviderConnection(provider: IntegrationProvider, values: Rec
 
   if (provider === 'dataforseo') {
     await testDataforseo(values.DATAFORSEO_USERNAME || '', values.DATAFORSEO_PASSWORD || '');
+    return;
+  }
+
+  if (provider === 'vertex_legal') {
+    await testVertexLegal(
+      values.VERTEX_AI_PROJECT_ID || '',
+      values.VERTEX_AI_LOCATION || '',
+      values.VERTEX_AI_ENDPOINT_ID || '',
+      values.VERTEX_AI_ACCESS_TOKEN || ''
+    );
     return;
   }
 

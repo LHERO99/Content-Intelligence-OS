@@ -18,38 +18,45 @@ const DEFAULT_TENANT_ID = 'default';
 
 const DEFAULT_NODE_ORDER: Array<{ type: AgentStepType; name: string; instruction: string; x: number; y: number }> = [
   {
+    type: 'orchestrator',
+    name: 'Parent Agent (Orchestrator)',
+    instruction: 'Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.',
+    x: 80,
+    y: 80,
+  },
+  {
     type: 'research',
     name: 'Research Agent',
     instruction: 'Sammle relevante Quellen, Suchintentionen und Fakten für die Content-Aufgabe.',
-    x: 120,
+    x: 360,
     y: 80,
   },
   {
     type: 'analysis',
     name: 'Analysis Agent',
     instruction: 'Analysiere die Rechercheergebnisse und identifiziere Chancen, Lücken und Risiken.',
-    x: 420,
+    x: 640,
     y: 80,
   },
   {
     type: 'briefing',
     name: 'Briefing Agent',
     instruction: 'Erzeuge aus der Analyse ein klares Briefing mit Struktur, WDF, Tonalität und Ziel.',
-    x: 720,
+    x: 920,
     y: 80,
   },
   {
     type: 'draft',
     name: 'Draft Agent',
     instruction: 'Erstelle den Entwurf basierend auf dem Briefing und allen relevanten Inputs.',
-    x: 1020,
+    x: 1200,
     y: 80,
   },
   {
     type: 'review',
     name: 'Review Agent',
     instruction: 'Prüfe Entwurf auf SEO, Lesbarkeit und Vollständigkeit. Liefere To-dos und Ergebnis.',
-    x: 1320,
+    x: 1480,
     y: 80,
   },
 ];
@@ -116,6 +123,69 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     private readonly modelRunner: AgentModelRunnerV2
   ) {}
 
+  private buildParentNode(tenantId: string, workflowVersionId: string) {
+    const timestamp = nowIso();
+    return {
+      id: crypto.randomUUID(),
+      name: 'Parent Agent (Orchestrator)',
+      type: 'orchestrator' as const,
+      position: 0,
+      x: 80,
+      y: 80,
+      isParent: true,
+      config: {
+        instruction: 'Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.',
+        provider: 'openrouter' as const,
+        model: 'openai/gpt-4o-mini',
+        timeoutMs: 45000,
+        retries: 1,
+        enabled: true,
+      },
+      tenantId,
+      workflowVersionId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+  }
+
+  private ensureParentNode(
+    tenantId: string,
+    workflowVersionId: string,
+    nodes: Array<{
+      id: string;
+      name: string;
+      type: AgentStepType;
+      position: number;
+      x: number;
+      y: number;
+      isParent?: boolean;
+      config: any;
+    }>
+  ) {
+    const parentNode = nodes.find((node) => node.type === 'orchestrator' || node.isParent);
+    const normalized = nodes.filter((node) => node.id !== parentNode?.id).map((node, index) => ({
+      ...node,
+      isParent: false,
+      position: index + 1,
+    }));
+
+    if (parentNode) {
+      return [
+        {
+          ...parentNode,
+          type: 'orchestrator' as const,
+          isParent: true,
+          position: 0,
+          x: Number.isFinite(parentNode.x) ? parentNode.x : 80,
+          y: Number.isFinite(parentNode.y) ? parentNode.y : 80,
+        },
+        ...normalized,
+      ];
+    }
+
+    return [this.buildParentNode(tenantId, workflowVersionId), ...normalized];
+  }
+
   private async ensureDefaultWorkflow(tenantId: string): Promise<void> {
     const existing = await this.workflows.list(tenantId);
     if (existing.some((workflow) => workflow.mode === 'default')) return;
@@ -131,14 +201,15 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     if (!draftVersion) return;
 
     const timestamp = nowIso();
-    const nodes = DEFAULT_NODE_ORDER.map((nodeDef, index) => ({
-      id: crypto.randomUUID(),
-      name: nodeDef.name,
-      type: nodeDef.type,
-      position: index,
-      x: nodeDef.x,
-      y: nodeDef.y,
-      config: {
+      const nodes = DEFAULT_NODE_ORDER.map((nodeDef, index) => ({
+        id: crypto.randomUUID(),
+        name: nodeDef.name,
+        type: nodeDef.type,
+        position: index,
+        x: nodeDef.x,
+        y: nodeDef.y,
+        isParent: nodeDef.type === 'orchestrator',
+        config: {
         instruction: nodeDef.instruction,
         provider: 'openrouter' as const,
         model: 'openai/gpt-4o-mini',
@@ -170,11 +241,72 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
   }
 
   async create(input: Parameters<WorkflowRepositoryV2['create']>[0]) {
-    return this.workflows.create(input);
+    const created = await this.workflows.create(input);
+    const draftVersion = created.draftVersion;
+    if (!draftVersion) return created;
+
+    const parentNode = this.buildParentNode(input.tenantId, draftVersion.id);
+
+    if (input.mode === 'default') {
+      const timestamp = nowIso();
+      const defaultNodes = DEFAULT_NODE_ORDER
+        .filter((node) => node.type !== 'orchestrator')
+        .map((nodeDef, index) => ({
+          id: crypto.randomUUID(),
+          name: nodeDef.name,
+          type: nodeDef.type,
+          position: index + 1,
+          x: nodeDef.x,
+          y: nodeDef.y,
+          isParent: false,
+          config: {
+            instruction: nodeDef.instruction,
+            provider: 'openrouter' as const,
+            model: 'openai/gpt-4o-mini',
+            timeoutMs: 45000,
+            retries: 1,
+            enabled: true,
+          },
+          tenantId: input.tenantId,
+          workflowVersionId: draftVersion.id,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        }));
+
+      const chain = [parentNode, ...defaultNodes];
+      const edges = chain.slice(0, -1).map((node, index) => ({
+        id: crypto.randomUUID(),
+        sourceNodeId: node.id,
+        targetNodeId: chain[index + 1].id,
+        channel: `${node.type}.output`,
+        targetInputKey: `${chain[index + 1].type}Input`,
+      }));
+
+      return this.workflows.update(input.tenantId, created.id, {
+        nodes: chain,
+        edges,
+      });
+    }
+
+    return this.workflows.update(input.tenantId, created.id, {
+      nodes: [parentNode],
+      edges: [],
+    });
   }
 
   async update(tenantId: string, workflowId: string, input: Parameters<WorkflowRepositoryV2['update']>[2]) {
-    return this.workflows.update(tenantId, workflowId, input);
+    if (!input.nodes) {
+      return this.workflows.update(tenantId, workflowId, input);
+    }
+
+    const existing = await this.workflows.getById(tenantId, workflowId);
+    const versionId = existing?.draftVersion?.id || existing?.activeVersion?.id || crypto.randomUUID();
+    const normalizedNodes = this.ensureParentNode(tenantId, versionId, input.nodes as any);
+
+    return this.workflows.update(tenantId, workflowId, {
+      ...input,
+      nodes: normalizedNodes,
+    });
   }
 
   async publish(tenantId: string, workflowId: string) {
@@ -278,6 +410,11 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     await this.runs.createRun(run);
 
     const nodes = topologicalSort(version.nodes.filter((node) => node.config.enabled), version.edges);
+    nodes.sort((a, b) => {
+      if (a.type === 'orchestrator') return -1;
+      if (b.type === 'orchestrator') return 1;
+      return a.position - b.position;
+    });
     const edgesBySource = resolveEdgesBySource(version);
 
     const messages: WorkflowMessageV2[] = [];

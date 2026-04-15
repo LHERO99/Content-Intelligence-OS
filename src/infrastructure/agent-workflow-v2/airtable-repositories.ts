@@ -72,6 +72,7 @@ function buildDraftGraph(tenantId: string, draftVersionId: string, input: Update
     position: node.position,
     x: node.x,
     y: node.y,
+    isParent: Boolean(node.isParent),
     config: node.config,
     createdAt,
     updatedAt: createdAt,
@@ -338,13 +339,30 @@ export class AirtableIntegrationSecretProviderV2 implements IntegrationSecretPro
     const config = await getConfig();
     return (config.GEMINI_API_KEY || '').trim() || null;
   }
+
+  async getVertexLegalConfig(): Promise<{ projectId: string; location: string; endpointId: string; accessToken?: string } | null> {
+    const config = await getConfig();
+    const projectId = (config.VERTEX_AI_PROJECT_ID || '').trim();
+    const location = (config.VERTEX_AI_LOCATION || '').trim();
+    const endpointId = (config.VERTEX_AI_ENDPOINT_ID || '').trim();
+    const accessToken = (config.VERTEX_AI_ACCESS_TOKEN || '').trim();
+
+    if (!projectId || !location || !endpointId) return null;
+
+    return {
+      projectId,
+      location,
+      endpointId,
+      accessToken: accessToken || undefined,
+    };
+  }
 }
 
 export class LlmAgentModelRunnerV2 implements AgentModelRunnerV2 {
   constructor(private readonly secrets: IntegrationSecretProviderV2) {}
 
   async runStep(input: {
-    provider: 'openrouter' | 'gemini';
+    provider: 'openrouter' | 'gemini' | 'vertex_legal';
     model: string;
     instruction: string;
     payload: Record<string, unknown>;
@@ -383,6 +401,54 @@ export class LlmAgentModelRunnerV2 implements AgentModelRunnerV2 {
           provider: 'openrouter',
           model: input.model,
           text: content,
+          response: json,
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    if (input.provider === 'vertex_legal') {
+      const vertex = await this.secrets.getVertexLegalConfig();
+      if (!vertex) {
+        throw new Error('Vertex Legal Konfiguration fehlt (PROJECT_ID, LOCATION, ENDPOINT_ID).');
+      }
+
+      if (!vertex.accessToken) {
+        throw new Error('VERTEX_AI_ACCESS_TOKEN fehlt. Bitte im Integrations-Tab hinterlegen.');
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
+      try {
+        const url = `https://${vertex.location}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(vertex.projectId)}/locations/${encodeURIComponent(vertex.location)}/endpoints/${encodeURIComponent(vertex.endpointId)}:predict`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${vertex.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            instances: [
+              {
+                instruction: input.instruction,
+                model: input.model,
+                payload: input.payload,
+              },
+            ],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Vertex Legal Endpoint Fehler (${response.status})`);
+        }
+
+        const json = await response.json();
+        return {
+          provider: 'vertex_legal',
+          model: input.model,
+          text: JSON.stringify(json?.predictions?.[0] || json || {}),
           response: json,
         };
       } finally {

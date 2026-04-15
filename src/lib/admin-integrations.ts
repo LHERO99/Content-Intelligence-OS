@@ -1,6 +1,6 @@
 import { getConfig, updateConfig } from '@/lib/airtable';
 
-export type IntegrationProvider = 'sistrix' | 'openai' | 'openrouter' | 'gemini' | 'dataforseo';
+export type IntegrationProvider = 'sistrix' | 'openai' | 'openrouter' | 'gemini' | 'dataforseo' | 'vertex_legal';
 
 export type ProviderFieldType = 'password' | 'text';
 
@@ -87,6 +87,37 @@ export const PROVIDERS: ProviderDefinition[] = [
         label: 'Password',
         type: 'password',
         placeholder: 'DataForSEO Password',
+      },
+    ],
+  },
+  {
+    id: 'vertex_legal',
+    name: 'Vertex Legal Agent',
+    description: 'Externer Legal Agent via Vertex AI Endpoint.',
+    fields: [
+      {
+        key: 'VERTEX_AI_PROJECT_ID',
+        label: 'Project ID',
+        type: 'text',
+        placeholder: 'my-gcp-project',
+      },
+      {
+        key: 'VERTEX_AI_LOCATION',
+        label: 'Location',
+        type: 'text',
+        placeholder: 'europe-west4',
+      },
+      {
+        key: 'VERTEX_AI_ENDPOINT_ID',
+        label: 'Endpoint ID',
+        type: 'text',
+        placeholder: '1234567890123456789',
+      },
+      {
+        key: 'VERTEX_AI_ACCESS_TOKEN',
+        label: 'Access Token',
+        type: 'password',
+        placeholder: 'ya29....',
       },
     ],
   },

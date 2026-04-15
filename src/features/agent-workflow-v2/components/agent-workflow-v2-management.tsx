@@ -44,20 +44,23 @@ import {
   Bot,
   Brain,
   CircleDot,
+  Copy,
   GitBranch,
   Loader2,
   MessageSquare,
   Play,
   Plus,
+  Pencil,
   Save,
   Send,
   Sparkles,
   SquareTerminal,
+  Trash2,
   Wand2,
 } from "lucide-react";
 
-type AgentStepType = "research" | "analysis" | "briefing" | "draft" | "review";
-type AgentProvider = "openrouter" | "gemini";
+type AgentStepType = "orchestrator" | "research" | "analysis" | "briefing" | "draft" | "review";
+type AgentProvider = "openrouter" | "gemini" | "vertex_legal";
 type RunState = "idle" | "running" | "success" | "failed";
 
 type WorkflowNodeRecord = {
@@ -67,6 +70,7 @@ type WorkflowNodeRecord = {
   position: number;
   x: number;
   y: number;
+  isParent?: boolean;
   config: {
     instruction: string;
     provider: AgentProvider;
@@ -100,6 +104,8 @@ type WorkflowRecord = {
   draftVersion?: WorkflowVersion;
   activeVersion?: WorkflowVersion;
 };
+
+type FlowMode = "default" | "custom";
 
 type RunRecord = {
   id: string;
@@ -140,12 +146,14 @@ type AgentNodeData = {
   outputPreview?: string;
   provider: AgentProvider;
   icon: "trigger" | "agent" | "tool";
+  isParent?: boolean;
   isFocused?: boolean;
 };
 
 const STEP_TYPES: AgentStepType[] = ["research", "analysis", "briefing", "draft", "review"];
 
 const NODE_STYLE_BY_TYPE: Record<AgentStepType, { color: string; glow: string; icon: "trigger" | "agent" | "tool" }> = {
+  orchestrator: { color: "#8B5CF6", glow: "rgba(139,92,246,0.35)", icon: "trigger" },
   research: { color: "#3B82F6", glow: "rgba(59,130,246,0.35)", icon: "agent" },
   analysis: { color: "#2563EB", glow: "rgba(37,99,235,0.35)", icon: "agent" },
   briefing: { color: "#14B8A6", glow: "rgba(20,184,166,0.35)", icon: "tool" },
@@ -197,6 +205,12 @@ function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
         </div>
         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
       </div>
+
+      {data.isParent && (
+        <div className="mb-2 inline-flex rounded-md border border-violet-400/40 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-200">
+          Parent Agent
+        </div>
+      )}
 
       <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[10px] text-slate-300">
         <div className="font-semibold text-slate-200">Last Output</div>
@@ -290,6 +304,8 @@ function FlowCanvas({
   onEdgesChange,
   onConnect,
   onNodeClick,
+  onNodeContextMenu,
+  onCanvasInteraction,
   onDropNode,
 }: {
   nodes: Node<AgentNodeData>[];
@@ -298,6 +314,8 @@ function FlowCanvas({
   onEdgesChange: any;
   onConnect: (connection: Connection) => void;
   onNodeClick: (nodeId: string) => void;
+  onNodeContextMenu: (nodeId: string, position: { x: number; y: number }) => void;
+  onCanvasInteraction: () => void;
   onDropNode: (type: AgentStepType, position: { x: number; y: number }) => void;
 }) {
   const reactFlowInstance = useReactFlow();
@@ -336,6 +354,11 @@ function FlowCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => onNodeClick(node.id)}
+        onNodeContextMenu={(event, node) => {
+          event.preventDefault();
+          onNodeContextMenu(node.id, { x: event.clientX, y: event.clientY });
+        }}
+        onPaneClick={onCanvasInteraction}
         fitView
         snapToGrid
         snapGrid={[16, 16]}
@@ -418,12 +441,14 @@ export function AgentWorkflowV2Management() {
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [newWorkflowName, setNewWorkflowName] = useState("");
+  const [newFlowMode, setNewFlowMode] = useState<FlowMode>("custom");
 
   const [runStateByNode, setRunStateByNode] = useState<Record<string, RunState>>({});
   const [outputPreviewByNode, setOutputPreviewByNode] = useState<Record<string, string>>({});
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
 
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -443,6 +468,7 @@ export function AgentWorkflowV2Management() {
         position: 0,
         x: node.position.x,
         y: node.position.y,
+        isParent: Boolean(node.data.isParent),
         config: {
           instruction: (node.data as any).instruction || "",
           provider: node.data.provider,
@@ -457,6 +483,87 @@ export function AgentWorkflowV2Management() {
   }, [nodes]);
 
   const selectedNodeRecord = selectedNodeId ? nodeRecordMap.get(selectedNodeId) || null : null;
+
+  const sanitizeParentNode = () => {
+    const parentNodes = nodes.filter((node) => node.data.isParent || node.data.type === "orchestrator");
+    if (parentNodes.length === 0) {
+      const id = crypto.randomUUID();
+      const orchestratorNode: Node<AgentNodeData> = {
+        id,
+        type: "agentNode",
+        position: { x: 80, y: 80 },
+        data: {
+          label: "Parent Agent (Orchestrator)",
+          type: "orchestrator",
+          status: "idle",
+          outputPreview: "Noch kein Run",
+          provider: "openrouter",
+          icon: NODE_STYLE_BY_TYPE.orchestrator.icon,
+          isParent: true,
+          instruction: "Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.",
+          model: "openai/gpt-4o-mini",
+          timeoutMs: 45000,
+          retries: 1,
+          enabled: true,
+        } as any,
+      };
+      setNodes((prev) => [orchestratorNode, ...prev]);
+      return;
+    }
+
+    if (parentNodes.length > 1) {
+      const firstParentId = parentNodes[0].id;
+      setNodes((prev) =>
+        prev.map((node) => {
+          if (node.id === firstParentId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                type: "orchestrator",
+                isParent: true,
+                icon: NODE_STYLE_BY_TYPE.orchestrator.icon,
+              } as any,
+            };
+          }
+
+          if (node.data.isParent || node.data.type === "orchestrator") {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                type: "research",
+                isParent: false,
+                icon: NODE_STYLE_BY_TYPE.research.icon,
+              } as any,
+            };
+          }
+
+          return node;
+        })
+      );
+      return;
+    }
+
+    const parent = parentNodes[0];
+    if (!parent.data.isParent || parent.data.type !== "orchestrator") {
+      setNodes((prev) =>
+        prev.map((node) =>
+          node.id === parent.id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  type: "orchestrator",
+                  isParent: true,
+                  icon: NODE_STYLE_BY_TYPE.orchestrator.icon,
+                } as any,
+              }
+            : node
+        )
+      );
+    }
+  };
 
   const toFlowNodes = (workflowNodes: WorkflowNodeRecord[]): Node<AgentNodeData>[] =>
     workflowNodes
@@ -473,6 +580,7 @@ export function AgentWorkflowV2Management() {
           outputPreview: outputPreviewByNode[node.id],
           provider: node.config.provider,
           icon: NODE_STYLE_BY_TYPE[node.type].icon,
+          isParent: Boolean(node.isParent),
           instruction: node.config.instruction,
           model: node.config.model,
           timeoutMs: node.config.timeoutMs,
@@ -593,6 +701,18 @@ export function AgentWorkflowV2Management() {
   }, []);
 
   useEffect(() => {
+    if (!loading) {
+      sanitizeParentNode();
+    }
+  }, [loading, nodes.length]);
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
+  }, []);
+
+  useEffect(() => {
     if (!activeWorkflowId) return;
     const workflow = workflows.find((entry) => entry.id === activeWorkflowId);
     const version = workflow?.draftVersion || workflow?.activeVersion;
@@ -645,6 +765,7 @@ export function AgentWorkflowV2Management() {
         outputPreview: "Noch kein Run",
         provider: "openrouter",
         icon: style.icon,
+        isParent: false,
         instruction: "Beschreiben Sie die Aufgabe dieses Agenten.",
         model: "openai/gpt-4o-mini",
         timeoutMs: 45000,
@@ -659,6 +780,11 @@ export function AgentWorkflowV2Management() {
   };
 
   const removeNode = (nodeId: string) => {
+    const target = nodes.find((node) => node.id === nodeId);
+    if (target?.data.isParent) {
+      setError("Der Parent Agent kann nicht gelöscht werden.");
+      return;
+    }
     setNodes((prev) => prev.filter((node) => node.id !== nodeId));
     setEdges((prev) => prev.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     if (selectedNodeId === nodeId) {
@@ -670,6 +796,45 @@ export function AgentWorkflowV2Management() {
   const updateSelectedNode = (patcher: (node: Node<AgentNodeData>) => Node<AgentNodeData>) => {
     if (!selectedNodeId) return;
     setNodes((prev) => prev.map((node) => (node.id === selectedNodeId ? patcher(node) : node)));
+  };
+
+  const duplicateNode = (nodeId: string) => {
+    const source = nodes.find((node) => node.id === nodeId);
+    if (!source) return;
+    const id = crypto.randomUUID();
+    const clone: Node<AgentNodeData> = {
+      ...source,
+      id,
+      position: {
+        x: source.position.x + 80,
+        y: source.position.y + 50,
+      },
+      data: {
+        ...source.data,
+        label: `${source.data.label} Copy`,
+        isParent: false,
+      },
+    };
+    setNodes((prev) => [...prev, clone]);
+    setSelectedNodeId(id);
+    setDrawerOpen(true);
+  };
+
+  const renameNode = (nodeId: string) => {
+    const source = nodes.find((node) => node.id === nodeId);
+    if (!source) return;
+    const renamed = window.prompt("Neuer Node-Name", source.data.label);
+    if (!renamed || !renamed.trim()) return;
+    setNodes((prev) =>
+      prev.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: { ...node.data, label: renamed.trim() },
+            }
+          : node
+      )
+    );
   };
 
   const createCustomWorkflow = async () => {
@@ -685,7 +850,7 @@ export function AgentWorkflowV2Management() {
       const response = await fetch("/api/agent-workflows-v2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newWorkflowName.trim(), mode: "custom" }),
+        body: JSON.stringify({ name: newWorkflowName.trim(), mode: newFlowMode }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht erstellt werden");
@@ -716,6 +881,7 @@ export function AgentWorkflowV2Management() {
         position: index,
         x: node.position.x,
         y: node.position.y,
+        isParent: Boolean(node.data.isParent),
         config: {
           instruction: (node.data as any).instruction || "",
           provider: node.data.provider,
@@ -864,6 +1030,18 @@ export function AgentWorkflowV2Management() {
                 className="bg-[#0f172a] border-white/10 text-slate-100"
               />
             </div>
+            <div className="space-y-2 min-w-[180px]">
+              <Label className="text-slate-200">Flow-Typ</Label>
+              <Select value={newFlowMode} onValueChange={(value) => setNewFlowMode((value as FlowMode) || "custom")}>
+                <SelectTrigger className="bg-[#0f172a] border-white/10 text-slate-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default Flow</SelectItem>
+                  <SelectItem value="custom">Custom Flow</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button variant="outline" className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10" onClick={createCustomWorkflow}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Custom erstellen"}
             </Button>
@@ -894,17 +1072,17 @@ export function AgentWorkflowV2Management() {
           <div className="space-y-4">
             <NodePalette onAddNode={addNode} />
 
-            <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base">Run Controls</CardTitle>
-                <CardDescription className="text-slate-400">Save, Publish, Execute</CardDescription>
+                <CardDescription>Save, Publish, Execute</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 <Button onClick={saveWorkflow} disabled={!activeWorkflow || saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                   Speichern
                 </Button>
-                <Button variant="outline" className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10" onClick={publishWorkflow} disabled={!activeWorkflow || publishing}>
+                <Button variant="outline" onClick={publishWorkflow} disabled={!activeWorkflow || publishing}>
                   {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4 mr-2" />}
                   Publizieren
                 </Button>
@@ -926,15 +1104,59 @@ export function AgentWorkflowV2Management() {
               setSelectedNodeId(nodeId);
               setDrawerOpen(true);
             }}
+            onNodeContextMenu={(nodeId, position) => {
+              setSelectedNodeId(nodeId);
+              setContextMenu({ nodeId, ...position });
+            }}
+            onCanvasInteraction={() => setContextMenu(null)}
             onDropNode={addNode}
           />
         </div>
 
+        {contextMenu && (
+          <div
+            className="fixed z-[120] min-w-[200px] rounded-lg border border-white/15 bg-[#0f172a] shadow-2xl p-1"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+              onClick={() => {
+                duplicateNode(contextMenu.nodeId);
+                setContextMenu(null);
+              }}
+            >
+              <Copy className="h-4 w-4" />
+              Duplizieren
+            </button>
+            <button
+              className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+              onClick={() => {
+                renameNode(contextMenu.nodeId);
+                setContextMenu(null);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+              Umbenennen
+            </button>
+            <button
+              className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm text-red-200 hover:bg-red-500/15"
+              onClick={() => {
+                removeNode(contextMenu.nodeId);
+                setContextMenu(null);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Löschen
+            </button>
+          </div>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">Executions</CardTitle>
-              <CardDescription className="text-slate-400">Runs und Node Outputs</CardDescription>
+              <CardDescription>Runs und Node Outputs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {runs.length === 0 ? (
@@ -984,13 +1206,13 @@ export function AgentWorkflowV2Management() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Agent-to-Agent Messages
               </CardTitle>
-              <CardDescription className="text-slate-400">Datenfluss zwischen Nodes pro Run</CardDescription>
+              <CardDescription>Datenfluss zwischen Nodes pro Run</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {!selectedRunId ? (
@@ -1082,10 +1304,20 @@ export function AgentWorkflowV2Management() {
                       <SelectContent>
                         <SelectItem value="openrouter">OpenRouter</SelectItem>
                         <SelectItem value="gemini">Gemini</SelectItem>
+                        <SelectItem value="vertex_legal">Vertex Legal Agent</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+
+                {selectedNodeRecord.isParent && (
+                  <Alert>
+                    <AlertTitle>Parent Agent</AlertTitle>
+                    <AlertDescription>
+                      Dieser Node ist der Startpunkt (Orchestrator) des Flows und kann nicht gelöscht werden.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="space-y-2">
                   <Label>Model</Label>
@@ -1171,6 +1403,14 @@ export function AgentWorkflowV2Management() {
                 <Button variant="outline" className="border-red-500/40 text-red-200 hover:bg-red-500/10" onClick={() => removeNode(selectedNodeRecord.id)}>
                   Node entfernen
                 </Button>
+                {selectedNodeRecord.config.provider === "vertex_legal" && (
+                  <Alert>
+                    <AlertTitle>Vertex Legal Agent aktiv</AlertTitle>
+                    <AlertDescription>
+                      Dieser Node nutzt den externen Vertex AI Endpoint. Bitte Konfiguration im Integrations-Tab prüfen.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
           </SheetContent>

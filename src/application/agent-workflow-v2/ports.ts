@@ -32,11 +32,12 @@ export interface WorkflowRunRepositoryV2 {
 export interface IntegrationSecretProviderV2 {
   getOpenRouterApiKey(): Promise<string | null>;
   getGeminiApiKey(): Promise<string | null>;
+  getVertexLegalConfig(): Promise<{ projectId: string; location: string; endpointId: string; accessToken?: string } | null>;
 }
 
 export interface AgentModelRunnerV2 {
   runStep(input: {
-    provider: 'openrouter' | 'gemini';
+    provider: 'openrouter' | 'gemini' | 'vertex_legal';
     model: string;
     instruction: string;
     payload: Record<string, unknown>;

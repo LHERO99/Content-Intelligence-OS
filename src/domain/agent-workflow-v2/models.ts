@@ -3,8 +3,8 @@ export type TenantId = string;
 export type WorkflowMode = 'default' | 'custom';
 export type WorkflowState = 'draft' | 'published' | 'archived';
 
-export type AgentStepType = 'research' | 'analysis' | 'briefing' | 'draft' | 'review';
-export type AgentProvider = 'openrouter' | 'gemini';
+export type AgentStepType = 'orchestrator' | 'research' | 'analysis' | 'briefing' | 'draft' | 'review';
+export type AgentProvider = 'openrouter' | 'gemini' | 'vertex_legal';
 
 export type RunStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
 export type StepStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped';
@@ -27,6 +27,7 @@ export interface WorkflowNodeV2 {
   position: number;
   x: number;
   y: number;
+  isParent?: boolean;
   config: WorkflowNodeConfig;
   createdAt: string;
   updatedAt: string;
@@ -147,6 +148,7 @@ export interface UpdateWorkflowInputV2 {
     position: number;
     x: number;
     y: number;
+    isParent?: boolean;
     config: WorkflowNodeConfig;
   }>;
   edges?: Array<{
