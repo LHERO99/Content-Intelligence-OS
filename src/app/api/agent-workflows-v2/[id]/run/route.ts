@@ -17,6 +17,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     const run = await service.run(DEFAULT_TENANT_ID, params.id, {
       input: body?.input || {},
       idempotencyKey: body?.idempotencyKey,
+      runFrom: body?.runFrom === 'published' ? 'published' : 'draft',
     });
 
     return NextResponse.json({ run });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   addEdge,
@@ -507,11 +507,38 @@ function DataMappingBuilder({
   );
 }
 
+function ConfigSection({
+  title,
+  description,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-xl border border-white/10 bg-[#0f172a]/50">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-3 py-2.5">
+        <div>
+          <div className="text-sm font-semibold text-slate-100">{title}</div>
+          <div className="text-xs text-slate-400">{description}</div>
+        </div>
+        <span className="mt-0.5 text-xs text-slate-400 group-open:hidden">Aufklappen</span>
+        <span className="mt-0.5 hidden text-xs text-slate-400 group-open:inline">Einklappen</span>
+      </summary>
+      <div className="border-t border-white/10 px-3 py-3">{children}</div>
+    </details>
+  );
+}
+
 export function AgentWorkflowV2Management() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [running, setRunning] = useState(false);
+  const [runFrom, setRunFrom] = useState<"draft" | "published">("draft");
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -629,6 +656,12 @@ export function AgentWorkflowV2Management() {
   const selectedProviderSupportsDiscovery = isModelDiscoverySupported(selectedProvider);
   const selectedProviderHasModels = selectedProviderModels.length > 0;
   const selectedModelInProviderList = selectedProviderModels.some((model) => model.id === selectedNodeRecord?.config.model);
+
+  const parentNodes = nodes.filter((node) => node.data.isParent || node.data.type === "orchestrator");
+  const enabledParentNodes = parentNodes.filter((node) => Boolean((node.data as any).enabled ?? true));
+  const enabledSubNodes = nodes.filter(
+    (node) => !(node.data.isParent || node.data.type === "orchestrator") && Boolean((node.data as any).enabled ?? true)
+  );
 
   const sanitizeParentNode = () => {
     const parentNodes = nodes.filter((node) => node.data.isParent || node.data.type === "orchestrator");
@@ -1140,6 +1173,25 @@ export function AgentWorkflowV2Management() {
   const runWorkflow = async () => {
     if (!activeWorkflow) return;
     try {
+      if (parentNodes.length !== 1) {
+        setError("Ein Workflow benötigt genau einen Parent Agent (Orchestrator).");
+        return;
+      }
+      if (enabledParentNodes.length !== 1) {
+        setError("Der Parent Agent ist deaktiviert. Bitte aktiviere ihn vor dem Run.");
+        return;
+      }
+      if (enabledSubNodes.length === 0) {
+        setError("Mindestens ein aktiver Subagent ist erforderlich, damit der Parent delegieren kann.");
+        return;
+      }
+
+      const missingPurpose = enabledSubNodes.find((node) => !String((node.data as any).purpose || "").trim());
+      if (missingPurpose) {
+        setError(`Subagent \"${missingPurpose.data.label}\" benötigt eine Purpose-Beschreibung.`);
+        return;
+      }
+
       setRunning(true);
       setError(null);
       setSuccess(null);
@@ -1155,6 +1207,7 @@ export function AgentWorkflowV2Management() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idempotencyKey: crypto.randomUUID(),
+          runFrom,
           input: {
             workflowName: activeWorkflow.name,
             source: "content-agent-builder-canvas",
@@ -1164,7 +1217,7 @@ export function AgentWorkflowV2Management() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Run fehlgeschlagen");
 
-      setSuccess("Workflow erfolgreich ausgeführt.");
+      setSuccess(`Workflow erfolgreich ausgeführt (${runFrom === "draft" ? "Draft" : "Published"}).`);
       await loadRuns();
       if (data?.run?.id) {
         await loadRunDetails(data.run.id);
@@ -1259,6 +1312,16 @@ export function AgentWorkflowV2Management() {
                   {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4 mr-2" />}
                   Publizieren
                 </Button>
+                <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2">
+                  <Label className="text-xs text-slate-300">Run Version</Label>
+                  <Select value={runFrom} onValueChange={(value) => setRunFrom(value as "draft" | "published")}>
+                    <SelectTrigger className="w-full bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft (empfohlen im Builder)</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
                   {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                   Run starten
@@ -1434,157 +1497,257 @@ export function AgentWorkflowV2Management() {
             {!selectedNodeRecord ? (
               <div className="px-4 pb-4 text-sm text-slate-400">Kein Node selektiert.</div>
             ) : (
-              <div className="px-4 pb-4 space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input
-                    value={selectedNodeRecord.name}
-                    onChange={(event) =>
-                      updateSelectedNode((node) => ({
-                        ...node,
-                        data: { ...node.data, label: event.target.value },
-                      }))
-                    }
-                    className="bg-[#0f172a] border-white/10"
-                  />
-                </div>
+              <div className="px-4 pb-24 space-y-3 overflow-y-auto">
+                <ConfigSection
+                  title="1) Rolle & Identität"
+                  description="Name und Agent-Typ festlegen. Das ist die Grundlage für den Workflow." 
+                  defaultOpen
+                >
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input
+                        value={selectedNodeRecord.name}
+                        onChange={(event) =>
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: { ...node.data, label: event.target.value },
+                          }))
+                        }
+                        className="bg-[#0f172a] border-white/10"
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Typ</Label>
-                    {selectedNodeRecord.isParent ? (
-                      <Input value="orchestrator" disabled className="bg-[#0f172a] border-white/10 text-slate-300" />
-                    ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Typ</Label>
+                        {selectedNodeRecord.isParent ? (
+                          <Input value="orchestrator" disabled className="bg-[#0f172a] border-white/10 text-slate-300" />
+                        ) : (
+                          <Select
+                            value={selectedNodeRecord.type}
+                            onValueChange={(value) =>
+                              updateSelectedNode((node) => ({
+                                ...node,
+                                data: {
+                                  ...node.data,
+                                  type: value as AgentStepType,
+                                  icon: NODE_STYLE_BY_TYPE[value as AgentStepType].icon,
+                                },
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="w-full bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {STEP_TYPES.map((type) => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select
+                          value={Boolean((selectedNodeRecord.config as any).enabled ?? true) ? "enabled" : "disabled"}
+                          onValueChange={(value) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: {
+                                ...node.data,
+                                enabled: value === "enabled",
+                              } as any,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="w-full bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="enabled">Aktiv</SelectItem>
+                            <SelectItem value="disabled">Deaktiviert</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {selectedNodeRecord.isParent && (
+                      <Alert>
+                        <AlertTitle>Parent Agent</AlertTitle>
+                        <AlertDescription>
+                          Dieser Node orchestriert den Ablauf und delegiert Aufgaben an Subagents.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </ConfigSection>
+
+                <ConfigSection
+                  title="2) Aufgabe"
+                  description="Beschreibe Zweck und Arbeitsanweisung so, dass der Agent selbstständig handeln kann."
+                  defaultOpen
+                >
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>{selectedNodeRecord.isParent ? "Orchestrator Purpose" : "Subagent Purpose"}</Label>
+                      <textarea
+                        value={(selectedNodeRecord.config as any).purpose || ""}
+                        onChange={(event) =>
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: { ...node.data, purpose: event.target.value } as any,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
+                        placeholder={
+                          selectedNodeRecord.isParent
+                            ? "Z. B. Priorisiere Aufgaben, entscheide den nächsten Subagenten, finalisiere wenn Ziel erreicht ist."
+                            : "Z. B. Recherchiert SERP-Fakten, extrahiert Quellen und liefert belastbare Kernaussagen."
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Prompt / Instruction</Label>
+                      <textarea
+                        value={selectedNodeRecord.config.instruction}
+                        onChange={(event) =>
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: { ...node.data, instruction: event.target.value } as any,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-28"
+                        placeholder="Detaillierte Arbeitsanweisung für diesen Agenten..."
+                      />
+                    </div>
+                  </div>
+                </ConfigSection>
+
+                <ConfigSection
+                  title="3) LLM Setup"
+                  description="Provider, Modell und Laufzeitparameter für diesen Node konfigurieren."
+                >
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Provider</Label>
                       <Select
-                        value={selectedNodeRecord.type}
-                        onValueChange={(value) =>
+                        value={selectedNodeRecord.config.provider}
+                        onValueChange={(value) => {
+                          const nextProvider = value as AgentProvider;
+                          const knownModels = modelsByProvider[nextProvider] || [];
                           updateSelectedNode((node) => ({
                             ...node,
                             data: {
                               ...node.data,
-                              type: value as AgentStepType,
-                              icon: NODE_STYLE_BY_TYPE[value as AgentStepType].icon,
+                              provider: nextProvider,
+                              model: knownModels[0]?.id || (node.data as any).model || "",
                             },
-                          }))
-                        }
+                          }));
+                          void loadProviderModels(nextProvider, false);
+                        }}
                       >
-                        <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {STEP_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
-                          ))}
+                          <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="openrouter">OpenRouter</SelectItem>
+                          <SelectItem value="gemini">Gemini</SelectItem>
+                          <SelectItem value="vertex_legal">Vertex Legal Agent</SelectItem>
                         </SelectContent>
                       </Select>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Provider</Label>
-                    <Select
-                      value={selectedNodeRecord.config.provider}
-                      onValueChange={(value) => {
-                        const nextProvider = value as AgentProvider;
-                        const knownModels = modelsByProvider[nextProvider] || [];
-                        updateSelectedNode((node) => ({
-                          ...node,
-                          data: {
-                            ...node.data,
-                            provider: nextProvider,
-                            model: knownModels[0]?.id || (node.data as any).model || "",
-                          },
-                        }));
-                        void loadProviderModels(nextProvider, false);
-                      }}
-                    >
-                      <SelectTrigger className="bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="openai">OpenAI</SelectItem>
-                        <SelectItem value="openrouter">OpenRouter</SelectItem>
-                        <SelectItem value="gemini">Gemini</SelectItem>
-                        <SelectItem value="vertex_legal">Vertex Legal Agent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                    </div>
 
-                {selectedNodeRecord.isParent && (
-                  <Alert>
-                    <AlertTitle>Parent Agent</AlertTitle>
-                    <AlertDescription>
-                      Dieser Node ist der Startpunkt (Orchestrator) des Flows und kann nicht gelöscht werden.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Model</Label>
-                  {selectedProviderSupportsDiscovery ? (
-                    <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-slate-400">
-                          {selectedProviderHasModels
-                            ? `${selectedProviderModels.length} verfügbare Modelle`
-                            : selectedProviderModelsLoading
-                              ? "Lade Modelle..."
-                              : "Noch keine Modelle geladen"}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {!selectedProviderHasModels && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-7 border-white/20 bg-transparent text-slate-200 hover:bg-white/10"
-                              onClick={() => loadProviderModels(selectedProvider, false)}
-                              disabled={selectedProviderModelsLoading}
-                            >
-                              {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Laden"}
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-slate-300 hover:bg-white/10"
-                            onClick={() => loadProviderModels(selectedProvider, true)}
-                            disabled={selectedProviderModelsLoading}
-                            title="Modelle aktualisieren"
-                            aria-label="Modelle aktualisieren"
-                          >
-                            {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {selectedProviderHasModels ? (
-                        <Select
-                          value={selectedModelInProviderList ? selectedNodeRecord.config.model : undefined}
-                          onValueChange={(value) =>
-                            updateSelectedNode((node) => ({
-                              ...node,
-                              data: { ...node.data, model: value } as any,
-                            }))
-                          }
-                        >
-                          <SelectTrigger className="w-full bg-[#0f172a] border-white/10 text-slate-100">
-                            <SelectValue placeholder="Modell wählen" />
-                          </SelectTrigger>
-                          <SelectContent
-                            side="bottom"
-                            align="start"
-                            sideOffset={6}
-                            className="border border-white/10 bg-[#0b1220] text-slate-100 shadow-2xl"
-                          >
-                            {selectedProviderModels.map((model) => (
-                              <SelectItem
-                                key={model.id}
-                                value={model.id}
-                                className="text-slate-100 focus:bg-white/10 focus:text-slate-100"
+                    <div className="space-y-2">
+                      <Label>Model</Label>
+                      {selectedProviderSupportsDiscovery ? (
+                        <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-slate-400">
+                              {selectedProviderHasModels
+                                ? `${selectedProviderModels.length} verfügbare Modelle`
+                                : selectedProviderModelsLoading
+                                  ? "Lade Modelle..."
+                                  : "Noch keine Modelle geladen"}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {!selectedProviderHasModels && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 border-white/20 bg-transparent text-slate-200 hover:bg-white/10"
+                                  onClick={() => loadProviderModels(selectedProvider, false)}
+                                  disabled={selectedProviderModelsLoading}
+                                >
+                                  {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Laden"}
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-300 hover:bg-white/10"
+                                onClick={() => loadProviderModels(selectedProvider, true)}
+                                disabled={selectedProviderModelsLoading}
+                                title="Modelle aktualisieren"
+                                aria-label="Modelle aktualisieren"
                               >
-                                {model.label !== model.id ? `${model.label} (${model.id})` : model.id}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                                {selectedProviderModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {selectedProviderHasModels ? (
+                            <Select
+                              value={selectedModelInProviderList ? selectedNodeRecord.config.model : undefined}
+                              onValueChange={(value) =>
+                                updateSelectedNode((node) => ({
+                                  ...node,
+                                  data: { ...node.data, model: value } as any,
+                                }))
+                              }
+                            >
+                              <SelectTrigger className="w-full bg-[#0f172a] border-white/10 text-slate-100">
+                                <SelectValue placeholder="Modell wählen" />
+                              </SelectTrigger>
+                              <SelectContent
+                                side="bottom"
+                                align="start"
+                                sideOffset={6}
+                                className="border border-white/10 bg-[#0b1220] text-slate-100 shadow-2xl"
+                              >
+                                {selectedProviderModels.map((model) => (
+                                  <SelectItem
+                                    key={model.id}
+                                    value={model.id}
+                                    className="text-slate-100 focus:bg-white/10 focus:text-slate-100"
+                                  >
+                                    {model.label !== model.id ? `${model.label} (${model.id})` : model.id}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              value={selectedNodeRecord.config.model}
+                              onChange={(event) =>
+                                updateSelectedNode((node) => ({
+                                  ...node,
+                                  data: { ...node.data, model: event.target.value } as any,
+                                }))
+                              }
+                              className="bg-[#0f172a] border-white/10"
+                              placeholder="Model-ID manuell eingeben"
+                            />
+                          )}
+
+                          {selectedProviderModelError && (
+                            <div className="rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-100">
+                              <div>{selectedProviderModelError}</div>
+                              <Link href="/admin" className="mt-1 inline-block underline underline-offset-2">
+                                Im Admin-Panel Provider anbinden und Modelle laden
+                              </Link>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <Input
                           value={selectedNodeRecord.config.model}
@@ -1595,170 +1758,125 @@ export function AgentWorkflowV2Management() {
                             }))
                           }
                           className="bg-[#0f172a] border-white/10"
-                          placeholder="Model-ID manuell eingeben"
                         />
                       )}
-
-                      {selectedProviderModelError && (
-                        <div className="rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-100">
-                          <div>{selectedProviderModelError}</div>
-                          <Link href="/admin" className="mt-1 inline-block underline underline-offset-2">
-                            Im Admin-Panel Provider anbinden und Modelle laden
-                          </Link>
-                        </div>
-                      )}
-
-                      {!selectedProviderModelError && !selectedProviderHasModels && !selectedProviderModelsLoading && (
-                        <div className="rounded-md border border-blue-400/30 bg-blue-500/10 px-2 py-1.5 text-[11px] text-blue-100">
-                          Keine Modelle gefunden.
-                          <Link href="/admin" className="ml-1 underline underline-offset-2">
-                            Zu Integrationen
-                          </Link>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <Input
-                      value={selectedNodeRecord.config.model}
-                      onChange={(event) =>
-                        updateSelectedNode((node) => ({
-                          ...node,
-                          data: { ...node.data, model: event.target.value } as any,
-                        }))
-                      }
-                      className="bg-[#0f172a] border-white/10"
-                    />
-                  )}
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Timeout (ms)</Label>
-                    <Input
-                      type="number"
-                      value={selectedNodeRecord.config.timeoutMs}
-                      onChange={(event) =>
-                        updateSelectedNode((node) => ({
-                          ...node,
-                          data: { ...node.data, timeoutMs: Number(event.target.value || 0) } as any,
-                        }))
-                      }
-                      className="bg-[#0f172a] border-white/10"
-                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Timeout (ms)</Label>
+                        <Input
+                          type="number"
+                          value={selectedNodeRecord.config.timeoutMs}
+                          onChange={(event) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: { ...node.data, timeoutMs: Number(event.target.value || 0) } as any,
+                            }))
+                          }
+                          className="bg-[#0f172a] border-white/10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Retries</Label>
+                        <Input
+                          type="number"
+                          value={selectedNodeRecord.config.retries}
+                          onChange={(event) =>
+                            updateSelectedNode((node) => ({
+                              ...node,
+                              data: { ...node.data, retries: Number(event.target.value || 0) } as any,
+                            }))
+                          }
+                          className="bg-[#0f172a] border-white/10"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Retries</Label>
-                    <Input
-                      type="number"
-                      value={selectedNodeRecord.config.retries}
-                      onChange={(event) =>
-                        updateSelectedNode((node) => ({
-                          ...node,
-                          data: { ...node.data, retries: Number(event.target.value || 0) } as any,
-                        }))
-                      }
-                      className="bg-[#0f172a] border-white/10"
-                    />
-                  </div>
-                </div>
+                </ConfigSection>
 
-                <div className="space-y-2">
-                  <Label>Prompt / Instruction</Label>
-                  <textarea
-                    value={selectedNodeRecord.config.instruction}
-                    onChange={(event) =>
-                      updateSelectedNode((node) => ({
-                        ...node,
-                        data: { ...node.data, instruction: event.target.value } as any,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-28"
-                  />
-                </div>
-
-                {!selectedNodeRecord.isParent && (
-                  <>
+                <ConfigSection
+                  title="4) I/O Vertrag"
+                  description="Definiert die erwarteten Eingaben und die Form der Ausgabe für sauberes Agent-to-Agent Routing."
+                >
+                  <div className="grid grid-cols-1 gap-3">
                     <div className="space-y-2">
-                      <Label>Subagent Purpose</Label>
+                      <Label>Input Contract</Label>
                       <textarea
-                        value={(selectedNodeRecord.config as any).purpose || ""}
+                        value={(selectedNodeRecord.config as any).inputContract || ""}
                         onChange={(event) =>
                           updateSelectedNode((node) => ({
                             ...node,
-                            data: { ...node.data, purpose: event.target.value } as any,
+                            data: { ...node.data, inputContract: event.target.value } as any,
                           }))
                         }
                         className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
-                        placeholder="Wofür ist dieser Agent zuständig?"
+                        placeholder="Welche Inputs erwartet der Agent?"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Output Contract</Label>
+                      <textarea
+                        value={(selectedNodeRecord.config as any).outputContract || ""}
+                        onChange={(event) =>
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: { ...node.data, outputContract: event.target.value } as any,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
+                        placeholder="Wie soll der Agent strukturierte Ergebnisse zurückgeben?"
+                      />
+                    </div>
+                  </div>
+                </ConfigSection>
+
+                <ConfigSection
+                  title="5) Erweitert"
+                  description="Optional: Mapping-Hinweise und node-spezifische Spezialfunktionen."
+                >
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <div className="text-sm font-semibold flex items-center gap-2">
+                        <CircleDot className="h-4 w-4" />
+                        Data Mapping (Simulation)
+                      </div>
+                      <DataMappingBuilder
+                        outputSchema={outputSchemaPills}
+                        inputMappings={inputMappingState}
+                        onAssign={(inputKey, value) => {
+                          updateSelectedNode((node) => ({
+                            ...node,
+                            data: {
+                              ...node.data,
+                              instruction: `${(node.data as any).instruction || ""}\nMapping: ${inputKey} <- ${value}`,
+                            } as any,
+                          }));
+                        }}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="space-y-2">
-                        <Label>Input Contract</Label>
-                        <textarea
-                          value={(selectedNodeRecord.config as any).inputContract || ""}
-                          onChange={(event) =>
-                            updateSelectedNode((node) => ({
-                              ...node,
-                              data: { ...node.data, inputContract: event.target.value } as any,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
-                          placeholder="Welche Inputs erwartet der Agent?"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Output Contract</Label>
-                        <textarea
-                          value={(selectedNodeRecord.config as any).outputContract || ""}
-                          onChange={(event) =>
-                            updateSelectedNode((node) => ({
-                              ...node,
-                              data: { ...node.data, outputContract: event.target.value } as any,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-white/10 bg-[#0f172a] px-3 py-2 text-sm min-h-20"
-                          placeholder="Wie soll der Agent strukturierte Ergebnisse zurückgeben?"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <Separator className="bg-white/10" />
-
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold flex items-center gap-2">
-                    <CircleDot className="h-4 w-4" />
-                    Data Mapping (Drag-and-Drop Simulation)
+                    {selectedNodeRecord.config.provider === "vertex_legal" && (
+                      <Alert>
+                        <AlertTitle>Vertex Legal Agent aktiv</AlertTitle>
+                        <AlertDescription>
+                          Dieser Node nutzt den externen Vertex AI Endpoint. Bitte Konfiguration im Integrations-Tab prüfen.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
-                  <DataMappingBuilder
-                    outputSchema={outputSchemaPills}
-                    inputMappings={inputMappingState}
-                    onAssign={(inputKey, value) => {
-                      updateSelectedNode((node) => ({
-                        ...node,
-                        data: {
-                          ...node.data,
-                          instruction: `${(node.data as any).instruction || ""}\nMapping: ${inputKey} <- ${value}`,
-                        } as any,
-                      }));
-                    }}
-                  />
-                </div>
+                </ConfigSection>
 
-                <Button variant="outline" className="border-red-500/40 text-red-200 hover:bg-red-500/10" onClick={() => removeNode(selectedNodeRecord.id)}>
-                  Node entfernen
-                </Button>
-                {selectedNodeRecord.config.provider === "vertex_legal" && (
-                  <Alert>
-                    <AlertTitle>Vertex Legal Agent aktiv</AlertTitle>
-                    <AlertDescription>
-                      Dieser Node nutzt den externen Vertex AI Endpoint. Bitte Konfiguration im Integrations-Tab prüfen.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <div className="fixed bottom-0 right-0 z-20 w-full sm:max-w-[480px] border-t border-white/10 bg-[#0b1220]/95 p-3 backdrop-blur">
+                  <div className="flex items-center justify-between gap-2">
+                    <Button variant="outline" className="border-red-500/40 text-red-200 hover:bg-red-500/10" onClick={() => removeNode(selectedNodeRecord.id)}>
+                      Node entfernen
+                    </Button>
+                    <Button onClick={() => setDrawerOpen(false)}>
+                      Fertig
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </SheetContent>

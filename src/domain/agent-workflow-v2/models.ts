@@ -172,4 +172,5 @@ export interface UpdateWorkflowInputV2 {
 export interface RunWorkflowInputV2 {
   input?: Record<string, unknown>;
   idempotencyKey?: string;
+  runFrom?: 'draft' | 'published';
 }

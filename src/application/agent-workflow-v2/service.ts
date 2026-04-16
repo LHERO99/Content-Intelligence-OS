@@ -401,7 +401,12 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     return this.workflows.publish(tenantId, workflowId);
   }
 
-  private getExecutableVersion(workflow: WorkflowWithVersionsV2): WorkflowVersionV2 {
+  private getExecutableVersion(workflow: WorkflowWithVersionsV2, runFrom: 'draft' | 'published' = 'published'): WorkflowVersionV2 {
+    if (runFrom === 'draft') {
+      if (workflow.draftVersion) return workflow.draftVersion;
+      throw new Error('Draft-Version nicht verfügbar. Bitte zuerst speichern.');
+    }
+
     if (workflow.activeVersion) return workflow.activeVersion;
     if (workflow.draftVersion) return workflow.draftVersion;
     throw new Error('Workflow hat keine ausführbare Version.');
@@ -478,7 +483,8 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     const workflow = await this.workflows.getById(tenantId, workflowId);
     if (!workflow) throw new Error('Workflow nicht gefunden');
 
-    const version = this.getExecutableVersion(workflow);
+    const runFrom = input.runFrom === 'published' ? 'published' : 'draft';
+    const version = this.getExecutableVersion(workflow, runFrom);
     const idempotencyKey = input.idempotencyKey || crypto.randomUUID();
 
     const existing = await this.runs.findByIdempotencyKey(tenantId, version.id, idempotencyKey);
@@ -508,7 +514,9 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     const nodes = topologicalSort(version.nodes.filter((node) => node.config.enabled), version.edges);
     const orchestrator = nodes.find((node) => node.isParent || node.type === 'orchestrator');
     if (!orchestrator) {
-      throw new Error('Kein Parent Agent (Orchestrator) im Workflow gefunden.');
+      throw new Error(
+        `Kein Parent Agent (Orchestrator) in der ${runFrom === 'draft' ? 'Draft' : 'Published'}-Version gefunden.`
+      );
     }
 
     const subAgents = nodes.filter((node) => node.id !== orchestrator.id);
