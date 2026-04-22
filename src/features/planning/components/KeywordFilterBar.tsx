@@ -280,9 +280,17 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       checked={isVisible}
+                      closeOnClick={false}
                       className="capitalize flex items-center justify-between gap-2"
+                      onSelect={(event) => {
+                        event.preventDefault();
+                      }}
                       onCheckedChange={(checked) => {
-                        column.toggleVisibility(Boolean(checked));
+                        if (typeof checked === "boolean") {
+                          column.toggleVisibility(checked);
+                          return;
+                        }
+                        column.toggleVisibility(!column.getIsVisible());
                       }}
                     >
                       <span>{column.id.replace(/_/g, " ")}</span>

@@ -679,9 +679,17 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       checked={column.getIsVisible()}
+                      closeOnClick={false}
                       className="capitalize flex items-center justify-between gap-2"
+                      onSelect={(event) => {
+                        event.preventDefault();
+                      }}
                       onCheckedChange={(checked) => {
-                        column.toggleVisibility(Boolean(checked));
+                        if (typeof checked === "boolean") {
+                          column.toggleVisibility(checked);
+                          return;
+                        }
+                        column.toggleVisibility(!column.getIsVisible());
                       }}
                     >
                       <span>{column.id.replace(/_/g, " ")}</span>
