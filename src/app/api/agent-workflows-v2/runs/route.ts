@@ -12,9 +12,14 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit') || '50');
+    const includeDeleted = searchParams.get('includeDeleted') === '1';
 
     const service = createAgentWorkflowServiceV2();
-    const runs = await service.listRuns(DEFAULT_TENANT_ID, Number.isFinite(limit) ? Math.max(1, Math.min(200, limit)) : 50);
+    const runs = await service.listRuns(
+      DEFAULT_TENANT_ID,
+      Number.isFinite(limit) ? Math.max(1, Math.min(200, limit)) : 50,
+      includeDeleted
+    );
 
     return NextResponse.json({ runs });
   } catch (error: any) {

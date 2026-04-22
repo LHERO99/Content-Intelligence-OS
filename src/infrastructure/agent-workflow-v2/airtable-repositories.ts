@@ -288,10 +288,10 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
     return message;
   }
 
-  async listRuns(tenantId: string, limit: number = 50): Promise<WorkflowRunV2[]> {
+  async listRuns(tenantId: string, limit: number = 50, includeDeleted = false): Promise<WorkflowRunV2[]> {
     const store = await loadStore();
     return store.runs
-      .filter((run) => run.tenantId === tenantId && !run.deletedAt)
+      .filter((run) => run.tenantId === tenantId && (includeDeleted ? true : !run.deletedAt))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
   }

@@ -159,7 +159,7 @@ type RunMessage = {
   createdAt: string;
 };
 
-type ExecutionView = "timeline" | "messages";
+type ExecutionView = "executions" | "timeline" | "messages";
 
 type AgentNodeData = {
   label: string;
@@ -570,8 +570,10 @@ export function AgentWorkflowV2Management() {
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
-  const [executionView, setExecutionView] = useState<ExecutionView>("timeline");
+  const [executionView, setExecutionView] = useState<ExecutionView>("executions");
   const [runActionLoading, setRunActionLoading] = useState<string | null>(null);
+  const [showHiddenRuns, setShowHiddenRuns] = useState(false);
+  const [runStatusFilter, setRunStatusFilter] = useState<"all" | RunRecord["status"]>("all");
   const [executionOrderByNode, setExecutionOrderByNode] = useState<Record<string, number>>({});
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [modelsLoadingByProvider, setModelsLoadingByProvider] = useState<Record<string, boolean>>({});
@@ -678,6 +680,13 @@ export function AgentWorkflowV2Management() {
   const enabledSubNodes = nodes.filter(
     (node) => !(node.data.isParent || node.data.type === "orchestrator") && Boolean((node.data as any).enabled ?? true)
   );
+
+  const selectedRun = useMemo(() => runs.find((run) => run.id === selectedRunId) || null, [runs, selectedRunId]);
+
+  const filteredRuns = useMemo(() => {
+    if (runStatusFilter === "all") return runs;
+    return runs.filter((run) => run.status === runStatusFilter);
+  }, [runs, runStatusFilter]);
 
   const sanitizeParentNode = () => {
     const parentNodes = nodes.filter((node) => node.data.isParent || node.data.type === "orchestrator");
@@ -865,7 +874,7 @@ export function AgentWorkflowV2Management() {
   };
 
   const loadRuns = async () => {
-    const response = await fetch("/api/agent-workflows-v2/runs?limit=50");
+    const response = await fetch(`/api/agent-workflows-v2/runs?limit=80${showHiddenRuns ? "&includeDeleted=1" : ""}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error || "Runs konnten nicht geladen werden");
     setRuns(data?.runs || []);
@@ -960,6 +969,26 @@ export function AgentWorkflowV2Management() {
     }
   };
 
+  const restoreRun = async (runId: string) => {
+    try {
+      setRunActionLoading(`restore:${runId}`);
+      setError(null);
+      const response = await fetch(`/api/agent-workflows-v2/runs/${runId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Run konnte nicht wiederhergestellt werden");
+      setSuccess("Run wurde wiederhergestellt.");
+      await loadRuns();
+    } catch (err: any) {
+      setError(err.message || "Run konnte nicht wiederhergestellt werden");
+    } finally {
+      setRunActionLoading(null);
+    }
+  };
+
   const cleanupStaleRuns = async () => {
     try {
       setRunActionLoading("cleanup");
@@ -997,7 +1026,7 @@ export function AgentWorkflowV2Management() {
       }
     };
     load();
-  }, []);
+  }, [showHiddenRuns]);
 
   useEffect(() => {
     if (!loading) {
@@ -1497,172 +1526,205 @@ export function AgentWorkflowV2Management() {
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Executions</CardTitle>
-              <CardDescription>Run-Liste</CardDescription>
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-2 h-7 w-fit"
-                disabled={runActionLoading === "cleanup"}
-                onClick={cleanupStaleRuns}
-              >
-                {runActionLoading === "cleanup" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Hängende Runs bereinigen"}
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {runs.length === 0 ? (
-                <p className="text-sm text-slate-400">Keine Runs vorhanden.</p>
-              ) : (
-                runs.map((run) => (
-                  <div
-                    key={run.id}
-                    className={`w-full rounded-md border p-3 text-left transition-colors ${
-                      selectedRunId === run.id ? "border-blue-400/70 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
-                    }`}
-                  >
-                    <button type="button" onClick={() => loadRunDetails(run.id)} className="w-full text-left">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
-                        <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1">
-                        Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
-                      </div>
-                    </button>
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7"
-                        disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
-                        onClick={() => cancelRun(run.id)}
-                      >
-                        {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Abbrechen"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 border-amber-400/50 text-amber-200 hover:bg-amber-500/10"
-                        disabled={runActionLoading === `delete:${run.id}`}
-                        onClick={() => softDeleteRun(run.id)}
-                      >
-                        {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Ausblenden"}
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
+        <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Execution Inspector
-              </CardTitle>
-              <CardDescription>Timeline, Outputs und Agent-to-Agent Datenfluss</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {!selectedRunId ? (
-                <p className="text-sm text-slate-400">Wähle einen Run, um Timeline und Debug-Daten zu sehen.</p>
-              ) : (
-                <Tabs value={executionView} onValueChange={(value) => setExecutionView((value as ExecutionView) || "timeline") }>
-                  <TabsList className="bg-primary/10 border-primary/10">
-                    <TabsTrigger value="timeline" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Timeline</TabsTrigger>
-                    <TabsTrigger value="messages" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Messages</TabsTrigger>
-                  </TabsList>
+                Execution Panel
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7"
+                  disabled={runActionLoading === "cleanup"}
+                  onClick={cleanupStaleRuns}
+                >
+                  {runActionLoading === "cleanup" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Stale Cleanup"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={showHiddenRuns ? "default" : "outline"}
+                  className="h-7"
+                  onClick={() => setShowHiddenRuns((prev) => !prev)}
+                >
+                  {showHiddenRuns ? "Hidden: ON" : "Hidden: OFF"}
+                </Button>
+              </div>
+            </CardTitle>
+            <CardDescription>n8n/Make-ähnliche Ausführungssicht: Runs, Timeline, Messages</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={executionView} onValueChange={(value) => setExecutionView((value as ExecutionView) || "executions")}>
+              <TabsList className="bg-primary/10 border-primary/10">
+                <TabsTrigger value="executions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Executions</TabsTrigger>
+                <TabsTrigger value="timeline" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Timeline</TabsTrigger>
+                <TabsTrigger value="messages" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Messages</TabsTrigger>
+              </TabsList>
 
-                  <TabsContent value="timeline" className="mt-3 space-y-3">
-                    {runSteps.length === 0 ? (
-                      <p className="text-sm text-slate-400">Keine Step-Daten vorhanden.</p>
-                    ) : (
-                      <>
-                        <div className="space-y-2 max-h-[320px] overflow-auto pr-1">
-                          {runSteps.map((step, index) => (
-                            <button
-                              key={step.id}
-                              type="button"
-                              onClick={() => setSelectedStepId(step.id)}
-                              className={`w-full rounded border p-2 text-left ${
-                                selectedStepId === step.id ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
-                              }`}
+              <TabsContent value="executions" className="mt-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Label className="text-xs text-slate-300">Status</Label>
+                  <Select value={runStatusFilter} onValueChange={(value) => setRunStatusFilter((value as any) || "all") }>
+                    <SelectTrigger className="w-[160px] bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle</SelectItem>
+                      <SelectItem value="running">Running</SelectItem>
+                      <SelectItem value="success">Success</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {filteredRuns.length === 0 ? (
+                  <p className="text-sm text-slate-400">Keine Runs vorhanden.</p>
+                ) : (
+                  <div className="grid gap-2 max-h-[320px] overflow-auto pr-1">
+                    {filteredRuns.map((run) => (
+                      <div
+                        key={run.id}
+                        className={`w-full rounded-md border p-3 text-left transition-colors ${
+                          selectedRunId === run.id ? "border-blue-400/70 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
+                        }`}
+                      >
+                        <button type="button" onClick={() => loadRunDetails(run.id)} className="w-full text-left">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
+                            <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                          </div>
+                          <div className="text-xs text-slate-300 mt-1">
+                            Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
+                            {run.deletedAt ? ` | hidden ${new Date(run.deletedAt).toLocaleString("de-DE")}` : ""}
+                          </div>
+                        </button>
+                        <div className="mt-2 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7"
+                            disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
+                            onClick={() => cancelRun(run.id)}
+                          >
+                            {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Stop"}
+                          </Button>
+                          {!run.deletedAt ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 border-amber-400/50 text-amber-200 hover:bg-amber-500/10"
+                              disabled={runActionLoading === `delete:${run.id}`}
+                              onClick={() => softDeleteRun(run.id)}
                             >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-medium">#{index + 1} {step.nodeName}</span>
-                                <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
-                              </div>
-                              <div className="text-xs text-slate-400">
-                                Runde {step.round ?? "-"} | {step.phase || "-"} | {step.provider}/{step.model}
-                              </div>
-                            </button>
-                          ))}
+                              {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Hide"}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/10"
+                              disabled={runActionLoading === `restore:${run.id}`}
+                              onClick={() => restoreRun(run.id)}
+                            >
+                              {runActionLoading === `restore:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
+                            </Button>
+                          )}
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
 
-                        {(() => {
-                          const selectedStep = runSteps.find((entry) => entry.id === selectedStepId) || runSteps[0];
-                          if (!selectedStep) return null;
-                          return (
-                            <div className="rounded border border-white/10 p-3">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="text-sm font-semibold">{selectedStep.nodeName}</div>
-                                <Badge variant={statusVariant(selectedStep.status)}>{selectedStep.status}</Badge>
-                              </div>
-                              <div className="text-xs text-slate-400 mt-1">
-                                Runde: {selectedStep.round ?? "-"} | Phase: {selectedStep.phase || "-"}
-                                {selectedStep.correlationId ? ` | Correlation: ${selectedStep.correlationId.slice(0, 8)}` : ""}
-                              </div>
-                              <div className="mt-2 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-300 overflow-x-auto">
-                                {selectedStep.output ? JSON.stringify(selectedStep.output, null, 2) : selectedStep.error || "-"}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="messages" className="mt-3 space-y-2 max-h-[500px] overflow-auto pr-1">
-                    {runMessages.length === 0 ? (
-                      <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
-                    ) : (
-                      runMessages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`rounded border p-2 ${
-                            message.messageType === "control"
-                              ? "border-amber-300/50 bg-amber-500/10"
-                              : message.messageType === "task_result"
-                                ? "border-emerald-300/50 bg-emerald-500/10"
-                                : "border-blue-300/50 bg-blue-500/10"
+              <TabsContent value="timeline" className="mt-3 space-y-3">
+                {!selectedRun ? (
+                  <p className="text-sm text-slate-400">Wähle zuerst einen Run im Tab Executions.</p>
+                ) : runSteps.length === 0 ? (
+                  <p className="text-sm text-slate-400">Keine Step-Daten vorhanden.</p>
+                ) : (
+                  <>
+                    <div className="space-y-2 max-h-[320px] overflow-auto pr-1">
+                      {runSteps.map((step, index) => (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => setSelectedStepId(step.id)}
+                          className={`w-full rounded border p-2 text-left ${
+                            selectedStepId === step.id ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-slate-100 flex items-center gap-1">
-                              <Send className="h-3.5 w-3.5" />
-                              {message.fromNodeName} → {message.toNodeName}
-                            </span>
-                            <Badge variant="outline" className="border-white/30 text-slate-100">{message.channel}</Badge>
+                            <span className="text-sm font-medium">#{index + 1} {step.nodeName}</span>
+                            <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
                           </div>
-                          <div className="text-xs text-slate-200">
-                            type: <span className="font-mono">{message.messageType || "message"}</span>
-                            {message.round ? ` | round: ${message.round}` : ""}
-                            {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
+                          <div className="text-xs text-slate-300">
+                            Runde {step.round ?? "-"} | {step.phase || "-"} | {step.provider}/{step.model}
                           </div>
-                          <div className="text-xs text-slate-300">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {(() => {
+                      const selectedStep = runSteps.find((entry) => entry.id === selectedStepId) || runSteps[0];
+                      if (!selectedStep) return null;
+                      return (
+                        <div className="rounded border border-white/10 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-sm font-semibold">{selectedStep.nodeName}</div>
+                            <Badge variant={statusVariant(selectedStep.status)}>{selectedStep.status}</Badge>
+                          </div>
+                          <div className="text-xs text-slate-300 mt-1">
+                            Runde: {selectedStep.round ?? "-"} | Phase: {selectedStep.phase || "-"}
+                            {selectedStep.correlationId ? ` | Correlation: ${selectedStep.correlationId.slice(0, 8)}` : ""}
+                          </div>
+                          <div className="mt-2 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-200 overflow-x-auto">
+                            {selectedStep.output ? JSON.stringify(selectedStep.output, null, 2) : selectedStep.error || "-"}
+                          </div>
                         </div>
-                      ))
-                    )}
-                  </TabsContent>
-                </Tabs>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="messages" className="mt-3 space-y-2 max-h-[500px] overflow-auto pr-1">
+                {!selectedRun ? (
+                  <p className="text-sm text-slate-400">Wähle zuerst einen Run im Tab Executions.</p>
+                ) : runMessages.length === 0 ? (
+                  <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
+                ) : (
+                  runMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`rounded border p-2 ${
+                        message.messageType === "control"
+                          ? "border-amber-300/50 bg-amber-500/10"
+                          : message.messageType === "task_result"
+                            ? "border-emerald-300/50 bg-emerald-500/10"
+                            : "border-blue-300/50 bg-blue-500/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-slate-100 flex items-center gap-1">
+                          <Send className="h-3.5 w-3.5" />
+                          {message.fromNodeName} → {message.toNodeName}
+                        </span>
+                        <Badge variant="outline" className="border-white/30 text-slate-100">{message.channel}</Badge>
+                      </div>
+                      <div className="text-xs text-slate-200">
+                        type: <span className="font-mono">{message.messageType || "message"}</span>
+                        {message.round ? ` | round: ${message.round}` : ""}
+                        {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
+                      </div>
+                      <div className="text-xs text-slate-300">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
+                    </div>
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
           <SheetContent side="right" className="sm:max-w-[480px] bg-[#0b1220] text-slate-100 border-white/10">

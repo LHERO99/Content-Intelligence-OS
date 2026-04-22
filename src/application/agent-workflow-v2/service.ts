@@ -761,8 +761,8 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     return finalRun;
   }
 
-  async listRuns(tenantId: string, limit?: number) {
-    return this.runs.listRuns(tenantId, limit);
+  async listRuns(tenantId: string, limit?: number, includeDeleted?: boolean) {
+    return this.runs.listRuns(tenantId, limit, includeDeleted);
   }
 
   async getRun(tenantId: string, runId: string) {
