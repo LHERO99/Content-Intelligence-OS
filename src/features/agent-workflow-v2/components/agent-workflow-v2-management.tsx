@@ -49,14 +49,12 @@ import {
   Calendar,
   CircleDot,
   Copy,
-  GitBranch,
   Loader2,
   MessageSquare,
   Play,
   Plus,
   Pencil,
   RefreshCcw,
-  Save,
   Send,
   Sparkles,
   SquareTerminal,
@@ -169,6 +167,7 @@ type AgentNodeData = {
   icon: "trigger" | "agent" | "tool";
   isParent?: boolean;
   isFocused?: boolean;
+  executionOrder?: number;
   purpose?: string;
   inputContract?: string;
   outputContract?: string;
@@ -237,7 +236,14 @@ function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
             <div className="text-[10px] uppercase tracking-wider text-slate-400">{data.type}</div>
           </div>
         </div>
-        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
+        <div className="flex items-center gap-2">
+          {typeof data.executionOrder === "number" && (
+            <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full border border-blue-300/60 bg-blue-500/20 px-1 text-[10px] font-semibold text-blue-100">
+              {data.executionOrder}
+            </span>
+          )}
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
+        </div>
       </div>
 
       {data.isParent && (
@@ -535,10 +541,11 @@ function ConfigSection({
 
 export function AgentWorkflowV2Management() {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [running, setRunning] = useState(false);
-  const [runFrom, setRunFrom] = useState<"draft" | "published">("draft");
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -557,14 +564,18 @@ export function AgentWorkflowV2Management() {
 
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
+  const [executionOrderByNode, setExecutionOrderByNode] = useState<Record<string, number>>({});
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [modelsLoadingByProvider, setModelsLoadingByProvider] = useState<Record<string, boolean>>({});
   const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<BezierDataEdge>([]);
+  const skipNextAutosaveRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isModelDiscoverySupported = useCallback((provider: AgentProvider) => {
     return provider === "openai" || provider === "openrouter" || provider === "gemini";
@@ -763,6 +774,7 @@ export function AgentWorkflowV2Management() {
           type: node.type,
           status: runStateByNode[node.id] || "idle",
           outputPreview: outputPreviewByNode[node.id],
+          executionOrder: executionOrderByNode[node.id],
           provider: node.config.provider,
           icon: NODE_STYLE_BY_TYPE[node.type].icon,
           isParent: Boolean(node.isParent),
@@ -826,8 +838,12 @@ export function AgentWorkflowV2Management() {
       const version = workflow?.draftVersion || workflow?.activeVersion;
       const nodes = version?.nodes || [];
       const edges = version?.edges || [];
+      skipNextAutosaveRef.current = true;
       setNodes(toFlowNodes(nodes));
       setEdges(toFlowEdges(edges));
+      setIsDirty(false);
+      setAutoSaveError(null);
+      setLastSavedAt(new Date().toISOString());
       setSelectedNodeId(nodes[0]?.id || null);
 
       const selectedWorkflow = list.find((entry) => entry.id === selectedId);
@@ -835,8 +851,10 @@ export function AgentWorkflowV2Management() {
         setActiveFlowTab(selectedWorkflow.mode);
       }
     } else {
+      skipNextAutosaveRef.current = true;
       setNodes([]);
       setEdges([]);
+      setIsDirty(false);
       setSelectedNodeId(null);
     }
   };
@@ -862,10 +880,12 @@ export function AgentWorkflowV2Management() {
     const steps = (runData?.run?.steps || []) as RunStep[];
     setSelectedRunId(runId);
     setRunSteps(steps);
+    setSelectedStepId(steps[0]?.id || null);
     setRunMessages(messageData?.messages || []);
 
     const nextStatus: Record<string, RunState> = {};
     const nextPreview: Record<string, string> = {};
+    const nextExecutionOrder: Record<string, number> = {};
     steps.forEach((step) => {
       nextStatus[step.nodeId] =
         step.status === "success"
@@ -877,10 +897,14 @@ export function AgentWorkflowV2Management() {
               : "idle";
       const raw = step.output ? JSON.stringify(step.output).slice(0, 90) : "";
       nextPreview[step.nodeId] = raw || (step.error ? `Error: ${step.error}` : "-");
+      if (!nextExecutionOrder[step.nodeId]) {
+        nextExecutionOrder[step.nodeId] = Object.keys(nextExecutionOrder).length + 1;
+      }
     });
 
     setRunStateByNode(nextStatus);
     setOutputPreviewByNode(nextPreview);
+    setExecutionOrderByNode(nextExecutionOrder);
   };
 
   useEffect(() => {
@@ -971,8 +995,11 @@ export function AgentWorkflowV2Management() {
     const workflow = workflows.find((entry) => entry.id === activeWorkflowId);
     const version = workflow?.draftVersion || workflow?.activeVersion;
     if (!version) return;
+    skipNextAutosaveRef.current = true;
     setNodes(toFlowNodes(version.nodes || []));
     setEdges(toFlowEdges(version.edges || []));
+    setIsDirty(false);
+    setAutoSaveError(null);
     setSelectedNodeId(version.nodes?.[0]?.id || null);
   }, [activeWorkflowId, workflows]);
 
@@ -1094,13 +1121,16 @@ export function AgentWorkflowV2Management() {
     );
   };
 
-  const saveWorkflow = async () => {
+  const saveWorkflow = async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!activeWorkflow) return;
 
     try {
-      setSaving(true);
-      setError(null);
-      setSuccess(null);
+      setAutoSaving(true);
+      if (!silent) {
+        setError(null);
+        setSuccess(null);
+      }
+      setAutoSaveError(null);
 
       const payloadNodes = nodes.map((node, index) => ({
         id: node.id,
@@ -1143,32 +1173,44 @@ export function AgentWorkflowV2Management() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht gespeichert werden");
 
-      setSuccess("Workflow gespeichert.");
-      await loadWorkflows();
+      setIsDirty(false);
+      setLastSavedAt(new Date().toISOString());
+      if (!silent) {
+        setSuccess("Workflow gespeichert.");
+      }
     } catch (err: any) {
-      setError(err.message || "Workflow konnte nicht gespeichert werden");
+      const message = err.message || "Workflow konnte nicht gespeichert werden";
+      setAutoSaveError(message);
+      if (!silent) {
+        setError(message);
+      }
     } finally {
-      setSaving(false);
+      setAutoSaving(false);
     }
   };
 
-  const publishWorkflow = async () => {
-    if (!activeWorkflow) return;
-    try {
-      setPublishing(true);
-      setError(null);
-      setSuccess(null);
-      const response = await fetch(`/api/agent-workflows-v2/${activeWorkflow.id}/publish`, { method: "POST" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Workflow konnte nicht publiziert werden");
-      setSuccess("Workflow publiziert.");
-      await loadWorkflows();
-    } catch (err: any) {
-      setError(err.message || "Workflow konnte nicht publiziert werden");
-    } finally {
-      setPublishing(false);
+  useEffect(() => {
+    if (loading || !activeWorkflow) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
     }
-  };
+
+    setIsDirty(true);
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      void saveWorkflow({ silent: true });
+    }, 900);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [nodes, edges, activeWorkflow?.id, loading]);
 
   const runWorkflow = async () => {
     if (!activeWorkflow) return;
@@ -1195,6 +1237,7 @@ export function AgentWorkflowV2Management() {
       setRunning(true);
       setError(null);
       setSuccess(null);
+      setExecutionOrderByNode({});
 
       const pendingStatus: Record<string, RunState> = {};
       nodes.forEach((node) => {
@@ -1207,7 +1250,6 @@ export function AgentWorkflowV2Management() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idempotencyKey: crypto.randomUUID(),
-          runFrom,
           input: {
             workflowName: activeWorkflow.name,
             source: "content-agent-builder-canvas",
@@ -1217,7 +1259,7 @@ export function AgentWorkflowV2Management() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Run fehlgeschlagen");
 
-      setSuccess(`Workflow erfolgreich ausgeführt (${runFrom === "draft" ? "Draft" : "Published"}).`);
+      setSuccess("Workflow erfolgreich ausgeführt.");
       await loadRuns();
       if (data?.run?.id) {
         await loadRunDetails(data.run.id);
@@ -1301,26 +1343,14 @@ export function AgentWorkflowV2Management() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Run Controls</CardTitle>
-                <CardDescription>Save, Publish, Execute</CardDescription>
+                <CardDescription>Auto-Save + Execute</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
-                <Button onClick={saveWorkflow} disabled={!activeWorkflow || saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Speichern
-                </Button>
-                <Button variant="outline" onClick={publishWorkflow} disabled={!activeWorkflow || publishing}>
-                  {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4 mr-2" />}
-                  Publizieren
-                </Button>
-                <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2">
-                  <Label className="text-xs text-slate-300">Run Version</Label>
-                  <Select value={runFrom} onValueChange={(value) => setRunFrom(value as "draft" | "published")}>
-                    <SelectTrigger className="w-full bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft (empfohlen im Builder)</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2 text-xs text-slate-300">
+                  <div className="font-medium text-slate-200">Auto-Save</div>
+                  {autoSaving ? <div>Speichert...</div> : isDirty ? <div>Ungespeicherte Änderungen...</div> : <div>Alle Änderungen gespeichert</div>}
+                  {lastSavedAt && <div className="text-slate-400">Zuletzt: {new Date(lastSavedAt).toLocaleTimeString("de-DE")}</div>}
+                  {autoSaveError && <div className="text-red-300">{autoSaveError}</div>}
                 </div>
                 <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
                   {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
@@ -1390,11 +1420,11 @@ export function AgentWorkflowV2Management() {
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Executions</CardTitle>
-              <CardDescription>Runs und Node Outputs</CardDescription>
+              <CardDescription>Run-Liste</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {runs.length === 0 ? (
@@ -1420,31 +1450,6 @@ export function AgentWorkflowV2Management() {
                 ))
               )}
 
-              {selectedRunId && (
-                <div className="rounded-md border border-white/10 p-3 space-y-2">
-                  <h4 className="text-sm font-semibold">Node Outputs (Preview)</h4>
-                  {runSteps.length === 0 ? (
-                    <p className="text-xs text-slate-400">Keine Step-Daten vorhanden.</p>
-                  ) : (
-                    runSteps.map((step) => (
-                      <div key={step.id} className="rounded border border-white/10 p-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium">{step.nodeName}</span>
-                          <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
-                        </div>
-                    <div className="text-xs text-slate-400">{step.nodeType} | {step.provider} / {step.model}</div>
-                    <div className="text-[11px] text-slate-500">
-                      Runde: {step.round ?? "-"} | Phase: {step.phase || "-"}
-                      {step.correlationId ? ` | Correlation: ${step.correlationId.slice(0, 8)}` : ""}
-                    </div>
-                    <div className="mt-1 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-300 overflow-x-auto">
-                      {step.output ? JSON.stringify(step.output, null, 2) : step.error || "-"}
-                    </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -1452,36 +1457,93 @@ export function AgentWorkflowV2Management() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Agent-to-Agent Messages
+                Execution Inspector
               </CardTitle>
-              <CardDescription>Datenfluss zwischen Nodes pro Run</CardDescription>
+              <CardDescription>Timeline, Outputs und Agent-to-Agent Datenfluss</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {!selectedRunId ? (
-                <p className="text-sm text-slate-400">Wähle einen Run, um Messages zu sehen.</p>
-              ) : runMessages.length === 0 ? (
-                <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
+                <p className="text-sm text-slate-400">Wähle einen Run, um Timeline und Debug-Daten zu sehen.</p>
               ) : (
-                runMessages.map((message) => (
-                  <div key={message.id} className="rounded border border-white/10 p-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium flex items-center gap-1">
-                        <Send className="h-3.5 w-3.5" />
-                        {message.fromNodeName} → {message.toNodeName}
-                      </span>
-                      <Badge variant="outline">{message.channel}</Badge>
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      targetInput: <span className="font-mono">{message.targetInputKey}</span>
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      type: <span className="font-mono">{message.messageType || "message"}</span>
-                      {message.round ? ` | round: ${message.round}` : ""}
-                      {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
-                    </div>
-                    <div className="text-xs text-slate-400">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
-                  </div>
-                ))
+                <Tabs defaultValue="timeline">
+                  <TabsList className="bg-primary/10 border-primary/10">
+                    <TabsTrigger value="timeline" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Timeline</TabsTrigger>
+                    <TabsTrigger value="messages" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Messages</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="timeline" className="mt-3 space-y-3">
+                    {runSteps.length === 0 ? (
+                      <p className="text-sm text-slate-400">Keine Step-Daten vorhanden.</p>
+                    ) : (
+                      <>
+                        <div className="space-y-2 max-h-[320px] overflow-auto pr-1">
+                          {runSteps.map((step, index) => (
+                            <button
+                              key={step.id}
+                              type="button"
+                              onClick={() => setSelectedStepId(step.id)}
+                              className={`w-full rounded border p-2 text-left ${
+                                selectedStepId === step.id ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-medium">#{index + 1} {step.nodeName}</span>
+                                <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                Runde {step.round ?? "-"} | {step.phase || "-"} | {step.provider}/{step.model}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+
+                        {(() => {
+                          const selectedStep = runSteps.find((entry) => entry.id === selectedStepId) || runSteps[0];
+                          if (!selectedStep) return null;
+                          return (
+                            <div className="rounded border border-white/10 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-sm font-semibold">{selectedStep.nodeName}</div>
+                                <Badge variant={statusVariant(selectedStep.status)}>{selectedStep.status}</Badge>
+                              </div>
+                              <div className="text-xs text-slate-400 mt-1">
+                                Runde: {selectedStep.round ?? "-"} | Phase: {selectedStep.phase || "-"}
+                                {selectedStep.correlationId ? ` | Correlation: ${selectedStep.correlationId.slice(0, 8)}` : ""}
+                              </div>
+                              <div className="mt-2 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-300 overflow-x-auto">
+                                {selectedStep.output ? JSON.stringify(selectedStep.output, null, 2) : selectedStep.error || "-"}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="messages" className="mt-3 space-y-2 max-h-[500px] overflow-auto pr-1">
+                    {runMessages.length === 0 ? (
+                      <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
+                    ) : (
+                      runMessages.map((message) => (
+                        <div key={message.id} className="rounded border border-white/10 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium flex items-center gap-1">
+                              <Send className="h-3.5 w-3.5" />
+                              {message.fromNodeName} → {message.toNodeName}
+                            </span>
+                            <Badge variant="outline">{message.channel}</Badge>
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            type: <span className="font-mono">{message.messageType || "message"}</span>
+                            {message.round ? ` | round: ${message.round}` : ""}
+                            {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
+                          </div>
+                          <div className="text-xs text-slate-400">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
+                        </div>
+                      ))
+                    )}
+                  </TabsContent>
+                </Tabs>
               )}
             </CardContent>
           </Card>
