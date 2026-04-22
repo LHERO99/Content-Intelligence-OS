@@ -125,6 +125,7 @@ type RunRecord = {
   status: "pending" | "running" | "success" | "failed" | "cancelled";
   startedAt: string;
   durationMs?: number;
+  deletedAt?: string;
 };
 
 type RunStep = {
@@ -157,6 +158,8 @@ type RunMessage = {
   payload?: Record<string, unknown>;
   createdAt: string;
 };
+
+type ExecutionView = "timeline" | "messages";
 
 type AgentNodeData = {
   label: string;
@@ -567,6 +570,8 @@ export function AgentWorkflowV2Management() {
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
+  const [executionView, setExecutionView] = useState<ExecutionView>("timeline");
+  const [runActionLoading, setRunActionLoading] = useState<string | null>(null);
   const [executionOrderByNode, setExecutionOrderByNode] = useState<Record<string, number>>({});
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [modelsLoadingByProvider, setModelsLoadingByProvider] = useState<Record<string, boolean>>({});
@@ -905,6 +910,78 @@ export function AgentWorkflowV2Management() {
     setRunStateByNode(nextStatus);
     setOutputPreviewByNode(nextPreview);
     setExecutionOrderByNode(nextExecutionOrder);
+  };
+
+  const cancelRun = async (runId: string) => {
+    try {
+      setRunActionLoading(`cancel:${runId}`);
+      setError(null);
+      const response = await fetch(`/api/agent-workflows-v2/runs/${runId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Run konnte nicht abgebrochen werden");
+      setSuccess("Run wurde abgebrochen.");
+      await loadRuns();
+      if (selectedRunId === runId) {
+        await loadRunDetails(runId);
+      }
+    } catch (err: any) {
+      setError(err.message || "Run konnte nicht abgebrochen werden");
+    } finally {
+      setRunActionLoading(null);
+    }
+  };
+
+  const softDeleteRun = async (runId: string) => {
+    try {
+      setRunActionLoading(`delete:${runId}`);
+      setError(null);
+      const response = await fetch(`/api/agent-workflows-v2/runs/${runId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Run konnte nicht ausgeblendet werden");
+      setSuccess("Run wurde aus der Historie ausgeblendet.");
+      await loadRuns();
+      if (selectedRunId === runId) {
+        setSelectedRunId(null);
+        setSelectedStepId(null);
+        setRunSteps([]);
+        setRunMessages([]);
+        setExecutionOrderByNode({});
+      }
+    } catch (err: any) {
+      setError(err.message || "Run konnte nicht ausgeblendet werden");
+    } finally {
+      setRunActionLoading(null);
+    }
+  };
+
+  const cleanupStaleRuns = async () => {
+    try {
+      setRunActionLoading("cleanup");
+      setError(null);
+      const response = await fetch(`/api/agent-workflows-v2/runs`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cleanup_stale_running" }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Cleanup fehlgeschlagen");
+      const count = Array.isArray(data?.updatedRunIds) ? data.updatedRunIds.length : 0;
+      setSuccess(count > 0 ? `${count} hängende Runs wurden auf 'cancelled' gesetzt.` : "Keine hängenden Runs gefunden.");
+      await loadRuns();
+      if (selectedRunId) {
+        await loadRunDetails(selectedRunId);
+      }
+    } catch (err: any) {
+      setError(err.message || "Cleanup fehlgeschlagen");
+    } finally {
+      setRunActionLoading(null);
+    }
   };
 
   useEffect(() => {
@@ -1425,28 +1502,57 @@ export function AgentWorkflowV2Management() {
             <CardHeader>
               <CardTitle className="text-base">Executions</CardTitle>
               <CardDescription>Run-Liste</CardDescription>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 h-7 w-fit"
+                disabled={runActionLoading === "cleanup"}
+                onClick={cleanupStaleRuns}
+              >
+                {runActionLoading === "cleanup" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Hängende Runs bereinigen"}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-2">
               {runs.length === 0 ? (
                 <p className="text-sm text-slate-400">Keine Runs vorhanden.</p>
               ) : (
                 runs.map((run) => (
-                  <button
+                  <div
                     key={run.id}
-                    type="button"
-                    onClick={() => loadRunDetails(run.id)}
                     className={`w-full rounded-md border p-3 text-left transition-colors ${
                       selectedRunId === run.id ? "border-blue-400/70 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
-                      <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                    <button type="button" onClick={() => loadRunDetails(run.id)} className="w-full text-left">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
+                        <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
+                      </div>
+                    </button>
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7"
+                        disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
+                        onClick={() => cancelRun(run.id)}
+                      >
+                        {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Abbrechen"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 border-amber-400/50 text-amber-200 hover:bg-amber-500/10"
+                        disabled={runActionLoading === `delete:${run.id}`}
+                        onClick={() => softDeleteRun(run.id)}
+                      >
+                        {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Ausblenden"}
+                      </Button>
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
-                    </div>
-                  </button>
+                  </div>
                 ))
               )}
 
@@ -1465,7 +1571,7 @@ export function AgentWorkflowV2Management() {
               {!selectedRunId ? (
                 <p className="text-sm text-slate-400">Wähle einen Run, um Timeline und Debug-Daten zu sehen.</p>
               ) : (
-                <Tabs defaultValue="timeline">
+                <Tabs value={executionView} onValueChange={(value) => setExecutionView((value as ExecutionView) || "timeline") }>
                   <TabsList className="bg-primary/10 border-primary/10">
                     <TabsTrigger value="timeline" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Timeline</TabsTrigger>
                     <TabsTrigger value="messages" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Messages</TabsTrigger>
@@ -1525,20 +1631,29 @@ export function AgentWorkflowV2Management() {
                       <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
                     ) : (
                       runMessages.map((message) => (
-                        <div key={message.id} className="rounded border border-white/10 p-2">
+                        <div
+                          key={message.id}
+                          className={`rounded border p-2 ${
+                            message.messageType === "control"
+                              ? "border-amber-300/50 bg-amber-500/10"
+                              : message.messageType === "task_result"
+                                ? "border-emerald-300/50 bg-emerald-500/10"
+                                : "border-blue-300/50 bg-blue-500/10"
+                          }`}
+                        >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium flex items-center gap-1">
+                            <span className="text-sm font-semibold text-slate-100 flex items-center gap-1">
                               <Send className="h-3.5 w-3.5" />
                               {message.fromNodeName} → {message.toNodeName}
                             </span>
-                            <Badge variant="outline">{message.channel}</Badge>
+                            <Badge variant="outline" className="border-white/30 text-slate-100">{message.channel}</Badge>
                           </div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-200">
                             type: <span className="font-mono">{message.messageType || "message"}</span>
                             {message.round ? ` | round: ${message.round}` : ""}
                             {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
                           </div>
-                          <div className="text-xs text-slate-400">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
+                          <div className="text-xs text-slate-300">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
                         </div>
                       ))
                     )}

@@ -27,6 +27,9 @@ export interface WorkflowRunRepositoryV2 {
   getRunWithDetails(tenantId: string, runId: string): Promise<WorkflowRunWithDetailsV2 | null>;
   getRunMessages(tenantId: string, runId: string): Promise<WorkflowMessageV2[]>;
   findByIdempotencyKey(tenantId: string, workflowVersionId: string, idempotencyKey: string): Promise<WorkflowRunV2 | null>;
+  cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
 }
 
 export interface IntegrationSecretProviderV2 {
@@ -55,4 +58,7 @@ export interface AgentWorkflowServiceV2 {
   listRuns(tenantId: string, limit?: number): Promise<WorkflowRunV2[]>;
   getRun(tenantId: string, runId: string): Promise<WorkflowRunWithDetailsV2 | null>;
   getRunMessages(tenantId: string, runId: string): Promise<WorkflowMessageV2[]>;
+  cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
 }

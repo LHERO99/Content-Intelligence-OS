@@ -22,3 +22,33 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const action = String(body?.action || '').trim();
+    if (action !== 'cleanup_stale_running') {
+      return NextResponse.json({ error: 'Ungültige Aktion' }, { status: 400 });
+    }
+
+    const service = createAgentWorkflowServiceV2();
+    const runs = await service.listRuns(DEFAULT_TENANT_ID, 200);
+    const staleRuns = runs.filter((run) => run.status === 'running');
+
+    const updated: string[] = [];
+    for (const run of staleRuns) {
+      const cancelled = await service.cancelRun(DEFAULT_TENANT_ID, run.id);
+      if (cancelled) updated.push(run.id);
+    }
+
+    return NextResponse.json({ ok: true, updatedRunIds: updated });
+  } catch (error: any) {
+    console.error('[API Agent Workflows V2 Runs] PATCH error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}

@@ -772,4 +772,16 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
   async getRunMessages(tenantId: string, runId: string) {
     return this.runs.getRunMessages(tenantId, runId);
   }
+
+  async cancelRun(tenantId: string, runId: string) {
+    return this.runs.cancelRun(tenantId, runId);
+  }
+
+  async softDeleteRun(tenantId: string, runId: string) {
+    return this.runs.softDeleteRun(tenantId, runId);
+  }
+
+  async restoreRun(tenantId: string, runId: string) {
+    return this.runs.restoreRun(tenantId, runId);
+  }
 }
