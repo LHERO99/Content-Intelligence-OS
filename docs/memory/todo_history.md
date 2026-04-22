@@ -1,6 +1,25 @@
 # TODO Historie
 
 ## Erledigt
+- [x] Agent Builder V2 als Standard etabliert (`/content-agent-builder`), V1 entfernt.
+- [x] OpenAI als ausführbarer Provider im Agent-Runner integriert (inkl. API-Key Secret Lookup).
+- [x] Integrationen: Model Discovery Endpoint `/api/admin/integrations/[provider]/models` eingeführt.
+- [x] Integrationen: Discovery für OpenAI, OpenRouter, Gemini ergänzt.
+- [x] Integrationen: Copilot (GitHub Models) und Perplexity im Admin-Integrationsmanagement ergänzt (Test + Modellauflistung).
+- [x] Admin Integrationen-Tab auf Master-Detail UX umgestellt (Provider-Liste links, Detail rechts).
+- [x] Builder: Modell-Auswahl provider-basiert (Dropdown bei verfügbaren Modellen, Fallback-Input bei fehlenden Modellen).
+- [x] Builder: Hinweis + Link ins Admin-Panel bei fehlender Provider-Anbindung/Modellauflistung.
+- [x] Builder: Model-Dropdown optisch an die Drawer-UI angeglichen, explizit nach unten aufklappend.
+- [x] Builder: Edge-Selektion robust gemacht und Keyboard-Delete (`Backspace`/`Delete`) für Edge-Löschung ergänzt.
+- [x] Builder: Parent-Typ im Drawer gegen unbeabsichtigte Typ-Änderung geschützt.
+- [x] Agent Runtime: Orchestrator Round-Loop implementiert (Parent entscheidet seriell den nächsten Subagenten).
+- [x] Agent Runtime: Strukturierte Parent-Decision Auswertung (`finalize`, `next.targetNodeId`, `objective`, `memoryPatch`) implementiert.
+- [x] Agent Runtime: A2A-Messages typisiert (`task_request`, `task_result`, `control`) inkl. `round`/`correlationId`.
+- [x] Agent Runtime: Step-Metadaten (`round`, `phase`, `correlationId`) ergänzt.
+- [x] Node-Config Datenmodell um `purpose`, `inputContract`, `outputContract` erweitert.
+- [x] Builder: Node-Konfiguration UX komplett neu strukturiert (Sektionen + selbsterklärende Mikrocopy + Sticky Footer Actions).
+- [x] Builder: Pre-Run Validierung ergänzt (1 Parent, Parent aktiv, mind. 1 aktiver Subagent, Purpose gesetzt).
+- [x] Run-API/Service: `runFrom` (`draft`/`published`) ergänzt; Builder-Default auf Draft gesetzt.
 - [x] Ranking-System integriert (Airtable, Types, UI).
 - [x] Striking Distance Priorisierung implementiert (Ranking 11-30 Fokus).
 - [x] Aktualitäts-Faktor (Recency) in Priorisierung aufgenommen.
@@ -86,4 +105,3 @@
 - [x] Logic: "Optimierung planen" Sperre eingeführt (erfordert Veröffentlichung des initialen Contents).
 - [x] UI: ROI (Eingesparte Kosten) direkt in der Monitoring-Tabelle pro URL sichtbar.
 - [x] UI: Button "Zur Optimierung" in "Optimierung planen" umbenannt und Verlinkung zum Vorschläge-Tab in Alert integriert.
-

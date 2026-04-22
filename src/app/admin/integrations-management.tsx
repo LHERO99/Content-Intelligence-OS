@@ -396,6 +396,14 @@ export function IntegrationsManagement() {
                     </span>
                   </div>
                 )}
+
+                <Alert>
+                  <AlertTitle>Tipp zur Kostenkontrolle</AlertTitle>
+                  <AlertDescription>
+                    Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche
+                    Kostensicherheit bei automatisierten Workflows.
+                  </AlertDescription>
+                </Alert>
               </section>
 
               {selectedCanDiscoverModels && (

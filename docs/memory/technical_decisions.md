@@ -1,4 +1,38 @@
-# Technische Entscheidungen (Stand: 06.04.2026)
+# Technische Entscheidungen (Stand: 22.04.2026)
+
+## Agent-Workflow V2: Orchestrierungsmodell (22.04.2026)
+- **Serielles Parent-Orchestrierungsmodell**:
+  - Die Engine wurde von linearem Topology-Run auf einen orchestrierten Round-Loop umgestellt.
+  - Ablauf: Parent entscheidet -> ein Subagent wird beauftragt -> Ergebnis an Parent zurück -> nächste Entscheidung.
+  - Keine Parallelität auf Subagent-Ebene (bewusste Produktentscheidung).
+- **Parent-Decision Contract**:
+  - Parent muss ein valides JSON liefern (`finalize`, optional `summary`, optional `next`, optional `memoryPatch`).
+  - Bei ungültiger Entscheidung wird ein `control`-Message-Event geschrieben und der Run als fehlerhaft beendet.
+- **A2A Message Typisierung**:
+  - Einführung von `messageType` (`task_request`, `task_result`, `control`) plus `round` und `correlationId` für Nachvollziehbarkeit und Audit-Trails.
+- **Konfigurations-Contract für Subagents**:
+  - Node-Config wurde um `purpose`, `inputContract`, `outputContract` erweitert.
+  - Diese Felder dienen als Entscheidungskontext für den Parent und als Ausführungsrahmen für Subagents.
+- **Run-Version-Semantik explizit gemacht**:
+  - `runFrom` (`draft` oder `published`) wurde als Eingabe eingeführt.
+  - Builder-Default ist `draft`, um UI/Cavas und auszuführende Version konsistent zu halten.
+
+## Integrationsstrategie für Modellauflistung (22.04.2026)
+- **Server-side Discovery only**:
+  - Modelllisten werden ausschließlich serverseitig über `/api/admin/integrations/[provider]/models` geladen.
+  - API-Keys verbleiben im Backend, kein Direct-to-Provider Call aus dem Browser.
+- **Cache-Strategie**:
+  - In-Memory TTL Cache für Modelllisten, optionaler `refresh=1` zur erzwungenen Aktualisierung.
+- **Provider-Abdeckung**:
+  - Discovery für `openai`, `openrouter`, `gemini`, `copilot (GitHub Models)`, `perplexity`.
+
+## UX-Entscheidung: Node-Konfiguration (22.04.2026)
+- **Section-first statt Flat-Form**:
+  - Node-Konfiguration wurde in klar benannte, auf-/zuklappbare Sektionen aufgeteilt.
+  - Ziel: geringere kognitive Last, schnellere Orientierung, bessere Erstnutzung ohne Erklärbedarf.
+- **Progressive Disclosure**:
+  - Kernsektionen standardmäßig offen, erweiterte Bereiche separat gekapselt.
+  - Actions im Sticky-Footer für konstante Erreichbarkeit.
 
 ## Optimierte Performance-Architektur (06.04.2026)
 - **Tabellen-Split Strategie**: 
@@ -46,4 +80,3 @@
 - **Optimierungs-Guard**: Planung einer Optimierung erfordert nun zwingend, dass bereits ein "Content angeliefert" oder "Content veröffentlicht" Event in der Historie existiert.
 - **Row-Action Pattern**: Umstellung von expliziten "Details"-Buttons auf zeilenbasiertes Klicken in der Monitoring-Tabelle zur Verbesserung der UX.
 - **ROI Data Injection**: Die Monitoring-Übersicht API berechnet nun aggregierte Kosten-Einsparungen pro URL on-the-fly, um sie in der Haupttabelle anzuzeigen.
-

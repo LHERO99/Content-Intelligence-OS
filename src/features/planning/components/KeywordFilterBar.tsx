@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/select";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -277,12 +277,12 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
                 .map((column: any) => {
                   const isVisible = column.getIsVisible();
                   return (
-                    <DropdownMenuItem
+                    <DropdownMenuCheckboxItem
                       key={column.id}
+                      checked={isVisible}
                       className="capitalize flex items-center justify-between gap-2"
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        column.toggleVisibility(!isVisible);
+                      onCheckedChange={(checked) => {
+                        column.toggleVisibility(Boolean(checked));
                       }}
                     >
                       <span>{column.id.replace(/_/g, " ")}</span>
@@ -290,7 +290,7 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
                         {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                         {isVisible ? "Sichtbar" : "Ausgeblendet"}
                       </span>
-                    </DropdownMenuItem>
+                    </DropdownMenuCheckboxItem>
                   );
                 })}
             </DropdownMenuContent>

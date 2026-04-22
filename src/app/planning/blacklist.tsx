@@ -55,7 +55,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlerts } from "@/components/alerts-provider";
 import {
   DropdownMenu,
-  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -676,12 +676,12 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                 .filter((column: any) => column.getCanHide())
                 .map((column: any) => {
                   return (
-                    <DropdownMenuItem
+                    <DropdownMenuCheckboxItem
                       key={column.id}
+                      checked={column.getIsVisible()}
                       className="capitalize flex items-center justify-between gap-2"
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        column.toggleVisibility(!column.getIsVisible());
+                      onCheckedChange={(checked) => {
+                        column.toggleVisibility(Boolean(checked));
                       }}
                     >
                       <span>{column.id.replace(/_/g, " ")}</span>
@@ -689,7 +689,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                         {column.getIsVisible() ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                         {column.getIsVisible() ? "Sichtbar" : "Ausgeblendet"}
                       </span>
-                    </DropdownMenuItem>
+                    </DropdownMenuCheckboxItem>
                   );
                 })}
             </DropdownMenuContent>

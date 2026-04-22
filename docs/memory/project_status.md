@@ -1,4 +1,24 @@
-# Projekt-Status (Stand: 06.04.2026)
+# Projekt-Status (Stand: 22.04.2026)
+
+## Content-Agent Builder V2 (Orchestrierung, UX, Integrationen)
+- **V2 als Standard etabliert**: Der Builder läuft auf `/content-agent-builder`; V1 wurde entfernt und nicht mehr verwendet.
+- **Orchestrator-Loop implementiert**: Ausführung läuft nun seriell in Runden (`Parent -> 1 Subagent -> Parent`), ohne parallele Subagent-Runs.
+- **Entscheidungslogik über Parent-LLM**: Der Parent trifft die nächste Delegationsentscheidung über ein strukturiertes JSON-Schema (`finalize`, `next.targetNodeId`, `objective`, `memoryPatch`).
+- **Run-Metadaten erweitert**: Steps/Messages enthalten nun `round`, `phase`, `correlationId` sowie Message-Typen (`task_request`, `task_result`, `control`) für nachvollziehbares Agent-to-Agent Tracing.
+- **Subagent-Kontext standardisiert**: Node-Config enthält nun `purpose`, `inputContract`, `outputContract`; diese Daten werden in die Parent-Entscheidung und Subagent-Execution eingespeist.
+- **Run-Version explizit steuerbar**: Start eines Flows unterstützt `runFrom` (`draft`/`published`), Default im Builder ist `draft` zur Vermeidung von Draft-vs-Published Mismatches.
+- **Pre-Run Validierung im UI**: Vor Ausführung wird geprüft auf genau 1 Parent, aktiven Parent, mindestens 1 aktiven Subagent und gesetzte Subagent-Purpose.
+
+## Integrationen & Modell-Discovery
+- **Model Discovery ausgebaut**: Serverseitige Modellauflistung via `/api/admin/integrations/[provider]/models` mit Caching und optionalem Refresh.
+- **Unterstützte Discovery-Provider**: `openai`, `openrouter`, `gemini`, `copilot (GitHub Models)`, `perplexity`.
+- **Admin-Integrationen modernisiert**: Master-Detail UI (Provider-Liste links, Detail rechts) statt paralleler Kartenübersicht.
+- **Provider-Portfolio erweitert**: OpenAI für Builder/Runtime ergänzt; Copilot & Perplexity im Integrationsmanagement (Test + Modellauflistung) ergänzt.
+
+## Node-Konfigurations-UX (Builder)
+- **Komplette UX-Neustrukturierung**: Node-Drawer in klaren Sektionen (`Rolle & Identität`, `Aufgabe`, `LLM Setup`, `I/O Vertrag`, `Erweitert`) mit selbsterklärender Mikrocopy.
+- **Bessere Bedienbarkeit**: Sektionen sind auf-/zuklappbar, relevante Bereiche initial offen; Sticky-Aktionsleiste im Footer (`Node entfernen`, `Fertig`).
+- **Model-UI harmonisiert**: Einheitliches Verhalten für Laden/Aktualisieren/Auswählen inkl. Admin-Hinweis bei fehlender Provider-Anbindung.
 
 ## Content-Lifecycle & Logging-Events
 - **Status-Workflow**: Der Workflow umfasst nun: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
@@ -71,5 +91,4 @@
 - **UI/UX**: Interaktive Drag&Drop-Zonen für Logo und Favicon im Admin-Bereich mit Größen-Validierung (max. 2MB).
 - **Echtzeit-Anwendung**: Der `BrandingProvider` injiziert die Primärfarbe via CSS-Variable (`--primary`) und aktualisiert das Favicon dynamisch im Browser.
 - **Refactoring**: Hardcodierte DocMorris-Brandings in Sidebar und Layout wurden durch dynamische Assets ersetzt.
-
 
