@@ -22,12 +22,6 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -264,45 +258,37 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
 
           {!hideImport && <KeywordImport />}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger>
+          <Popover>
+            <PopoverTrigger>
               <Button variant="outline" className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10">
                 Spalten <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 p-1">
-              {table
-                .getAllColumns()
-                .filter((column: any) => column.getCanHide())
-                .map((column: any) => {
-                  const isVisible = column.getIsVisible();
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      checked={isVisible}
-                      closeOnClick={false}
-                      className="capitalize flex items-center justify-between gap-2"
-                      onSelect={(event) => {
-                        event.preventDefault();
-                      }}
-                      onCheckedChange={(checked) => {
-                        if (typeof checked === "boolean") {
-                          column.toggleVisibility(checked);
-                          return;
-                        }
-                        column.toggleVisibility(!column.getIsVisible());
-                      }}
-                    >
-                      <span>{column.id.replace(/_/g, " ")}</span>
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                        {isVisible ? "Sichtbar" : "Ausgeblendet"}
-                      </span>
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-1">
+              <div className="space-y-1">
+                {table
+                  .getAllColumns()
+                  .filter((column: any) => column.getCanHide())
+                  .map((column: any) => {
+                    const isVisible = column.getIsVisible();
+                    return (
+                      <button
+                        key={column.id}
+                        type="button"
+                        className="w-full capitalize flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                        onClick={() => column.toggleVisibility(!isVisible)}
+                      >
+                        <span>{column.id.replace(/_/g, " ")}</span>
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                          {isVisible ? "Sichtbar" : "Ausgeblendet"}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
