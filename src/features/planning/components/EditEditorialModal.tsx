@@ -101,6 +101,19 @@ export function EditEditorialModal({
            keyword.Status === 'Published';
   }, [keyword, commissionedIds]);
 
+  const selectedEditorValue = React.useMemo(() => {
+    const raw = formData.Assigned_Editor?.[0];
+    if (!raw) return "__none__";
+
+    const matchingById = editorOptions.find((editor) => editor.id === raw);
+    if (matchingById) return matchingById.id;
+
+    const matchingByEmail = editorOptions.find((editor) => editor.email === raw);
+    if (matchingByEmail) return matchingByEmail.id;
+
+    return "__none__";
+  }, [formData.Assigned_Editor, editorOptions]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0">
@@ -217,12 +230,12 @@ export function EditEditorialModal({
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
                       <Select
-                        value={formData.Assigned_Editor?.[0] || "__none__"}
+                        value={selectedEditorValue}
                         onValueChange={(value) => {
-                          const selectedEditorEmail = value && value !== "__none__" ? value : undefined;
+                          const selectedEditorId = value && value !== "__none__" ? value : undefined;
                           setFormData({
                             ...formData,
-                            Assigned_Editor: selectedEditorEmail ? [selectedEditorEmail] : [],
+                            Assigned_Editor: selectedEditorId ? [selectedEditorId] : [],
                           });
                         }}
                       >
@@ -232,7 +245,7 @@ export function EditEditorialModal({
                         <SelectContent>
                           <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
                           {editorOptions.map((editor) => (
-                            <SelectItem key={editor.id} value={editor.email}>
+                            <SelectItem key={editor.id} value={editor.id}>
                               {editor.name} ({editor.email})
                             </SelectItem>
                           ))}
