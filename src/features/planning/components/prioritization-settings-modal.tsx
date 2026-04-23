@@ -62,16 +62,25 @@ export function PrioritizationSettingsModal({
       const response = await fetch("/api/admin/config");
       if (!response.ok) throw new Error("Fehler beim Laden der Konfiguration");
       const config = await response.json();
-      
+
       const newWeights = { ...weights };
       let foundAny = false;
-      
-      config.forEach((item: { key: string; value: any }) => {
-        if (item.key in newWeights) {
-          newWeights[item.key as keyof typeof weights] = Number(item.value) || 0;
-          foundAny = true;
-        }
-      });
+
+      if (Array.isArray(config)) {
+        config.forEach((item: { key: string; value: any }) => {
+          if (item?.key in newWeights) {
+            newWeights[item.key as keyof typeof weights] = Number(item.value) || 0;
+            foundAny = true;
+          }
+        });
+      } else if (config && typeof config === "object") {
+        (Object.keys(newWeights) as Array<keyof typeof newWeights>).forEach((key) => {
+          if ((config as Record<string, any>)[key] !== undefined) {
+            newWeights[key] = Number((config as Record<string, any>)[key]) || 0;
+            foundAny = true;
+          }
+        });
+      }
 
       if (foundAny) {
         setWeights(newWeights);

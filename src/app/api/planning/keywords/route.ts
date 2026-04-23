@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteKeywords, AirtableValidationError, createContentLog } from '@/lib/airtable';
+import {
+  createKeyword,
+  getKeywordMap,
+  updateKeyword,
+  deleteKeyword,
+  bulkDeleteKeywords,
+  AirtableValidationError,
+  createContentLog,
+  getAllUsers,
+} from '@/lib/airtable';
 import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -27,6 +36,59 @@ async function enrichWithPriorityScore<T extends Record<string, any>>(keyword: T
     ...keyword,
     Priority_Score: score,
   };
+}
+
+function isAssignedEditorParseError(error: any): boolean {
+  const message = String(error?.message || '');
+  const raw = String(error?.error || '');
+  return (
+    message.includes('Assigned_Editor') ||
+    message.includes('INVALID_VALUE_FOR_COLUMN') ||
+    raw.includes('INVALID_VALUE_FOR_COLUMN')
+  );
+}
+
+async function updateKeywordWithEditorFallback(id: string, updates: Record<string, any>) {
+  try {
+    return await updateKeyword(id, updates);
+  } catch (error: any) {
+    if (!isAssignedEditorParseError(error) || updates.Assigned_Editor === undefined) {
+      throw error;
+    }
+
+    const rawAssigned = updates.Assigned_Editor;
+    const assignedValues = Array.isArray(rawAssigned)
+      ? rawAssigned.filter((value) => typeof value === 'string' && value.trim() !== '')
+      : typeof rawAssigned === 'string' && rawAssigned.trim() !== ''
+        ? [rawAssigned]
+        : [];
+
+    if (assignedValues.length === 0) {
+      return await updateKeyword(id, { ...updates, Assigned_Editor: undefined });
+    }
+
+    const firstValue = String(assignedValues[0]);
+    const users = await getAllUsers();
+    const matchedUser = users.find((user) => user.id === firstValue || user.Email === firstValue);
+
+    const fallbackCandidates: Array<any> = [firstValue];
+    if (matchedUser?.Email) fallbackCandidates.push(matchedUser.Email);
+    if (matchedUser?.Name) fallbackCandidates.push(matchedUser.Name);
+
+    let lastError: any = error;
+    for (const candidate of fallbackCandidates) {
+      try {
+        return await updateKeyword(id, {
+          ...updates,
+          Assigned_Editor: candidate ? [candidate] : undefined,
+        });
+      } catch (candidateError: any) {
+        lastError = candidateError;
+      }
+    }
+
+    throw lastError;
+  }
 }
 
 export async function POST(request: Request) {
@@ -200,7 +262,7 @@ export async function PATCH(request: Request) {
       nextPayload.Priority_Score = enriched.Priority_Score;
     }
 
-    const result = await updateKeyword(id, nextPayload);
+    const result = await updateKeywordWithEditorFallback(id, nextPayload);
 
     // 3. Status Transition Logging
     if (result && updates.Status && updates.Status !== currentKeyword.Status) {
