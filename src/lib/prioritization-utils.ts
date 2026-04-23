@@ -10,6 +10,28 @@ export interface PrioritizationWeights {
   weight_ranking: number;
 }
 
+export const DEFAULT_PRIORITIZATION_WEIGHTS: PrioritizationWeights = {
+  weight_search_volume: 20,
+  weight_difficulty: 20,
+  weight_article_count: 20,
+  weight_avg_value: 20,
+  weight_policy: 20,
+  weight_recency: 20,
+  weight_ranking: 20,
+};
+
+export function resolvePrioritizationWeights(config: Record<string, string>): PrioritizationWeights {
+  return {
+    weight_search_volume: Number(config.weight_search_volume ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_search_volume) || 0,
+    weight_difficulty: Number(config.weight_difficulty ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_difficulty) || 0,
+    weight_article_count: Number(config.weight_article_count ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_article_count) || 0,
+    weight_avg_value: Number(config.weight_avg_value ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_avg_value) || 0,
+    weight_policy: Number(config.weight_policy ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_policy) || 0,
+    weight_recency: Number(config.weight_recency ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_recency) || 0,
+    weight_ranking: Number(config.weight_ranking ?? DEFAULT_PRIORITIZATION_WEIGHTS.weight_ranking) || 0,
+  };
+}
+
 /**
  * Calculates a priority score for a keyword based on weighted metrics.
  * All metrics are normalized to a 0-100 scale before applying weights.

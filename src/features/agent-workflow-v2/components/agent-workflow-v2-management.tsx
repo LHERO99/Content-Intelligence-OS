@@ -572,6 +572,7 @@ export function AgentWorkflowV2Management() {
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
   const [executionView, setExecutionView] = useState<ExecutionView>("executions");
   const [runActionLoading, setRunActionLoading] = useState<string | null>(null);
+  const [executionPanelHeight, setExecutionPanelHeight] = useState(360);
   const [showHiddenRuns, setShowHiddenRuns] = useState(false);
   const [runStatusFilter, setRunStatusFilter] = useState<"all" | RunRecord["status"]>("all");
   const [executionOrderByNode, setExecutionOrderByNode] = useState<Record<string, number>>({});
@@ -583,6 +584,8 @@ export function AgentWorkflowV2Management() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<BezierDataEdge>([]);
   const skipNextAutosaveRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resizeStartYRef = useRef<number | null>(null);
+  const resizeStartHeightRef = useRef<number>(360);
 
   const isModelDiscoverySupported = useCallback((provider: AgentProvider) => {
     return provider === "openai" || provider === "openrouter" || provider === "gemini";
@@ -1013,6 +1016,32 @@ export function AgentWorkflowV2Management() {
     }
   };
 
+  const startResizePanel = (event: React.MouseEvent) => {
+    resizeStartYRef.current = event.clientY;
+    resizeStartHeightRef.current = executionPanelHeight;
+    event.preventDefault();
+  };
+
+  useEffect(() => {
+    const onMove = (event: MouseEvent) => {
+      if (resizeStartYRef.current === null) return;
+      const delta = resizeStartYRef.current - event.clientY;
+      const nextHeight = Math.max(260, Math.min(640, resizeStartHeightRef.current + delta));
+      setExecutionPanelHeight(nextHeight);
+    };
+
+    const onUp = () => {
+      resizeStartYRef.current = null;
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [executionPanelHeight]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -1402,7 +1431,7 @@ export function AgentWorkflowV2Management() {
 
   return (
     <ReactFlowProvider>
-      <div className="space-y-6 text-slate-100">
+      <div className="space-y-6 text-slate-100 pb-6">
         <Tabs value={activeFlowTab} onValueChange={(value) => {
           const next = (value as FlowMode) || "default";
           setActiveFlowTab(next);
@@ -1526,7 +1555,12 @@ export function AgentWorkflowV2Management() {
           </div>
         )}
 
-        <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+        <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100 overflow-hidden">
+          <div
+            className="h-3 cursor-row-resize border-b border-white/10 bg-gradient-to-r from-white/5 via-white/10 to-white/5"
+            onMouseDown={startResizePanel}
+            title="Execution Panel Größe ändern"
+          />
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -1555,7 +1589,7 @@ export function AgentWorkflowV2Management() {
             </CardTitle>
             <CardDescription>n8n/Make-ähnliche Ausführungssicht: Runs, Timeline, Messages</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent style={{ height: executionPanelHeight }} className="overflow-hidden">
             <Tabs value={executionView} onValueChange={(value) => setExecutionView((value as ExecutionView) || "executions")}>
               <TabsList className="bg-primary/10 border-primary/10">
                 <TabsTrigger value="executions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Executions</TabsTrigger>
@@ -1581,7 +1615,7 @@ export function AgentWorkflowV2Management() {
                 {filteredRuns.length === 0 ? (
                   <p className="text-sm text-slate-400">Keine Runs vorhanden.</p>
                 ) : (
-                  <div className="grid gap-2 max-h-[320px] overflow-auto pr-1">
+                  <div className="grid gap-2 max-h-[calc(100%-48px)] overflow-auto pr-1">
                     {filteredRuns.map((run) => (
                       <div
                         key={run.id}
@@ -1644,7 +1678,7 @@ export function AgentWorkflowV2Management() {
                   <p className="text-sm text-slate-400">Keine Step-Daten vorhanden.</p>
                 ) : (
                   <>
-                    <div className="space-y-2 max-h-[320px] overflow-auto pr-1">
+                    <div className="space-y-2 max-h-[210px] overflow-auto pr-1">
                       {runSteps.map((step, index) => (
                         <button
                           key={step.id}
@@ -1688,7 +1722,7 @@ export function AgentWorkflowV2Management() {
                 )}
               </TabsContent>
 
-              <TabsContent value="messages" className="mt-3 space-y-2 max-h-[500px] overflow-auto pr-1">
+              <TabsContent value="messages" className="mt-3 space-y-2 h-[calc(100%-52px)] overflow-auto pr-1">
                 {!selectedRun ? (
                   <p className="text-sm text-slate-400">Wähle zuerst einen Run im Tab Executions.</p>
                 ) : runMessages.length === 0 ? (

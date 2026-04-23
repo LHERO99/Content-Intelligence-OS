@@ -3,6 +3,8 @@ import { createKeyword, getKeywordMap, updateKeyword, deleteKeyword, bulkDeleteK
 import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { calculatePriorityScore, resolvePrioritizationWeights } from '@/lib/prioritization-utils';
+import { getConfig } from '@/lib/airtable';
 
 export async function GET() {
   try {
@@ -15,6 +17,16 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+async function enrichWithPriorityScore<T extends Record<string, any>>(keyword: T): Promise<T> {
+  const config = await getConfig();
+  const weights = resolvePrioritizationWeights(config);
+  const score = calculatePriorityScore(keyword as any, weights);
+  return {
+    ...keyword,
+    Priority_Score: score,
+  };
 }
 
 export async function POST(request: Request) {
@@ -34,7 +46,7 @@ export async function POST(request: Request) {
       Page_Type
     } = body;
 
-    const result = await createKeyword({
+    let result = await createKeyword({
       Keyword,
       Target_URL,
       Search_Volume: Search_Volume ? Number(Search_Volume) : undefined,
@@ -48,6 +60,14 @@ export async function POST(request: Request) {
       Action_Type: 'Erstellung',
       Page_Type: Page_Type || 'Kategorie',
     });
+
+    if (result) {
+      const enriched = await enrichWithPriorityScore(result as any);
+      const updatedWithScore = await updateKeyword(result.id, { Priority_Score: enriched.Priority_Score });
+      if (updatedWithScore) {
+        result = updatedWithScore;
+      }
+    }
 
     if (!result) {
       return NextResponse.json(
@@ -161,7 +181,26 @@ export async function PATCH(request: Request) {
 
     console.log(`[API] Updating keyword ${id} with:`, updates);
 
-    const result = await updateKeyword(id, updates);
+    const nextPayload = { ...updates };
+    if (
+      updates.Search_Volume !== undefined ||
+      updates.Difficulty !== undefined ||
+      updates.Article_Count !== undefined ||
+      updates.Avg_Product_Value !== undefined ||
+      updates.Policy !== undefined ||
+      updates.Ranking !== undefined ||
+      updates.Last_Published !== undefined ||
+      updates.Status !== undefined
+    ) {
+      const mergedForScoring = {
+        ...currentKeyword,
+        ...nextPayload,
+      };
+      const enriched = await enrichWithPriorityScore(mergedForScoring as any);
+      nextPayload.Priority_Score = enriched.Priority_Score;
+    }
+
+    const result = await updateKeyword(id, nextPayload);
 
     // 3. Status Transition Logging
     if (result && updates.Status && updates.Status !== currentKeyword.Status) {

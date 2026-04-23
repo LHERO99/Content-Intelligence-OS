@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, updateConfig } from '@/lib/airtable';
+import { getConfig, getKeywordMap, updateConfig, updateKeyword } from '@/lib/airtable';
 import { normalizeHexColor } from '@/lib/branding';
+import { calculatePriorityScore, resolvePrioritizationWeights } from '@/lib/prioritization-utils';
 
 export async function GET() {
   try {
@@ -35,6 +36,19 @@ export async function PATCH(request: Request) {
         const updated = await updateConfig(key, String(value));
         results.push(updated);
       }
+
+      const config = await getConfig();
+      const weights = resolvePrioritizationWeights(config);
+      const keywords = await getKeywordMap();
+      await Promise.all(
+        keywords.map(async (keyword) => {
+          const nextScore = calculatePriorityScore(keyword as any, weights);
+          if (keyword.Priority_Score !== nextScore) {
+            await updateKeyword(keyword.id, { Priority_Score: nextScore });
+          }
+        })
+      );
+
       return NextResponse.json({ success: true, results });
     }
 
