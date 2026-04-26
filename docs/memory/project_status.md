@@ -1,4 +1,4 @@
-# Projekt-Status (Stand: 22.04.2026)
+# Projekt-Status (Stand: 26.04.2026)
 
 ## Content-Agent Builder V2 (Orchestrierung, UX, Integrationen)
 - **V2 als Standard etabliert**: Der Builder läuft auf `/content-agent-builder`; V1 wurde entfernt und nicht mehr verwendet.
@@ -14,6 +14,8 @@
 - **Unterstützte Discovery-Provider**: `openai`, `openrouter`, `gemini`, `copilot (GitHub Models)`, `perplexity`.
 - **Admin-Integrationen modernisiert**: Master-Detail UI (Provider-Liste links, Detail rechts) statt paralleler Kartenübersicht.
 - **Provider-Portfolio erweitert**: OpenAI für Builder/Runtime ergänzt; Copilot & Perplexity im Integrationsmanagement (Test + Modellauflistung) ergänzt.
+- **Vertex Legal Agent**: Integration eines externen Legal Agents über Vertex AI Endpunkte für rechtliche Prüfungen.
+- **DataForSEO**: Integration für Performance- und SEO-Datenquellen ergänzt.
 
 ## Node-Konfigurations-UX (Builder)
 - **Komplette UX-Neustrukturierung**: Node-Drawer in klaren Sektionen (`Rolle & Identität`, `Aufgabe`, `LLM Setup`, `I/O Vertrag`, `Erweitert`) mit selbsterklärender Mikrocopy.

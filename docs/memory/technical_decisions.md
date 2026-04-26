@@ -1,6 +1,6 @@
-# Technische Entscheidungen (Stand: 22.04.2026)
+# Technische Entscheidungen (Stand: 26.04.2026)
 
-## Agent-Workflow V2: Orchestrierungsmodell (22.04.2026)
+## Agent-Workflow V2: Orchestrierungsmodell (26.04.2026)
 - **Serielles Parent-Orchestrierungsmodell**:
   - Die Engine wurde von linearem Topology-Run auf einen orchestrierten Round-Loop umgestellt.
   - Ablauf: Parent entscheidet -> ein Subagent wird beauftragt -> Ergebnis an Parent zurück -> nächste Entscheidung.
@@ -17,7 +17,7 @@
   - `runFrom` (`draft` oder `published`) wurde als Eingabe eingeführt.
   - Builder-Default ist `draft`, um UI/Cavas und auszuführende Version konsistent zu halten.
 
-## Integrationsstrategie für Modellauflistung (22.04.2026)
+## Integrationsstrategie für Modellauflistung (26.04.2026)
 - **Server-side Discovery only**:
   - Modelllisten werden ausschließlich serverseitig über `/api/admin/integrations/[provider]/models` geladen.
   - API-Keys verbleiben im Backend, kein Direct-to-Provider Call aus dem Browser.
@@ -25,8 +25,11 @@
   - In-Memory TTL Cache für Modelllisten, optionaler `refresh=1` zur erzwungenen Aktualisierung.
 - **Provider-Abdeckung**:
   - Discovery für `openai`, `openrouter`, `gemini`, `copilot (GitHub Models)`, `perplexity`.
+- **Spezial-Integrationen**:
+  - **Vertex Legal Agent**: Nutzt spezifische Felder (Project ID, Location, Endpoint ID, Access Token) für die Kommunikation mit Google Cloud Vertex AI Endpunkten.
+  - **DataForSEO**: Nutzt Basic Auth (Username/Password) für den Zugriff auf SEO-Daten-Schnittstellen.
 
-## UX-Entscheidung: Node-Konfiguration (22.04.2026)
+## UX-Entscheidung: Node-Konfiguration (26.04.2026)
 - **Section-first statt Flat-Form**:
   - Node-Konfiguration wurde in klar benannte, auf-/zuklappbare Sektionen aufgeteilt.
   - Ziel: geringere kognitive Last, schnellere Orientierung, bessere Erstnutzung ohne Erklärbedarf.

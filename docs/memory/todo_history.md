@@ -105,3 +105,7 @@
 - [x] Logic: "Optimierung planen" Sperre eingeführt (erfordert Veröffentlichung des initialen Contents).
 - [x] UI: ROI (Eingesparte Kosten) direkt in der Monitoring-Tabelle pro URL sichtbar.
 - [x] UI: Button "Zur Optimierung" in "Optimierung planen" umbenannt und Verlinkung zum Vorschläge-Tab in Alert integriert.
+- [x] Integrationen: Vertex Legal Agent (Google Cloud Vertex AI Endpoint) im Admin-Bereich integriert.
+- [x] Integrationen: DataForSEO Integration (Username/Password) im Admin-Bereich integriert.
+- [x] Logic: Branding-System um Kontrast-Berechnung und automatische Vordergrundfarben (`getBestForegroundColor`) erweitert.
+- [x] UI: Branding-Update Event-System für Echtzeit-Refreshes im Frontend implementiert.
