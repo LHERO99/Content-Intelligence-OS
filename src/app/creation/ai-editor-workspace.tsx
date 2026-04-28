@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
 import { RichTextEditor } from './rich-text-editor';
 import { AIChatPanel } from './ai-chat-panel';
@@ -51,9 +51,6 @@ export function AIEditorWorkspace({
   const [isSaving, setIsSaving] = useState(false);
   // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
   const [previewContent, setPreviewContent] = useState<string | null>(null);
-  // Ref so handleSaveFromAI always reads the current previewContent without stale-closure issues.
-  const previewContentRef = useRef<string | null>(null);
-  useEffect(() => { previewContentRef.current = previewContent; }, [previewContent]);
   const [isPublished, setIsPublished] = useState(false);
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
@@ -99,9 +96,7 @@ export function AIEditorWorkspace({
       setIsSaving(false);
     }
   };
-  const handleSaveFromAI = async (): Promise<boolean> => {
-    // Read from ref — always up-to-date regardless of closure capture timing
-    const content = previewContentRef.current;
+  const handleSaveFromAI = async (content: string): Promise<boolean> => {
     if (!content) return false;
     setIsSaving(true);
     try {

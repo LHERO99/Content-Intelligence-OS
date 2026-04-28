@@ -34,7 +34,7 @@ interface AIChatPanelProps {
   /** Called when the AI returns a new proposal — parent should show it in the preview */
   onPreviewChange: (content: string | null) => void;
   /** Called when user clicks "Übernehmen" — parent should save to DB; resolves true on success */
-  onApplyChanges: () => Promise<boolean>;
+  onApplyChanges: (content: string) => Promise<boolean>;
   keywordId: string;
   keyword: string;
 }
@@ -109,10 +109,10 @@ export function AIChatPanel({
     }
   }, [messages, isLoading]);
 
-  const handleApply = async (messageId: string) => {
+  const handleApply = async (messageId: string, refinedContent: string) => {
     setApplyingId(messageId);
     try {
-      const success = await onApplyChanges();
+      const success = await onApplyChanges(refinedContent);
       if (success) {
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? { ...m, status: 'applied' } : m))
@@ -307,7 +307,7 @@ export function AIChatPanel({
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleApply(m.id)}
+                        onClick={() => handleApply(m.id, m.refinedContent!)}
                         disabled={applyingId === m.id}
                         className="h-8 gap-2 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all"
                       >
