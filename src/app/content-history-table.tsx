@@ -32,6 +32,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { HistoryList } from "@/features/shared/components/HistoryList";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface GroupedHistory {
   url: string;
@@ -52,6 +54,8 @@ function normalizeUrl(value: string): string {
 }
 
 export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistoryTableProps) {
+  const { locale } = useI18n();
+  const localeTag = toLocaleTag(locale);
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "lastModified", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [selectedGroup, setSelectedGroup] = React.useState<GroupedHistory | null>(null);
@@ -201,7 +205,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
       ),
       cell: ({ row }) => (
         <div className="whitespace-nowrap">
-          {new Date(row.getValue("firstCreated")).toLocaleDateString("de-DE", {
+          {new Date(row.getValue("firstCreated")).toLocaleDateString(localeTag, {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
@@ -223,7 +227,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
       ),
       cell: ({ row }) => (
         <div className="whitespace-nowrap font-medium text-primary">
-          {new Date(row.getValue("lastModified")).toLocaleString("de-DE", {
+          {new Date(row.getValue("lastModified")).toLocaleString(localeTag, {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",

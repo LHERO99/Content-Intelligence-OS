@@ -1,38 +1,36 @@
 "use client";
 
-import { Languages } from "lucide-react";
+import { Globe } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n();
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground">
-        <Languages className="h-3.5 w-3.5" />
-        <span>{t("common.language")}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-1 rounded-md border border-primary/20 p-1">
-        <Button
-          type="button"
-          size="sm"
-          variant={locale === "de" ? "default" : "ghost"}
-          className="h-7"
-          onClick={() => setLocale("de")}
-        >
-          {t("common.german")}
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-full justify-start gap-2 px-2 text-muted-foreground hover:text-foreground">
+          <Globe className="h-4 w-4" />
+          <span className="text-sm">{t("common.language")}</span>
+          <span className="ml-auto text-xs uppercase tracking-wide">{locale}</span>
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={locale === "en" ? "default" : "ghost"}
-          className="h-7"
-          onClick={() => setLocale("en")}
-        >
-          {t("common.english")}
-        </Button>
-      </div>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuLabel>{t("common.language")}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={locale} onValueChange={(value) => setLocale((value as "de" | "en") || "de")}>
+          <DropdownMenuRadioItem value="de">{t("common.german")}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="en">{t("common.english")}</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

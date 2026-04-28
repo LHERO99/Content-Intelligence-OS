@@ -3,6 +3,8 @@ import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, Refre
 import { ContentLog } from "@/lib/airtable-types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface HistoryListProps {
   history: ContentLog[];
@@ -11,6 +13,7 @@ interface HistoryListProps {
 
 const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const { locale } = useI18n();
   const summary = log.Diff_Summary || "";
   const isDelivery = summary === "Content angeliefert";
   const isCommissioned = summary === "Content beauftragt";
@@ -53,7 +56,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
             )}
           </div>
           <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
-            {new Date(log.Created_At).toLocaleString('de-DE', {
+            {new Date(log.Created_At).toLocaleString(toLocaleTag(locale), {
               day: '2-digit',
               month: '2-digit',
               year: '2-digit',
@@ -91,6 +94,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
 };
 
 export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
+  const { locale } = useI18n();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -152,7 +156,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
           {lastUpdate ? (
             <>
               Status: {lastUpdate.Diff_Summary} am{" "}
-              {new Date(lastUpdate.Created_At).toLocaleDateString('de-DE', { 
+              {new Date(lastUpdate.Created_At).toLocaleDateString(toLocaleTag(locale), { 
                 day: '2-digit', 
                 month: '2-digit', 
                 year: 'numeric' 

@@ -62,6 +62,8 @@ import {
   X,
   Wand2,
 } from "lucide-react";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 type AgentStepType = "orchestrator" | "research" | "analysis" | "briefing" | "draft" | "review" | "custom";
 type AgentProvider = "openai" | "openrouter" | "gemini" | "vertex_legal";
@@ -543,6 +545,8 @@ function ConfigSection({
 }
 
 export function AgentWorkflowV2Management() {
+  const { t, locale } = useI18n();
+  const localeTag = toLocaleTag(locale);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
@@ -1477,19 +1481,19 @@ export function AgentWorkflowV2Management() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Run Controls</CardTitle>
-                <CardDescription>Auto-Save + Execute</CardDescription>
+                <CardTitle className="text-base">{t("agentBuilder.runControls")}</CardTitle>
+                <CardDescription>{t("agentBuilder.autoSaveExecute")}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2 text-xs text-slate-300">
-                  <div className="font-medium text-slate-200">Auto-Save</div>
-                  {autoSaving ? <div>Speichert...</div> : isDirty ? <div>Ungespeicherte Änderungen...</div> : <div>Alle Änderungen gespeichert</div>}
-                  {lastSavedAt && <div className="text-slate-400">Zuletzt: {new Date(lastSavedAt).toLocaleTimeString("de-DE")}</div>}
+                  <div className="font-medium text-slate-200">{t("agentBuilder.autoSave")}</div>
+                  {autoSaving ? <div>{t("agentBuilder.saving")}</div> : isDirty ? <div>{t("agentBuilder.unsaved")}</div> : <div>{t("agentBuilder.allSaved")}</div>}
+                  {lastSavedAt && <div className="text-slate-400">{t("agentBuilder.last")}: {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</div>}
                   {autoSaveError && <div className="text-red-300">{autoSaveError}</div>}
                 </div>
                 <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
                   {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                  Run starten
+                  {t("agentBuilder.runStart")}
                 </Button>
               </CardContent>
             </Card>
@@ -1565,7 +1569,7 @@ export function AgentWorkflowV2Management() {
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Execution Panel
+                {t("agentBuilder.executionPanel")}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -1575,7 +1579,7 @@ export function AgentWorkflowV2Management() {
                   disabled={runActionLoading === "cleanup"}
                   onClick={cleanupStaleRuns}
                 >
-                  {runActionLoading === "cleanup" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Stale Cleanup"}
+                  {runActionLoading === "cleanup" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.staleCleanup")}
                 </Button>
                 <Button
                   size="sm"
@@ -1583,27 +1587,27 @@ export function AgentWorkflowV2Management() {
                   className="h-7"
                   onClick={() => setShowHiddenRuns((prev) => !prev)}
                 >
-                  {showHiddenRuns ? "Hidden: ON" : "Hidden: OFF"}
+                  {showHiddenRuns ? t("agentBuilder.hiddenOn") : t("agentBuilder.hiddenOff")}
                 </Button>
               </div>
             </CardTitle>
-            <CardDescription>n8n/Make-ähnliche Ausführungssicht: Runs, Timeline, Messages</CardDescription>
+            <CardDescription>{t("agentBuilder.executionDescription")}</CardDescription>
           </CardHeader>
           <CardContent style={{ height: executionPanelHeight }} className="overflow-hidden">
             <Tabs value={executionView} onValueChange={(value) => setExecutionView((value as ExecutionView) || "executions")}>
               <TabsList className="bg-primary/10 border-primary/10">
-                <TabsTrigger value="executions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Executions</TabsTrigger>
-                <TabsTrigger value="timeline" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Timeline</TabsTrigger>
-                <TabsTrigger value="messages" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Messages</TabsTrigger>
+                <TabsTrigger value="executions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t("agentBuilder.executions")}</TabsTrigger>
+                <TabsTrigger value="timeline" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t("agentBuilder.timeline")}</TabsTrigger>
+                <TabsTrigger value="messages" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t("agentBuilder.messages")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="executions" className="mt-3 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Label className="text-xs text-slate-300">Status</Label>
+                  <Label className="text-xs text-slate-300">{t("agentBuilder.status")}</Label>
                   <Select value={runStatusFilter} onValueChange={(value) => setRunStatusFilter((value as any) || "all") }>
                     <SelectTrigger className="w-[160px] bg-[#0f172a] border-white/10"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Alle</SelectItem>
+                      <SelectItem value="all">{t("agentBuilder.all")}</SelectItem>
                       <SelectItem value="running">Running</SelectItem>
                       <SelectItem value="success">Success</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
@@ -1613,7 +1617,7 @@ export function AgentWorkflowV2Management() {
                 </div>
 
                 {filteredRuns.length === 0 ? (
-                  <p className="text-sm text-slate-400">Keine Runs vorhanden.</p>
+                  <p className="text-sm text-slate-400">{t("agentBuilder.noRuns")}</p>
                 ) : (
                   <div className="grid gap-2 max-h-[calc(100%-48px)] overflow-auto pr-1">
                     {filteredRuns.map((run) => (
@@ -1629,8 +1633,8 @@ export function AgentWorkflowV2Management() {
                             <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
                           </div>
                           <div className="text-xs text-slate-300 mt-1">
-                            Start: {new Date(run.startedAt).toLocaleString("de-DE")} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
-                            {run.deletedAt ? ` | hidden ${new Date(run.deletedAt).toLocaleString("de-DE")}` : ""}
+                            Start: {new Date(run.startedAt).toLocaleString(localeTag)} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
+                            {run.deletedAt ? ` | hidden ${new Date(run.deletedAt).toLocaleString(localeTag)}` : ""}
                           </div>
                         </button>
                         <div className="mt-2 flex gap-2">
@@ -1641,7 +1645,7 @@ export function AgentWorkflowV2Management() {
                             disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
                             onClick={() => cancelRun(run.id)}
                           >
-                            {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Stop"}
+                            {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.stop")}
                           </Button>
                           {!run.deletedAt ? (
                             <Button
@@ -1651,7 +1655,7 @@ export function AgentWorkflowV2Management() {
                               disabled={runActionLoading === `delete:${run.id}`}
                               onClick={() => softDeleteRun(run.id)}
                             >
-                              {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Hide"}
+                              {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.hide")}
                             </Button>
                           ) : (
                             <Button
@@ -1661,7 +1665,7 @@ export function AgentWorkflowV2Management() {
                               disabled={runActionLoading === `restore:${run.id}`}
                               onClick={() => restoreRun(run.id)}
                             >
-                              {runActionLoading === `restore:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Restore"}
+                              {runActionLoading === `restore:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.restore")}
                             </Button>
                           )}
                         </div>
@@ -1673,9 +1677,9 @@ export function AgentWorkflowV2Management() {
 
               <TabsContent value="timeline" className="mt-3 space-y-3">
                 {!selectedRun ? (
-                  <p className="text-sm text-slate-400">Wähle zuerst einen Run im Tab Executions.</p>
+                  <p className="text-sm text-slate-400">{t("agentBuilder.chooseRun")}</p>
                 ) : runSteps.length === 0 ? (
-                  <p className="text-sm text-slate-400">Keine Step-Daten vorhanden.</p>
+                  <p className="text-sm text-slate-400">{t("agentBuilder.noSteps")}</p>
                 ) : (
                   <>
                     <div className="space-y-2 max-h-[210px] overflow-auto pr-1">
@@ -1724,9 +1728,9 @@ export function AgentWorkflowV2Management() {
 
               <TabsContent value="messages" className="mt-3 space-y-2 h-[calc(100%-52px)] overflow-auto pr-1">
                 {!selectedRun ? (
-                  <p className="text-sm text-slate-400">Wähle zuerst einen Run im Tab Executions.</p>
+                  <p className="text-sm text-slate-400">{t("agentBuilder.chooseRun")}</p>
                 ) : runMessages.length === 0 ? (
-                  <p className="text-sm text-slate-400">Keine Messages für diesen Run.</p>
+                  <p className="text-sm text-slate-400">{t("agentBuilder.noMessages")}</p>
                 ) : (
                   runMessages.map((message) => (
                     <div
@@ -1751,7 +1755,7 @@ export function AgentWorkflowV2Management() {
                         {message.round ? ` | round: ${message.round}` : ""}
                         {message.correlationId ? ` | corr: ${message.correlationId.slice(0, 8)}` : ""}
                       </div>
-                      <div className="text-xs text-slate-300">{new Date(message.createdAt).toLocaleString("de-DE")}</div>
+                      <div className="text-xs text-slate-300">{new Date(message.createdAt).toLocaleString(localeTag)}</div>
                     </div>
                   ))
                 )}

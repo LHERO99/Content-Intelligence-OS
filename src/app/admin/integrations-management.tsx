@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Loader2, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 type IntegrationProvider =
   | "sistrix"
@@ -62,6 +64,8 @@ function isDiscoverableProvider(providerId: IntegrationProvider): providerId is 
 }
 
 export function IntegrationsManagement() {
+  const { locale } = useI18n();
+  const localeTag = toLocaleTag(locale);
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [integrations, setIntegrations] = useState<IntegrationState[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<IntegrationProvider | null>(null);
@@ -384,7 +388,7 @@ export function IntegrationsManagement() {
                   </Button>
                   {selectedTestResult && (
                     <span className="text-xs text-muted-foreground">
-                      Letzter Test: {new Date(selectedTestResult.testedAt).toLocaleString("de-DE")}
+                      Letzter Test: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
                     </span>
                   )}
                 </div>
@@ -444,7 +448,7 @@ export function IntegrationsManagement() {
                               {model.label !== model.id && <div className="text-muted-foreground">{model.label}</div>}
                             </div>
                             {model.contextWindow ? (
-                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString("de-DE")} ctx</span>
+                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString(localeTag)} ctx</span>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}

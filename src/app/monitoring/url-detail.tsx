@@ -27,12 +27,16 @@ import { HistoryList } from "@/features/shared/components/HistoryList";
 import { Input } from "@/components/ui/input";
 import { Label as UILabel } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface UrlDetailProps {
   url: string;
 }
 
 export function UrlDetail({ url }: UrlDetailProps) {
+  const { locale } = useI18n();
+  const localeTag = toLocaleTag(locale);
   const [data, setData] = useState<{
     performance: PerformanceData[];
     urlPerformance: URLPerformance[];
@@ -193,11 +197,11 @@ export function UrlDetail({ url }: UrlDetailProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {(data.savings.agency + data.savings.overhead).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+              {(data.savings.agency + data.savings.overhead).toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}
             </div>
             <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-              <span>Agentur: {data.savings.agency.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
-              <span>Overhead: {data.savings.overhead.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
+              <span>Agentur: {data.savings.agency.toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}</span>
+              <span>Overhead: {data.savings.overhead.toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}</span>
             </div>
           </CardContent>
         </Card>
@@ -213,7 +217,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
             <div className="text-lg font-bold">{statusInfo.text} {statusInfo.version}</div>
             <p className="text-xs text-muted-foreground">
               {data.history.length > 0 
-                ? `Letztes Update: ${new Date(data.history[0].Created_At).toLocaleDateString('de-DE')}`
+                ? `Letztes Update: ${new Date(data.history[0].Created_At).toLocaleDateString(localeTag)}`
                 : 'Keine Updates vorhanden'}
             </p>
           </CardContent>
@@ -334,14 +338,14 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                   dataKey="Date" 
-                  tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
                 <YAxis yAxisId="left" stroke="var(--primary)" fontSize={12} />
                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
-                  labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
+                  labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
                 />
                 <Legend />
                 
@@ -391,13 +395,13 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                   dataKey="Date" 
-                  tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
                 <YAxis reversed domain={[1, 'auto']} fontSize={12} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
-                  labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
+                  labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
                 />
                 <Legend />
                 

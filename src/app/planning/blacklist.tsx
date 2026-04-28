@@ -795,7 +795,8 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
     filterFn: dateColumnFilterFn,
     cell: ({ row }) => {
       const date = row.getValue("Added_At") as string;
-      return <div>{date ? new Date(date).toLocaleDateString('de-DE') : "-"}</div>;
+      const activeLocale = typeof document !== 'undefined' ? (document.documentElement.lang || 'de-DE') : 'de-DE';
+      return <div>{date ? new Date(date).toLocaleDateString(activeLocale) : "-"}</div>;
     },
   },
 ];

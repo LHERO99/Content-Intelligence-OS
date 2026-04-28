@@ -34,6 +34,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { KeywordMap } from "@/lib/airtable-types";
 import { useContentHistory } from "../hooks/useContentHistory";
 import { LastActionHistory, MetricItem } from "../../shared/components";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface EditEditorialModalProps {
   keyword: KeywordMap | null;
@@ -56,6 +58,7 @@ export function EditEditorialModal({
   commissionedIds,
   editorOptions
 }: EditEditorialModalProps) {
+  const { locale } = useI18n();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
@@ -163,7 +166,7 @@ export function EditEditorialModal({
                   <MetricItem 
                     icon={Target} 
                     label="Suchvolumen" 
-                    value={keyword?.Search_Volume?.toLocaleString("de-DE")} 
+                    value={keyword?.Search_Volume?.toLocaleString(toLocaleTag(locale))} 
                   />
                   <MetricItem 
                     icon={ShieldCheck} 

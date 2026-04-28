@@ -10,8 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useI18n } from '@/i18n/use-i18n';
+import { toLocaleTag } from '@/i18n/locale-utils';
 
 export default function CreationPage() {
+  const { locale } = useI18n();
+  const localeTag = toLocaleTag(locale);
   const [keywords, setKeywords] = useState<KeywordMap[]>([]);
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>('');
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
@@ -157,9 +161,9 @@ export default function CreationPage() {
                                     const timestamp = firstLog?.Created_At;
                                     if (timestamp) {
                                       const date = new Date(timestamp);
-                                      return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                                    }
-                                    return new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+                                       return date.toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + date.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
+                                     }
+                                    return new Date().toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
                                   })()}
                                 </span>
                               </div>

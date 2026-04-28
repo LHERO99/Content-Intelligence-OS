@@ -38,6 +38,7 @@ import {
   editorialColumns as columns
 } from "@/features/planning/components";
 import { PlanningService } from "@/features/planning/services/planning-service";
+import { useI18n } from "@/i18n/use-i18n";
 
 interface EditorialPlanningProps {
   keywords: KeywordMap[];
@@ -51,6 +52,7 @@ interface EditorOption {
 }
 
 export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
+  const { t } = useI18n();
   const { addAlert } = useAlerts();
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "Priority_Score", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -170,8 +172,8 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
     <div className="w-full space-y-6">
       <PlanningHeader 
         icon={Calendar} 
-        title="Redaktions-Planung" 
-        description="Übersicht der geplanten Inhalte und deren Redaktionsschluss." 
+        title={t("planning.editorialPlanning")} 
+        description={t("planning.editorialPlanningDesc")} 
       />
       <EditorialFilterBar table={table} columns={columns} />
       <PlanningTable 
@@ -183,11 +185,13 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       />
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} von {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
+          {t("planning.selectedRows")
+            .replace("{selected}", String(table.getFilteredSelectedRowModel().rows.length))
+            .replace("{total}", String(table.getFilteredRowModel().rows.length))}
         </div>
         <div className="space-x-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Zurück</Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Weiter</Button>
+          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{t("planning.previous")}</Button>
+          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{t("planning.next")}</Button>
         </div>
       </div>
       <EditEditorialModal 

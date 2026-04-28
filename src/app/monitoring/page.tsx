@@ -45,6 +45,7 @@ import { useAlerts } from "@/components/alerts-provider";
 import { UrlDetail } from "./url-detail";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from "@/i18n/use-i18n";
 
 interface MonitoringData {
   metrics: {
@@ -70,11 +71,11 @@ interface MonitoringData {
 
 const ELIGIBILITY_MESSAGES = {
   NO_PUBLISHED_CONTENT: {
-    title: "Optimierung noch nicht möglich",
+    title: "monitoring.optimizationNotPossible",
     description: "Diese URL kann erst zur Optimierung geplant werden, wenn bereits eine Content-Erstellung über das Tool stattgefunden hat und dieser Content als veröffentlicht markiert wurde.",
   },
   ALREADY_IN_WORKFLOW: {
-    title: "Optimierung bereits in Bearbeitung",
+    title: "monitoring.optimizationInProgress",
     description: "Für diese URL läuft bereits eine beauftragte Optimierung in der Content-Planung. Eine erneute Beauftragung ist erst möglich, wenn der aktuelle Vorgang abgeschlossen und veröffentlicht wurde.",
   },
 } as const;
@@ -82,6 +83,7 @@ const ELIGIBILITY_MESSAGES = {
 export default function MonitoringPage() {
   const router = useRouter();
   const { addAlert } = useAlerts();
+  const { t, locale } = useI18n();
   const [data, setData] = useState<MonitoringData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -135,18 +137,18 @@ export default function MonitoringPage() {
 
       addAlert({ 
         type: "warning", 
-        message: message.title,
+        message: t(message.title),
         description: (
           <span>
             {message.description}{" "}
-            <button
-              onClick={() => router.push(`/history?url=${encodeURIComponent(firstBlocked.url)}`)}
-              className="underline hover:no-underline font-medium"
-            >
-              Zur Content-Historie
-            </button>
-          </span>
-        ) as any,
+              <button
+                onClick={() => router.push(`/history?url=${encodeURIComponent(firstBlocked.url)}`)}
+                className="underline hover:no-underline font-medium"
+              >
+                {t("common.contentHistory")}
+              </button>
+            </span>
+          ) as any,
       });
       return;
     }
@@ -161,13 +163,13 @@ export default function MonitoringPage() {
       if (!res.ok) throw new Error("Fehler beim Einreichen");
       addAlert({ 
         type: "success", 
-        message: "Die Auswahl wurde in die Vorschläge für die Redaktionsplanung mit aufgenommen",
+        message: t("monitoring.addedToSuggestions"),
         description: (
           <button 
             onClick={() => router.push("/planning?tab=suggestions")}
             className="text-white underline hover:no-underline font-medium"
           >
-            Zum Vorschläge-Tab wechseln
+            {t("monitoring.switchToSuggestions")}
           </button>
         ) as any,
       });
@@ -214,7 +216,7 @@ export default function MonitoringPage() {
           onClick={() => setViewingUrl(null)} 
           className="flex items-center gap-2 text-primary"
         >
-          <ChevronLeft className="h-4 w-4" /> Zurück zur Übersicht
+          <ChevronLeft className="h-4 w-4" /> {t("common.backToOverview")}
         </Button>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-primary break-all">
@@ -226,20 +228,20 @@ export default function MonitoringPage() {
             className={`${detailOptimizable ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-gray-400 cursor-not-allowed opacity-70"}`}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-            Optimierung planen
+            {t("monitoring.optimizePlan")}
           </Button>
         </div>
         {!detailOptimizable && (
           <Alert className="bg-amber-50 border-amber-200 text-amber-900">
             <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertTitle>{eligibilityMessage?.title || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.title}</AlertTitle>
+            <AlertTitle>{t(eligibilityMessage?.title || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.title)}</AlertTitle>
             <AlertDescription>
               {eligibilityMessage?.description || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.description}{" "}
               <button
                 onClick={() => router.push(`/history?url=${encodeURIComponent(viewingUrl)}`)}
                 className="underline hover:no-underline font-medium"
               >
-                Zur Content-Historie
+                {t("common.contentHistory")}
               </button>
             </AlertDescription>
           </Alert>
@@ -253,8 +255,8 @@ export default function MonitoringPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Content-Monitoring & ROI</h1>
-          <p className="text-muted-foreground">Analysieren Sie Performance, Sichtbarkeit und Effizienz Ihrer Content-Maßnahmen.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">{t("monitoring.title")}</h1>
+          <p className="text-muted-foreground">{t("monitoring.subtitle")}</p>
         </div>
       </div>
 
@@ -269,11 +271,11 @@ export default function MonitoringPage() {
         <TabsList className="bg-primary/10 border-primary/10">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <LayoutDashboard className="mr-2 h-4 w-4" />
-            KPI Übersicht
+            {t("monitoring.tabs.overview")}
           </TabsTrigger>
           <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <List className="mr-2 h-4 w-4" />
-            Performance-Liste
+            {t("monitoring.tabs.performanceList")}
           </TabsTrigger>
         </TabsList>
 
@@ -284,7 +286,7 @@ export default function MonitoringPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="global-start-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                     <CalendarIcon className="h-3.5 w-3.5" />
-                    Zeitraum von
+                    {t("monitoring.periodFrom")}
                   </Label>
                   <Input
                     id="global-start-date"
@@ -297,7 +299,7 @@ export default function MonitoringPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="global-end-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                     <CalendarIcon className="h-3.5 w-3.5" />
-                    bis
+                    {t("monitoring.periodTo")}
                   </Label>
                   <Input
                     id="global-end-date"
@@ -317,7 +319,7 @@ export default function MonitoringPage() {
                   className="h-9 gap-2 text-muted-foreground hover:text-primary"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
+                  {t("common.reset")}
                 </Button>
               </div>
             </CardContent>
@@ -328,11 +330,11 @@ export default function MonitoringPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Avg. Time to Rank
+                  {t("monitoring.avgTimeToRank")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{data?.metrics.avgTTR || 0} Tage</div>
+                <div className="text-2xl font-bold text-primary">{data?.metrics.avgTTR || 0} {t("monitoring.days")}</div>
                 <p className="text-xs text-muted-foreground">Von Veröffentlichung bis Top 10 Ranking</p>
               </CardContent>
             </Card>
@@ -341,12 +343,12 @@ export default function MonitoringPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Coins className="h-4 w-4" />
-                  Eingesparte Agenturkosten
+                  {t("monitoring.agencySavings")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {data?.metrics.totalAgencySavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                  {data?.metrics.totalAgencySavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
                 <p className="text-xs opacity-80">Gesamtvolumen durch KI-Workflow</p>
               </CardContent>
@@ -356,12 +358,12 @@ export default function MonitoringPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <MousePointer2 className="h-4 w-4 text-primary" />
-                  Einsparung Overhead
+                  {t("monitoring.overheadSavings")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">
-                  {data?.metrics.totalOverheadSavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                  {data?.metrics.totalOverheadSavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
                 <p className="text-xs text-muted-foreground">Reduzierter interner Aufwand</p>
               </CardContent>
@@ -371,7 +373,7 @@ export default function MonitoringPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <LayoutList className="h-4 w-4 text-primary" />
-                  Content-Updates
+                  {t("monitoring.contentUpdates")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -451,14 +453,14 @@ export default function MonitoringPage() {
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <CardTitle>URL Performance Übersicht</CardTitle>
-                  <CardDescription>Liste aller überwachten URLs mit aktuellen Performance-Werten.</CardDescription>
+                  <CardTitle>{t("monitoring.urlOverviewTitle")}</CardTitle>
+                  <CardDescription>{t("monitoring.urlOverviewDescription")}</CardDescription>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input 
-                      placeholder="URL suchen..." 
+                      placeholder={t("monitoring.searchUrl")} 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9 w-[250px] h-9"
@@ -470,7 +472,7 @@ export default function MonitoringPage() {
                     className="h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                    Optimierung planen ({selectedUrls.length})
+                    {t("monitoring.optimizePlan")} ({selectedUrls.length})
                   </Button>
                 </div>
               </div>
@@ -489,11 +491,11 @@ export default function MonitoringPage() {
                               }}
                             />
                           </TableHead>
-                          <TableHead>URL</TableHead>
-                          <TableHead>Klicks (Woche)</TableHead>
-                          <TableHead>Sichtbarkeit (VI)</TableHead>
-                          <TableHead>Eingesparte Kosten</TableHead>
-                          <TableHead className="text-right">Letzte Aktion</TableHead>
+                          <TableHead>{t("monitoring.url")}</TableHead>
+                          <TableHead>{t("monitoring.clicksWeek")}</TableHead>
+                          <TableHead>{t("monitoring.visibility")}</TableHead>
+                          <TableHead>{t("monitoring.savedCosts")}</TableHead>
+                          <TableHead className="text-right">{t("monitoring.lastAction")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -517,8 +519,8 @@ export default function MonitoringPage() {
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-medium truncate">{item.url}</span>
                                 {item.lastActionDate && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    Update: {new Date(item.lastActionDate).toLocaleDateString('de-DE')}
+                                    <span className="text-[10px] text-muted-foreground">
+                                    {t("monitoring.update")}: {new Date(item.lastActionDate).toLocaleDateString(locale === "de" ? 'de-DE' : 'en-US')}
                                   </span>
                                 )}
                               </div>
@@ -547,7 +549,7 @@ export default function MonitoringPage() {
                             </TableCell>
                             <TableCell>
                               <div className="font-semibold text-primary">
-                                {item.savings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                                {item.savings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -560,7 +562,7 @@ export default function MonitoringPage() {
                     {filteredUrls.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? "Keine URLs gefunden, die Ihrer Suche entsprechen." : "Noch keine Monitoring-Daten vorhanden."}
+                          {searchTerm ? t("monitoring.noUrlsFound") : t("monitoring.noMonitoringData")}
                         </TableCell>
                       </TableRow>
                     )}

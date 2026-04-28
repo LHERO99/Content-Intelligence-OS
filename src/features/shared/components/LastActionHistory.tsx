@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Loader2, CheckCircle, Clock } from "lucide-react";
 import { ContentLog } from "@/lib/airtable-types";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface LastActionHistoryProps {
   history: ContentLog[];
@@ -8,6 +10,7 @@ interface LastActionHistoryProps {
 }
 
 export const LastActionHistory = ({ history, isLoading }: LastActionHistoryProps) => {
+  const { locale } = useI18n();
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-2">
@@ -29,7 +32,7 @@ export const LastActionHistory = ({ history, isLoading }: LastActionHistoryProps
     );
   }
 
-  const date = new Date(lastPublishedLog.Created_At).toLocaleDateString('de-DE', {
+  const date = new Date(lastPublishedLog.Created_At).toLocaleDateString(toLocaleTag(locale), {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit'

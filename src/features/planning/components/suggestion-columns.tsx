@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Zap, ExternalLink } from "lucide-react";
 import { PlanningService } from "../services/planning-service";
 import { textColumnFilterFn } from "./filter-utils";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 const AddToEditorialButton = ({ row }: { row: any }) => {
   const [loading, setLoading] = React.useState(false);
@@ -132,19 +134,21 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Search_Volume",
     header: "Suchvolumen",
     cell: ({ row }) => {
+      const { locale } = useI18n();
       const val = row.getValue("Search_Volume") as number;
-      return val ? val.toLocaleString("de-DE") : "-";
+      return val ? val.toLocaleString(toLocaleTag(locale)) : "-";
     },
   },
   {
     accessorKey: "Last_Published",
     header: "Letzte Änderung",
     cell: ({ row }) => {
+      const { locale } = useI18n();
       const date = row.getValue("Last_Published") as string;
       if (!date) return <span className="text-sm text-muted-foreground">Neu</span>;
       return (
         <span className="text-sm text-muted-foreground">
-          {new Date(date).toLocaleDateString("de-DE")}
+          {new Date(date).toLocaleDateString(toLocaleTag(locale))}
         </span>
       );
     },
