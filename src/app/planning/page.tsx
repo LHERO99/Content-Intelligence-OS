@@ -9,8 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
 import { KeywordMap, PotentialTrend } from "@/lib/airtable-types";
+import { useI18n } from "@/i18n/use-i18n";
 
 export default function PlanningPage() {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('planning-active-tab') || "editorial";
@@ -28,7 +30,7 @@ export default function PlanningPage() {
         fetch('/api/planning/trends')
       ]);
       
-      if (!kwRes.ok || !trendRes.ok) throw new Error("Fehler beim Laden der Daten");
+      if (!kwRes.ok || !trendRes.ok) throw new Error(t("planning.dataLoadError"));
       
       const keywords = await kwRes.json();
       const trends = await trendRes.json();
@@ -63,7 +65,7 @@ export default function PlanningPage() {
     return (
       <div className="flex-1">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h1 className="text-red-800 text-xl font-bold mb-2">Airtable Verbindungsfehler</h1>
+          <h1 className="text-red-800 text-xl font-bold mb-2">{t("planning.airtableConnectionError")}</h1>
           <p className="text-red-700 mb-4">{error}</p>
         </div>
       </div>
@@ -73,7 +75,7 @@ export default function PlanningPage() {
   return (
     <div className="flex-1 space-y-8 relative">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">Content-Planung</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">{t("planning.title")}</h1>
       </div>
 
       <Tabs
@@ -87,19 +89,19 @@ export default function PlanningPage() {
         <TabsList className="bg-primary/10 border-primary/10">
           <TabsTrigger value="editorial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Calendar className="mr-2 h-4 w-4" />
-            Redaktions-Planung
+            {t("planning.editorialPlanning")}
           </TabsTrigger>
           <TabsTrigger value="suggestions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Sparkles className="mr-2 h-4 w-4" />
-            Vorschläge
+            {t("planning.suggestions")}
           </TabsTrigger>
           <TabsTrigger value="keyword-map" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Map className="mr-2 h-4 w-4" />
-            Keyword-Map
+            {t("planning.keywordMap")}
           </TabsTrigger>
           <TabsTrigger value="blacklist" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <ShieldAlert className="mr-2 h-4 w-4" />
-            Blacklist
+            {t("planning.tabBlacklist")}
           </TabsTrigger>
         </TabsList>
 

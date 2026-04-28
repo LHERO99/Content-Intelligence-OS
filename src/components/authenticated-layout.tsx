@@ -2,14 +2,22 @@
 
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalAlerts } from "@/components/global-alerts";
 import { PasswordChangeModal } from "@/components/password-change-modal";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+
+const VIEWPORT_WARNING_BREAKPOINT = 1240;
+const VIEWPORT_WARNING_STORAGE_KEY = "viewport-warning-dismissed";
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const [dismissedViewportWarning, setDismissedViewportWarning] = useState(false);
+  const [showViewportWarning, setShowViewportWarning] = useState(false);
 
   const isAuthPage = pathname?.startsWith("/auth/");
 
@@ -23,6 +31,32 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedDismissed = sessionStorage.getItem(VIEWPORT_WARNING_STORAGE_KEY) === "1";
+    if (storedDismissed) {
+      setDismissedViewportWarning(true);
+    }
+
+    const evaluateViewport = () => {
+      const isSmallViewport = window.innerWidth < VIEWPORT_WARNING_BREAKPOINT;
+      setShowViewportWarning(isSmallViewport && !storedDismissed && !dismissedViewportWarning);
+    };
+
+    evaluateViewport();
+    window.addEventListener("resize", evaluateViewport);
+    return () => window.removeEventListener("resize", evaluateViewport);
+  }, [dismissedViewportWarning]);
+
+  const dismissViewportWarning = () => {
+    setDismissedViewportWarning(true);
+    setShowViewportWarning(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(VIEWPORT_WARNING_STORAGE_KEY, "1");
+    }
+  };
+
   if (status === "authenticated" && !isAuthPage) {
     return (
       <SidebarProvider defaultOpen={true} className="min-h-screen items-stretch">
@@ -34,6 +68,29 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
           </div>
         </main>
         <PasswordChangeModal />
+        <Dialog
+          open={showViewportWarning}
+          onOpenChange={(open) => {
+            if (!open) {
+              dismissViewportWarning();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Hinweis zur Bildschirmgröße</DialogTitle>
+              <DialogDescription>
+                Dieses Tool ist primär für Desktop-Geräte ausgelegt. Bei kleineren Bildschirmen kann die Usability
+                eingeschränkt sein.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" onClick={dismissViewportWarning}>
+                Verstanden
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SidebarProvider>
     );
   }

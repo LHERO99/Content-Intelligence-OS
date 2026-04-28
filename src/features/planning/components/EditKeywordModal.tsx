@@ -27,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { KeywordMap } from "@/lib/airtable-types";
 import { useContentHistory } from "../hooks/useContentHistory";
 import { LastActionHistory } from "../../shared/components";
+import { useI18n } from "@/i18n/use-i18n";
 
 interface EditKeywordModalProps {
   keyword: KeywordMap | null;
@@ -36,6 +37,7 @@ interface EditKeywordModalProps {
 }
 
 export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordModalProps) {
+  const { locale } = useI18n();
   const [loading, setLoading] = React.useState(false);
   const [isAddingToPlan, setIsAddingToPlan] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -219,16 +221,16 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
 
               <div className="border-t border-primary/10 pt-4 mt-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Content-Historie
-                  </h4>
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {locale === 'de' ? 'Content-Historie' : 'Content History'}
+                    </h4>
                   {keyword?.Target_URL && (
                     <Link 
                       href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
                       className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
                     >
-                      Vollständige Historie
+                      {locale === 'de' ? 'Vollständige Historie' : 'Full history'}
                       <ExternalLink className="h-3 w-3" />
                     </Link>
                   )}
@@ -253,11 +255,11 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
 
           <DialogFooter className="p-6 bg-muted/30 border-t border-border mt-auto">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={loading}>
-              Abbrechen
+              {locale === 'de' ? 'Abbrechen' : 'Cancel'}
             </Button>
             <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Speichern
+              {locale === 'de' ? 'Speichern' : 'Save'}
             </Button>
           </DialogFooter>
         </form>

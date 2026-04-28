@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/i18n/use-i18n';
 
 type EntryType = 'keyword' | 'trend' | 'blacklist';
 
@@ -31,6 +32,7 @@ interface AddEntryFabProps {
 }
 
 export function AddEntryFab({ activeTab }: AddEntryFabProps) {
+  const { locale } = useI18n();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<EntryType>('keyword');
   const [loading, setLoading] = useState(false);
@@ -168,13 +170,15 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
-              {type === 'keyword' && 'Neues Keyword hinzufügen'}
-              {type === 'trend' && 'Neuen Trend hinzufügen'}
-              {type === 'blacklist' && 'Keyword/URL blacklisten'}
-              {!['keyword', 'trend', 'blacklist'].includes(type) && 'Neuen Eintrag hinzufügen'}
+              {type === 'keyword' && (locale === 'de' ? 'Neues Keyword hinzufügen' : 'Add new keyword')}
+              {type === 'trend' && (locale === 'de' ? 'Neuen Trend hinzufügen' : 'Add new trend')}
+              {type === 'blacklist' && (locale === 'de' ? 'Keyword/URL blacklisten' : 'Blacklist keyword/URL')}
+              {!['keyword', 'trend', 'blacklist'].includes(type) && (locale === 'de' ? 'Neuen Eintrag hinzufügen' : 'Add new entry')}
             </DialogTitle>
             <DialogDescription className="text-base">
-              Füllen Sie die erforderlichen Felder aus, um den Eintrag zu speichern.
+              {locale === 'de'
+                ? 'Füllen Sie die erforderlichen Felder aus, um den Eintrag zu speichern.'
+                : 'Fill in the required fields to save the entry.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -373,7 +377,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
               size="sm"
               className="px-4"
             >
-              Abbrechen
+              {locale === 'de' ? 'Abbrechen' : 'Cancel'}
             </Button>
             <Button
               type="submit"
@@ -384,10 +388,10 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Speichern...
+                  {locale === 'de' ? 'Speichern...' : 'Saving...'}
                 </>
               ) : (
-                'Hinzufügen'
+                locale === 'de' ? 'Hinzufügen' : 'Add'
               )}
             </Button>
           </DialogFooter>

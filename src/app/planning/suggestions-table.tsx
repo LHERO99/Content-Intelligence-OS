@@ -167,7 +167,7 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
       <PlanningHeader 
         icon={Sparkles} 
         title={t("planning.suggestions")} 
-        description="Vorschläge für neue Inhalte oder zur Optimierung bestehender Inhalte basierend auf SEO-Metriken." 
+        description={t("planning.suggestionsDesc")} 
       />
       <KeywordFilterBar table={table} columns={columns} hideImport={true} />
       <PlanningTable 

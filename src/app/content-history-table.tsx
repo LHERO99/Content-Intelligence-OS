@@ -54,7 +54,7 @@ function normalizeUrl(value: string): string {
 }
 
 export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistoryTableProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const localeTag = toLocaleTag(locale);
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "lastModified", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -98,7 +98,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
 
       if (!url) url = log.Target_URL;
 
-      const finalUrl = url || "Keine URL";
+      const finalUrl = url || t('history.noUrl');
 
       if (url === undefined || url === null) {
         console.log(`[DEBUG] Missing URL for log ID ${log.id}:`);
@@ -171,7 +171,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
         return (
           <div className="flex items-center gap-2 max-w-[1000px]">
             <span className="font-medium truncate flex-1 text-left">{url}</span>
-            {url !== "Keine URL" && (
+            {url !== t('history.noUrl') && (
               <a 
                 href={url} 
                 target="_blank" 
@@ -184,7 +184,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
             )}
             {isBlacklisted && (
               <Badge variant="destructive" className="text-[10px] h-4 px-1 font-bold bg-red-500/10 text-red-700 border-red-500/20 shrink-0">
-                Blacklisted
+                {locale === 'de' ? 'Blacklisted' : 'Blacklisted'}
               </Badge>
             )}
           </div>
@@ -199,7 +199,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="text-primary font-bold p-0 hover:bg-transparent"
         >
-          Erstellt
+          {t('history.created')}
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
@@ -221,7 +221,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="text-primary font-bold p-0 hover:bg-transparent"
         >
-          Zuletzt geändert
+          {t('history.lastModified')}
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
@@ -239,7 +239,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
     },
     {
       id: "count",
-      header: "Änderungen",
+      header: t('history.changes'),
       cell: ({ row }) => (
         <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
           {row.original.logs.length}
@@ -290,7 +290,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
     return (
       <div className="text-center py-12 bg-muted/20 rounded-lg border border-dashed border-border">
         <History className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-        <p className="text-sm text-muted-foreground">Keine Content-Historie gefunden</p>
+        <p className="text-sm text-muted-foreground">{t('history.noHistory')}</p>
       </div>
     );
   }
@@ -301,7 +301,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
         <div className="relative flex-1 max-w-sm">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Nach URL filtern..."
+            placeholder={t('history.filterUrl')}
             value={(table.getColumn("url")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
               table.getColumn("url")?.setFilterValue(event.target.value)
@@ -315,7 +315,7 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
             onClick={() => table.resetColumnFilters()}
             className="text-xs text-muted-foreground hover:text-primary"
           >
-            Filter zurücksetzen
+            {t('history.resetFilter')}
             <X className="ml-2 h-3 w-3" />
           </Button>
         )}
