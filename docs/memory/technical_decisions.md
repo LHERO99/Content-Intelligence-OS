@@ -1,5 +1,11 @@
 # Technische Entscheidungen (Stand: 28.04.2026)
 
+## KI-Chat Save-Architektur (28.04.2026)
+- **Content-Parameter statt Ref**: `onApplyChanges(content: string)` — der Child (`AIChatPanel`) übergibt den `refinedContent` direkt als Parameter beim Klick. Kein `useRef` + `useEffect`-Sync mehr (war fragil durch stale closures).
+- **Action_Type für KI-Chat omitted**: `'KI-Chat'` ist kein gültiger Airtable Select-Wert für `Action_Type`. Statt einem ungültigen Wert zu senden (422) oder einen falschen zu wählen (`'Optimierung'`), wird `actionType` bei KI-Chat-Saves vollständig weggelassen.
+- **Identifikation via Diff_Summary**: KI-Chat-Saves sind in der Historie erkennbar über `Diff_Summary: 'KI-Chat: KI-Optimierung übernommen'`.
+- **API-Route macht actionType optional**: `/api/planning/history` POST-Handler validiert nur noch `keywordId` als Pflichtfeld. `actionType` ist optional — `createContentLog` in `airtable.ts` löscht `undefined`-Felder ohnehin aktiv.
+
 ## Agent-Workflow V2: Orchestrierungsmodell (26.04.2026)
 - **Serielles Parent-Orchestrierungsmodell**:
   - Die Engine wurde von linearem Topology-Run auf einen orchestrierten Round-Loop umgestellt.

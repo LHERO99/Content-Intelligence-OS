@@ -1,6 +1,10 @@
 # TODO Historie
 
 ## Erledigt
+- [x] KI-Chat Feature: `AIChatPanel` + `AIEditorWorkspace` vollständig implementiert (Vorschau, Übernehmen, Ablehnen, Modell-Dropdown).
+- [x] KI-Chat Fix: Stale-closure race condition in `onApplyChanges` behoben — `refinedContent` wird jetzt direkt als Parameter übergeben (kein `previewContentRef` mehr).
+- [x] KI-Chat Fix: Airtable 422 für `Action_Type: 'KI-Chat'` behoben — `actionType` wird bei KI-Chat-Saves weggelassen; Identifikation via `Diff_Summary`.
+- [x] API: `/api/planning/history` POST macht `actionType` optional (nur `keywordId` ist Pflicht).
 - [x] Agent Builder V2 als Standard etabliert (`/content-agent-builder`), V1 entfernt.
 - [x] OpenAI als ausführbarer Provider im Agent-Runner integriert (inkl. API-Key Secret Lookup).
 - [x] Integrationen: Model Discovery Endpoint `/api/admin/integrations/[provider]/models` eingeführt.

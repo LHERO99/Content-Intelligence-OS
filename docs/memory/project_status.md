@@ -1,5 +1,16 @@
 # Projekt-Status (Stand: 28.04.2026)
 
+## KI-Chat Feature (Creation Page) — Status: Funktionsfähig (28.04.2026)
+- **Ziel**: User gibt im KI-Optimierung-Tab eine Anweisung ein → KI überarbeitet Text → linke Vorschau zeigt neuen Text sofort → "Übernehmen" speichert in Airtable via `/api/planning/history`.
+- **Architektur**: `AIEditorWorkspace` (Parent) hält `workingContent` + `previewContent` als State. `AIChatPanel` (Child) ist immer gemountet via `hidden`-Klasse (Chat-State bleibt bei Tab-Wechsel erhalten).
+- **Vorschau**: Nach KI-Antwort → `onPreviewChange(refinedContent)` → linke Vorschau zeigt KI-Vorschlag sofort. "KI-Vorschlag (Vorschau)" + "Nicht gespeichert" Badge werden angezeigt.
+- **Übernehmen-Fix**: `onApplyChanges(content: string)` — `AIChatPanel` übergibt `refinedContent` direkt als Parameter. Kein `useRef`-Syncing mehr nötig (stale-closure race condition behoben).
+- **Ablehnen**: Setzt Vorschau zurück auf `workingContent` (kein Save).
+- **Save-Logik**: POST an `/api/planning/history` ohne `actionType` — KI-Chat-Saves werden über `Diff_Summary: 'KI-Chat: KI-Optimierung übernommen'` identifiziert.
+- **Airtable Action_Type**: `'KI-Chat'` ist kein gültiger Select-Wert in Airtable. Lösung: `actionType` wird für KI-Chat-Saves gar nicht gesendet. `/api/planning/history` macht `actionType` optional (kein 400 bei fehlendem Wert). `createContentLog` löscht `undefined`-Felder bereits aktiv.
+- **Markdown-Stripping**: `stripMarkdownCodeFences()` in `/api/creation/refine/route.ts` entfernt Code-Fences aus KI-Antworten.
+- **Modell-Dropdown**: `AIChatPanel` lädt verfügbare Modelle via `/api/creation/models`. Auto-Select des ersten Modells. Grouped Select (Provider → Modelle).
+
 ## Content-Agent Builder V2 (Orchestrierung, UX, Integrationen)
 - **V2 als Standard etabliert**: Der Builder läuft auf `/content-agent-builder`; V1 wurde entfernt und nicht mehr verwendet.
 - **Orchestrator-Loop implementiert**: Ausführung läuft nun seriell in Runden (`Parent -> 1 Subagent -> Parent`), ohne parallele Subagent-Runs.
