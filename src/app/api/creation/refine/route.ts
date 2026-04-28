@@ -92,6 +92,15 @@ async function callGemini(apiKey: string, model: string, systemPrompt: string, u
   }
 }
 
+function stripMarkdownCodeFences(content: string): string {
+  // Some LLMs wrap their response in ```html ... ``` despite being told not to.
+  // Strip the opening fence (```html, ```xml, ``` etc.) and the closing fence.
+  return content
+    .replace(/^```[\w]*\r?\n?/m, '')
+    .replace(/\r?\n?```\s*$/m, '')
+    .trim();
+}
+
 async function runRefine(
   providerId: SupportedProvider,
   model: string,
@@ -182,7 +191,7 @@ export async function POST(request: Request) {
 
     console.log(`[/api/creation/refine] provider=${providerId} model=${modelId} keyword=${keyword} user=${session.user?.email} tenant=${DEFAULT_TENANT_ID}`);
 
-    const refinedContent = await runRefine(providerId, modelId, currentContent, instructions);
+    const refinedContent = stripMarkdownCodeFences(await runRefine(providerId, modelId, currentContent, instructions));
 
     if (!refinedContent) {
       return NextResponse.json({ error: 'Das Modell hat keinen Inhalt zurückgegeben.' }, { status: 502 });

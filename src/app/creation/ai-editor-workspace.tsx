@@ -336,8 +336,8 @@ export function AIEditorWorkspace({
           </div>
         )}
 
-        {activeMode === 'ai-chat' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full animate-in zoom-in-95 duration-300">
+        {/* AI-Chat panel is always mounted to preserve chat state across tab switches */}
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 h-full ${activeMode === 'ai-chat' ? 'animate-in zoom-in-95 duration-300' : 'hidden'}`}>
             <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed h-full">
               <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
                 <FileText className="h-3.5 w-3.5" />
@@ -414,8 +414,7 @@ export function AIEditorWorkspace({
                 keyword={keyword}
               />
             </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
