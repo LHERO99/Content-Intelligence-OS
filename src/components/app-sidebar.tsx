@@ -5,6 +5,8 @@ import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
 import { useBranding } from "@/components/providers/branding-provider"
+import { useI18n } from "@/i18n/use-i18n"
+import { LanguageSwitcher } from "@/components/language-switcher"
 
 import {
   Sidebar,
@@ -60,6 +62,7 @@ const adminItems = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   const { logoUrl, primaryColor } = useBranding()
+  const { t } = useI18n()
 
   return (
     <Sidebar {...props}>
@@ -77,23 +80,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
           <div className="flex items-center gap-2 font-bold px-2" style={{ color: primaryColor }}>
             <ShieldCheck className="h-5 w-5" />
-            <span className="text-sm">SEO Content Intelligence</span>
+              <span className="text-sm">SEO Content Intelligence</span>
+            </div>
           </div>
-        </div>
-      </SidebarHeader>
+        </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("sidebar.navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton render={<Link href={item.url} />}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const localizedTitle =
+                  item.url === "/"
+                    ? t("sidebar.dashboard")
+                    : item.url === "/planning"
+                      ? t("sidebar.contentPlanning")
+                      : item.url === "/creation"
+                        ? t("sidebar.contentCreation")
+                        : item.url === "/monitoring"
+                          ? t("sidebar.contentMonitoring")
+                          : item.url === "/history"
+                            ? t("sidebar.contentHistory")
+                            : item.title
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton render={<Link href={item.url} />}>
+                      <item.icon />
+                      <span>{localizedTitle}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
 
             {session?.user?.role === "Admin" && (
@@ -104,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton render={<Link href={item.url} />}>
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>{t("sidebar.agentBuilder")}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
@@ -123,11 +140,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <SidebarMenuButton render={<Link href="/admin" />}>
                     <ShieldCheck className="text-red-600" />
-                    <span>Admin-Bereich</span>
+                    <span>{t("sidebar.adminArea")}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             )}
+            <LanguageSwitcher />
             <Link href="/profile" className="flex items-center gap-3 px-2 hover:bg-gray-100 rounded-md p-1 transition-colors">
               <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: primaryColor }}>
                 <User className="h-4 w-4" />
@@ -144,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <LogOut />
-                  <span>Abmelden</span>
+                  <span>{t("sidebar.signOut")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -154,7 +172,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton render={<Link href="/auth/signin" />}>
                 <User />
-                <span>Anmelden</span>
+                <span>{t("sidebar.signIn")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
