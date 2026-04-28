@@ -344,149 +344,13 @@ export function IntegrationsManagement() {
 
         {!selectedProvider ? (
           <Card>
-            <CardContent className="py-10 text-sm text-muted-foreground">{tr("Kein Provider ausgewählt.", "No provider selected.")}</CardContent>
+            <CardContent className="py-10 text-sm text-muted-foreground">
+              {tr("Kein Provider ausgewählt.", "No provider selected.")}
+            </CardContent>
           </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between gap-3">
-                <span>{selectedProvider.name}</span>
-                <Badge variant={selectedConfigured ? "default" : "secondary"}>
-                  {selectedConfigured ? tr("Verbunden", "Connected") : tr("Nicht verbunden", "Not connected")}
-                </Badge>
-              </CardTitle>
-              <CardDescription>{selectedProvider.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
 
-              {success && (
-                <Alert>
-                  <ShieldCheck className="h-4 w-4" />
-                  <AlertTitle>{tr("Gespeichert", "Saved")}</AlertTitle>
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              )}
-
-              <section className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold">{tr("1) Zugangsdaten", "1) Credentials")}</h3>
-                  <p className="text-xs text-muted-foreground">{tr("Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.", "Provide or update credentials for this provider.")}</p>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {selectedProvider.fields.map((field) => {
-                    const masked = selectedIntegrationState?.maskedValues?.[field.key] || "";
-                    return (
-                      <div key={field.key} className="space-y-2">
-                        <label className="text-sm font-medium">{field.label}</label>
-                        <Input
-                          type={field.type}
-                          placeholder={field.placeholder}
-                          value={formValues[selectedProvider.id]?.[field.key] || ""}
-                          onChange={(e) => setProviderField(selectedProvider.id, field.key, e.target.value)}
-                          className="h-10"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          {masked ? tr(`Aktueller Wert: ${masked}`, `Current value: ${masked}`) : tr("Noch kein Wert hinterlegt.", "No value stored yet.")}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-                <Button
-                  onClick={() => saveProvider(selectedProvider)}
-                  disabled={savingProvider === selectedProvider.id}
-                  className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
-                  {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  {tr("Speichern", "Save")}
-                </Button>
-              </section>
-
-              <section className="space-y-4 border-t pt-5">
-                <div>
-                  <h3 className="text-sm font-semibold">{tr("2) Verbindung testen", "2) Test connection")}</h3>
-                  <p className="text-xs text-muted-foreground">{tr("Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.", "Checks whether stored credentials work with the provider.")}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => testProvider(selectedProvider)}
-                    disabled={testingProvider === selectedProvider.id || !selectedConfigured}
-                    className="h-10"
-                  >
-                    {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                    {tr("Verbindung testen", "Test connection")}
-                  </Button>
-                  {selectedTestResult && (
-                    <span className="text-xs text-muted-foreground">
-                      {tr("Letzter Test", "Last test")}: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
-                    </span>
-                  )}
-                </div>
-                {selectedTestResult && (
-                  <div className={`text-sm rounded-md border px-3 py-2 ${selectedTestResult.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
-                    <span className="inline-flex items-center gap-1">
-                      {selectedTestResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                      {selectedTestResult.message}
-                    </span>
-                  </div>
-                )}
-
-                <Alert>
-                  <AlertTitle>{tr("Tipp zur Kostenkontrolle", "Cost control tip")}</AlertTitle>
-                  <AlertDescription>
-                    {tr("Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche Kostensicherheit bei automatisierten Workflows.", "Set a spending limit in your provider account where possible. This adds cost safety for automated workflows.")}
-                  </AlertDescription>
-                </Alert>
-              </section>
-
-              {selectedCanDiscoverModels && (
-                <section className="space-y-4 border-t pt-5">
-                  <div>
-                    <h3 className="text-sm font-semibold">{tr("3) Verfügbare Modelle", "3) Available models")}</h3>
-                    <p className="text-xs text-muted-foreground">{tr("Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.", "Load models server-side via the configured API key connection.")}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => loadModels(selectedProvider, false)}
-                      disabled={!selectedConfigured || selectedModelsLoading}
-                    >
-                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("Modelle laden", "Load models")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => loadModels(selectedProvider, true)}
-                      disabled={!selectedConfigured || selectedModelsLoading}
-                    >
-                      <RefreshCcw className="mr-1 h-4 w-4" />
-                      {tr("Aktualisieren", "Refresh")}
-                    </Button>
-                  </div>
-
-                  {selectedModelError && <p className="text-xs text-red-600">{selectedModelError}</p>}
-
-                  {selectedModels.length > 0 ? (
-                    <div className="max-h-72 overflow-auto rounded border">
-                      <div className="divide-y">
-                        {selectedModels.map((model) => (
-                          <div key={model.id} className="flex items-center justify-between px-3 py-2 text-xs">
-                            <div>
-                              <div className="font-mono">{model.id}</div>
-                              {model.label !== model.id && <div className="text-muted-foreground">{model.label}</div>}
-                            </div>
-                            {model.contextWindow ? (
-                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString(localeTag)} ctx</span>
         ) : selectedProvider.id === "google_search_console" ? (
-          // ── GSC OAuth-based provider — special UI ───────────────────────────
+          // ── GSC OAuth-based provider — special UI ────────────────────────────
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-3">
@@ -633,7 +497,144 @@ export function IntegrationsManagement() {
               </section>
             </CardContent>
           </Card>
+
         ) : (
+          // ── Standard API-key-based provider UI ───────────────────────────────
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-3">
+                <span>{selectedProvider.name}</span>
+                <Badge variant={selectedConfigured ? "default" : "secondary"}>
+                  {selectedConfigured ? tr("Verbunden", "Connected") : tr("Nicht verbunden", "Not connected")}
+                </Badge>
+              </CardTitle>
+              <CardDescription>{selectedProvider.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {success && (
+                <Alert>
+                  <ShieldCheck className="h-4 w-4" />
+                  <AlertTitle>{tr("Gespeichert", "Saved")}</AlertTitle>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("1) Zugangsdaten", "1) Credentials")}</h3>
+                  <p className="text-xs text-muted-foreground">{tr("Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.", "Provide or update credentials for this provider.")}</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {selectedProvider.fields.map((field) => {
+                    const masked = selectedIntegrationState?.maskedValues?.[field.key] || "";
+                    return (
+                      <div key={field.key} className="space-y-2">
+                        <label className="text-sm font-medium">{field.label}</label>
+                        <Input
+                          type={field.type}
+                          placeholder={field.placeholder}
+                          value={formValues[selectedProvider.id]?.[field.key] || ""}
+                          onChange={(e) => setProviderField(selectedProvider.id, field.key, e.target.value)}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {masked ? tr(`Aktueller Wert: ${masked}`, `Current value: ${masked}`) : tr("Noch kein Wert hinterlegt.", "No value stored yet.")}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  onClick={() => saveProvider(selectedProvider)}
+                  disabled={savingProvider === selectedProvider.id}
+                  className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  {tr("Speichern", "Save")}
+                </Button>
+              </section>
+
+              <section className="space-y-4 border-t pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("2) Verbindung testen", "2) Test connection")}</h3>
+                  <p className="text-xs text-muted-foreground">{tr("Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.", "Checks whether stored credentials work with the provider.")}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => testProvider(selectedProvider)}
+                    disabled={testingProvider === selectedProvider.id || !selectedConfigured}
+                    className="h-10"
+                  >
+                    {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                    {tr("Verbindung testen", "Test connection")}
+                  </Button>
+                  {selectedTestResult && (
+                    <span className="text-xs text-muted-foreground">
+                      {tr("Letzter Test", "Last test")}: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
+                    </span>
+                  )}
+                </div>
+                {selectedTestResult && (
+                  <div className={`text-sm rounded-md border px-3 py-2 ${selectedTestResult.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
+                    <span className="inline-flex items-center gap-1">
+                      {selectedTestResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {selectedTestResult.message}
+                    </span>
+                  </div>
+                )}
+                <Alert>
+                  <AlertTitle>{tr("Tipp zur Kostenkontrolle", "Cost control tip")}</AlertTitle>
+                  <AlertDescription>
+                    {tr("Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche Kostensicherheit bei automatisierten Workflows.", "Set a spending limit in your provider account where possible. This adds cost safety for automated workflows.")}
+                  </AlertDescription>
+                </Alert>
+              </section>
+
+              {selectedCanDiscoverModels && (
+                <section className="space-y-4 border-t pt-5">
+                  <div>
+                    <h3 className="text-sm font-semibold">{tr("3) Verfügbare Modelle", "3) Available models")}</h3>
+                    <p className="text-xs text-muted-foreground">{tr("Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.", "Load models server-side via the configured API key connection.")}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadModels(selectedProvider, false)}
+                      disabled={!selectedConfigured || selectedModelsLoading}
+                    >
+                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("Modelle laden", "Load models")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => loadModels(selectedProvider, true)}
+                      disabled={!selectedConfigured || selectedModelsLoading}
+                    >
+                      <RefreshCcw className="mr-1 h-4 w-4" />
+                      {tr("Aktualisieren", "Refresh")}
+                    </Button>
+                  </div>
+                  {selectedModelError && <p className="text-xs text-red-600">{selectedModelError}</p>}
+                  {selectedModels.length > 0 ? (
+                    <div className="max-h-72 overflow-auto rounded border">
+                      <div className="divide-y">
+                        {selectedModels.map((model) => (
+                          <div key={model.id} className="flex items-center justify-between px-3 py-2 text-xs">
+                            <div>
+                              <div className="font-mono">{model.id}</div>
+                              {model.label !== model.id && <div className="text-muted-foreground">{model.label}</div>}
+                            </div>
+                            {model.contextWindow ? (
+                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString(localeTag)} ctx</span>
+                            ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
                           </div>
