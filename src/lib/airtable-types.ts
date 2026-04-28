@@ -30,7 +30,7 @@ export interface ContentLog {
   Keyword_ID: string[]; // Link to Keyword-Map
   Target_URL?: string; // New field for URL-based history (computed/lookup)
   Logged_URL?: string; // Direct field for storing URL if Target_URL is computed
-  Action_Type: 'Planung' | 'Erstellung' | 'Optimierung';
+  Action_Type: 'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat';
   Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'; // Cost lookup
   Version: 'v1' | 'v2';
   Content_Body?: string;
