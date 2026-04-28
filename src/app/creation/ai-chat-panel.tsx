@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Loader2, Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/use-i18n';
 
 interface Message {
   id: string;
@@ -22,15 +23,22 @@ interface AIChatPanelProps {
 }
 
 export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword }: AIChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { 
-      id: '1', 
-      role: 'assistant', 
-      content: `Hallo! Ich bin dein KI-Assistent für das Keyword "${keyword}". Wie kann ich den Text für dich optimieren? (z.B. "Schreibe die Einleitung emotionaler" oder "Füge eine Liste mit Vorteilen hinzu")` 
-    }
-  ]);
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === 'de' ? de : en);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setMessages([{
+      id: '1',
+      role: 'assistant',
+      content: tr(
+        `Hallo! Ich bin dein KI-Assistent für das Keyword "${keyword}". Wie kann ich den Text für dich optimieren? (z.B. "Schreibe die Einleitung emotionaler" oder "Füge eine Liste mit Vorteilen hinzu")`,
+        `Hello! I'm your AI assistant for the keyword "${keyword}". How can I optimize the text for you? (e.g. "Make the introduction more emotional" or "Add a list of benefits")`
+      )
+    }]);
+  }, [locale, keyword]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -63,13 +71,13 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
       if (!response.ok) throw new Error('KI-Anfrage fehlgeschlagen');
 
       const result = await response.json();
-      const aiResponse = result.result?.refinedContent || "Entschuldigung, ich konnte den Text nicht wie gewünscht verarbeiten.";
+      const aiResponse = result.result?.refinedContent || tr("Entschuldigung, ich konnte den Text nicht wie gewünscht verarbeiten.", "Sorry, I couldn't process the text as requested.");
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: aiResponse.includes('<html>') || aiResponse.includes('<div>') 
-          ? "Ich habe den Text basierend auf deinen Wünschen angepasst. Du kannst die Änderungen jetzt mit dem Button unten übernehmen."
+          ? tr("Ich habe den Text basierend auf deinen Wünschen angepasst. Du kannst die Änderungen jetzt mit dem Button unten übernehmen.", "I have adjusted the text based on your wishes. You can now apply the changes using the button below.")
           : aiResponse
       };
 
@@ -80,7 +88,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
         setMessages(prev => [...prev, {
           id: (Date.now() + 2).toString(),
           role: 'assistant',
-          content: "Klicke auf den Button unten, um diesen Vorschlag in deinen Arbeitsstand zu übernehmen."
+          content: tr("Klicke auf den Button unten, um diesen Vorschlag in deinen Arbeitsstand zu übernehmen.", "Click the button below to apply this suggestion to your working state.")
         }]);
         onApplyChanges(result.result.refinedContent);
       }
@@ -89,7 +97,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
         role: 'assistant', 
-        content: "Fehler: Die KI konnte nicht erreicht werden. Bitte versuche es später erneut." 
+        content: tr("Fehler: Die KI konnte nicht erreicht werden. Bitte versuche es später erneut.", "Error: The AI could not be reached. Please try again later.")
       }]);
     } finally {
       setIsLoading(false);
@@ -101,7 +109,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
       <div className="p-3 border-b bg-white flex items-center justify-between shrink-0 font-bold text-primary text-sm">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          KI-Optimierung
+          {tr('KI-Optimierung', 'AI Optimization')}
         </div>
           <Badge variant="outline" className="text-[10px] font-medium bg-primary/10 text-primary border-primary/20">
           Powered by n8n
@@ -135,7 +143,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
                 <div className="p-3 rounded-2xl rounded-tl-none text-sm bg-white text-slate-400 border italic shadow-sm">
-                  KI analysiert den Text...
+                  {tr('KI analysiert den Text...', 'AI is analyzing the text...')}
                 </div>
               </div>
             )}
@@ -146,7 +154,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
       <div className="p-3 bg-white border-t shrink-0">
         <div className="flex gap-2">
           <Input 
-            placeholder="Anweisung eingeben..." 
+            placeholder={tr('Anweisung eingeben...', 'Enter instruction...')} 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -161,7 +169,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center italic">
-          Die KI berücksichtigt den aktuellen Text als Kontext.
+          {tr('Die KI berücksichtigt den aktuellen Text als Kontext.', 'The AI uses the current text as context.')}
         </p>
       </div>
     </div>

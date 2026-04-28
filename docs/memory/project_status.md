@@ -1,4 +1,4 @@
-# Projekt-Status (Stand: 26.04.2026)
+# Projekt-Status (Stand: 28.04.2026)
 
 ## Content-Agent Builder V2 (Orchestrierung, UX, Integrationen)
 - **V2 als Standard etabliert**: Der Builder läuft auf `/content-agent-builder`; V1 wurde entfernt und nicht mehr verwendet.
@@ -93,4 +93,29 @@
 - **UI/UX**: Interaktive Drag&Drop-Zonen für Logo und Favicon im Admin-Bereich mit Größen-Validierung (max. 2MB).
 - **Echtzeit-Anwendung**: Der `BrandingProvider` injiziert die Primärfarbe via CSS-Variable (`--primary`) und aktualisiert das Favicon dynamisch im Browser.
 - **Refactoring**: Hardcodierte DocMorris-Brandings in Sidebar und Layout wurden durch dynamische Assets ersetzt.
+
+## Internationalisierung / i18n (28.04.2026)
+- **Vollständige DE/EN Sprachumschaltung**: Die gesamte UI kann per Language Switcher zwischen Deutsch und Englisch umgeschaltet werden.
+- **LanguageProvider**: Eingebunden in `src/app/layout.tsx`; persistiert die gewählte Sprache in `localStorage`.
+- **useI18n Hook** (`src/i18n/use-i18n.ts`): Gibt `{ locale, setLocale, t }` zurück. Liefert kein `tr` direkt — dieses wird per Inline-Helper definiert: `const tr = (de: string, en: string) => (locale === "de" ? de : en);`
+- **Inline-Translate Pattern**: Alle lokalisierten Komponenten verwenden `tr(de, en)` direkt im JSX für schnelle Inline-Übersetzungen. Dictionary-basiertes `t("key")` ist ebenfalls verfügbar.
+- **LanguageSwitcher**: Zwei native `<button>` Elemente (DE / EN) — kein Base UI mehr (Base UI Error #31 bei DropdownMenu.Trigger vermieden).
+- **Lokalisierte Dateien** (vollständig):
+  - `src/components/language-switcher.tsx`
+  - `src/components/app-sidebar.tsx`
+  - `src/components/authenticated-layout.tsx` (Viewport-Warnung)
+  - `src/app/planning/blacklist.tsx` (inkl. dynamische `buildColumns(tr)` Funktion für reaktive Spaltenköpfe)
+  - `src/app/admin/page.tsx`
+  - `src/app/admin/integrations-management.tsx`
+  - `src/app/admin/cost-management.tsx`
+  - `src/app/monitoring/page.tsx`
+  - `src/features/planning/components/keyword-import.tsx`
+  - `src/features/planning/components/KeywordFilterBar.tsx`
+  - `src/features/planning/components/EditorialFilterBar.tsx`
+  - `src/features/planning/components/EditKeywordModal.tsx`
+  - `src/features/planning/components/EditEditorialModal.tsx`
+  - `src/features/admin/components/optimization-rules-tab.tsx`
+  - `src/features/admin/components/branding-tab.tsx`
+- **Bekannte Eigenheit**: Statische `columns`-Arrays (ColumnDef[]) außerhalb von Komponenten können keine Hooks nutzen. Lösung: `buildColumns(tr)` als Funktion + `useMemo(() => buildColumns(tr), [locale])` innerhalb der Hauptkomponente.
+- **Reactive Columns Pattern**: Alle Tabellenspalten-Definitionen, die übersetzbare Header haben, müssen in `useMemo` mit `locale` als Dependency definiert werden.
 

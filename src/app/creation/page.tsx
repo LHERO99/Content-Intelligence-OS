@@ -84,13 +84,13 @@ export default function CreationPage() {
   const v2Content = v2Log?.Content_Body || '';
   
   const statusLabelMap: Record<string, string> = {
-    'Beauftragt': locale === 'de' ? 'Beauftragt' : 'Commissioned',
-    'In Arbeit': locale === 'de' ? 'In Arbeit' : 'In progress',
-    'Angeliefert': locale === 'de' ? 'Delivered' : 'Delivered',
-    'Review': locale === 'de' ? 'Review' : 'Review',
-    'Optimierung': locale === 'de' ? 'Optimierung' : 'Optimization',
-    'Published': locale === 'de' ? 'Veröffentlicht' : 'Published',
-    'Erstellung': locale === 'de' ? 'Erstellung' : 'Creation',
+    'Beauftragt': tr('Beauftragt', 'Commissioned'),
+    'In Arbeit': tr('In Arbeit', 'In progress'),
+    'Angeliefert': tr('Angeliefert', 'Delivered'),
+    'Review': tr('Review', 'Review'),
+    'Optimierung': tr('Optimierung', 'Optimization'),
+    'Published': tr('Veröffentlicht', 'Published'),
+    'Erstellung': tr('Erstellung', 'Creation'),
   };
 
   const latestLogWithAction = [...relevantLogs].sort((a, b) => 

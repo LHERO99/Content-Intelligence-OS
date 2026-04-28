@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n/use-i18n';
 
 interface RichTextEditorProps {
   content: string;
@@ -31,7 +32,7 @@ interface RichTextEditorProps {
   isSaving?: boolean;
 }
 
-const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boolean, setShowCode: (show: boolean) => void }) => {
+const MenuBar = ({ editor, showCode, setShowCode, tr }: { editor: any, showCode: boolean, setShowCode: (show: boolean) => void, tr: (de: string, en: string) => string }) => {
   if (!editor) {
     return null;
   }
@@ -97,7 +98,7 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => handleAction(e, () => editor.chain().focus().setParagraph().run())}
         className={cn('h-8 w-8 p-0 transition-all', editor.isActive('paragraph') ? 'bg-primary/10 text-primary font-bold border border-primary/20' : 'text-slate-500 hover:bg-slate-200')}
-        title="In Text umwandeln"
+        title={tr('In Text umwandeln', 'Convert to text')}
       >
         <Pilcrow className="h-4 w-4" />
       </Button>
@@ -185,13 +186,15 @@ const MenuBar = ({ editor, showCode, setShowCode }: { editor: any, showCode: boo
         className={cn('h-8 gap-2 px-3 transition-all', showCode ? 'bg-primary text-primary-foreground' : 'text-slate-500 hover:bg-slate-200')}
       >
         {showCode ? <Type className="h-4 w-4" /> : <Code className="h-4 w-4" />}
-        <span className="text-xs font-bold">{showCode ? 'Editor' : 'Code'}</span>
+        <span className="text-xs font-bold">{showCode ? tr('Editor', 'Editor') : tr('Code', 'Code')}</span>
       </Button>
     </div>
   );
 };
 
 export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProps) {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === 'de' ? de : en);
   const [showCode, setShowCode] = React.useState(false);
   const [codeContent, setCodeContent] = React.useState(content);
   
@@ -242,7 +245,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
 
   return (
     <div className="rounded-md border bg-white flex flex-col overflow-hidden h-full">
-      <MenuBar editor={editor} showCode={showCode} setShowCode={setShowCode} />
+      <MenuBar editor={editor} showCode={showCode} setShowCode={setShowCode} tr={tr} />
       <div className="flex-1 overflow-auto custom-scrollbar min-h-0">
         {showCode ? (
           <textarea
@@ -334,7 +337,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Speichern
+          {tr('Speichern', 'Save')}
         </Button>
       </div>
     </div>

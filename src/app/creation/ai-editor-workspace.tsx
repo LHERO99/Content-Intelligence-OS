@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { KeywordStatus } from '@/lib/airtable-types';
+import { useI18n } from '@/i18n/use-i18n';
 
 import { PlanningService } from "@/features/planning/services/planning-service";
 interface AIEditorWorkspaceProps {
@@ -49,6 +50,8 @@ export function AIEditorWorkspace({
   const [workingContent, setWorkingContent] = useState(v2Content);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === 'de' ? de : en);
 
   // Sync working content if v2Content changes (e.g. from polling), but only if not in edit mode
   useEffect(() => {
@@ -75,14 +78,14 @@ export function AIEditorWorkspace({
       if (!response.ok) throw new Error('Speichern fehlgeschlagen');
       
       setWorkingContent(html);
-      toast.success('Änderungen erfolgreich gespeichert');
+      toast.success(tr('Änderungen erfolgreich gespeichert', 'Changes saved successfully'));
       
       // Trigger a global refresh to update polling/parent data
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
       
       setActiveMode('preview');
     } catch (error) {
-      toast.error('Fehler beim Speichern des Contents');
+      toast.error(tr('Fehler beim Speichern des Contents', 'Error saving content'));
     } finally {
       setIsSaving(false);
     }
@@ -96,12 +99,12 @@ export function AIEditorWorkspace({
       });
 
       setIsPublished(true);
-      toast.success("Content erfolgreich veröffentlicht");
+      toast.success(tr("Content erfolgreich veröffentlicht", "Content published successfully"));
       
       // Explicitly trigger refresh
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
     } catch (error) {
-      toast.error("Fehler bei der Veröffentlichung");
+      toast.error(tr("Fehler bei der Veröffentlichung", "Error publishing content"));
     } finally {
       setIsSaving(false);
     }
@@ -122,7 +125,7 @@ export function AIEditorWorkspace({
             )}
           >
             <Eye className="h-3.5 w-3.5" />
-            Vorschau
+            {tr('Vorschau', 'Preview')}
           </Button>
           <Button
             variant="ghost"
@@ -134,7 +137,7 @@ export function AIEditorWorkspace({
             )}
           >
             <Edit3 className="h-3.5 w-3.5" />
-            Bearbeiten
+            {tr('Bearbeiten', 'Edit')}
           </Button>
           <Button
             variant="ghost"
@@ -146,7 +149,7 @@ export function AIEditorWorkspace({
             )}
           >
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            KI-Optimierung
+            {tr('KI-Optimierung', 'AI Optimization')}
           </Button>
         </div>
 
@@ -170,12 +173,12 @@ export function AIEditorWorkspace({
                     {isPublished ? (
                       <>
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Veröffentlicht
+                        {tr('Veröffentlicht', 'Published')}
                       </>
                     ) : (
                       <>
                         <Send className="h-3.5 w-3.5" />
-                        Als veröffentlicht markieren
+                        {tr('Als veröffentlicht markieren', 'Mark as published')}
                       </>
                     )}
                   </Button>
@@ -183,7 +186,7 @@ export function AIEditorWorkspace({
               </TooltipTrigger>
               {currentStatus !== 'Angeliefert' && !isPublished && (
                 <TooltipContent>
-                  Status muss "Angeliefert" sein (Aktuell: {currentStatus})
+                  {tr('Status muss "Angeliefert" sein', 'Status must be "Delivered"')} ({tr('Aktuell', 'Current')}: {currentStatus})
                 </TooltipContent>
               )}
             </Tooltip>
@@ -199,7 +202,7 @@ export function AIEditorWorkspace({
               <>
                 <div className="border-b bg-primary/10 p-3 text-sm font-bold text-primary flex items-center gap-2 shrink-0">
                   <FileText className="h-4 w-4" />
-                  Neu erstellter Content
+                  {tr('Neu erstellter Content', 'Newly created content')}
                 </div>
                 <div className="p-3 overflow-auto bg-white flex-1 min-h-0">
                   <style jsx global>{`
@@ -292,11 +295,11 @@ export function AIEditorWorkspace({
                 <div className="grid grid-cols-2 border-b bg-muted/50 text-sm font-bold text-slate-600 shrink-0">
                   <div className="p-3 border-r flex items-center gap-2">
                     <Layout className="h-4 w-4" />
-                    v1 (Aktuell)
+                    {tr('v1 (Aktuell)', 'v1 (Current)')}
                   </div>
                   <div className="p-3 flex items-center gap-2 text-primary">
                     <ArrowLeftRight className="h-4 w-4" />
-                    v2 (KI Vorschlag / Edit)
+                    {tr('v2 (KI Vorschlag / Edit)', 'v2 (AI Suggestion / Edit)')}
                   </div>
                 </div>
                 <div className="overflow-auto flex-1 min-h-0">
@@ -338,7 +341,7 @@ export function AIEditorWorkspace({
             <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed h-full">
               <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
                 <FileText className="h-3.5 w-3.5" />
-                Aktueller Arbeitsstand
+                {tr('Aktueller Arbeitsstand', 'Current working state')}
               </div>
               <div className="flex-1 overflow-y-auto p-8 prose max-w-none prose-sm sm:prose-base custom-scrollbar min-h-0">
                 <style jsx global>{`

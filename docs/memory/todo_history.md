@@ -109,3 +109,19 @@
 - [x] Integrationen: DataForSEO Integration (Username/Password) im Admin-Bereich integriert.
 - [x] Logic: Branding-System um Kontrast-Berechnung und automatische Vordergrundfarben (`getBestForegroundColor`) erweitert.
 - [x] UI: Branding-Update Event-System für Echtzeit-Refreshes im Frontend implementiert.
+- [x] i18n: LanguageProvider + useI18n Hook + LanguageSwitcher implementiert (DE/EN).
+- [x] i18n: LanguageSwitcher auf native `<button>` umgebaut (Base UI Error #31 behoben).
+- [x] i18n: app-sidebar.tsx lokalisiert.
+- [x] i18n: authenticated-layout.tsx (Viewport-Warnung) lokalisiert.
+- [x] i18n: blacklist.tsx vollständig lokalisiert inkl. reaktiver Spalten via `buildColumns(tr)` + `useMemo`.
+- [x] i18n: keyword-import.tsx lokalisiert.
+- [x] i18n: KeywordFilterBar.tsx lokalisiert.
+- [x] i18n: EditorialFilterBar.tsx lokalisiert.
+- [x] i18n: EditKeywordModal.tsx lokalisiert.
+- [x] i18n: EditEditorialModal.tsx lokalisiert.
+- [x] i18n: monitoring/page.tsx lokalisiert.
+- [x] i18n: admin/page.tsx lokalisiert.
+- [x] i18n: admin/integrations-management.tsx lokalisiert.
+- [x] i18n: admin/cost-management.tsx lokalisiert.
+- [x] i18n: features/admin/optimization-rules-tab.tsx lokalisiert.
+- [x] i18n: features/admin/branding-tab.tsx lokalisiert.

@@ -1,4 +1,4 @@
-# Technische Entscheidungen (Stand: 26.04.2026)
+# Technische Entscheidungen (Stand: 28.04.2026)
 
 ## Agent-Workflow V2: Orchestrierungsmodell (26.04.2026)
 - **Serielles Parent-Orchestrierungsmodell**:
@@ -83,3 +83,22 @@
 - **Optimierungs-Guard**: Planung einer Optimierung erfordert nun zwingend, dass bereits ein "Content angeliefert" oder "Content veröffentlicht" Event in der Historie existiert.
 - **Row-Action Pattern**: Umstellung von expliziten "Details"-Buttons auf zeilenbasiertes Klicken in der Monitoring-Tabelle zur Verbesserung der UX.
 - **ROI Data Injection**: Die Monitoring-Übersicht API berechnet nun aggregierte Kosten-Einsparungen pro URL on-the-fly, um sie in der Haupttabelle anzuzeigen.
+
+## Internationalisierung (i18n) — Pattern & Regeln (28.04.2026)
+- **Inline-Translate Helper**: Statt eines zentralen `tr`-Exports aus `useI18n` wird `tr` als lokale Funktion in jeder Komponente definiert:
+  ```ts
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
+  ```
+  Dies ist das etablierte, konsistente Pattern im gesamten Projekt.
+- **useI18n API**: Gibt nur `{ locale, setLocale, t }` zurück — kein `tr`. Kein `tr` in den Hook hinzufügen.
+- **Kein Base UI für Language Switcher**: `@base-ui/react DropdownMenu.Trigger` mit Children führt zu Error #31. Language Switcher bleibt als native `<button>` Elemente.
+- **Columns mit Locale-Reaktivität**: Statische `const columns: ColumnDef[]` außerhalb von Komponenten können `useI18n` nicht nutzen. Pflicht-Pattern:
+  ```ts
+  function buildColumns(tr: (de: string, en: string) => string): ColumnDef<T>[] { ... }
+  // In Komponente:
+  const columns = useMemo(() => buildColumns(tr), [locale]);
+  ```
+- **Alle UI-Texte müssen multilingual sein**: Bei jeder neuen Komponente oder jedem neuen Feature müssen alle sichtbaren Strings mit `tr(de, en)` gewrappt werden. Hardcodierte deutsche oder englische UI-Strings sind nicht akzeptiert.
+- **Locale-Persistenz**: Die gewählte Sprache wird in `localStorage` gespeichert (via `LanguageProvider`). Standard-Locale ist `"de"`.
+- **Keine `document.documentElement.lang` für reaktive Übersetzungen**: Dieser Wert reagiert nicht auf React-State-Änderungen und darf nur als Fallback für nicht-reaktive Kontexte (z.B. `toLocaleDateString`) genutzt werden — nicht als Basis für UI-Text-Entscheidungen.
