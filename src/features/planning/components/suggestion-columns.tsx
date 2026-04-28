@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Zap, ExternalLink } from "lucide-react";
 import { PlanningService } from "../services/planning-service";
 import { textColumnFilterFn } from "./filter-utils";
-import { useI18n } from "@/i18n/use-i18n";
-import { toLocaleTag } from "@/i18n/locale-utils";
 
 const AddToEditorialButton = ({ row }: { row: any }) => {
   const [loading, setLoading] = React.useState(false);
@@ -134,21 +132,21 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Search_Volume",
     header: "Suchvolumen",
     cell: ({ row }) => {
-      const { locale } = useI18n();
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const val = row.getValue("Search_Volume") as number;
-      return val ? val.toLocaleString(toLocaleTag(locale)) : "-";
+      return val ? val.toLocaleString(activeLocale) : "-";
     },
   },
   {
     accessorKey: "Last_Published",
     header: "Letzte Änderung",
     cell: ({ row }) => {
-      const { locale } = useI18n();
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const date = row.getValue("Last_Published") as string;
       if (!date) return <span className="text-sm text-muted-foreground">Neu</span>;
       return (
         <span className="text-sm text-muted-foreground">
-          {new Date(date).toLocaleDateString(toLocaleTag(locale))}
+          {new Date(date).toLocaleDateString(activeLocale)}
         </span>
       );
     },

@@ -5,8 +5,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/airtable-types";
 import { textColumnFilterFn } from "./filter-utils";
-import { useI18n } from "@/i18n/use-i18n";
-import { toLocaleTag } from "@/i18n/locale-utils";
 
 export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
@@ -93,9 +91,9 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     header: "SV",
     size: 60,
     cell: ({ row }) => {
-      const { locale } = useI18n();
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const val = row.getValue("Search_Volume") as number;
-      return val ? val.toLocaleString(toLocaleTag(locale)) : "-";
+      return val ? val.toLocaleString(activeLocale) : "-";
     },
   },
   {
