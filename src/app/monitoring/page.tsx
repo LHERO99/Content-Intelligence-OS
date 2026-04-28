@@ -84,6 +84,7 @@ export default function MonitoringPage() {
   const router = useRouter();
   const { addAlert } = useAlerts();
   const { t, locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [data, setData] = useState<MonitoringData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -140,7 +141,9 @@ export default function MonitoringPage() {
         message: t(message.title),
         description: (
           <span>
-            {message.description}{" "}
+             {tr(message.description, state === "ALREADY_IN_WORKFLOW"
+               ? "An optimization for this URL is already commissioned in content planning. A new request is possible only after the current process is completed and published."
+               : "This URL can only be planned for optimization after content has been created through this tool and marked as published.")}{" "}
               <button
                 onClick={() => router.push(`/history?url=${encodeURIComponent(firstBlocked.url)}`)}
                 className="underline hover:no-underline font-medium"
@@ -160,7 +163,7 @@ export default function MonitoringPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ urls: targetUrls }),
       });
-      if (!res.ok) throw new Error("Fehler beim Einreichen");
+      if (!res.ok) throw new Error(tr("Fehler beim Einreichen", "Error while submitting"));
       addAlert({ 
         type: "success", 
         message: t("monitoring.addedToSuggestions"),
@@ -236,7 +239,17 @@ export default function MonitoringPage() {
             <AlertCircle className="h-4 w-4 text-amber-600" />
             <AlertTitle>{t(eligibilityMessage?.title || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.title)}</AlertTitle>
             <AlertDescription>
-              {eligibilityMessage?.description || ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.description}{" "}
+              {eligibilityMessage
+                ? tr(
+                    eligibilityMessage.description,
+                    eligibilityState === "ALREADY_IN_WORKFLOW"
+                      ? "An optimization for this URL is already commissioned in content planning. A new request is possible only after the current process is completed and published."
+                      : "This URL can only be planned for optimization after content has been created through this tool and marked as published."
+                  )
+                : tr(
+                    ELIGIBILITY_MESSAGES.NO_PUBLISHED_CONTENT.description,
+                    "This URL can only be planned for optimization after content has been created through this tool and marked as published."
+                  )}{" "}
               <button
                 onClick={() => router.push(`/history?url=${encodeURIComponent(viewingUrl)}`)}
                 className="underline hover:no-underline font-medium"
@@ -335,7 +348,7 @@ export default function MonitoringPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">{data?.metrics.avgTTR || 0} {t("monitoring.days")}</div>
-                <p className="text-xs text-muted-foreground">Von Veröffentlichung bis Top 10 Ranking</p>
+                <p className="text-xs text-muted-foreground">{tr("Von Veröffentlichung bis Top 10 Ranking", "From publication to top 10 ranking")}</p>
               </CardContent>
             </Card>
 
@@ -350,7 +363,7 @@ export default function MonitoringPage() {
                 <div className="text-2xl font-bold">
                   {data?.metrics.totalAgencySavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
-                <p className="text-xs opacity-80">Gesamtvolumen durch KI-Workflow</p>
+                <p className="text-xs opacity-80">{tr("Gesamtvolumen durch KI-Workflow", "Total volume through AI workflow")}</p>
               </CardContent>
             </Card>
 
@@ -365,7 +378,7 @@ export default function MonitoringPage() {
                 <div className="text-2xl font-bold text-primary">
                   {data?.metrics.totalOverheadSavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
-                <p className="text-xs text-muted-foreground">Reduzierter interner Aufwand</p>
+                <p className="text-xs text-muted-foreground">{tr("Reduzierter interner Aufwand", "Reduced internal effort")}</p>
               </CardContent>
             </Card>
 
@@ -388,10 +401,10 @@ export default function MonitoringPage() {
                     (data?.metrics.counts.optimierung_produkt || 0)}
                 </div>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
-                  <span>Ratgeber: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
-                  <span>Kategorie: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
-                  <span>Marke: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
-                  <span>Produkt: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
+                  <span>{tr("Ratgeber", "Guide")}: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
+                  <span>{tr("Kategorie", "Category")}: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
+                  <span>{tr("Marke", "Brand")}: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
+                  <span>{tr("Produkt", "Product")}: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -402,17 +415,17 @@ export default function MonitoringPage() {
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-primary" />
-                  Texte im Zeitraum
+                  {t("monitoringDetail.textsInPeriod")}
                 </CardTitle>
-                <CardDescription className="text-[10px]">Erstellt vs. Optimiert</CardDescription>
+                <CardDescription className="text-[10px]">{t("monitoringDetail.createdVsOptimized")}</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col justify-center h-[100px]">
                 <div className="flex justify-between items-end border-b pb-2">
-                  <span className="text-sm text-muted-foreground">Erstellt:</span>
+                  <span className="text-sm text-muted-foreground">{t("monitoringDetail.created")}:</span>
                   <span className="text-xl font-bold text-primary">0</span>
                 </div>
                 <div className="flex justify-between items-end pt-2">
-                  <span className="text-sm text-muted-foreground">Optimiert:</span>
+                  <span className="text-sm text-muted-foreground">{t("monitoringDetail.optimized")}:</span>
                   <span className="text-xl font-bold text-primary">0</span>
                 </div>
               </CardContent>
@@ -422,13 +435,13 @@ export default function MonitoringPage() {
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
-                  Stabilitäts-Index
+                  {t("monitoringDetail.stabilityIndex")}
                 </CardTitle>
-                <CardDescription className="text-[10px]">Ø Optimierungen bis Peak-Performance</CardDescription>
+                <CardDescription className="text-[10px]">{t("monitoringDetail.avgOptimizationsToPeak")}</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center h-[100px]">
                 <div className="text-3xl font-bold text-primary">0.0</div>
-                <span className="ml-2 text-sm text-muted-foreground">Zyklen</span>
+                <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
               </CardContent>
             </Card>
 
@@ -438,11 +451,11 @@ export default function MonitoringPage() {
                   <Clock className="h-4 w-4 text-primary" />
                   Time-to-Performance
                 </CardTitle>
-                <CardDescription className="text-[10px]">Ø Tage bis signifikantem Klick-Anstieg</CardDescription>
+                  <CardDescription className="text-[10px]">{t("monitoringDetail.avgDaysToLift")}</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center h-[100px]">
                 <div className="text-3xl font-bold text-primary">0</div>
-                <span className="ml-2 text-sm text-muted-foreground">Tage</span>
+                <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
               </CardContent>
             </Card>
           </div>
@@ -554,7 +567,7 @@ export default function MonitoringPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <Badge variant={item.lastAction === "Erstellung" ? "default" : "secondary"}>
-                                {item.lastAction}
+                                {item.lastAction === "Erstellung" ? tr("Erstellung", "Creation") : item.lastAction === "Optimierung" ? tr("Optimierung", "Optimization") : item.lastAction}
                               </Badge>
                             </TableCell>
                           </TableRow>

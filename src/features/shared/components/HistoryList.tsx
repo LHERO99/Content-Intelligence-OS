@@ -13,7 +13,7 @@ interface HistoryListProps {
 
 const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const summary = log.Diff_Summary || "";
   const isDelivery = summary === "Content angeliefert";
   const isCommissioned = summary === "Content beauftragt";
@@ -74,9 +74,9 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
               className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
             >
               {isExpanded ? (
-                <>Content einklappen <ChevronUp className="h-3 w-3" /></>
+                <>{t('historyList.hideContent')} <ChevronUp className="h-3 w-3" /></>
               ) : (
-                <>Content anzeigen <ChevronDown className="h-3 w-3" /></>
+                <>{t('historyList.showContent')} <ChevronDown className="h-3 w-3" /></>
               )}
             </button>
             
@@ -94,7 +94,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
 };
 
 export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -111,10 +111,10 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
 
   if (displayHistory.length === 0) {
     return (
-      <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
-        <p className="text-xs text-muted-foreground">Keine Historie vorhanden</p>
-      </div>
-    );
+        <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
+        <p className="text-xs text-muted-foreground">{t('historyList.noHistory')}</p>
+        </div>
+      );
   }
 
   // Calculate versions ONLY for "Content angeliefert"
@@ -155,7 +155,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
         <p className="text-xs font-bold text-primary">
           {lastUpdate ? (
             <>
-              Status: {lastUpdate.Diff_Summary} am{" "}
+              {t('historyList.status')}: {lastUpdate.Diff_Summary} {locale === 'de' ? 'am' : 'on'}{" "}
               {new Date(lastUpdate.Created_At).toLocaleDateString(toLocaleTag(locale), { 
                 day: '2-digit', 
                 month: '2-digit', 
@@ -163,7 +163,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
               })}
             </>
           ) : (
-            <>Historie verfügbar</>
+            <>{t('historyList.available')}</>
           )}
         </p>
       </div>

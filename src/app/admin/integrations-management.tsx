@@ -66,6 +66,7 @@ function isDiscoverableProvider(providerId: IntegrationProvider): providerId is 
 export function IntegrationsManagement() {
   const { locale } = useI18n();
   const localeTag = toLocaleTag(locale);
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [integrations, setIntegrations] = useState<IntegrationState[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<IntegrationProvider | null>(null);
@@ -96,7 +97,7 @@ export function IntegrationsManagement() {
       const data = (await res.json()) as ApiResponse;
 
       if (!res.ok) {
-        throw new Error((data as any)?.error || "Fehler beim Laden der Integrationen");
+        throw new Error((data as any)?.error || tr("Fehler beim Laden der Integrationen", "Failed to load integrations"));
       }
 
       setProviders(data.providers || []);
@@ -108,7 +109,7 @@ export function IntegrationsManagement() {
         return nextProviders[0].id;
       });
     } catch (err: any) {
-      setError(err.message || "Fehler beim Laden der Integrationen");
+      setError(err.message || tr("Fehler beim Laden der Integrationen", "Failed to load integrations"));
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,7 @@ export function IntegrationsManagement() {
     });
 
     if (!Object.keys(payloadValues).length) {
-      setError(`Bitte mindestens ein Feld für ${provider.name} ausfüllen.`);
+      setError(tr(`Bitte mindestens ein Feld für ${provider.name} ausfüllen.`, `Please provide at least one field for ${provider.name}.`));
       return;
     }
 
@@ -155,14 +156,14 @@ export function IntegrationsManagement() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error || `Fehler beim Speichern für ${provider.name}`);
+        throw new Error(data?.error || tr(`Fehler beim Speichern für ${provider.name}`, `Failed to save ${provider.name}`));
       }
 
-      setSuccess(`${provider.name} erfolgreich gespeichert.`);
+      setSuccess(tr(`${provider.name} erfolgreich gespeichert.`, `${provider.name} saved successfully.`));
       setFormValues((prev) => ({ ...prev, [provider.id]: {} }));
       await fetchIntegrations();
     } catch (err: any) {
-      setError(err.message || `Fehler beim Speichern für ${provider.name}`);
+      setError(err.message || tr(`Fehler beim Speichern für ${provider.name}`, `Failed to save ${provider.name}`));
     } finally {
       setSavingProvider(null);
     }
@@ -180,19 +181,19 @@ export function IntegrationsManagement() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || `Verbindungstest für ${provider.name} fehlgeschlagen`);
+        throw new Error(data?.error || tr(`Verbindungstest für ${provider.name} fehlgeschlagen`, `Connection test for ${provider.name} failed`));
       }
 
       setTestResult((prev) => ({
         ...prev,
         [provider.id]: {
           ok: true,
-          message: data?.message || "Verbindung erfolgreich getestet.",
+          message: data?.message || tr("Verbindung erfolgreich getestet.", "Connection test successful."),
           testedAt: new Date().toISOString(),
         },
       }));
     } catch (err: any) {
-      const message = err.message || `Verbindungstest für ${provider.name} fehlgeschlagen`;
+      const message = err.message || tr(`Verbindungstest für ${provider.name} fehlgeschlagen`, `Connection test for ${provider.name} failed`);
       setTestResult((prev) => ({
         ...prev,
         [provider.id]: {
@@ -224,7 +225,7 @@ export function IntegrationsManagement() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || `Modelle für ${provider.name} konnten nicht geladen werden`);
+        throw new Error(data?.error || tr(`Modelle für ${provider.name} konnten nicht geladen werden`, `Could not load models for ${provider.name}`));
       }
 
       const models = Array.isArray(data?.models) ? (data.models as DiscoveredModel[]) : [];
@@ -233,7 +234,7 @@ export function IntegrationsManagement() {
         [provider.id]: models,
       }));
     } catch (err: any) {
-      const message = err.message || `Modelle für ${provider.name} konnten nicht geladen werden`;
+      const message = err.message || tr(`Modelle für ${provider.name} konnten nicht geladen werden`, `Could not load models for ${provider.name}`);
       setModelErrorsByProvider((prev) => ({
         ...prev,
         [provider.id]: message,
@@ -267,9 +268,9 @@ export function IntegrationsManagement() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <PlugZap className="h-5 w-5" />
-              Provider
+              {tr("Provider", "Provider")}
             </CardTitle>
-            <CardDescription>Wähle links einen Provider und konfiguriere ihn im Detailbereich.</CardDescription>
+            <CardDescription>{tr("Wähle links einen Provider und konfiguriere ihn im Detailbereich.", "Choose a provider on the left and configure it in the detail pane.")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {providers.map((provider) => {
@@ -293,11 +294,11 @@ export function IntegrationsManagement() {
                       <div className="text-sm font-medium">{provider.name}</div>
                       <div className="text-xs text-muted-foreground line-clamp-1">{provider.description}</div>
                     </div>
-                    <Badge variant={configured ? "default" : "secondary"}>{configured ? "Verbunden" : "Offen"}</Badge>
+                    <Badge variant={configured ? "default" : "secondary"}>{configured ? tr("Verbunden", "Connected") : tr("Offen", "Open")}</Badge>
                   </div>
                   <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{result ? `Letzter Test: ${result.ok ? "OK" : "Fehler"}` : "Noch nicht getestet"}</span>
-                    {isDiscoverableProvider(provider.id) ? <span>{modelCount} Modelle</span> : <span>-</span>}
+                    <span>{result ? tr(`Letzter Test: ${result.ok ? "OK" : "Fehler"}`, `Last test: ${result.ok ? "OK" : "Error"}`) : tr("Noch nicht getestet", "Not tested yet")}</span>
+                    {isDiscoverableProvider(provider.id) ? <span>{tr(`${modelCount} Modelle`, `${modelCount} models`)}</span> : <span>-</span>}
                   </div>
                 </button>
               );
@@ -307,7 +308,7 @@ export function IntegrationsManagement() {
 
         {!selectedProvider ? (
           <Card>
-            <CardContent className="py-10 text-sm text-muted-foreground">Kein Provider ausgewählt.</CardContent>
+            <CardContent className="py-10 text-sm text-muted-foreground">{tr("Kein Provider ausgewählt.", "No provider selected.")}</CardContent>
           </Card>
         ) : (
           <Card>
@@ -315,7 +316,7 @@ export function IntegrationsManagement() {
               <CardTitle className="flex items-center justify-between gap-3">
                 <span>{selectedProvider.name}</span>
                 <Badge variant={selectedConfigured ? "default" : "secondary"}>
-                  {selectedConfigured ? "Verbunden" : "Nicht verbunden"}
+                  {selectedConfigured ? tr("Verbunden", "Connected") : tr("Nicht verbunden", "Not connected")}
                 </Badge>
               </CardTitle>
               <CardDescription>{selectedProvider.description}</CardDescription>
@@ -323,7 +324,7 @@ export function IntegrationsManagement() {
             <CardContent className="space-y-6">
               {error && (
                 <Alert variant="destructive">
-                  <AlertTitle>Fehler</AlertTitle>
+                  <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -331,15 +332,15 @@ export function IntegrationsManagement() {
               {success && (
                 <Alert>
                   <ShieldCheck className="h-4 w-4" />
-                  <AlertTitle>Gespeichert</AlertTitle>
+                  <AlertTitle>{tr("Gespeichert", "Saved")}</AlertTitle>
                   <AlertDescription>{success}</AlertDescription>
                 </Alert>
               )}
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold">1) Zugangsdaten</h3>
-                  <p className="text-xs text-muted-foreground">Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.</p>
+                  <h3 className="text-sm font-semibold">{tr("1) Zugangsdaten", "1) Credentials")}</h3>
+                  <p className="text-xs text-muted-foreground">{tr("Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.", "Provide or update credentials for this provider.")}</p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   {selectedProvider.fields.map((field) => {
@@ -355,7 +356,7 @@ export function IntegrationsManagement() {
                           className="h-10"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {masked ? `Aktueller Wert: ${masked}` : "Noch kein Wert hinterlegt."}
+                          {masked ? tr(`Aktueller Wert: ${masked}`, `Current value: ${masked}`) : tr("Noch kein Wert hinterlegt.", "No value stored yet.")}
                         </p>
                       </div>
                     );
@@ -367,14 +368,14 @@ export function IntegrationsManagement() {
                   className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Speichern
+                  {tr("Speichern", "Save")}
                 </Button>
               </section>
 
               <section className="space-y-4 border-t pt-5">
                 <div>
-                  <h3 className="text-sm font-semibold">2) Verbindung testen</h3>
-                  <p className="text-xs text-muted-foreground">Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.</p>
+                  <h3 className="text-sm font-semibold">{tr("2) Verbindung testen", "2) Test connection")}</h3>
+                  <p className="text-xs text-muted-foreground">{tr("Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.", "Checks whether stored credentials work with the provider.")}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
@@ -384,11 +385,11 @@ export function IntegrationsManagement() {
                     className="h-10"
                   >
                     {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                    Verbindung testen
+                    {tr("Verbindung testen", "Test connection")}
                   </Button>
                   {selectedTestResult && (
                     <span className="text-xs text-muted-foreground">
-                      Letzter Test: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
+                      {tr("Letzter Test", "Last test")}: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
                     </span>
                   )}
                 </div>
@@ -402,10 +403,9 @@ export function IntegrationsManagement() {
                 )}
 
                 <Alert>
-                  <AlertTitle>Tipp zur Kostenkontrolle</AlertTitle>
+                  <AlertTitle>{tr("Tipp zur Kostenkontrolle", "Cost control tip")}</AlertTitle>
                   <AlertDescription>
-                    Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche
-                    Kostensicherheit bei automatisierten Workflows.
+                    {tr("Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche Kostensicherheit bei automatisierten Workflows.", "Set a spending limit in your provider account where possible. This adds cost safety for automated workflows.")}
                   </AlertDescription>
                 </Alert>
               </section>
@@ -413,8 +413,8 @@ export function IntegrationsManagement() {
               {selectedCanDiscoverModels && (
                 <section className="space-y-4 border-t pt-5">
                   <div>
-                    <h3 className="text-sm font-semibold">3) Verfügbare Modelle</h3>
-                    <p className="text-xs text-muted-foreground">Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.</p>
+                    <h3 className="text-sm font-semibold">{tr("3) Verfügbare Modelle", "3) Available models")}</h3>
+                    <p className="text-xs text-muted-foreground">{tr("Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.", "Load models server-side via the configured API key connection.")}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -423,7 +423,7 @@ export function IntegrationsManagement() {
                       onClick={() => loadModels(selectedProvider, false)}
                       disabled={!selectedConfigured || selectedModelsLoading}
                     >
-                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Modelle laden"}
+                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("Modelle laden", "Load models")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -432,7 +432,7 @@ export function IntegrationsManagement() {
                       disabled={!selectedConfigured || selectedModelsLoading}
                     >
                       <RefreshCcw className="mr-1 h-4 w-4" />
-                      Aktualisieren
+                      {tr("Aktualisieren", "Refresh")}
                     </Button>
                   </div>
 
@@ -457,7 +457,7 @@ export function IntegrationsManagement() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Noch keine Modelle geladen.</p>
+                    <p className="text-xs text-muted-foreground">{tr("Noch keine Modelle geladen.", "No models loaded yet.")}</p>
                   )}
                 </section>
               )}

@@ -35,6 +35,7 @@ import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
 import { IntegrationsManagement } from "./integrations-management";
+import { useI18n } from "@/i18n/use-i18n";
 
 interface User {
   id: string;
@@ -46,6 +47,8 @@ interface User {
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t, locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,7 @@ export default function AdminPage() {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/users");
-      if (!res.ok) throw new Error("Fehler beim Laden der Benutzer");
+      if (!res.ok) throw new Error(t("admin.errorLoadingUsers"));
       const data = await res.json();
       setUsers(data);
     } catch (err: any) {
@@ -99,7 +102,7 @@ export default function AdminPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Fehler beim Einladen des Benutzers");
+      if (!res.ok) throw new Error(data.error || t("admin.errorInvitingUser"));
 
       setInviteResult(data);
       setInviteData({ name: "", email: "", role: "Editor" });
@@ -120,7 +123,7 @@ export default function AdminPage() {
         body: JSON.stringify({ Name: editData.name, Role: editData.role }),
       });
 
-      if (!res.ok) throw new Error("Fehler beim Aktualisieren des Benutzers");
+      if (!res.ok) throw new Error(t("admin.errorUpdatingUser"));
       
       setEditingUserId(null);
       fetchUsers();
@@ -132,7 +135,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm("Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?")) return;
+    if (!confirm(t("admin.confirmDeleteUser"))) return;
     
     setDeletingUserId(id);
     try {
@@ -140,7 +143,7 @@ export default function AdminPage() {
         method: "DELETE",
       });
 
-      if (!res.ok) throw new Error("Fehler beim Löschen des Benutzers");
+      if (!res.ok) throw new Error(t("admin.errorDeletingUser"));
       
       fetchUsers();
     } catch (err: any) {
@@ -167,12 +170,12 @@ export default function AdminPage() {
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">Admin-Bereich</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">{t("admin.title")}</h1>
       </div>
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Fehler</AlertTitle>
+          <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -181,23 +184,23 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Nutzer
+            {t("admin.users")}
           </TabsTrigger>
           <TabsTrigger value="costs" className="flex items-center gap-2">
             <Coins className="h-4 w-4" />
-            ROI & Kosten
+            {t("admin.costs")}
           </TabsTrigger>
           <TabsTrigger value="branding" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
-            Branding
+            {t("admin.branding")}
           </TabsTrigger>
           <TabsTrigger value="optimization-rules" className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4" />
-            Optimierungsregeln
+            {t("admin.optimizationRules")}
           </TabsTrigger>
           <TabsTrigger value="integrations" className="flex items-center gap-2">
             <PlugZap className="h-4 w-4" />
-            Integrationen
+            {t("admin.integrations")}
           </TabsTrigger>
         </TabsList>
 
@@ -208,16 +211,16 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserPlus className="h-5 w-5" />
-                  Neuen Benutzer einladen
+                  {t("admin.inviteUser")}
                 </CardTitle>
                 <CardDescription>
-                  Erstellen Sie einen neuen Benutzer und generieren Sie einen Einladungslink.
+                  {t("admin.inviteDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleInvite} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Vollständiger Name</label>
+                    <label className="text-sm font-medium">{t("admin.fullName")}</label>
                     <Input 
                       placeholder="Max Mustermann" 
                       value={inviteData.name}
@@ -227,7 +230,7 @@ export default function AdminPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">E-Mail-Adresse</label>
+                    <label className="text-sm font-medium">{t("admin.email")}</label>
                     <Input 
                       type="email" 
                       placeholder="max@example.com" 
@@ -238,13 +241,13 @@ export default function AdminPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Rolle</label>
+                    <label className="text-sm font-medium">{t("admin.role")}</label>
                     <Select 
                       value={inviteData.role} 
                       onValueChange={(v) => setInviteData({ ...inviteData, role: v || "Editor" })}
                     >
                       <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Rolle auswählen" />
+                        <SelectValue placeholder={t("admin.chooseRole")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Admin">Admin</SelectItem>
@@ -254,20 +257,20 @@ export default function AdminPage() {
                     </Select>
                   </div>
                   <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={inviting}>
-                    {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Einladung generieren"}
+                    {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("admin.generateInvite")}
                   </Button>
                 </form>
 
                 {inviteResult && (
                   <div className="mt-6 space-y-4 rounded-lg border bg-muted p-4">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium">Temporäres Passwort:</p>
+                      <p className="text-sm font-medium">{tr("Temporäres Passwort:", "Temporary password:")}</p>
                       <code className="block rounded bg-background p-2 text-xs font-mono">
                         {inviteResult.tempPassword}
                       </code>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-medium">Einladungslink:</p>
+                      <p className="text-sm font-medium">{tr("Einladungslink:", "Invitation link:")}</p>
                       <div className="flex gap-2">
                         <Input 
                           readOnly 
@@ -284,7 +287,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      Teilen Sie diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.
+                      {tr("Teilen Sie diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.", "Share this link and password with the user. They should change their password after first login.")}
                     </p>
                   </div>
                 )}
@@ -294,9 +297,9 @@ export default function AdminPage() {
             {/* User List */}
             <Card>
               <CardHeader>
-                <CardTitle>Benutzerliste</CardTitle>
+                <CardTitle>{t("admin.userList")}</CardTitle>
                 <CardDescription>
-                  Alle aktuell im System registrierten Benutzer.
+                  {t("admin.userListDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -309,10 +312,10 @@ export default function AdminPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>E-Mail</TableHead>
-                          <TableHead>Rolle</TableHead>
-                          <TableHead className="text-right">Aktionen</TableHead>
+                          <TableHead>{tr("Name", "Name")}</TableHead>
+                          <TableHead>{tr("E-Mail", "Email")}</TableHead>
+                          <TableHead>{t("admin.role")}</TableHead>
+                          <TableHead className="text-right">{tr("Aktionen", "Actions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -332,7 +335,7 @@ export default function AdminPage() {
                             <TableCell>{user.Email}</TableCell>
                             <TableCell>
                               {editingUserId === user.id ? (
-                                <Select 
+                              <Select 
                                   value={editData.role} 
                                   onValueChange={(v) => setEditData({ ...editData, role: v || "Editor" })}
                                 >
@@ -400,7 +403,7 @@ export default function AdminPage() {
                         {users.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground">
-                              Keine Benutzer gefunden.
+                              {tr("Keine Benutzer gefunden.", "No users found.")}
                             </TableCell>
                           </TableRow>
                         )}
