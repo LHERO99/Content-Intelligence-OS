@@ -63,7 +63,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       <SidebarProvider defaultOpen={true} className="min-h-screen items-stretch">
         <AppSidebar collapsible="none" className="h-screen sticky top-0" />
         <main className="flex-1 min-h-screen overflow-y-auto bg-[#f8faf9]">
-          <div className="p-8 pt-[72px]">
+          <div className="p-6">
             <GlobalAlerts />
             {children}
           </div>
@@ -100,7 +100,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   return (
     <main className="flex-1 bg-[#f8faf9]">
-      <div className="p-8 pt-[72px]">
+      <div className="p-6">
         <GlobalAlerts />
         {children}
       </div>

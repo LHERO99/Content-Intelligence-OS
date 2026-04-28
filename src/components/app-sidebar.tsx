@@ -66,21 +66,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="p-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-center px-2">
+      <SidebarHeader className="p-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-center px-1">
             <Image
               src={logoUrl}
               alt="App Logo"
-              width={140}
-              height={36}
+              width={120}
+              height={32}
               priority
-              className="h-auto w-auto max-h-[60px] object-contain"
+              className="h-auto w-auto max-h-[50px] object-contain"
             />
           </div>
-          <div className="flex items-center gap-2 font-bold px-2" style={{ color: primaryColor }}>
-            <ShieldCheck className="h-5 w-5" />
-              <span className="text-sm">SEO Content Intelligence</span>
+          <div className="flex items-center gap-2 font-bold px-1" style={{ color: primaryColor }}>
+            <ShieldCheck className="h-4 w-4" />
+              <span className="text-xs">SEO Content Intelligence</span>
             </div>
           </div>
         </SidebarHeader>
@@ -131,10 +131,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
-        <Separator className="mb-4" />
+      <SidebarFooter className="p-3">
+        <Separator className="mb-3" />
         {session ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {session?.user?.role === "Admin" && (
               <SidebarMenu>
                 <SidebarMenuItem>
