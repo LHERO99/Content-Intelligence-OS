@@ -105,9 +105,8 @@ export function AIEditorWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keywordId,
-          actionType: 'KI-Chat',
           contentBody: content,
-          Diff_Summary: 'KI-Optimierung übernommen',
+          Diff_Summary: 'KI-Chat: KI-Optimierung übernommen',
           version: 'v2',
         }),
       });
