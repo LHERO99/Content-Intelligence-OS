@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, Sparkles, User, CheckCheck, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Sparkles, User, CheckCheck, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,25 +23,36 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  /** If present, a "apply" button will be shown for this message */
+  /** Refined HTML content proposed by the AI for this message */
   refinedContent?: string;
-  applied?: boolean;
+  /** null = not yet acted on, 'applied' = saved to DB, 'rejected' = user dismissed */
+  status?: 'applied' | 'rejected' | null;
 }
 
 interface AIChatPanelProps {
   currentContent: string;
-  onApplyChanges: (newContent: string) => void;
+  /** Called when the AI returns a new proposal — parent should show it in the preview */
+  onPreviewChange: (content: string | null) => void;
+  /** Called when user clicks "Übernehmen" — parent should save to DB; resolves true on success */
+  onApplyChanges: () => Promise<boolean>;
   keywordId: string;
   keyword: string;
 }
 
-export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword }: AIChatPanelProps) {
+export function AIChatPanel({
+  currentContent,
+  onPreviewChange,
+  onApplyChanges,
+  keywordId,
+  keyword,
+}: AIChatPanelProps) {
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
 
   // Model selection
   const [providers, setProviders] = useState<ProviderWithModels[]>([]);
@@ -98,11 +109,26 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
     }
   }, [messages, isLoading]);
 
-  const handleApply = (messageId: string, refinedContent: string) => {
-    onApplyChanges(refinedContent);
+  const handleApply = async (messageId: string) => {
+    setApplyingId(messageId);
+    try {
+      const success = await onApplyChanges();
+      if (success) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, status: 'applied' } : m))
+        );
+      }
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
+  const handleReject = (messageId: string, refinedContent: string) => {
     setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, applied: true } : m))
+      prev.map((m) => (m.id === messageId ? { ...m, status: 'rejected' } : m))
     );
+    // Reset preview back to current working content
+    onPreviewChange(null);
   };
 
   const handleSendMessage = async () => {
@@ -133,7 +159,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
           instructions: sentInput,
           modelId,
           providerId,
-          tenantId: 'default', // Multi-tenant stub
+          tenantId: 'default',
         }),
       });
 
@@ -152,13 +178,16 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
           id: assistantId,
           role: 'assistant',
           content: tr(
-            'Ich habe den Text überarbeitet. Sieh dir die Vorschau links an und übernimm die Änderungen, wenn du zufrieden bist.',
-            "I've revised the text. Review the preview on the left and apply the changes if you're happy with them."
+            'Ich habe den Text überarbeitet. Sieh dir die Vorschau links an und übernimm oder lehn die Änderungen ab.',
+            "I've revised the text. Review the preview on the left and accept or reject the changes."
           ),
           refinedContent,
-          applied: false,
+          status: null,
         },
       ]);
+
+      // Immediately update the left preview with the AI proposal
+      onPreviewChange(refinedContent);
     } catch (error: any) {
       setMessages((prev) => [
         ...prev,
@@ -175,16 +204,6 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
       setIsLoading(false);
     }
   };
-
-  const selectedLabel = (() => {
-    if (!selectedProviderModel) return null;
-    const [pid, ...mparts] = selectedProviderModel.split('::');
-    const mid = mparts.join('::');
-    const provider = providers.find((p) => p.id === pid);
-    const model = provider?.models.find((m) => m.id === mid);
-    if (!provider || !model) return null;
-    return `${provider.name} · ${model.label}`;
-  })();
 
   return (
     <div className="flex flex-col h-full bg-slate-50 border rounded-lg overflow-hidden shadow-sm">
@@ -218,9 +237,7 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
         ) : (
           <Select value={selectedProviderModel} onValueChange={(v) => setSelectedProviderModel(v ?? '')}>
             <SelectTrigger className="h-8 text-xs border-slate-200 focus:ring-primary">
-              <SelectValue
-                placeholder={tr('Modell auswählen…', 'Select model…')}
-              />
+              <SelectValue placeholder={tr('Modell auswählen…', 'Select model…')} />
             </SelectTrigger>
             <SelectContent className="max-h-72">
               {providers.map((provider) => (
@@ -284,24 +301,52 @@ export function AIChatPanel({ currentContent, onApplyChanges, keywordId, keyword
                   >
                     {m.content}
                   </div>
-                  {/* Apply button for messages that carry refined content */}
-                  {m.role === 'assistant' && m.refinedContent && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleApply(m.id, m.refinedContent!)}
-                      disabled={m.applied}
-                      className={cn(
-                        'h-8 gap-2 text-xs font-bold self-start transition-all',
-                        m.applied
-                          ? 'bg-green-600 hover:bg-green-600 text-white cursor-default'
-                          : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                      )}
-                    >
+
+                  {/* Action buttons for messages with a proposal */}
+                  {m.role === 'assistant' && m.refinedContent && m.status !== 'applied' && m.status !== 'rejected' && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApply(m.id)}
+                        disabled={applyingId === m.id}
+                        className="h-8 gap-2 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all"
+                      >
+                        {applyingId === m.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCheck className="h-3.5 w-3.5" />
+                        )}
+                        {applyingId === m.id
+                          ? tr('Wird gespeichert…', 'Saving…')
+                          : tr('Übernehmen', 'Accept')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleReject(m.id, m.refinedContent!)}
+                        disabled={applyingId === m.id}
+                        className="h-8 gap-2 text-xs font-bold border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-300 transition-all"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        {tr('Ablehnen', 'Reject')}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Applied confirmation */}
+                  {m.role === 'assistant' && m.status === 'applied' && (
+                    <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
                       <CheckCheck className="h-3.5 w-3.5" />
-                      {m.applied
-                        ? tr('Übernommen', 'Applied')
-                        : tr('Änderungen übernehmen', 'Apply changes')}
-                    </Button>
+                      {tr('Übernommen & gespeichert', 'Accepted & saved')}
+                    </div>
+                  )}
+
+                  {/* Rejected confirmation */}
+                  {m.role === 'assistant' && m.status === 'rejected' && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                      <X className="h-3.5 w-3.5" />
+                      {tr('Abgelehnt', 'Rejected')}
+                    </div>
                   )}
                 </div>
               </div>

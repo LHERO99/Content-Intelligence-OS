@@ -49,6 +49,8 @@ export function AIEditorWorkspace({
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
   const [workingContent, setWorkingContent] = useState(v2Content);
   const [isSaving, setIsSaving] = useState(false);
+  // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(false);
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
@@ -91,7 +93,8 @@ export function AIEditorWorkspace({
       setIsSaving(false);
     }
   };
-  const handleSaveFromAI = async (html: string) => {
+  const handleSaveFromAI = async (): Promise<boolean> => {
+    if (!previewContent) return false;
     setIsSaving(true);
     try {
       const response = await fetch('/api/planning/history', {
@@ -100,7 +103,7 @@ export function AIEditorWorkspace({
         body: JSON.stringify({
           keywordId,
           actionType: 'KI-Chat',
-          contentBody: html,
+          contentBody: previewContent,
           Diff_Summary: 'KI-Optimierung übernommen',
           version: 'v2',
         }),
@@ -108,11 +111,14 @@ export function AIEditorWorkspace({
 
       if (!response.ok) throw new Error('Speichern fehlgeschlagen');
 
-      setWorkingContent(html);
+      setWorkingContent(previewContent);
+      setPreviewContent(null);
       toast.success(tr('KI-Änderungen erfolgreich gespeichert', 'AI changes saved successfully'));
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
+      return true;
     } catch {
       toast.error(tr('Fehler beim Speichern der KI-Änderungen', 'Error saving AI changes'));
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -369,7 +375,14 @@ export function AIEditorWorkspace({
             <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed h-full">
               <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
                 <FileText className="h-3.5 w-3.5" />
-                {tr('Aktueller Arbeitsstand', 'Current working state')}
+                {previewContent
+                  ? tr('KI-Vorschlag (Vorschau)', 'AI Proposal (Preview)')
+                  : tr('Aktueller Arbeitsstand', 'Current working state')}
+                {previewContent && (
+                  <span className="ml-auto normal-case tracking-normal font-normal text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {tr('Nicht gespeichert', 'Unsaved')}
+                  </span>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto p-8 prose max-w-none prose-sm sm:prose-base custom-scrollbar min-h-0">
                 <style jsx global>{`
@@ -430,14 +443,15 @@ export function AIEditorWorkspace({
                 `}</style>
                 <div 
                   className="ai-chat-preview font-sans"
-                  dangerouslySetInnerHTML={{ __html: workingContent }}
+                  dangerouslySetInnerHTML={{ __html: previewContent ?? workingContent }}
                 />
               </div>
             </div>
             <div className="lg:col-span-1 h-full overflow-hidden">
               <AIChatPanel 
                 currentContent={workingContent} 
-                onApplyChanges={(newContent) => handleSaveFromAI(newContent)}
+                onPreviewChange={(content) => setPreviewContent(content)}
+                onApplyChanges={handleSaveFromAI}
                 keywordId={keywordId}
                 keyword={keyword}
               />
