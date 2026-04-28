@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDiffViewer from 'react-diff-viewer-continued';
 import { RichTextEditor } from './rich-text-editor';
 import { AIChatPanel } from './ai-chat-panel';
@@ -51,17 +51,23 @@ export function AIEditorWorkspace({
   const [isSaving, setIsSaving] = useState(false);
   // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  // Ref so handleSaveFromAI always reads the current previewContent without stale-closure issues.
+  const previewContentRef = useRef<string | null>(null);
+  useEffect(() => { previewContentRef.current = previewContent; }, [previewContent]);
   const [isPublished, setIsPublished] = useState(false);
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
 
-  // Sync working content if v2Content changes (e.g. from polling), but only in preview mode.
-  // Edit and AI-chat modes manage their own local working content to avoid overwriting unsaved changes.
+  // Sync workingContent when the server delivers new content (polling / refresh).
+  // Only blocked during active editing so Tiptap changes aren't lost.
+  // activeMode is intentionally NOT a dependency — tab switches must not reset content
+  // to stale v2Content (e.g. right after an AI save before polling catches up).
   useEffect(() => {
-    if (activeMode === 'preview') {
+    if (activeMode !== 'edit') {
       setWorkingContent(v2Content);
     }
-  }, [v2Content, activeMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v2Content]);
 
   const handleSaveContent = async (html: string) => {
     setIsSaving(true);
@@ -94,7 +100,9 @@ export function AIEditorWorkspace({
     }
   };
   const handleSaveFromAI = async (): Promise<boolean> => {
-    if (!previewContent) return false;
+    // Read from ref — always up-to-date regardless of closure capture timing
+    const content = previewContentRef.current;
+    if (!content) return false;
     setIsSaving(true);
     try {
       const response = await fetch('/api/planning/history', {
@@ -103,7 +111,7 @@ export function AIEditorWorkspace({
         body: JSON.stringify({
           keywordId,
           actionType: 'KI-Chat',
-          contentBody: previewContent,
+          contentBody: content,
           Diff_Summary: 'KI-Optimierung übernommen',
           version: 'v2',
         }),
@@ -111,7 +119,7 @@ export function AIEditorWorkspace({
 
       if (!response.ok) throw new Error('Speichern fehlgeschlagen');
 
-      setWorkingContent(previewContent);
+      setWorkingContent(content);
       setPreviewContent(null);
       toast.success(tr('KI-Änderungen erfolgreich gespeichert', 'AI changes saved successfully'));
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
