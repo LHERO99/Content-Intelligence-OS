@@ -53,9 +53,10 @@ export function AIEditorWorkspace({
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
 
-  // Sync working content if v2Content changes (e.g. from polling), but only if not in edit mode
+  // Sync working content if v2Content changes (e.g. from polling), but only in preview mode.
+  // Edit and AI-chat modes manage their own local working content to avoid overwriting unsaved changes.
   useEffect(() => {
-    if (activeMode !== 'edit') {
+    if (activeMode === 'preview') {
       setWorkingContent(v2Content);
     }
   }, [v2Content, activeMode]);
@@ -90,6 +91,33 @@ export function AIEditorWorkspace({
       setIsSaving(false);
     }
   };
+  const handleSaveFromAI = async (html: string) => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/planning/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywordId,
+          actionType: 'KI-Chat',
+          contentBody: html,
+          Diff_Summary: 'KI-Optimierung übernommen',
+          version: 'v2',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Speichern fehlgeschlagen');
+
+      setWorkingContent(html);
+      toast.success(tr('KI-Änderungen erfolgreich gespeichert', 'AI changes saved successfully'));
+      window.dispatchEvent(new CustomEvent('refresh-planning-data'));
+    } catch {
+      toast.error(tr('Fehler beim Speichern der KI-Änderungen', 'Error saving AI changes'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handlePublish = async () => {
     setIsSaving(true);
     try {
@@ -409,7 +437,7 @@ export function AIEditorWorkspace({
             <div className="lg:col-span-1 h-full overflow-hidden">
               <AIChatPanel 
                 currentContent={workingContent} 
-                onApplyChanges={(newContent) => setWorkingContent(newContent)}
+                onApplyChanges={(newContent) => handleSaveFromAI(newContent)}
                 keywordId={keywordId}
                 keyword={keyword}
               />
