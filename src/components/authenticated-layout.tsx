@@ -21,16 +21,6 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   const isAuthPage = pathname?.startsWith("/auth/");
 
-  console.log("AuthenticatedLayout status:", status, "pathname:", pathname);
-
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -56,6 +46,14 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       sessionStorage.setItem(VIEWPORT_WARNING_STORAGE_KEY, "1");
     }
   };
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (status === "authenticated" && !isAuthPage) {
     return (
