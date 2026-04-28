@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Save, SlidersHorizontal, RefreshCw } from "lucide-react";
 import { OptimizationRuleSettings } from "@/lib/airtable-types";
+import { useI18n } from "@/i18n/use-i18n";
 
 const DEFAULT_SETTINGS: OptimizationRuleSettings = {
   AGE_DAYS: 180,
@@ -34,6 +35,8 @@ function clampNumber(value: number, min: number, max: number): number {
 }
 
 export function OptimizationRulesTab() {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [settings, setSettings] = useState<OptimizationRuleSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,11 +48,11 @@ export function OptimizationRulesTab() {
     setError(null);
     try {
       const res = await fetch('/api/planning/optimization-suggestions');
-      if (!res.ok) throw new Error('Fehler beim Laden der Regeln');
+      if (!res.ok) throw new Error(tr('Fehler beim Laden der Regeln', 'Error loading rules'));
       const data = await res.json();
       setSettings({ ...DEFAULT_SETTINGS, ...(data.settings || {}) });
     } catch (err: any) {
-      setError(err.message || 'Fehler beim Laden');
+      setError(err.message || tr('Fehler beim Laden', 'Error loading'));
     } finally {
       setLoading(false);
     }
@@ -103,12 +106,12 @@ export function OptimizationRulesTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Fehler beim Speichern der Regeln');
+      if (!res.ok) throw new Error(tr('Fehler beim Speichern der Regeln', 'Error saving rules'));
 
-      setSuccess('Regeln erfolgreich gespeichert.');
+      setSuccess(tr('Regeln erfolgreich gespeichert.', 'Rules saved successfully.'));
       await loadSettings();
     } catch (err: any) {
-      setError(err.message || 'Fehler beim Speichern');
+      setError(err.message || tr('Fehler beim Speichern', 'Error saving'));
     } finally {
       setSaving(false);
     }
@@ -119,22 +122,25 @@ export function OptimizationRulesTab() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-primary">
           <SlidersHorizontal className="h-5 w-5" />
-          Optimierungsregeln
+          {tr("Optimierungsregeln", "Optimization Rules")}
         </CardTitle>
         <CardDescription>
-          Konfigurieren Sie die Schwellwerte, ab wann veroffentlichte Inhalte wieder als Optimierungsvorschlag erscheinen.
+          {tr(
+            "Konfigurieren Sie die Schwellwerte, ab wann veröffentlichte Inhalte wieder als Optimierungsvorschlag erscheinen.",
+            "Configure the thresholds for when published content should appear as an optimization suggestion again."
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>Fehler</AlertTitle>
+            <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         {success && (
           <Alert>
-            <AlertTitle>Erfolg</AlertTitle>
+            <AlertTitle>{tr("Erfolg", "Success")}</AlertTitle>
             <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
@@ -147,7 +153,7 @@ export function OptimizationRulesTab() {
           <div className="space-y-4">
             <div className="rounded-md border p-4 space-y-2">
               <p className="text-sm leading-6">
-                Zeige einen Optimierungsvorschlag, wenn der Text alter als
+                {tr("Zeige einen Optimierungsvorschlag, wenn der Text älter als", "Show an optimization suggestion when content is older than")}
                 <Input
                   type="number"
                   className="mx-2 inline-flex h-8 w-28"
@@ -155,7 +161,7 @@ export function OptimizationRulesTab() {
                   onChange={(e) => updateField('AGE_DAYS', Number(e.target.value || 0))}
                   {...getInputProps('AGE_DAYS')}
                 />
-                Tagen ist und das Main-Keyword schlechter als Top
+                {tr("Tagen ist und das Main-Keyword schlechter als Top", "days and the main keyword ranks worse than top")}
                 <Input
                   type="number"
                   className="mx-2 inline-flex h-8 w-24"
@@ -163,16 +169,16 @@ export function OptimizationRulesTab() {
                   onChange={(e) => updateField('TOP_RANK_THRESHOLD', Number(e.target.value || 0))}
                   {...getInputProps('TOP_RANK_THRESHOLD')}
                 />
-                rankt.
+                {tr("rankt.", ".")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Empfehlung fur Re-Optimierung bei alteren Inhalten ohne Spitzenranking.
+                {tr("Empfehlung für Re-Optimierung bei älteren Inhalten ohne Spitzenranking.", "Recommendation for re-optimization of older content without top rankings.")}
               </p>
             </div>
 
             <div className="rounded-md border p-4 space-y-2">
               <p className="text-sm leading-6">
-                Zeige einen Optimierungsvorschlag, wenn sich das Ranking im Vergleich der letzten
+                {tr("Zeige einen Optimierungsvorschlag, wenn sich das Ranking im Vergleich der letzten", "Show an optimization suggestion if the ranking dropped in the last")}
                 <Input
                   type="number"
                   className="mx-2 inline-flex h-8 w-24"
@@ -180,7 +186,7 @@ export function OptimizationRulesTab() {
                   onChange={(e) => updateField('DROP_WINDOW_DAYS', Number(e.target.value || 0))}
                   {...getInputProps('DROP_WINDOW_DAYS')}
                 />
-                Tage um mindestens
+                {tr("Tage um mindestens", "days by at least")}
                 <Input
                   type="number"
                   className="mx-2 inline-flex h-8 w-24"
@@ -188,16 +194,16 @@ export function OptimizationRulesTab() {
                   onChange={(e) => updateField('DROP_THRESHOLD_PCT', Number(e.target.value || 0))}
                   {...getInputProps('DROP_THRESHOLD_PCT')}
                 />
-                % verschlechtert.
+                % {tr("verschlechtert.", ".")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Erkennt deutliche Verschlechterungen im jungsten Zeitraum.
+                {tr("Erkennt deutliche Verschlechterungen im jüngsten Zeitraum.", "Detects significant drops in the most recent period.")}
               </p>
             </div>
 
             <div className="rounded-md border p-4 space-y-2">
               <p className="text-sm leading-6">
-                Zeige einen Optimierungsvorschlag, wenn sich die Performance innerhalb von
+                {tr("Zeige einen Optimierungsvorschlag, wenn sich die Performance innerhalb von", "Show an optimization suggestion if performance within")}
                 <Input
                   type="number"
                   className="mx-2 inline-flex h-8 w-28"
@@ -205,7 +211,7 @@ export function OptimizationRulesTab() {
                   onChange={(e) => updateField('PERFORMANCE_WINDOW_DAYS', Number(e.target.value || 0))}
                   {...getInputProps('PERFORMANCE_WINDOW_DAYS')}
                 />
-                Tagen nach Veroffentlichung nicht um mindestens
+                {tr("Tagen nach Veröffentlichung nicht um mindestens", "days after publication has not improved by at least")}
                 <Input
                   type="number"
                   className="mx-2 inline-flex h-8 w-24"
@@ -213,10 +219,10 @@ export function OptimizationRulesTab() {
                   onChange={(e) => updateField('MIN_IMPROVEMENT_PCT', Number(e.target.value || 0))}
                   {...getInputProps('MIN_IMPROVEMENT_PCT')}
                 />
-                % verbessert.
+                % {tr("verbessert.", ".")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Pruft, ob nach Veroffentlichung genug Fortschritt bei Klicks, Impressionen oder Position erzielt wurde.
+                {tr("Prüft, ob nach Veröffentlichung genug Fortschritt bei Klicks, Impressionen oder Position erzielt wurde.", "Checks whether enough progress in clicks, impressions or position was achieved after publication.")}
               </p>
             </div>
           </div>
@@ -224,16 +230,19 @@ export function OptimizationRulesTab() {
 
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={loadSettings} disabled={loading || saving}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Neu laden
+            <RefreshCw className="h-4 w-4 mr-2" /> {tr("Neu laden", "Reload")}
           </Button>
           <Button onClick={save} disabled={loading || saving} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Speichern
+            {tr("Speichern", "Save")}
           </Button>
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Hinweis: URL-Mismatch ist aktuell deaktiviert, da die rankende URL im Datenmodell noch nicht verlasslich vorliegt.
+          {tr(
+            "Hinweis: URL-Mismatch ist aktuell deaktiviert, da die rankende URL im Datenmodell noch nicht verlässlich vorliegt.",
+            "Note: URL-Mismatch is currently disabled as the ranking URL is not yet reliably available in the data model."
+          )}
         </p>
       </CardContent>
     </Card>

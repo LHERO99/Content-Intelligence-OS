@@ -9,6 +9,7 @@ import { GlobalAlerts } from "@/components/global-alerts";
 import { PasswordChangeModal } from "@/components/password-change-modal";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n/use-i18n";
 
 const VIEWPORT_WARNING_BREAKPOINT = 1240;
 const VIEWPORT_WARNING_STORAGE_KEY = "viewport-warning-dismissed";
@@ -16,6 +17,8 @@ const VIEWPORT_WARNING_STORAGE_KEY = "viewport-warning-dismissed";
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [dismissedViewportWarning, setDismissedViewportWarning] = useState(false);
   const [showViewportWarning, setShowViewportWarning] = useState(false);
 
@@ -76,15 +79,17 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
         >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Hinweis zur Bildschirmgröße</DialogTitle>
+              <DialogTitle>{tr("Hinweis zur Bildschirmgröße", "Screen Size Notice")}</DialogTitle>
               <DialogDescription>
-                Dieses Tool ist primär für Desktop-Geräte ausgelegt. Bei kleineren Bildschirmen kann die Usability
-                eingeschränkt sein.
+                {tr(
+                  "Dieses Tool ist primär für Desktop-Geräte ausgelegt. Bei kleineren Bildschirmen kann die Usability eingeschränkt sein.",
+                  "This tool is primarily designed for desktop devices. Usability may be limited on smaller screens."
+                )}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button type="button" onClick={dismissViewportWarning}>
-                Verstanden
+                {tr("Verstanden", "Got it")}
               </Button>
             </DialogFooter>
           </DialogContent>

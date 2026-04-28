@@ -38,6 +38,7 @@ interface EditKeywordModalProps {
 
 export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKeywordModalProps) {
   const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = React.useState(false);
   const [isAddingToPlan, setIsAddingToPlan] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -74,7 +75,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
       setFormData(prev => ({ ...prev, ...updates }));
     } catch (err: any) {
       console.error("Error adding to plan:", err);
-      setError(err.message || "Fehler beim Hinzufügen zum Content-Plan");
+      setError(err.message || tr("Fehler beim Hinzufügen zum Content-Plan", "Error adding to content plan"));
     } finally {
       setIsAddingToPlan(false);
     }
@@ -90,7 +91,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
       await onSave(keyword.id, formData);
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || "Fehler beim Speichern");
+      setError(err.message || tr("Fehler beim Speichern", "Error saving"));
     } finally {
       setLoading(false);
     }
@@ -108,10 +109,10 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
         <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
-              Keyword bearbeiten
+              {tr("Keyword bearbeiten", "Edit Keyword")}
             </DialogTitle>
             <DialogDescription>
-              Ändern Sie die Details für "{keyword?.Keyword}".
+              {tr(`Ändern Sie die Details für "${keyword?.Keyword}".`, `Edit the details for "${keyword?.Keyword}".`)}
             </DialogDescription>
           </DialogHeader>
 
@@ -137,8 +138,8 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Y">Ja (Y)</SelectItem>
-                      <SelectItem value="N">Nein (N)</SelectItem>
+                      <SelectItem value="Y">{tr("Ja (Y)", "Yes (Y)")}</SelectItem>
+                      <SelectItem value="N">{tr("Nein (N)", "No (N)")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -146,7 +147,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-volume">Suchvolumen</Label>
+                    <Label htmlFor="edit-volume">{tr("Suchvolumen", "Search Volume")}</Label>
                     <Input
                       id="edit-volume"
                       type="number"
@@ -199,7 +200,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-articles">Produkt-Count</Label>
+                  <Label htmlFor="edit-articles">{tr("Produkt-Count", "Product Count")}</Label>
                   <Input
                     id="edit-articles"
                     type="number"
@@ -208,7 +209,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-value">Ø Produktwert</Label>
+                  <Label htmlFor="edit-value">{tr("Ø Produktwert", "Ø Product Value")}</Label>
                   <Input
                     id="edit-value"
                     type="number"
@@ -243,7 +244,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
                 <Alert variant="destructive" className="overflow-hidden border-red-200">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <div className="flex-1 overflow-hidden">
-                    <AlertTitle>Fehler</AlertTitle>
+                    <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                     <AlertDescription className="break-words text-sm">
                       {error}
                     </AlertDescription>
@@ -255,11 +256,11 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
 
           <DialogFooter className="p-6 bg-muted/30 border-t border-border mt-auto">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={loading}>
-              {locale === 'de' ? 'Abbrechen' : 'Cancel'}
+              {tr("Abbrechen", "Cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {locale === 'de' ? 'Speichern' : 'Save'}
+              {tr("Speichern", "Save")}
             </Button>
           </DialogFooter>
         </form>

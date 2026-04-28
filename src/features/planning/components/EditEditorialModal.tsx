@@ -59,6 +59,7 @@ export function EditEditorialModal({
   editorOptions
 }: EditEditorialModalProps) {
   const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
@@ -87,7 +88,7 @@ export function EditEditorialModal({
       await onSave(keyword.id, formData);
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || "Fehler beim Speichern");
+      setError(err.message || tr("Fehler beim Speichern", "Error saving"));
     } finally {
       setLoading(false);
     }
@@ -243,10 +244,10 @@ export function EditEditorialModal({
                         }}
                       >
                         <SelectTrigger id="edit-editor" className="h-10 pl-10 border-primary/20 focus:ring-primary">
-                          <SelectValue placeholder="Editor auswählen" />
+                          <SelectValue placeholder={tr("Editor auswählen", "Select editor")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
+                          <SelectItem value="__none__">{tr("Nicht zugewiesen", "Unassigned")}</SelectItem>
                           {editorOptions.map((editor) => (
                             <SelectItem key={editor.id} value={editor.id}>
                               {editor.name} ({editor.email})
@@ -326,7 +327,7 @@ export function EditEditorialModal({
                 <Alert variant="destructive" className="mt-4 overflow-hidden border-red-200">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <div className="flex-1 overflow-hidden">
-                    <AlertTitle>Fehler</AlertTitle>
+                    <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                     <AlertDescription className="break-words text-sm">
                       {error}
                     </AlertDescription>
@@ -338,11 +339,11 @@ export function EditEditorialModal({
 
           <DialogFooter className="p-6 bg-muted/30 border-t border-border">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
-              {locale === 'de' ? 'Abbrechen' : 'Cancel'}
+              {tr("Abbrechen", "Cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[120px]">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {locale === 'de' ? 'Speichern' : 'Save'}
+              {tr("Speichern", "Save")}
             </Button>
           </DialogFooter>
         </form>

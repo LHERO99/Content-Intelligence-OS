@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DateFilterOp, DateFilterValue, TextFilterOp, TextFilterValue, dateColumnFilterFn, textColumnFilterFn } from '@/features/planning/components/filter-utils';
+import { useI18n } from "@/i18n/use-i18n";
 
 // DND Kit Imports
 import {
@@ -155,6 +156,8 @@ interface EditBlacklistModalProps {
 }
 
 function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklistModalProps) {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<BlacklistEntry>>({});
@@ -179,7 +182,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
       await onSave(entry.id, formData);
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || "Fehler beim Speichern");
+      setError(err.message || tr("Fehler beim Speichern", "Error saving"));
     } finally {
       setLoading(false);
     }
@@ -191,16 +194,16 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
-              Blacklist-Eintrag bearbeiten
+              {tr("Blacklist-Eintrag bearbeiten", "Edit Blacklist Entry")}
             </DialogTitle>
             <DialogDescription>
-              Passen Sie den Eintrag, den Typ oder den Grund für den Ausschluss an.
+              {tr("Passen Sie den Eintrag, den Typ oder den Grund für den Ausschluss an.", "Adjust the entry, type, or reason for exclusion.")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-keyword">Eintrag (Keyword/URL) *</Label>
+              <Label htmlFor="edit-keyword">{tr("Eintrag (Keyword/URL) *", "Entry (Keyword/URL) *")}</Label>
               <Input
                 id="edit-keyword"
                 value={formData.Keyword || ""}
@@ -209,13 +212,13 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-type">Typ *</Label>
+              <Label htmlFor="edit-type">{tr("Typ *", "Type *")}</Label>
               <Select 
                 value={formData.Type || "Keyword"} 
                 onValueChange={(v: any) => setFormData({ ...formData, Type: v })}
               >
                 <SelectTrigger id="edit-type">
-                  <SelectValue placeholder="Typ wählen" />
+                  <SelectValue placeholder={tr("Typ wählen", "Select type")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Keyword">Keyword</SelectItem>
@@ -224,7 +227,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-reason">Grund *</Label>
+              <Label htmlFor="edit-reason">{tr("Grund *", "Reason *")}</Label>
               <Input
                 id="edit-reason"
                 value={formData.Reason || ""}
@@ -236,7 +239,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Fehler</AlertTitle>
+                <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -244,11 +247,11 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Abbrechen
+              {tr("Abbrechen", "Cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Speichern
+              {tr("Speichern", "Save")}
             </Button>
           </DialogFooter>
         </form>
@@ -265,6 +268,8 @@ interface RestoreEntryModalProps {
 }
 
 function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntryModalProps) {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState({
@@ -293,7 +298,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
     if (!entry) return;
 
     if (!formData.Keyword || !formData.Target_URL || !formData.Main_Keyword) {
-      setError("Keyword, Target URL und Main Keyword sind Pflichtfelder.");
+      setError(tr("Keyword, Target URL und Main Keyword sind Pflichtfelder.", "Keyword, Target URL and Main Keyword are required fields."));
       return;
     }
 
@@ -303,7 +308,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
       await onRestore(entry, formData);
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || "Fehler bei der Wiederherstellung");
+      setError(err.message || tr("Fehler bei der Wiederherstellung", "Error during restoration"));
     } finally {
       setLoading(false);
     }
@@ -315,10 +320,10 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle className="text-primary flex items-center gap-2 font-bold text-xl">
-              Eintrag wiederherstellen
+              {tr("Eintrag wiederherstellen", "Restore Entry")}
             </DialogTitle>
             <DialogDescription>
-              Verschieben Sie diesen Eintrag zurück in die Keyword-Map.
+              {tr("Verschieben Sie diesen Eintrag zurück in die Keyword-Map.", "Move this entry back to the Keyword Map.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -329,7 +334,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
                 id="restore-keyword"
                 value={formData.Keyword}
                 onChange={(e) => setFormData({ ...formData, Keyword: e.target.value })}
-                placeholder="z.B. Vitamin C Serum"
+                placeholder={tr("z.B. Vitamin C Serum", "e.g. Vitamin C Serum")}
                 required
               />
             </div>
@@ -339,7 +344,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
                 id="restore-url"
                 value={formData.Target_URL}
                 onChange={(e) => setFormData({ ...formData, Target_URL: e.target.value })}
-                placeholder="z.B. /de-de/p/vitamin-c-serum"
+                placeholder={tr("z.B. /de-de/p/vitamin-c-serum", "e.g. /de-de/p/vitamin-c-serum")}
                 required
               />
             </div>
@@ -352,11 +357,11 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
                 }}
               >
                 <SelectTrigger id="restore-main">
-                  <SelectValue placeholder="Main Keyword?" />
+                  <SelectValue placeholder={tr("Main Keyword?", "Main Keyword?")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Y">Ja (Y)</SelectItem>
-                  <SelectItem value="N">Nein (N)</SelectItem>
+                  <SelectItem value="Y">{tr("Ja (Y)", "Yes (Y)")}</SelectItem>
+                  <SelectItem value="N">{tr("Nein (N)", "No (N)")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -384,7 +389,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Fehler</AlertTitle>
+                <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -392,11 +397,11 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Abbrechen
+              {tr("Abbrechen", "Cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Wiederherstellen
+              {tr("Wiederherstellen", "Restore")}
             </Button>
           </DialogFooter>
         </form>
@@ -414,6 +419,8 @@ interface FilterBarProps {
 }
 
 function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [selectedColumn, setSelectedColumn] = React.useState<string>("");
   const [filterValue, setFilterValue] = React.useState<string>("");
   const [textFilterOp, setTextFilterOp] = React.useState<TextFilterOp>("contains");
@@ -483,14 +490,14 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
       }
 
       addAlert({
-        message: `${ids.length} Einträge wurden erfolgreich gelöscht.`,
+        message: `${ids.length} ${tr("Einträge wurden erfolgreich gelöscht.", "entries were successfully deleted.")}`,
         type: "success",
       });
       table.resetRowSelection();
       window.dispatchEvent(new CustomEvent("refresh-blacklist-data"));
     } catch (error: any) {
       addAlert({
-        title: "Fehler beim Bulk-Löschen",
+        title: tr("Fehler beim Bulk-Löschen", "Error during bulk delete"),
         message: error.message,
         type: "error",
       });
@@ -526,7 +533,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           }}>
             <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
               <Filter className="h-4 w-4 mr-2 text-primary" />
-              <SelectValue placeholder="Spalte" />
+              <SelectValue placeholder={tr("Spalte", "Column")} />
             </SelectTrigger>
             <SelectContent>
               {filterableColumns.map((col) => (
@@ -543,12 +550,12 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             <>
               <Select value={dateFilterOp} onValueChange={(v) => setDateFilterOp((v as DateFilterOp) || 'on')}>
                 <SelectTrigger className="w-[120px] h-9 border-none bg-transparent focus:ring-0">
-                  <SelectValue placeholder="Datum" />
+                  <SelectValue placeholder={tr("Datum", "Date")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="on">ist am</SelectItem>
-                  <SelectItem value="before">vor</SelectItem>
-                  <SelectItem value="after">nach</SelectItem>
+                  <SelectItem value="on">{tr("ist am", "is on")}</SelectItem>
+                  <SelectItem value="before">{tr("vor", "before")}</SelectItem>
+                  <SelectItem value="after">{tr("nach", "after")}</SelectItem>
                 </SelectContent>
               </Select>
               <div className="h-4 w-[1px] bg-primary/20 mx-1" />
@@ -567,16 +574,16 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             <>
               <Select value={textFilterOp} onValueChange={(v) => setTextFilterOp((v as TextFilterOp) || 'contains')}>
                 <SelectTrigger className="w-[130px] h-9 border-none bg-transparent focus:ring-0">
-                  <SelectValue placeholder="Operator" />
+                  <SelectValue placeholder={tr("Operator", "Operator")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="contains">enthält</SelectItem>
-                  <SelectItem value="equals">ist genau</SelectItem>
+                  <SelectItem value="contains">{tr("enthält", "contains")}</SelectItem>
+                  <SelectItem value="equals">{tr("ist genau", "is exactly")}</SelectItem>
                 </SelectContent>
               </Select>
               <div className="h-4 w-[1px] bg-primary/20 mx-1" />
               <Input
-                placeholder="Text eingeben..."
+                placeholder={tr("Text eingeben...", "Enter text...")}
                 value={filterValue}
                 onChange={(e) => setFilterValue(e.target.value)}
                 className="w-[220px] h-9 border-none bg-transparent focus-visible:ring-0"
@@ -586,11 +593,11 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           ) : suggestions.length > 0 ? (
             <Select value={filterValue} onValueChange={(v) => setFilterValue(v || "")}>
               <SelectTrigger className="w-[200px] h-9 border-none bg-transparent focus:ring-0">
-                <SelectValue placeholder="Wert wählen..." />
+                <SelectValue placeholder={tr("Wert wählen...", "Select value...")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel>Vorschläge</SelectLabel>
+                  <SelectLabel>{tr("Vorschläge", "Suggestions")}</SelectLabel>
                   {suggestions.map((val: any) => (
                     <SelectItem key={String(val)} value={String(val)}>
                       {String(val)}
@@ -601,7 +608,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             </Select>
           ) : (
             <Input
-              placeholder="Filterwert..."
+              placeholder={tr("Filterwert...", "Filter value...")}
               value={filterValue}
               onChange={(e) => setFilterValue(e.target.value)}
               className="w-[200px] h-9 border-none bg-transparent focus-visible:ring-0"
@@ -615,7 +622,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 ml-1"
             disabled={!selectedColumn || !filterValue}
           >
-            Anwenden
+            {tr("Anwenden", "Apply")}
           </Button>
         </div>
 
@@ -630,7 +637,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
               </PopoverTrigger>
               <PopoverContent className="w-64 p-4">
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Möchten Sie {selectedRows.length} Einträge wirklich löschen?</p>
+                  <p className="text-sm font-medium">{tr("Möchten Sie", "Do you want to delete")} {selectedRows.length} {tr("Einträge wirklich löschen?", "entries?")}</p>
                   <div className="flex gap-2">
                     <Button 
                       variant="destructive" 
@@ -639,7 +646,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                       disabled={isBulkDeleting}
                       onClick={() => bulkDelete(selectedRows.map((r: any) => r.original.id))}
                     >
-                      {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, löschen"}
+                      {isBulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("Ja, löschen", "Yes, delete")}
                     </Button>
                   </div>
                 </div>
@@ -648,20 +655,18 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
           )}
 
           {selectedRows.length === 1 && (
-            <Button 
-              variant="outline" 
-              className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10"
+            <Button variant="outline" className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10"
               onClick={onRestoreClick}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Wiederherstellen
+              {tr("Wiederherstellen", "Restore")}
             </Button>
           )}
           
           <Popover>
             <PopoverTrigger>
               <Button variant="outline" className="border-primary/20 h-10 px-4 text-primary hover:bg-primary/10">
-                Spalten <ChevronDown className="ml-2 h-4 w-4" />
+                {tr("Spalten", "Columns")} <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-64 p-1">
@@ -681,7 +686,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
                         <span>{column.id.replace(/_/g, " ")}</span>
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           {isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                          {isVisible ? "Sichtbar" : "Ausgeblendet"}
+                          {isVisible ? tr("Sichtbar", "Visible") : tr("Ausgeblendet", "Hidden")}
                         </span>
                       </button>
                     );
@@ -694,17 +699,17 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
       
       {columnFilters.length > 0 && (
         <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Aktive Filter:</span>
+          <span className="text-xs font-medium text-muted-foreground mr-1">{tr("Aktive Filter:", "Active filters:")}</span>
           {columnFilters.map((filter: any) => {
             const column = columns.find(c => (c.id || (c as any).accessorKey) === filter.id);
             const label = column ? (typeof column.header === 'string' ? column.header : filter.id) : filter.id;
             const filterObj = filter.value && typeof filter.value === 'object' ? filter.value : null;
             let valueLabel = String(filter.value);
             if (filterObj?.type === 'text') {
-              valueLabel = `${filterObj.op === 'equals' ? 'ist genau' : 'enthält'}: ${filterObj.value}`;
+              valueLabel = `${filterObj.op === 'equals' ? tr('ist genau', 'is exactly') : tr('enthält', 'contains')}: ${filterObj.value}`;
             }
             if (filterObj?.type === 'date') {
-              const dateLabel = filterObj.op === 'before' ? 'vor' : filterObj.op === 'after' ? 'nach' : 'ist am';
+              const dateLabel = filterObj.op === 'before' ? tr('vor', 'before') : filterObj.op === 'after' ? tr('nach', 'after') : tr('ist am', 'is on');
               valueLabel = `${dateLabel}: ${filterObj.value}`;
             }
             return (
@@ -725,7 +730,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
             onClick={() => table.resetColumnFilters()}
             className="h-7 text-xs text-muted-foreground hover:text-primary"
           >
-            Alle löschen
+            {tr("Alle löschen", "Clear all")}
           </Button>
         </div>
       )}
@@ -735,7 +740,8 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
 
 // --- Table Columns ---
 
-export const columns: ColumnDef<BlacklistEntry>[] = [
+function buildColumns(tr: (de: string, en: string) => string): ColumnDef<BlacklistEntry>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -766,13 +772,13 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   },
   {
     accessorKey: "Keyword",
-    header: "Eintrag",
+    header: tr("Eintrag", "Entry"),
     filterFn: textColumnFilterFn,
     cell: ({ row }) => <div className="font-medium">{row.getValue("Keyword")}</div>,
   },
   {
     accessorKey: "Type",
-    header: "Typ",
+    header: tr("Typ", "Type"),
     filterFn: textColumnFilterFn,
     cell: ({ row }) => {
       const type = row.getValue("Type") as string;
@@ -785,13 +791,13 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
   },
   {
     accessorKey: "Reason",
-    header: "Grund",
+    header: tr("Grund", "Reason"),
     filterFn: textColumnFilterFn,
     cell: ({ row }) => <div>{row.getValue("Reason") || "-"}</div>,
   },
   {
     accessorKey: "Added_At",
-    header: "Hinzugefügt am",
+    header: tr("Hinzugefügt am", "Added on"),
     filterFn: dateColumnFilterFn,
     cell: ({ row }) => {
       const date = row.getValue("Added_At") as string;
@@ -800,14 +806,19 @@ export const columns: ColumnDef<BlacklistEntry>[] = [
     },
   },
 ];
+}
 
 // --- Main Component ---
 
 export function Blacklist() {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [data, setData] = React.useState<BlacklistEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { addAlert } = useAlerts();
+
+  const columns = React.useMemo(() => buildColumns(tr), [locale]);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -857,13 +868,13 @@ export function Blacklist() {
       }
 
       addAlert({
-        message: "Eintrag wurde erfolgreich aktualisiert.",
+        message: tr("Eintrag wurde erfolgreich aktualisiert.", "Entry updated successfully."),
         type: "success",
       });
       fetchData();
     } catch (error: any) {
       addAlert({
-        title: "Fehler beim Aktualisieren",
+        title: tr("Fehler beim Aktualisieren", "Error updating"),
         message: error.message,
         type: "error",
       });
@@ -883,13 +894,13 @@ export function Blacklist() {
       }
 
       addAlert({
-        message: "Eintrag wurde erfolgreich gelöscht.",
+        message: tr("Eintrag wurde erfolgreich gelöscht.", "Entry deleted successfully."),
         type: "success",
       });
       fetchData();
     } catch (error: any) {
       addAlert({
-        title: "Fehler beim Löschen",
+        title: tr("Fehler beim Löschen", "Error deleting"),
         message: error.message,
         type: "error",
       });
@@ -926,7 +937,7 @@ export function Blacklist() {
       }
 
       addAlert({
-        message: "Eintrag wurde erfolgreich in die Keyword-Map wiederhergestellt.",
+        message: tr("Eintrag wurde erfolgreich in die Keyword-Map wiederhergestellt.", "Entry successfully restored to the Keyword Map."),
         type: "success",
       });
 
@@ -1042,7 +1053,7 @@ export function Blacklist() {
           <h3 className="text-xl font-semibold">Blacklist</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          Verwaltung von Keywords und URLs, die nicht für die Content-Erstellung berücksichtigt werden sollen.
+          {tr("Verwaltung von Keywords und URLs, die nicht für die Content-Erstellung berücksichtigt werden sollen.", "Management of keywords and URLs that should not be considered for content creation.")}
         </p>
       </div>
 
@@ -1116,7 +1127,7 @@ export function Blacklist() {
                         colSpan={columns.length}
                         className="h-24 text-center"
                       >
-                        Keine Ergebnisse.
+                        {tr("Keine Ergebnisse.", "No results.")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -1129,8 +1140,8 @@ export function Blacklist() {
 
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} von{" "}
-          {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
+          {table.getFilteredSelectedRowModel().rows.length} {tr("von", "of")}{" "}
+          {table.getFilteredRowModel().rows.length} {tr("Zeile(n) ausgewählt.", "row(s) selected.")}
         </div>
         <div className="space-x-2">
           <Button
@@ -1140,7 +1151,7 @@ export function Blacklist() {
             disabled={!table.getCanPreviousPage()}
             className="border-primary/20"
           >
-            Zurück
+            {tr("Zurück", "Previous")}
           </Button>
           <Button
             variant="outline"
@@ -1149,7 +1160,7 @@ export function Blacklist() {
             disabled={!table.getCanNextPage()}
             className="border-primary/20"
           >
-            Weiter
+            {tr("Weiter", "Next")}
           </Button>
         </div>
       </div>
