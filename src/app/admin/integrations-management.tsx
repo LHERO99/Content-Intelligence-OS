@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, LogIn, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 
@@ -18,7 +19,8 @@ type IntegrationProvider =
   | "copilot"
   | "perplexity"
   | "dataforseo"
-  | "vertex_legal";
+  | "vertex_legal"
+  | "google_search_console";
 
 type DiscoverableProvider = "openai" | "openrouter" | "gemini" | "copilot" | "perplexity";
 
@@ -67,6 +69,8 @@ export function IntegrationsManagement() {
   const { locale } = useI18n();
   const localeTag = toLocaleTag(locale);
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [integrations, setIntegrations] = useState<IntegrationState[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<IntegrationProvider | null>(null);
@@ -80,6 +84,8 @@ export function IntegrationsManagement() {
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [loadingModelsProvider, setLoadingModelsProvider] = useState<IntegrationProvider | null>(null);
   const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
+  // GSC OAuth state
+  const [gscConnectedEmail, setGscConnectedEmail] = useState<string | null>(null);
 
   const stateByProvider = useMemo(() => {
     const map: Record<string, IntegrationState> = {};
@@ -118,6 +124,36 @@ export function IntegrationsManagement() {
   useEffect(() => {
     fetchIntegrations();
   }, []);
+
+  // Handle GSC OAuth redirect result (?gsc=connected&email=... or ?gsc=error&message=...)
+  useEffect(() => {
+    const gscStatus = searchParams.get("gsc");
+    if (!gscStatus) return;
+
+    if (gscStatus === "connected") {
+      const email = searchParams.get("email") ?? "";
+      setGscConnectedEmail(email);
+      setSuccess(tr(
+        `Google Search Console erfolgreich verbunden${email ? ` (${email})` : ""}.`,
+        `Google Search Console connected successfully${email ? ` (${email})` : ""}.`
+      ));
+      setSelectedProviderId("google_search_console");
+    } else if (gscStatus === "error") {
+      const message = searchParams.get("message") ?? "Unknown error";
+      setError(tr(
+        `GSC-Verbindung fehlgeschlagen: ${message}`,
+        `GSC connection failed: ${message}`
+      ));
+      setSelectedProviderId("google_search_console");
+    }
+
+    // Clean up URL params
+    const url = new URL(window.location.href);
+    url.searchParams.delete("gsc");
+    url.searchParams.delete("email");
+    url.searchParams.delete("message");
+    router.replace(url.pathname + (url.search || ""), { scroll: false });
+  }, [searchParams]);
 
   const setProviderField = (provider: IntegrationProvider, fieldKey: string, value: string) => {
     setFormValues((prev) => ({
@@ -449,7 +485,155 @@ export function IntegrationsManagement() {
                             </div>
                             {model.contextWindow ? (
                               <span className="text-muted-foreground">{model.contextWindow.toLocaleString(localeTag)} ctx</span>
-                            ) : (
+        ) : selectedProvider.id === "google_search_console" ? (
+          // ── GSC OAuth-based provider — special UI ───────────────────────────
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-3">
+                <span>{selectedProvider.name}</span>
+                <Badge variant={selectedConfigured ? "default" : "secondary"}>
+                  {selectedConfigured ? tr("Verbunden", "Connected") : tr("Nicht verbunden", "Not connected")}
+                </Badge>
+              </CardTitle>
+              <CardDescription>{selectedProvider.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {success && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>{tr("Verbunden", "Connected")}</AlertTitle>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Step 1: OAuth Connect */}
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("1) Google-Konto verbinden", "1) Connect Google account")}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tr(
+                      "Klicke auf 'Mit Google verbinden', um die Search Console zu autorisieren. Du wirst zu Google weitergeleitet und danach automatisch zurückgeleitet.",
+                      "Click 'Connect with Google' to authorize Search Console access. You will be redirected to Google and then back here automatically."
+                    )}
+                  </p>
+                </div>
+                {(selectedConfigured || gscConnectedEmail) ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {gscConnectedEmail
+                        ? tr(`Verbunden als ${gscConnectedEmail}`, `Connected as ${gscConnectedEmail}`)
+                        : tr("Google-Konto verbunden", "Google account connected")}
+                    </div>
+                    <a href="/api/auth/google/gsc?returnTo=/admin" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                      {tr("Neu verbinden", "Reconnect")}
+                    </a>
+                  </div>
+                ) : (
+                  <a href="/api/auth/google/gsc?returnTo=/admin">
+                    <Button className="h-10">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      {tr("Mit Google verbinden", "Connect with Google")}
+                    </Button>
+                  </a>
+                )}
+              </section>
+
+              {/* Step 2: GSC Site URL */}
+              <section className="space-y-3 border-t pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("2) GSC Property URL", "2) GSC Property URL")}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tr(
+                      "Die verifizierte Property-URL aus der Google Search Console, z.B. 'https://www.docmorris.de/'. Wird für Daten-Abfragen verwendet.",
+                      "The verified property URL from Google Search Console, e.g. 'https://www.docmorris.de/'. Used for data queries."
+                    )}
+                  </p>
+                </div>
+                {selectedProvider.fields.map((field) => {
+                  const masked = selectedIntegrationState?.maskedValues?.[field.key] || "";
+                  return (
+                    <div key={field.key} className="space-y-2 max-w-md">
+                      <label className="text-sm font-medium">{field.label}</label>
+                      <Input
+                        type={field.type}
+                        placeholder={field.placeholder}
+                        value={formValues[selectedProvider.id]?.[field.key] || ""}
+                        onChange={(e) => setProviderField(selectedProvider.id, field.key, e.target.value)}
+                      />
+                      {masked && (
+                        <p className="text-xs text-muted-foreground">
+                          {tr(`Aktuell: ${masked}`, `Current: ${masked}`)}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+                <Button
+                  onClick={() => saveProvider(selectedProvider)}
+                  disabled={savingProvider === selectedProvider.id}
+                  className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  {tr("Property URL speichern", "Save property URL")}
+                </Button>
+              </section>
+
+              {/* Step 3: Test */}
+              <section className="space-y-3 border-t pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("3) Verbindung testen", "3) Test connection")}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tr(
+                      "Prüft ob das gespeicherte Token noch gültig ist und GSC-Properties abrufbar sind.",
+                      "Checks whether the stored token is still valid and GSC properties can be fetched."
+                    )}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => testProvider(selectedProvider)}
+                    disabled={testingProvider === selectedProvider.id || !selectedConfigured}
+                    className="h-10"
+                  >
+                    {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                    {tr("Verbindung testen", "Test connection")}
+                  </Button>
+                  {selectedTestResult && (
+                    <span className="text-xs text-muted-foreground">
+                      {tr("Letzter Test", "Last test")}: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
+                    </span>
+                  )}
+                </div>
+                {selectedTestResult && (
+                  <div className={`text-sm rounded-md border px-3 py-2 ${selectedTestResult.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
+                    <span className="inline-flex items-center gap-1">
+                      {selectedTestResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {selectedTestResult.message}
+                    </span>
+                  </div>
+                )}
+                <Alert>
+                  <ExternalLink className="h-4 w-4" />
+                  <AlertTitle>{tr("OAuth App einrichten", "Set up OAuth App")}</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {tr(
+                      "Die folgenden Env-Variablen müssen im Deployment gesetzt sein: GOOGLE_OAUTH_CLIENT_ID und GOOGLE_OAUTH_CLIENT_SECRET. Diese erhältst du in der Google Cloud Console unter 'APIs & Dienste → Anmeldedaten'.",
+                      "The following env vars must be set in the deployment: GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET. Get them from Google Cloud Console under 'APIs & Services → Credentials'."
+                    )}
+                  </AlertDescription>
+                </Alert>
+              </section>
+            </CardContent>
+          </Card>
+        ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
                           </div>

@@ -7,6 +7,7 @@ import {
   PROVIDERS,
   saveIntegrationValues,
 } from '@/lib/admin-integrations';
+import { getConfig } from '@/lib/airtable';
 
 function isProvider(value: string): value is IntegrationProvider {
   return PROVIDERS.some((provider) => provider.id === value);
@@ -154,6 +155,23 @@ async function testVertexLegal(projectId: string, location: string, endpointId: 
   }
 }
 
+async function testGoogleSearchConsole(): Promise<void> {
+  // GSC auth is OAuth-based — we test by refreshing the access token and listing sites.
+  const config = await getConfig();
+  const refreshToken = config.GSC_REFRESH_TOKEN?.trim();
+  if (!refreshToken) {
+    throw new Error('Google Search Console ist noch nicht verbunden. Bitte über "Mit Google verbinden" autorisieren.');
+  }
+
+  const { getAccessToken, listGscSites } = await import('@/lib/google-search-console');
+  const accessToken = await getAccessToken(refreshToken);
+  const sites = await listGscSites(accessToken);
+
+  if (!sites.length) {
+    throw new Error('Verbindung erfolgreich, aber keine verifizierten GSC-Properties gefunden.');
+  }
+}
+
 async function testProviderConnection(provider: IntegrationProvider, values: Record<string, string>): Promise<void> {
   if (provider === 'sistrix') {
     await testSistrix(values.SISTRIX_API_KEY || '');
@@ -197,6 +215,11 @@ async function testProviderConnection(provider: IntegrationProvider, values: Rec
       values.VERTEX_AI_ENDPOINT_ID || '',
       values.VERTEX_AI_ACCESS_TOKEN || ''
     );
+    return;
+  }
+
+  if (provider === 'google_search_console') {
+    await testGoogleSearchConsole();
     return;
   }
 

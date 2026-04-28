@@ -3,6 +3,7 @@ import { bulkCreateKeywords, createContentLog } from '@/lib/airtable';
 import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { syncPerformanceForUrls } from '@/lib/sync-performance';
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,6 +84,14 @@ export async function POST(req: NextRequest) {
             console.error('[Background Trigger Import] Error calling n8n for URL:', url, err);
           });
         });
+
+        // 3. Trigger performance sync in background (fire & forget)
+        const uniqueUrls = Object.keys(keywordsByUrl);
+        if (uniqueUrls.length > 0) {
+          syncPerformanceForUrls(uniqueUrls).catch((err) => {
+            console.error('[Import] Background performance sync failed:', err);
+          });
+        }
 
       } catch (logError) {
         console.error('[API Import] Error in post-creation tasks:', logError);
