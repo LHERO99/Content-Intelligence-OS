@@ -2,9 +2,11 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, getKeywordMap } from '@/lib/airtable';
+import { getConfig, getKeywordMap, getExistingRankingDates } from '@/lib/airtable';
+import { getCurrentWeekMonday } from '@/lib/sync-performance';
 
 const SISTRIX_BASE = 'https://api.sistrix.com';
+const DATAFORSEO_BASE = 'https://api.dataforseo.com/v3';
 
 function extractDomain(url: string): string {
   try {
@@ -15,15 +17,20 @@ function extractDomain(url: string): string {
   }
 }
 
+function buildAuthHeader(username: string, password: string): string {
+  const token = Buffer.from(`${username.trim()}:${password.trim()}`).toString('base64');
+  return `Basic ${token}`;
+}
+
 /**
  * GET /api/admin/debug?url=https://...
  *
  * Diagnostic endpoint for debugging Sistrix and DataForSEO/keyword sync issues.
  * Returns:
- *  - config: which integration keys are set (no values revealed except GSC_SITE_URL)
- *  - keywords: total count, how many have Target_URL, sample IDs, match for provided URL
- *  - sistrix: live API call result for provided URL (costs 1 credit/data-point)
- *  - dataforseo: domain extraction check for provided URL (no live call)
+ *  - config: which integration keys are set
+ *  - keywords: total count, how many have Target_URL, match for provided URL
+ *  - sistrix: live API call result for provided URL
+ *  - dataforseo: full end-to-end diagnostic with live API call (1 sample keyword)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -56,8 +63,9 @@ export async function GET(req: NextRequest) {
 
     // ── 2. Keyword check ──────────────────────────────────────────────────────
     let keywordCheck: Record<string, any> = {};
+    let allKeywords: Awaited<ReturnType<typeof getKeywordMap>> = [];
     try {
-      const allKeywords = await getKeywordMap();
+      allKeywords = await getKeywordMap();
       const withTargetUrl = allKeywords.filter(kw => !!kw.Target_URL);
       const sampleIds = allKeywords.slice(0, 5).map(kw => kw.id);
       const allIdsStartWithRec = allKeywords.every(kw => kw.id?.startsWith('rec'));
@@ -120,18 +128,177 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ── 4. DataForSEO domain-extraction check ─────────────────────────────────
+    // ── 4. DataForSEO — vollständige End-to-End-Diagnose ──────────────────────
     let dataforseoCheck: Record<string, any> = { skipped: 'no url provided' };
+
     if (testUrl) {
-      const extractedDomain = extractDomain(testUrl);
-      const sampleItemDomain = `www.${extractedDomain}`;
+      const dfsUsername = config.DATAFORSEO_USERNAME?.trim();
+      const dfsPassword = config.DATAFORSEO_PASSWORD?.trim();
+
+      // 4a. Credentials
+      const credentialsOk = !!(dfsUsername && dfsPassword);
       dataforseoCheck = {
-        targetUrl: testUrl,
-        extractedDomain,
-        sampleItemDomain,
-        afterStrip: sampleItemDomain.replace(/^www\./, ''),
-        wouldMatch: sampleItemDomain.replace(/^www\./, '') === extractedDomain,
+        step: '4a_credentials',
+        credentialsOk,
+        username: dfsUsername ? `${dfsUsername.slice(0, 4)}***` : 'missing',
+        password: dfsPassword ? '***set***' : 'missing',
       };
+
+      if (!credentialsOk) {
+        dataforseoCheck.abort = 'DataForSEO credentials missing — stopping here';
+      } else {
+        // 4b. Keywords für diese URL
+        const urlKeywords = allKeywords.filter(kw => kw.Target_URL === testUrl);
+        dataforseoCheck.step_4b_keywords = {
+          totalForUrl: urlKeywords.length,
+          sample: urlKeywords.slice(0, 5).map(kw => ({ id: kw.id, keyword: kw.Keyword })),
+          allHaveId: urlKeywords.every(kw => !!kw.id),
+          allIdsStartWithRec: urlKeywords.every(kw => kw.id?.startsWith('rec')),
+        };
+
+        if (urlKeywords.length === 0) {
+          dataforseoCheck.step_4b_keywords.abort = 'Keine Keywords für diese URL gefunden — stopping here';
+        } else {
+          // 4c. Deduplizierung — welche Keywords haben bereits einen Eintrag für diese Woche?
+          const weekDate = getCurrentWeekMonday();
+          const allIds = urlKeywords.map(kw => kw.id);
+          let alreadyRanked = new Set<string>();
+          let dedupeError: string | null = null;
+          try {
+            alreadyRanked = await getExistingRankingDates(allIds, weekDate);
+          } catch (err: any) {
+            dedupeError = err.message;
+          }
+          const toFetch = urlKeywords.filter(kw => !alreadyRanked.has(kw.id));
+
+          dataforseoCheck.step_4c_deduplication = {
+            weekDate,
+            totalKeywords: urlKeywords.length,
+            alreadyRankedThisWeek: alreadyRanked.size,
+            toFetchCount: toFetch.length,
+            alreadyRankedIds: Array.from(alreadyRanked).slice(0, 10),
+            toFetchSample: toFetch.slice(0, 5).map(kw => ({ id: kw.id, keyword: kw.Keyword })),
+            dedupeError,
+            note: alreadyRanked.size === urlKeywords.length
+              ? 'ALLE Keywords bereits für diese Woche vorhanden — kein API-Call nötig'
+              : null,
+          };
+
+          // 4d. Domain-Extraktion
+          const extractedDomain = extractDomain(testUrl);
+          dataforseoCheck.step_4d_domain = {
+            targetUrl: testUrl,
+            extractedDomain,
+            exampleItemDomain_withWww: `www.${extractedDomain}`,
+            afterStrip: `www.${extractedDomain}`.replace(/^www\./, ''),
+            wouldMatch: true, // strip logic matches itself
+          };
+
+          // 4e. Live API-Call mit 1 Sample-Keyword (kein Datenbankschreiben)
+          const sampleKeyword = toFetch[0] ?? urlKeywords[0]; // nimm erstes verfügbares
+          const auth = buildAuthHeader(dfsUsername!, dfsPassword!);
+          const requestBody = [
+            {
+              keyword: sampleKeyword.Keyword,
+              language_code: 'de',
+              location_code: 2276,
+              depth: 100,
+              calculate_rectangles: false,
+            },
+          ];
+
+          dataforseoCheck.step_4e_live_api_call = {
+            note: `Echter API-Call mit Sample-Keyword: "${sampleKeyword.Keyword}"`,
+            keywordId: sampleKeyword.id,
+            domain: extractedDomain,
+            requestBody,
+          };
+
+          try {
+            const dfsResponse = await fetch(
+              `${DATAFORSEO_BASE}/serp/google/organic/live/advanced`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: auth,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+
+            const httpStatus = dfsResponse.status;
+            const rawJson = await dfsResponse.json().catch(() => null);
+
+            dataforseoCheck.step_4e_live_api_call.httpStatus = httpStatus;
+            dataforseoCheck.step_4e_live_api_call.responseOk = dfsResponse.ok;
+
+            if (!dfsResponse.ok) {
+              dataforseoCheck.step_4e_live_api_call.error = `HTTP ${httpStatus}`;
+              dataforseoCheck.step_4e_live_api_call.rawResponse = rawJson;
+            } else {
+              const tasks: any[] = rawJson?.tasks ?? [];
+              const firstTask = tasks[0] ?? null;
+              const taskStatusCode = firstTask?.status_code ?? null;
+              const taskStatusMessage = firstTask?.status_message ?? null;
+              const taskResult = firstTask?.result?.[0] ?? null;
+              const items: any[] = taskResult?.items ?? [];
+
+              // Domain-Matching auf Sample-Items
+              const organicItems = items.filter((it: any) => it.type === 'organic');
+              const sampleItems = organicItems.slice(0, 5).map((it: any) => ({
+                rank_absolute: it.rank_absolute,
+                domain: it.domain,
+                domainAfterStrip: it.domain?.replace(/^www\./, ''),
+                wouldMatch: it.domain?.replace(/^www\./, '') === extractedDomain,
+                url: it.url,
+                title: it.title?.slice(0, 60),
+              }));
+
+              const matchingItem = organicItems.find(
+                (it: any) => it.domain?.replace(/^www\./, '') === extractedDomain
+              );
+
+              dataforseoCheck.step_4e_live_api_call.taskStatusCode = taskStatusCode;
+              dataforseoCheck.step_4e_live_api_call.taskStatusMessage = taskStatusMessage;
+              dataforseoCheck.step_4e_live_api_call.totalItemsInResult = items.length;
+              dataforseoCheck.step_4e_live_api_call.organicItemsCount = organicItems.length;
+              dataforseoCheck.step_4e_live_api_call.top5OrganicItems = sampleItems;
+              dataforseoCheck.step_4e_live_api_call.domainFoundInResults = !!matchingItem;
+              dataforseoCheck.step_4e_live_api_call.matchedRank = matchingItem?.rank_absolute ?? null;
+              dataforseoCheck.step_4e_live_api_call.matchedUrl = matchingItem?.url ?? null;
+
+              // 4f. Was würde in Airtable geschrieben werden?
+              dataforseoCheck.step_4f_would_upsert = matchingItem
+                ? {
+                    Keyword_ID: [sampleKeyword.id],
+                    Date: weekDate,
+                    Ranking: matchingItem.rank_absolute,
+                    note: 'Dieser Datensatz würde in Keyword_Ranking_History geschrieben',
+                  }
+                : {
+                    note: `Domain "${extractedDomain}" nicht in Top-100 gefunden — kein Ranking-Eintrag`,
+                    wouldSkip: true,
+                  };
+
+              // Rohe Task-Response für maximale Transparenz
+              dataforseoCheck.step_4e_live_api_call.rawTaskCost = firstTask?.cost ?? null;
+              dataforseoCheck.step_4e_live_api_call.rawTaskResultSummary = taskResult
+                ? {
+                    keyword: taskResult.keyword,
+                    se_domain: taskResult.se_domain,
+                    location_code: taskResult.location_code,
+                    language_code: taskResult.language_code,
+                    total_count: taskResult.total_count,
+                    items_count: taskResult.items_count,
+                  }
+                : null;
+            }
+          } catch (err: any) {
+            dataforseoCheck.step_4e_live_api_call.fetchError = err.message;
+          }
+        }
+      }
     }
 
     return NextResponse.json({
