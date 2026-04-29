@@ -612,11 +612,11 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
     const valid = data.filter(item => item.Keyword_ID && item.Date);
     if (!valid.length) return { created: 0, updated: 0, errors };
 
-    // Normalise Keyword_ID to plain string for each item
+    // Normalise Keyword_ID to plain string for each item and validate it's an Airtable record ID
     const normalised = valid.map(item => ({
       ...item,
       _kwId: Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : (item.Keyword_ID as unknown as string),
-    }));
+    })).filter(item => typeof item._kwId === 'string' && item._kwId.startsWith('rec'));
 
     // ── 1. Bulk-read existing records ─────────────────────────────────────────
     // Use OR over SEARCH()-based per-id checks, chunked to avoid formula limit.
