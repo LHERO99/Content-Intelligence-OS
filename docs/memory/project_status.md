@@ -1,4 +1,4 @@
-# Projekt-Status (Stand: 28.04.2026)
+# Projekt-Status (Stand: 29.04.2026)
 
 ## KI-Chat Feature (Creation Page) — Status: Funktionsfähig (28.04.2026)
 - **Ziel**: User gibt im KI-Optimierung-Tab eine Anweisung ein → KI überarbeitet Text → linke Vorschau zeigt neuen Text sofort → "Übernehmen" speichert in Airtable via `/api/planning/history`.
@@ -104,6 +104,12 @@
 - **UI/UX**: Interaktive Drag&Drop-Zonen für Logo und Favicon im Admin-Bereich mit Größen-Validierung (max. 2MB).
 - **Echtzeit-Anwendung**: Der `BrandingProvider` injiziert die Primärfarbe via CSS-Variable (`--primary`) und aktualisiert das Favicon dynamisch im Browser.
 - **Refactoring**: Hardcodierte DocMorris-Brandings in Sidebar und Layout wurden durch dynamische Assets ersetzt.
+
+## Vercel Deployment & Auth-Fixes (29.04.2026)
+- **`/api/branding` public gemacht**: Die Route wurde nicht als public path in der Middleware eingetragen und wurde daher für nicht-eingeloggte User auf die Login-Seite umgeleitet (HTML statt JSON). Fix: Path in `authorized`-Callback und `matcher` ergänzt.
+- **Cookie-Name-Mismatch behoben**: `authOptions` hatte eine custom `cookies`-Config mit `name: 'next-auth.session-token'`. Auf HTTPS (Vercel) verwendet NextAuth standardmäßig `__Secure-next-auth.session-token`. Die `withAuth` Middleware hat eigene `getToken`-Logik ohne Zugriff auf `authOptions` → konnte das Cookie nicht finden → hat User trotz erfolgreichem Login auf `/auth/signin` umgeleitet. Fix: Custom `cookies`-Config vollständig entfernt — NextAuth wählt den korrekten Cookie-Namen nun automatisch je nach Umgebung.
+- **`NEXTAUTH_URL` korrekt konfiguriert**: War auf `https://www.concycle.io` gesetzt (falsch). Korrigiert auf `https://content-intelligence-os-sigma.vercel.app` (Production) und `https://content-intelligence-os-git-development-lhero99s-projects.vercel.app` (Preview).
+- **GSC OAuth `redirect_uri_mismatch` behoben**: `NEXTAUTH_URL` war nicht gesetzt → App baute `http://localhost:3000/api/auth/google/gsc/callback` als Redirect-URI. Nach korrektem Setzen der Var funktioniert der OAuth-Flow.
 
 ## Internationalisierung / i18n (28.04.2026)
 - **Vollständige DE/EN Sprachumschaltung**: Die gesamte UI kann per Language Switcher zwischen Deutsch und Englisch umgeschaltet werden.

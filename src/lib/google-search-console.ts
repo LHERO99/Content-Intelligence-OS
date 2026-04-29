@@ -14,7 +14,7 @@ import 'server-only';
  * Per-tenant Config keys (stored in Airtable):
  *   GSC_REFRESH_TOKEN
  *   GSC_CONNECTED_EMAIL   (informational, set during OAuth callback)
- *   GSC_SITE_URL          (the verified property in GSC, e.g. "https://www.docmorris.de/")
+ *   GSC_SITE_URL          (the verified property in GSC, e.g. "https://www.example.com/")
  */
 
 const GSC_BASE = 'https://searchconsole.googleapis.com/webmasters/v3';

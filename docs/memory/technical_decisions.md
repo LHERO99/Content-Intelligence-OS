@@ -1,4 +1,16 @@
-# Technische Entscheidungen (Stand: 28.04.2026)
+# Technische Entscheidungen (Stand: 29.04.2026)
+
+## NextAuth Cookie-Konfiguration auf Vercel (29.04.2026)
+- **Keine Custom Cookie Names in `authOptions`**: `withAuth` aus `next-auth/middleware` ruft intern `getToken()` auf, ohne `authOptions` zu kennen. Wenn `authOptions` einen custom Cookie-Namen setzt, der vom NextAuth-Default abweicht, findet die Middleware das Session-Cookie nicht → Endlos-Redirect auf Login trotz erfolgreichem Login.
+- **HTTPS-Default**: NextAuth v4 verwendet auf HTTPS automatisch `__Secure-next-auth.session-token`, auf HTTP `next-auth.session-token`. Diese Automatik darf nicht durch Custom-Config überschrieben werden.
+- **Regel**: `cookies`-Block in `authOptions` nur setzen wenn zwingend notwendig und dann auch in der `withAuth`-Middleware-Konfiguration spiegeln.
+
+## NextAuth auf Vercel: `NEXTAUTH_URL` Pflicht (29.04.2026)
+- **`NEXTAUTH_URL` muss pro Environment gesetzt sein**: Ohne diese Variable baut NextAuth Callback-URLs mit `http://localhost:3000` — auch in Production.
+- **Vercel Environments**: Production und Preview sind separate Umgebungen mit separaten `NEXTAUTH_URL`-Werten.
+- **`trustHost` ist NextAuth v5**: Die Option existiert in v4 nicht — kein Workaround über `trustHost`.
+
+
 
 ## KI-Chat Save-Architektur (28.04.2026)
 - **Content-Parameter statt Ref**: `onApplyChanges(content: string)` — der Child (`AIChatPanel`) übergibt den `refinedContent` direkt als Parameter beim Klick. Kein `useRef` + `useEffect`-Sync mehr (war fragil durch stale closures).

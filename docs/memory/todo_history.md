@@ -1,6 +1,19 @@
 # TODO Historie
 
-## Erledigt
+- [x] Fix: `/api/branding` in Middleware als public path freigeschaltet (war vor Login nicht erreichbar).
+- [x] Fix: Custom `cookies`-Config aus `authOptions` entfernt — verursachte Cookie-Name-Mismatch (`next-auth.session-token` vs. `__Secure-next-auth.session-token`) zwischen Login-Handler und `withAuth` Middleware auf Vercel HTTPS.
+- [x] Fix: `NEXTAUTH_URL` korrekt in Vercel für Production (`content-intelligence-os-sigma.vercel.app`) und Preview gesetzt.
+- [x] Debug: Temporärer `/api/debug/env-check` Endpoint zur Env-Var-Diagnose erstellt und nach Verwendung wieder entfernt.
+- [x] Feature: Externer Agent Webhook — Admin kann zwischen internem Agent Builder und externem Webhook wechseln.
+- [x] Feature: GSC OAuth Flow — Google Search Console Anbindung via OAuth, Token in Airtable gespeichert.
+- [x] Feature: DataForSEO Integration — Rankings fetchen via SERP-API (batched, rate-limited).
+- [x] Feature: `sync-performance.ts` — Orchestrierung beider Performance-Quellen (GSC + DataForSEO).
+- [x] Feature: Vercel Cron `GET /api/cron/sync-performance` — läuft jeden Montag 04:00 UTC.
+- [x] Feature: `getKeywordsByUrl(targetUrl)` in `airtable.ts` ergänzt.
+- [x] Feature: `agent-settings-tab.tsx` — Admin-Tab für externen Webhook mit Test-Ping.
+- [x] Feature: `admin-integrations.ts` — `google_search_console` als neuer Provider.
+
+
 - [x] KI-Chat Feature: `AIChatPanel` + `AIEditorWorkspace` vollständig implementiert (Vorschau, Übernehmen, Ablehnen, Modell-Dropdown).
 - [x] KI-Chat Fix: Stale-closure race condition in `onApplyChanges` behoben — `refinedContent` wird jetzt direkt als Parameter übergeben (kein `previewContentRef` mehr).
 - [x] KI-Chat Fix: Airtable 422 für `Action_Type: 'KI-Chat'` behoben — `actionType` wird bei KI-Chat-Saves weggelassen; Identifikation via `Diff_Summary`.

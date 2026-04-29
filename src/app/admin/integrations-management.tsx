@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ExternalLink, Loader2, LogIn, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, LogIn, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 
@@ -86,6 +86,10 @@ export function IntegrationsManagement() {
   const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
   // GSC OAuth state
   const [gscConnectedEmail, setGscConnectedEmail] = useState<string | null>(null);
+  const [gscProperties, setGscProperties] = useState<string[]>([]);
+  const [gscPropertiesLoading, setGscPropertiesLoading] = useState(false);
+  const [gscPropertiesError, setGscPropertiesError] = useState<string | null>(null);
+  const [gscSelectedProperty, setGscSelectedProperty] = useState<string>("");
 
   const stateByProvider = useMemo(() => {
     const map: Record<string, IntegrationState> = {};
@@ -124,6 +128,29 @@ export function IntegrationsManagement() {
   useEffect(() => {
     fetchIntegrations();
   }, []);
+
+  // Auto-load GSC properties when GSC is selected and connected
+  const fetchGscProperties = async () => {
+    setGscPropertiesLoading(true);
+    setGscPropertiesError(null);
+    try {
+      const res = await fetch("/api/admin/integrations/google_search_console/properties");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || tr("Properties konnten nicht geladen werden.", "Failed to load properties."));
+      setGscProperties(data.properties || []);
+    } catch (err: any) {
+      setGscPropertiesError(err.message);
+    } finally {
+      setGscPropertiesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedProviderId === "google_search_console" && stateByProvider["google_search_console"]?.configured) {
+      fetchGscProperties();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProviderId, stateByProvider]);
 
   // Handle GSC OAuth redirect result (?gsc=connected&email=... or ?gsc=error&message=...)
   useEffect(() => {
@@ -389,12 +416,6 @@ export function IntegrationsManagement() {
                 </div>
                 {(selectedConfigured || gscConnectedEmail) ? (
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                      <CheckCircle2 className="h-4 w-4" />
-                      {gscConnectedEmail
-                        ? tr(`Verbunden als ${gscConnectedEmail}`, `Connected as ${gscConnectedEmail}`)
-                        : tr("Google-Konto verbunden", "Google account connected")}
-                    </div>
                     <a href="/api/auth/google/gsc?returnTo=/admin" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
                       {tr("Neu verbinden", "Reconnect")}
                     </a>
@@ -415,38 +436,63 @@ export function IntegrationsManagement() {
                   <h3 className="text-sm font-semibold">{tr("2) GSC Property URL", "2) GSC Property URL")}</h3>
                   <p className="text-xs text-muted-foreground mt-1">
                     {tr(
-                      "Die verifizierte Property-URL aus der Google Search Console, z.B. 'https://www.docmorris.de/'. Wird für Daten-Abfragen verwendet.",
-                      "The verified property URL from Google Search Console, e.g. 'https://www.docmorris.de/'. Used for data queries."
+                      "Wähle die verifizierte Property aus der Google Search Console. Wird für Daten-Abfragen verwendet.",
+                      "Select the verified property from Google Search Console. Used for data queries."
                     )}
                   </p>
                 </div>
-                {selectedProvider.fields.map((field) => {
-                  const masked = selectedIntegrationState?.maskedValues?.[field.key] || "";
-                  return (
-                    <div key={field.key} className="space-y-2 max-w-md">
-                      <label className="text-sm font-medium">{field.label}</label>
-                      <Input
-                        type={field.type}
-                        placeholder={field.placeholder}
-                        value={formValues[selectedProvider.id]?.[field.key] || ""}
-                        onChange={(e) => setProviderField(selectedProvider.id, field.key, e.target.value)}
-                      />
-                      {masked && (
-                        <p className="text-xs text-muted-foreground">
-                          {tr(`Aktuell: ${masked}`, `Current: ${masked}`)}
-                        </p>
-                      )}
+                {gscPropertiesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {tr("Properties werden geladen…", "Loading properties…")}
+                  </div>
+                ) : gscPropertiesError ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-destructive">{gscPropertiesError}</p>
+                    <Button variant="outline" size="sm" onClick={fetchGscProperties}>
+                      <RefreshCcw className="h-3 w-3 mr-1" />
+                      {tr("Erneut versuchen", "Retry")}
+                    </Button>
+                  </div>
+                ) : !selectedConfigured ? (
+                  <p className="text-xs text-muted-foreground">
+                    {tr("Bitte zuerst ein Google-Konto verbinden (Schritt 1).", "Please connect a Google account first (step 1).")}
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-w-md">
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={gscSelectedProperty || formValues[selectedProvider.id]?.["GSC_SITE_URL"] || ""}
+                      onChange={(e) => {
+                        setGscSelectedProperty(e.target.value);
+                        setProviderField(selectedProvider.id, "GSC_SITE_URL", e.target.value);
+                      }}
+                    >
+                      <option value="">{tr("– Property auswählen –", "– Select property –")}</option>
+                      {gscProperties.map((url) => (
+                        <option key={url} value={url}>{url}</option>
+                      ))}
+                    </select>
+                    {selectedIntegrationState?.maskedValues?.["GSC_SITE_URL"] && (
+                      <p className="text-xs text-muted-foreground">
+                        {tr(`Aktuell: ${selectedIntegrationState.maskedValues["GSC_SITE_URL"]}`, `Current: ${selectedIntegrationState.maskedValues["GSC_SITE_URL"]}`)}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => saveProvider(selectedProvider)}
+                        disabled={savingProvider === selectedProvider.id || !gscSelectedProperty}
+                        className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                      >
+                        {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                        {tr("Property URL speichern", "Save property URL")}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={fetchGscProperties} disabled={gscPropertiesLoading}>
+                        <RefreshCcw className="h-3 w-3" />
+                      </Button>
                     </div>
-                  );
-                })}
-                <Button
-                  onClick={() => saveProvider(selectedProvider)}
-                  disabled={savingProvider === selectedProvider.id}
-                  className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
-                  {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  {tr("Property URL speichern", "Save property URL")}
-                </Button>
+                  </div>
+                )}
               </section>
 
               {/* Step 3: Test */}
@@ -484,16 +530,7 @@ export function IntegrationsManagement() {
                     </span>
                   </div>
                 )}
-                <Alert>
-                  <ExternalLink className="h-4 w-4" />
-                  <AlertTitle>{tr("OAuth App einrichten", "Set up OAuth App")}</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    {tr(
-                      "Die folgenden Env-Variablen müssen im Deployment gesetzt sein: GOOGLE_OAUTH_CLIENT_ID und GOOGLE_OAUTH_CLIENT_SECRET. Diese erhältst du in der Google Cloud Console unter 'APIs & Dienste → Anmeldedaten'.",
-                      "The following env vars must be set in the deployment: GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET. Get them from Google Cloud Console under 'APIs & Services → Credentials'."
-                    )}
-                  </AlertDescription>
-                </Alert>
+
               </section>
             </CardContent>
           </Card>
