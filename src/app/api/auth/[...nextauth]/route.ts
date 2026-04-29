@@ -134,20 +134,6 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
-  // On Vercel preview deployments NEXTAUTH_URL may not match the actual host.
-  // Setting trustHost allows NextAuth to accept any host that Vercel proxies.
-  ...(process.env.VERCEL ? { trustHost: true } : {}),
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
 };
 
 const handler = NextAuth(authOptions);
