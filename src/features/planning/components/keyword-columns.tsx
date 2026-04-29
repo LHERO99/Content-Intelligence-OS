@@ -91,8 +91,9 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
     header: "SV",
     size: 60,
     cell: ({ row }) => {
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const val = row.getValue("Search_Volume") as number;
-      return val ? val.toLocaleString("de-DE") : "-";
+      return val ? val.toLocaleString(activeLocale) : "-";
     },
   },
   {

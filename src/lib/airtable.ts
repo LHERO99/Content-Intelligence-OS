@@ -150,6 +150,36 @@ export async function getKeywordMap(): Promise<KeywordMap[]> {
   }
 }
 
+export async function getKeywordsByUrl(targetUrl: string): Promise<KeywordMap[]> {
+  try {
+    const escaped = targetUrl.replace(/'/g, "\\'");
+    const records = await base(TABLES.KEYWORD_MAP).select({
+      filterByFormula: `{Target_URL} = '${escaped}'`,
+    }).all();
+    return records.map((record) => ({
+      id: record.id,
+      Keyword: record.get('Keyword') as string,
+      Target_URL: record.get('Target_URL') as string,
+      Search_Volume: record.get('Search_Volume') as number,
+      Difficulty: record.get('Difficulty') as number,
+      Status: record.get('Status') as KeywordStatus,
+      Editorial_Deadline: record.get('Editorial_Deadline') as string,
+      Assigned_Editor: record.get('Assigned_Editor') as string[],
+      Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+      Article_Count: record.get('Article_Count') as number,
+      Avg_Product_Value: record.get('Avg_Product_Value') as number,
+      Policy: record.get('Policy') as number,
+      Priority_Score: record.get('Priority_Score') as number,
+      Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+      Page_Type: record.get('Page_Type') as any,
+      Ranking: record.get('Ranking') as number,
+      Last_Published: record.get('Last_Published') as string,
+    }));
+  } catch (error) {
+    return handleAirtableError(error, 'getKeywordsByUrl');
+  }
+}
+
 export async function getContentLogs(): Promise<ContentLog[]> {
   try {
     const records = await base(TABLES.CONTENT_LOG).select({

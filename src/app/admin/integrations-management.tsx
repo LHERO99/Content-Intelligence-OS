@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, LogIn, PlugZap, RefreshCcw, Save, ShieldCheck, XCircle } from "lucide-react";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 type IntegrationProvider =
   | "sistrix"
@@ -16,7 +19,8 @@ type IntegrationProvider =
   | "copilot"
   | "perplexity"
   | "dataforseo"
-  | "vertex_legal";
+  | "vertex_legal"
+  | "google_search_console";
 
 type DiscoverableProvider = "openai" | "openrouter" | "gemini" | "copilot" | "perplexity";
 
@@ -62,6 +66,11 @@ function isDiscoverableProvider(providerId: IntegrationProvider): providerId is 
 }
 
 export function IntegrationsManagement() {
+  const { locale } = useI18n();
+  const localeTag = toLocaleTag(locale);
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [integrations, setIntegrations] = useState<IntegrationState[]>([]);
   const [selectedProviderId, setSelectedProviderId] = useState<IntegrationProvider | null>(null);
@@ -75,6 +84,8 @@ export function IntegrationsManagement() {
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [loadingModelsProvider, setLoadingModelsProvider] = useState<IntegrationProvider | null>(null);
   const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
+  // GSC OAuth state
+  const [gscConnectedEmail, setGscConnectedEmail] = useState<string | null>(null);
 
   const stateByProvider = useMemo(() => {
     const map: Record<string, IntegrationState> = {};
@@ -92,7 +103,7 @@ export function IntegrationsManagement() {
       const data = (await res.json()) as ApiResponse;
 
       if (!res.ok) {
-        throw new Error((data as any)?.error || "Fehler beim Laden der Integrationen");
+        throw new Error((data as any)?.error || tr("Fehler beim Laden der Integrationen", "Failed to load integrations"));
       }
 
       setProviders(data.providers || []);
@@ -104,7 +115,7 @@ export function IntegrationsManagement() {
         return nextProviders[0].id;
       });
     } catch (err: any) {
-      setError(err.message || "Fehler beim Laden der Integrationen");
+      setError(err.message || tr("Fehler beim Laden der Integrationen", "Failed to load integrations"));
     } finally {
       setLoading(false);
     }
@@ -113,6 +124,36 @@ export function IntegrationsManagement() {
   useEffect(() => {
     fetchIntegrations();
   }, []);
+
+  // Handle GSC OAuth redirect result (?gsc=connected&email=... or ?gsc=error&message=...)
+  useEffect(() => {
+    const gscStatus = searchParams.get("gsc");
+    if (!gscStatus) return;
+
+    if (gscStatus === "connected") {
+      const email = searchParams.get("email") ?? "";
+      setGscConnectedEmail(email);
+      setSuccess(tr(
+        `Google Search Console erfolgreich verbunden${email ? ` (${email})` : ""}.`,
+        `Google Search Console connected successfully${email ? ` (${email})` : ""}.`
+      ));
+      setSelectedProviderId("google_search_console");
+    } else if (gscStatus === "error") {
+      const message = searchParams.get("message") ?? "Unknown error";
+      setError(tr(
+        `GSC-Verbindung fehlgeschlagen: ${message}`,
+        `GSC connection failed: ${message}`
+      ));
+      setSelectedProviderId("google_search_console");
+    }
+
+    // Clean up URL params
+    const url = new URL(window.location.href);
+    url.searchParams.delete("gsc");
+    url.searchParams.delete("email");
+    url.searchParams.delete("message");
+    router.replace(url.pathname + (url.search || ""), { scroll: false });
+  }, [searchParams]);
 
   const setProviderField = (provider: IntegrationProvider, fieldKey: string, value: string) => {
     setFormValues((prev) => ({
@@ -134,7 +175,7 @@ export function IntegrationsManagement() {
     });
 
     if (!Object.keys(payloadValues).length) {
-      setError(`Bitte mindestens ein Feld für ${provider.name} ausfüllen.`);
+      setError(tr(`Bitte mindestens ein Feld für ${provider.name} ausfüllen.`, `Please provide at least one field for ${provider.name}.`));
       return;
     }
 
@@ -151,14 +192,14 @@ export function IntegrationsManagement() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error || `Fehler beim Speichern für ${provider.name}`);
+        throw new Error(data?.error || tr(`Fehler beim Speichern für ${provider.name}`, `Failed to save ${provider.name}`));
       }
 
-      setSuccess(`${provider.name} erfolgreich gespeichert.`);
+      setSuccess(tr(`${provider.name} erfolgreich gespeichert.`, `${provider.name} saved successfully.`));
       setFormValues((prev) => ({ ...prev, [provider.id]: {} }));
       await fetchIntegrations();
     } catch (err: any) {
-      setError(err.message || `Fehler beim Speichern für ${provider.name}`);
+      setError(err.message || tr(`Fehler beim Speichern für ${provider.name}`, `Failed to save ${provider.name}`));
     } finally {
       setSavingProvider(null);
     }
@@ -176,19 +217,19 @@ export function IntegrationsManagement() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || `Verbindungstest für ${provider.name} fehlgeschlagen`);
+        throw new Error(data?.error || tr(`Verbindungstest für ${provider.name} fehlgeschlagen`, `Connection test for ${provider.name} failed`));
       }
 
       setTestResult((prev) => ({
         ...prev,
         [provider.id]: {
           ok: true,
-          message: data?.message || "Verbindung erfolgreich getestet.",
+          message: data?.message || tr("Verbindung erfolgreich getestet.", "Connection test successful."),
           testedAt: new Date().toISOString(),
         },
       }));
     } catch (err: any) {
-      const message = err.message || `Verbindungstest für ${provider.name} fehlgeschlagen`;
+      const message = err.message || tr(`Verbindungstest für ${provider.name} fehlgeschlagen`, `Connection test for ${provider.name} failed`);
       setTestResult((prev) => ({
         ...prev,
         [provider.id]: {
@@ -220,7 +261,7 @@ export function IntegrationsManagement() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || `Modelle für ${provider.name} konnten nicht geladen werden`);
+        throw new Error(data?.error || tr(`Modelle für ${provider.name} konnten nicht geladen werden`, `Could not load models for ${provider.name}`));
       }
 
       const models = Array.isArray(data?.models) ? (data.models as DiscoveredModel[]) : [];
@@ -229,7 +270,7 @@ export function IntegrationsManagement() {
         [provider.id]: models,
       }));
     } catch (err: any) {
-      const message = err.message || `Modelle für ${provider.name} konnten nicht geladen werden`;
+      const message = err.message || tr(`Modelle für ${provider.name} konnten nicht geladen werden`, `Could not load models for ${provider.name}`);
       setModelErrorsByProvider((prev) => ({
         ...prev,
         [provider.id]: message,
@@ -263,9 +304,9 @@ export function IntegrationsManagement() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <PlugZap className="h-5 w-5" />
-              Provider
+              {tr("Provider", "Provider")}
             </CardTitle>
-            <CardDescription>Wähle links einen Provider und konfiguriere ihn im Detailbereich.</CardDescription>
+            <CardDescription>{tr("Wähle links einen Provider und konfiguriere ihn im Detailbereich.", "Choose a provider on the left and configure it in the detail pane.")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {providers.map((provider) => {
@@ -289,11 +330,11 @@ export function IntegrationsManagement() {
                       <div className="text-sm font-medium">{provider.name}</div>
                       <div className="text-xs text-muted-foreground line-clamp-1">{provider.description}</div>
                     </div>
-                    <Badge variant={configured ? "default" : "secondary"}>{configured ? "Verbunden" : "Offen"}</Badge>
+                    <Badge variant={configured ? "default" : "secondary"}>{configured ? tr("Verbunden", "Connected") : tr("Offen", "Open")}</Badge>
                   </div>
                   <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{result ? `Letzter Test: ${result.ok ? "OK" : "Fehler"}` : "Noch nicht getestet"}</span>
-                    {isDiscoverableProvider(provider.id) ? <span>{modelCount} Modelle</span> : <span>-</span>}
+                    <span>{result ? tr(`Letzter Test: ${result.ok ? "OK" : "Fehler"}`, `Last test: ${result.ok ? "OK" : "Error"}`) : tr("Noch nicht getestet", "Not tested yet")}</span>
+                    {isDiscoverableProvider(provider.id) ? <span>{tr(`${modelCount} Modelle`, `${modelCount} models`)}</span> : <span>-</span>}
                   </div>
                 </button>
               );
@@ -303,15 +344,19 @@ export function IntegrationsManagement() {
 
         {!selectedProvider ? (
           <Card>
-            <CardContent className="py-10 text-sm text-muted-foreground">Kein Provider ausgewählt.</CardContent>
+            <CardContent className="py-10 text-sm text-muted-foreground">
+              {tr("Kein Provider ausgewählt.", "No provider selected.")}
+            </CardContent>
           </Card>
-        ) : (
+
+        ) : selectedProvider.id === "google_search_console" ? (
+          // ── GSC OAuth-based provider — special UI ────────────────────────────
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-3">
                 <span>{selectedProvider.name}</span>
                 <Badge variant={selectedConfigured ? "default" : "secondary"}>
-                  {selectedConfigured ? "Verbunden" : "Nicht verbunden"}
+                  {selectedConfigured ? tr("Verbunden", "Connected") : tr("Nicht verbunden", "Not connected")}
                 </Badge>
               </CardTitle>
               <CardDescription>{selectedProvider.description}</CardDescription>
@@ -319,23 +364,171 @@ export function IntegrationsManagement() {
             <CardContent className="space-y-6">
               {error && (
                 <Alert variant="destructive">
-                  <AlertTitle>Fehler</AlertTitle>
+                  <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+              {success && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>{tr("Verbunden", "Connected")}</AlertTitle>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
 
+              {/* Step 1: OAuth Connect */}
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("1) Google-Konto verbinden", "1) Connect Google account")}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tr(
+                      "Klicke auf 'Mit Google verbinden', um die Search Console zu autorisieren. Du wirst zu Google weitergeleitet und danach automatisch zurückgeleitet.",
+                      "Click 'Connect with Google' to authorize Search Console access. You will be redirected to Google and then back here automatically."
+                    )}
+                  </p>
+                </div>
+                {(selectedConfigured || gscConnectedEmail) ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {gscConnectedEmail
+                        ? tr(`Verbunden als ${gscConnectedEmail}`, `Connected as ${gscConnectedEmail}`)
+                        : tr("Google-Konto verbunden", "Google account connected")}
+                    </div>
+                    <a href="/api/auth/google/gsc?returnTo=/admin" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                      {tr("Neu verbinden", "Reconnect")}
+                    </a>
+                  </div>
+                ) : (
+                  <a href="/api/auth/google/gsc?returnTo=/admin">
+                    <Button className="h-10">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      {tr("Mit Google verbinden", "Connect with Google")}
+                    </Button>
+                  </a>
+                )}
+              </section>
+
+              {/* Step 2: GSC Site URL */}
+              <section className="space-y-3 border-t pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("2) GSC Property URL", "2) GSC Property URL")}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tr(
+                      "Die verifizierte Property-URL aus der Google Search Console, z.B. 'https://www.docmorris.de/'. Wird für Daten-Abfragen verwendet.",
+                      "The verified property URL from Google Search Console, e.g. 'https://www.docmorris.de/'. Used for data queries."
+                    )}
+                  </p>
+                </div>
+                {selectedProvider.fields.map((field) => {
+                  const masked = selectedIntegrationState?.maskedValues?.[field.key] || "";
+                  return (
+                    <div key={field.key} className="space-y-2 max-w-md">
+                      <label className="text-sm font-medium">{field.label}</label>
+                      <Input
+                        type={field.type}
+                        placeholder={field.placeholder}
+                        value={formValues[selectedProvider.id]?.[field.key] || ""}
+                        onChange={(e) => setProviderField(selectedProvider.id, field.key, e.target.value)}
+                      />
+                      {masked && (
+                        <p className="text-xs text-muted-foreground">
+                          {tr(`Aktuell: ${masked}`, `Current: ${masked}`)}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+                <Button
+                  onClick={() => saveProvider(selectedProvider)}
+                  disabled={savingProvider === selectedProvider.id}
+                  className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  {tr("Property URL speichern", "Save property URL")}
+                </Button>
+              </section>
+
+              {/* Step 3: Test */}
+              <section className="space-y-3 border-t pt-5">
+                <div>
+                  <h3 className="text-sm font-semibold">{tr("3) Verbindung testen", "3) Test connection")}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tr(
+                      "Prüft ob das gespeicherte Token noch gültig ist und GSC-Properties abrufbar sind.",
+                      "Checks whether the stored token is still valid and GSC properties can be fetched."
+                    )}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => testProvider(selectedProvider)}
+                    disabled={testingProvider === selectedProvider.id || !selectedConfigured}
+                    className="h-10"
+                  >
+                    {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                    {tr("Verbindung testen", "Test connection")}
+                  </Button>
+                  {selectedTestResult && (
+                    <span className="text-xs text-muted-foreground">
+                      {tr("Letzter Test", "Last test")}: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
+                    </span>
+                  )}
+                </div>
+                {selectedTestResult && (
+                  <div className={`text-sm rounded-md border px-3 py-2 ${selectedTestResult.ok ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
+                    <span className="inline-flex items-center gap-1">
+                      {selectedTestResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {selectedTestResult.message}
+                    </span>
+                  </div>
+                )}
+                <Alert>
+                  <ExternalLink className="h-4 w-4" />
+                  <AlertTitle>{tr("OAuth App einrichten", "Set up OAuth App")}</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {tr(
+                      "Die folgenden Env-Variablen müssen im Deployment gesetzt sein: GOOGLE_OAUTH_CLIENT_ID und GOOGLE_OAUTH_CLIENT_SECRET. Diese erhältst du in der Google Cloud Console unter 'APIs & Dienste → Anmeldedaten'.",
+                      "The following env vars must be set in the deployment: GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET. Get them from Google Cloud Console under 'APIs & Services → Credentials'."
+                    )}
+                  </AlertDescription>
+                </Alert>
+              </section>
+            </CardContent>
+          </Card>
+
+        ) : (
+          // ── Standard API-key-based provider UI ───────────────────────────────
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-3">
+                <span>{selectedProvider.name}</span>
+                <Badge variant={selectedConfigured ? "default" : "secondary"}>
+                  {selectedConfigured ? tr("Verbunden", "Connected") : tr("Nicht verbunden", "Not connected")}
+                </Badge>
+              </CardTitle>
+              <CardDescription>{selectedProvider.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
               {success && (
                 <Alert>
                   <ShieldCheck className="h-4 w-4" />
-                  <AlertTitle>Gespeichert</AlertTitle>
+                  <AlertTitle>{tr("Gespeichert", "Saved")}</AlertTitle>
                   <AlertDescription>{success}</AlertDescription>
                 </Alert>
               )}
 
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold">1) Zugangsdaten</h3>
-                  <p className="text-xs text-muted-foreground">Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.</p>
+                  <h3 className="text-sm font-semibold">{tr("1) Zugangsdaten", "1) Credentials")}</h3>
+                  <p className="text-xs text-muted-foreground">{tr("Hinterlege oder aktualisiere die Zugangsdaten für diesen Provider.", "Provide or update credentials for this provider.")}</p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   {selectedProvider.fields.map((field) => {
@@ -351,7 +544,7 @@ export function IntegrationsManagement() {
                           className="h-10"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {masked ? `Aktueller Wert: ${masked}` : "Noch kein Wert hinterlegt."}
+                          {masked ? tr(`Aktueller Wert: ${masked}`, `Current value: ${masked}`) : tr("Noch kein Wert hinterlegt.", "No value stored yet.")}
                         </p>
                       </div>
                     );
@@ -363,14 +556,14 @@ export function IntegrationsManagement() {
                   className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   {savingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Speichern
+                  {tr("Speichern", "Save")}
                 </Button>
               </section>
 
               <section className="space-y-4 border-t pt-5">
                 <div>
-                  <h3 className="text-sm font-semibold">2) Verbindung testen</h3>
-                  <p className="text-xs text-muted-foreground">Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.</p>
+                  <h3 className="text-sm font-semibold">{tr("2) Verbindung testen", "2) Test connection")}</h3>
+                  <p className="text-xs text-muted-foreground">{tr("Prüft, ob die gespeicherten Credentials mit dem Provider funktionieren.", "Checks whether stored credentials work with the provider.")}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
@@ -380,11 +573,11 @@ export function IntegrationsManagement() {
                     className="h-10"
                   >
                     {testingProvider === selectedProvider.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                    Verbindung testen
+                    {tr("Verbindung testen", "Test connection")}
                   </Button>
                   {selectedTestResult && (
                     <span className="text-xs text-muted-foreground">
-                      Letzter Test: {new Date(selectedTestResult.testedAt).toLocaleString("de-DE")}
+                      {tr("Letzter Test", "Last test")}: {new Date(selectedTestResult.testedAt).toLocaleString(localeTag)}
                     </span>
                   )}
                 </div>
@@ -396,13 +589,19 @@ export function IntegrationsManagement() {
                     </span>
                   </div>
                 )}
+                <Alert>
+                  <AlertTitle>{tr("Tipp zur Kostenkontrolle", "Cost control tip")}</AlertTitle>
+                  <AlertDescription>
+                    {tr("Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche Kostensicherheit bei automatisierten Workflows.", "Set a spending limit in your provider account where possible. This adds cost safety for automated workflows.")}
+                  </AlertDescription>
+                </Alert>
               </section>
 
               {selectedCanDiscoverModels && (
                 <section className="space-y-4 border-t pt-5">
                   <div>
-                    <h3 className="text-sm font-semibold">3) Verfügbare Modelle</h3>
-                    <p className="text-xs text-muted-foreground">Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.</p>
+                    <h3 className="text-sm font-semibold">{tr("3) Verfügbare Modelle", "3) Available models")}</h3>
+                    <p className="text-xs text-muted-foreground">{tr("Modelle serverseitig über die hinterlegte API-Key-Verbindung abrufen.", "Load models server-side via the configured API key connection.")}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -411,7 +610,7 @@ export function IntegrationsManagement() {
                       onClick={() => loadModels(selectedProvider, false)}
                       disabled={!selectedConfigured || selectedModelsLoading}
                     >
-                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Modelle laden"}
+                      {selectedModelsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("Modelle laden", "Load models")}
                     </Button>
                     <Button
                       variant="ghost"
@@ -420,12 +619,10 @@ export function IntegrationsManagement() {
                       disabled={!selectedConfigured || selectedModelsLoading}
                     >
                       <RefreshCcw className="mr-1 h-4 w-4" />
-                      Aktualisieren
+                      {tr("Aktualisieren", "Refresh")}
                     </Button>
                   </div>
-
                   {selectedModelError && <p className="text-xs text-red-600">{selectedModelError}</p>}
-
                   {selectedModels.length > 0 ? (
                     <div className="max-h-72 overflow-auto rounded border">
                       <div className="divide-y">
@@ -436,7 +633,7 @@ export function IntegrationsManagement() {
                               {model.label !== model.id && <div className="text-muted-foreground">{model.label}</div>}
                             </div>
                             {model.contextWindow ? (
-                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString("de-DE")} ctx</span>
+                              <span className="text-muted-foreground">{model.contextWindow.toLocaleString(localeTag)} ctx</span>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -445,7 +642,7 @@ export function IntegrationsManagement() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Noch keine Modelle geladen.</p>
+                    <p className="text-xs text-muted-foreground">{tr("Noch keine Modelle geladen.", "No models loaded yet.")}</p>
                   )}
                 </section>
               )}

@@ -84,8 +84,8 @@ export async function POST(request: Request) {
     const finalDiffSummary = diffSummary || Diff_Summary;
     const finalEditor = editor || Editor;
 
-    if (!finalKeywordId || !finalActionType) {
-      console.error('[API] Missing required fields:', { finalKeywordId, finalActionType });
+    if (!finalKeywordId) {
+      console.error('[API] Missing required fields:', { finalKeywordId });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 

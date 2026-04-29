@@ -23,10 +23,13 @@ export interface WorkflowRunRepositoryV2 {
   createRunStep(step: WorkflowRunStepV2): Promise<WorkflowRunStepV2>;
   updateRunStep(stepId: string, updates: Partial<WorkflowRunStepV2>): Promise<void>;
   createMessage(message: WorkflowMessageV2): Promise<WorkflowMessageV2>;
-  listRuns(tenantId: string, limit?: number): Promise<WorkflowRunV2[]>;
+  listRuns(tenantId: string, limit?: number, includeDeleted?: boolean): Promise<WorkflowRunV2[]>;
   getRunWithDetails(tenantId: string, runId: string): Promise<WorkflowRunWithDetailsV2 | null>;
   getRunMessages(tenantId: string, runId: string): Promise<WorkflowMessageV2[]>;
   findByIdempotencyKey(tenantId: string, workflowVersionId: string, idempotencyKey: string): Promise<WorkflowRunV2 | null>;
+  cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
 }
 
 export interface IntegrationSecretProviderV2 {
@@ -52,7 +55,10 @@ export interface AgentWorkflowServiceV2 {
   update(tenantId: string, workflowId: string, input: UpdateWorkflowInputV2): Promise<WorkflowWithVersionsV2>;
   publish(tenantId: string, workflowId: string): Promise<WorkflowWithVersionsV2>;
   run(tenantId: string, workflowId: string, input: RunWorkflowInputV2): Promise<WorkflowRunWithDetailsV2>;
-  listRuns(tenantId: string, limit?: number): Promise<WorkflowRunV2[]>;
+  listRuns(tenantId: string, limit?: number, includeDeleted?: boolean): Promise<WorkflowRunV2[]>;
   getRun(tenantId: string, runId: string): Promise<WorkflowRunWithDetailsV2 | null>;
   getRunMessages(tenantId: string, runId: string): Promise<WorkflowMessageV2[]>;
+  cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
+  restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
 }

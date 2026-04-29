@@ -27,12 +27,16 @@ import { HistoryList } from "@/features/shared/components/HistoryList";
 import { Input } from "@/components/ui/input";
 import { Label as UILabel } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface UrlDetailProps {
   url: string;
 }
 
 export function UrlDetail({ url }: UrlDetailProps) {
+  const { locale, t } = useI18n();
+  const localeTag = toLocaleTag(locale);
   const [data, setData] = useState<{
     performance: PerformanceData[];
     urlPerformance: URLPerformance[];
@@ -112,7 +116,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
     );
   }
 
-  if (!data) return <div>Keine Daten gefunden.</div>;
+  if (!data) return <div>{t('monitoringDetail.noData')}</div>;
 
   const getStatusInfo = () => {
     // Strictly exclude tool/planning logs from counting
@@ -127,7 +131,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
     }).sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
 
     if (deliveryLogs.length === 0) {
-      return { text: "Nicht optimiert", version: "" };
+      return { text: t('monitoringDetail.statusNotOptimized'), version: "" };
     }
     
     // Deduplicate by day
@@ -145,11 +149,11 @@ export function UrlDetail({ url }: UrlDetailProps) {
     const versionCount = dailyLogs.length;
     
     if (versionCount === 1) {
-      return { text: "Content erstellt", version: "" };
+      return { text: t('monitoringDetail.statusCreated'), version: "" };
     }
     
     return { 
-      text: "Content optimiert", 
+      text: t('monitoringDetail.statusOptimized'), 
       version: `(V${versionCount})` 
     };
   };
@@ -188,16 +192,16 @@ export function UrlDetail({ url }: UrlDetailProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Coins className="h-4 w-4 text-primary" />
-              Eingesparte Kosten (Agentur & Overhead)
+              {t('monitoringDetail.savedCosts')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {(data.savings.agency + data.savings.overhead).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+              {(data.savings.agency + data.savings.overhead).toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}
             </div>
             <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-              <span>Agentur: {data.savings.agency.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
-              <span>Overhead: {data.savings.overhead.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
+              <span>{t('monitoringDetail.agency')}: {data.savings.agency.toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}</span>
+              <span>{t('monitoringDetail.overhead')}: {data.savings.overhead.toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}</span>
             </div>
           </CardContent>
         </Card>
@@ -206,15 +210,15 @@ export function UrlDetail({ url }: UrlDetailProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <LayoutPanelLeft className="h-4 w-4 text-primary" />
-              Content-Status
+              {t('monitoringDetail.contentStatus')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">{statusInfo.text} {statusInfo.version}</div>
             <p className="text-xs text-muted-foreground">
               {data.history.length > 0 
-                ? `Letztes Update: ${new Date(data.history[0].Created_At).toLocaleDateString('de-DE')}`
-                : 'Keine Updates vorhanden'}
+                ? `${t('monitoringDetail.lastUpdate')}: ${new Date(data.history[0].Created_At).toLocaleDateString(localeTag)}`
+                : t('monitoringDetail.noUpdates')}
             </p>
           </CardContent>
         </Card>
@@ -223,7 +227,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Hash className="h-4 w-4 text-primary" />
-              Keywords
+              {t('monitoringDetail.keywords')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -249,7 +253,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground italic">Keine Keywords verknüpft</p>
+                <p className="text-xs text-muted-foreground italic">{t('monitoringDetail.noKeywordsLinked')}</p>
               )}
             </div>
           </CardContent>
@@ -259,22 +263,22 @@ export function UrlDetail({ url }: UrlDetailProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              Rankt für Main KW
+              {t('monitoringDetail.rankingMain')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
               <div className={`text-lg font-bold ${latestRanking?.Ranking ? 'text-primary' : 'text-slate-400'}`}>
-                {latestRanking?.Ranking ? 'Ja' : 'Nein'}
+                {latestRanking?.Ranking ? t('monitoringDetail.yes') : t('monitoringDetail.no')}
               </div>
               {latestRanking?.Ranking && (
                 <span className="text-sm text-muted-foreground font-medium">
-                  (Platz {latestRanking.Ranking})
+                  ({t('monitoringDetail.rankPosition')} {latestRanking.Ranking})
                 </span>
               )}
             </div>
             <p className="text-xs text-muted-foreground truncate" title={mainKeyword?.Keyword}>
-              {mainKeyword?.Keyword || 'Kein Main KW definiert'}
+              {mainKeyword?.Keyword || t('monitoringDetail.noMainKeyword')}
             </p>
           </CardContent>
         </Card>
@@ -286,7 +290,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
             <div className="space-y-1.5">
               <UILabel htmlFor="start-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                Zeitraum von
+                {t('monitoringDetail.periodFrom')}
               </UILabel>
               <Input
                 id="start-date"
@@ -299,7 +303,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
             <div className="space-y-1.5">
               <UILabel htmlFor="end-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                bis
+                {t('monitoringDetail.periodTo')}
               </UILabel>
               <Input
                 id="end-date"
@@ -316,7 +320,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
               className="h-9 gap-2 text-muted-foreground hover:text-primary"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              {t('common.reset')}
             </Button>
           </div>
         </CardContent>
@@ -325,8 +329,8 @@ export function UrlDetail({ url }: UrlDetailProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white border-none shadow-sm">
           <CardHeader>
-            <CardTitle>URL Performance Verlauf</CardTitle>
-            <CardDescription>GSC Klicks (Links) und Sistrix VI (Rechts).</CardDescription>
+            <CardTitle>{t('monitoringDetail.urlPerformanceTitle')}</CardTitle>
+            <CardDescription>{t('monitoringDetail.urlPerformanceDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -334,14 +338,14 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                   dataKey="Date" 
-                  tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
                 <YAxis yAxisId="left" stroke="var(--primary)" fontSize={12} />
                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
-                  labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
+                  labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
                 />
                 <Legend />
                 
@@ -361,7 +365,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   yAxisId="left"
                   type="monotone" 
                   dataKey="GSC_Clicks" 
-                  name="Klicks" 
+                  name={t('monitoringDetail.clicks')} 
                   stroke="var(--primary)" 
                   strokeWidth={2}
                   dot={false}
@@ -382,8 +386,8 @@ export function UrlDetail({ url }: UrlDetailProps) {
 
         <Card className="bg-white border-none shadow-sm">
           <CardHeader>
-            <CardTitle>Keyword Ranking Verlauf</CardTitle>
-            <CardDescription>Entwicklung der Rankings für Main & Secondaries (Niedriger ist besser).</CardDescription>
+            <CardTitle>{t('monitoringDetail.keywordRankingTitle')}</CardTitle>
+            <CardDescription>{t('monitoringDetail.keywordRankingDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -391,13 +395,13 @@ export function UrlDetail({ url }: UrlDetailProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                   dataKey="Date" 
-                  tickFormatter={(str) => new Date(str).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
                 <YAxis reversed domain={[1, 'auto']} fontSize={12} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
-                  labelFormatter={(l) => new Date(l).toLocaleDateString('de-DE')}
+                  labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
                 />
                 <Legend />
                 
@@ -420,7 +424,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
 
       <Card className="bg-white border-none shadow-sm">
         <CardHeader>
-          <CardTitle>Content-Historie</CardTitle>
+          <CardTitle>{t('monitoringDetail.contentHistoryTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <HistoryList 

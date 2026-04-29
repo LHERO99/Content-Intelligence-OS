@@ -288,10 +288,10 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
     return message;
   }
 
-  async listRuns(tenantId: string, limit: number = 50): Promise<WorkflowRunV2[]> {
+  async listRuns(tenantId: string, limit: number = 50, includeDeleted = false): Promise<WorkflowRunV2[]> {
     const store = await loadStore();
     return store.runs
-      .filter((run) => run.tenantId === tenantId)
+      .filter((run) => run.tenantId === tenantId && (includeDeleted ? true : !run.deletedAt))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
   }
@@ -323,9 +323,73 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
     const store = await loadStore();
     return (
       store.runs.find(
-        (run) => run.tenantId === tenantId && run.workflowVersionId === workflowVersionId && run.idempotencyKey === idempotencyKey
+        (run) =>
+          run.tenantId === tenantId &&
+          !run.deletedAt &&
+          run.workflowVersionId === workflowVersionId &&
+          run.idempotencyKey === idempotencyKey
       ) || null
     );
+  }
+
+  async cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null> {
+    const store = await loadStore();
+    const run = store.runs.find((entry) => entry.id === runId && entry.tenantId === tenantId && !entry.deletedAt);
+    if (!run) return null;
+
+    const now = nowIso();
+    const durationMs = run.startedAt ? Math.max(0, new Date(now).getTime() - new Date(run.startedAt).getTime()) : undefined;
+    const nextRuns = store.runs.map((entry) =>
+      entry.id === runId
+        ? {
+            ...entry,
+            status: 'cancelled' as const,
+            finishedAt: entry.finishedAt || now,
+            durationMs: entry.durationMs ?? durationMs,
+            updatedAt: now,
+          }
+        : entry
+    );
+    await persistRuns(nextRuns, store.runSteps, store.messages);
+    return nextRuns.find((entry) => entry.id === runId) || null;
+  }
+
+  async softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null> {
+    const store = await loadStore();
+    const run = store.runs.find((entry) => entry.id === runId && entry.tenantId === tenantId);
+    if (!run) return null;
+
+    const now = nowIso();
+    const nextRuns = store.runs.map((entry) =>
+      entry.id === runId
+        ? {
+            ...entry,
+            deletedAt: now,
+            updatedAt: now,
+          }
+        : entry
+    );
+    await persistRuns(nextRuns, store.runSteps, store.messages);
+    return nextRuns.find((entry) => entry.id === runId) || null;
+  }
+
+  async restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null> {
+    const store = await loadStore();
+    const run = store.runs.find((entry) => entry.id === runId && entry.tenantId === tenantId);
+    if (!run) return null;
+
+    const now = nowIso();
+    const nextRuns = store.runs.map((entry) =>
+      entry.id === runId
+        ? {
+            ...entry,
+            deletedAt: undefined,
+            updatedAt: now,
+          }
+        : entry
+    );
+    await persistRuns(nextRuns, store.runSteps, store.messages);
+    return nextRuns.find((entry) => entry.id === runId) || null;
   }
 }
 

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword } from '@/lib/airtable';
+import { createContentLog, updateKeyword, getConfig } from '@/lib/airtable';
 
 /**
- * Endpoint for n8n callbacks to return generated content.
+ * Endpoint for n8n or external agent callbacks to return generated content.
+ * Auth: X-API-KEY header must match either N8N_API_KEY env var (internal n8n)
+ *       or EXTERNAL_AGENT_WEBHOOK_SECRET config key (external agent webhook).
  * Expected body: {
  *   keywordId: string,
  *   content: string,
@@ -13,9 +15,23 @@ import { createContentLog, updateKeyword } from '@/lib/airtable';
 export async function POST(request: Request) {
   try {
     const apiKey = request.headers.get('X-API-KEY');
-    const isInternal = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
 
-    if (!isInternal) {
+    // Auth check: accept either the n8n API key or the external agent shared secret
+    const isN8n = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
+
+    let isExternalAgent = false;
+    if (!isN8n && apiKey) {
+      try {
+        const config = await getConfig();
+        const externalSecret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
+        isExternalAgent = !!(externalSecret && apiKey === externalSecret);
+      } catch {
+        // getConfig failure should not break the auth check; log and deny
+        console.error('[API] Failed to load config for callback auth');
+      }
+    }
+
+    if (!isN8n && !isExternalAgent) {
       console.warn('[API] Unauthorized callback request');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

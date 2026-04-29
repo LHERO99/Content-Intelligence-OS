@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { History } from "lucide-react";
 import { ContentHistoryTable } from "../content-history-table";
 import { useAlerts } from "@/components/alerts-provider";
+import { useI18n } from "@/i18n/use-i18n";
 
 // Remove the 'refreshing' state and the button
 export default function HistoryPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const [logs, setLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,14 +23,14 @@ export default function HistoryPage() {
 
     try {
       const response = await fetch('/api/planning/history');
-      if (!response.ok) throw new Error('Fehler beim Laden der Historie');
+      if (!response.ok) throw new Error(t('history.loadError'));
       const data = await response.json();
       setLogs(data);
     } catch (error: any) {
       console.error('Failed to fetch history:', error);
       addAlert({
         title: 'Fehler',
-        message: error.message || 'Die Content-Historie konnte nicht geladen werden.',
+        message: error.message || t('history.loadErrorMessage'),
         type: 'error'
       });
     } finally {
@@ -45,14 +47,14 @@ export default function HistoryPage() {
       <div className="flex items-center justify-between space-y-2">
         <div className="flex items-center gap-2 text-primary">
           <History className="h-8 w-8" />
-          <h1 className="text-3xl font-bold tracking-tight">Content-Historie</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('history.title')}</h1>
         </div>
       </div>
 
       <Card className="bg-white border-primary/10">
         <CardHeader>
-          <CardTitle className="text-primary">Globale Content-Historie</CardTitle>
-          <CardDescription>Vollständige Liste aller Erstellungen und Optimierungen gruppiert nach URL.</CardDescription>
+          <CardTitle className="text-primary">{t('history.globalTitle')}</CardTitle>
+          <CardDescription>{t('history.globalDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <ContentHistoryTable logs={logs} loading={loading} initialUrl={initialUrl} />

@@ -34,6 +34,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { KeywordMap } from "@/lib/airtable-types";
 import { useContentHistory } from "../hooks/useContentHistory";
 import { LastActionHistory, MetricItem } from "../../shared/components";
+import { useI18n } from "@/i18n/use-i18n";
+import { toLocaleTag } from "@/i18n/locale-utils";
 
 interface EditEditorialModalProps {
   keyword: KeywordMap | null;
@@ -56,6 +58,8 @@ export function EditEditorialModal({
   commissionedIds,
   editorOptions
 }: EditEditorialModalProps) {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
@@ -84,7 +88,7 @@ export function EditEditorialModal({
       await onSave(keyword.id, formData);
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || "Fehler beim Speichern");
+      setError(err.message || tr("Fehler beim Speichern", "Error saving"));
     } finally {
       setLoading(false);
     }
@@ -100,6 +104,19 @@ export function EditEditorialModal({
            keyword.Status === 'Optimierung' ||
            keyword.Status === 'Published';
   }, [keyword, commissionedIds]);
+
+  const selectedEditorValue = React.useMemo(() => {
+    const raw = formData.Assigned_Editor?.[0];
+    if (!raw) return "__none__";
+
+    const matchingById = editorOptions.find((editor) => editor.id === raw);
+    if (matchingById) return matchingById.id;
+
+    const matchingByEmail = editorOptions.find((editor) => editor.email === raw);
+    if (matchingByEmail) return matchingByEmail.id;
+
+    return "__none__";
+  }, [formData.Assigned_Editor, editorOptions]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -150,7 +167,7 @@ export function EditEditorialModal({
                   <MetricItem 
                     icon={Target} 
                     label="Suchvolumen" 
-                    value={keyword?.Search_Volume?.toLocaleString("de-DE")} 
+                    value={keyword?.Search_Volume?.toLocaleString(toLocaleTag(locale))} 
                   />
                   <MetricItem 
                     icon={ShieldCheck} 
@@ -217,22 +234,22 @@ export function EditEditorialModal({
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
                       <Select
-                        value={formData.Assigned_Editor?.[0] || "__none__"}
+                        value={selectedEditorValue}
                         onValueChange={(value) => {
-                          const selectedEditorEmail = value && value !== "__none__" ? value : undefined;
+                          const selectedEditorId = value && value !== "__none__" ? value : undefined;
                           setFormData({
                             ...formData,
-                            Assigned_Editor: selectedEditorEmail ? [selectedEditorEmail] : [],
+                            Assigned_Editor: selectedEditorId ? [selectedEditorId] : [],
                           });
                         }}
                       >
                         <SelectTrigger id="edit-editor" className="h-10 pl-10 border-primary/20 focus:ring-primary">
-                          <SelectValue placeholder="Editor auswählen" />
+                          <SelectValue placeholder={tr("Editor auswählen", "Select editor")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
+                          <SelectItem value="__none__">{tr("Nicht zugewiesen", "Unassigned")}</SelectItem>
                           {editorOptions.map((editor) => (
-                            <SelectItem key={editor.id} value={editor.email}>
+                            <SelectItem key={editor.id} value={editor.id}>
                               {editor.name} ({editor.email})
                             </SelectItem>
                           ))}
@@ -280,7 +297,7 @@ export function EditEditorialModal({
                       ) : (
                         <Zap className="h-3 w-3 mr-1 fill-current" />
                       )}
-                      Content beauftragen
+                      {locale === 'de' ? 'Content beauftragen' : 'Commission content'}
                     </Button>
                   )}
                 </div>
@@ -288,16 +305,16 @@ export function EditEditorialModal({
 
               <div className="border-t border-primary/10 pt-4 mt-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Content-Historie
-                  </h4>
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {locale === 'de' ? 'Content-Historie' : 'Content History'}
+                    </h4>
                   {keyword?.Target_URL && (
                     <Link 
                       href={`/history?url=${encodeURIComponent(keyword.Target_URL)}`}
                       className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
                     >
-                      Vollständige Historie
+                      {locale === 'de' ? 'Vollständige Historie' : 'Full history'}
                       <ExternalLink className="h-3 w-3" />
                     </Link>
                   )}
@@ -310,7 +327,7 @@ export function EditEditorialModal({
                 <Alert variant="destructive" className="mt-4 overflow-hidden border-red-200">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <div className="flex-1 overflow-hidden">
-                    <AlertTitle>Fehler</AlertTitle>
+                    <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
                     <AlertDescription className="break-words text-sm">
                       {error}
                     </AlertDescription>
@@ -322,11 +339,11 @@ export function EditEditorialModal({
 
           <DialogFooter className="p-6 bg-muted/30 border-t border-border">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
-              Abbrechen
+              {tr("Abbrechen", "Cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[120px]">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Speichern
+              {tr("Speichern", "Save")}
             </Button>
           </DialogFooter>
         </form>

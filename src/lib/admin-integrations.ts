@@ -8,7 +8,8 @@ export type IntegrationProvider =
   | 'copilot'
   | 'perplexity'
   | 'dataforseo'
-  | 'vertex_legal';
+  | 'vertex_legal'
+  | 'google_search_console';
 
 export type ProviderFieldType = 'password' | 'text';
 
@@ -152,6 +153,22 @@ export const PROVIDERS: ProviderDefinition[] = [
         label: 'Access Token',
         type: 'password',
         placeholder: 'ya29....',
+      },
+    ],
+  },
+  {
+    id: 'google_search_console',
+    name: 'Google Search Console',
+    description: 'Klicks, Impressionen und Positionen aus der Google Search Console.',
+    // GSC uses OAuth — no manual API key fields.
+    // Connection is managed via the /api/auth/google/gsc OAuth flow.
+    // The stored Config keys are: GSC_REFRESH_TOKEN, GSC_CONNECTED_EMAIL, GSC_SITE_URL
+    fields: [
+      {
+        key: 'GSC_SITE_URL',
+        label: 'GSC Property URL',
+        type: 'text',
+        placeholder: 'https://www.example.com/',
       },
     ],
   },

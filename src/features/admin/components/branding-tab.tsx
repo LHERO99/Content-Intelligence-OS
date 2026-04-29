@@ -13,8 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Save, Image as ImageIcon, Palette, Upload } from "lucide-react";
 import { applyBrandingCssVariables, contrastRatio, getBestForegroundColor, normalizeHexColor } from "@/lib/branding";
+import { useI18n } from "@/i18n/use-i18n";
 
 export function BrandingTab() {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<{ logo: boolean; favicon: boolean }>({ logo: false, favicon: false });
@@ -40,7 +43,7 @@ export function BrandingTab() {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/config");
-      if (!res.ok) throw new Error("Fehler beim Laden der Branding-Einstellungen");
+      if (!res.ok) throw new Error(tr("Fehler beim Laden der Branding-Einstellungen", "Error loading branding settings"));
       const data = await res.json();
       
       setConfig({
@@ -61,7 +64,7 @@ export function BrandingTab() {
 
     // Check size limit: 2MB
     if (file.size > 2 * 1024 * 1024) {
-      setError("Die Datei ist zu groß. Maximal 2MB erlaubt.");
+      setError(tr("Die Datei ist zu groß. Maximal 2MB erlaubt.", "File is too large. Maximum 2MB allowed."));
       return;
     }
 
@@ -81,7 +84,7 @@ export function BrandingTab() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Upload fehlgeschlagen');
+        throw new Error(data.error || tr('Upload fehlgeschlagen', 'Upload failed'));
       }
 
       const { url } = await res.json();
@@ -89,7 +92,7 @@ export function BrandingTab() {
         ...prev,
         [type === 'logo' ? 'BRAND_LOGO_URL' : 'BRAND_FAVICON_URL']: url
       }));
-      setSuccess(`${type === 'logo' ? 'Logo' : 'Favicon'} erfolgreich hochgeladen.`);
+      setSuccess(`${type === 'logo' ? tr('Logo', 'Logo') : tr('Favicon', 'Favicon')} ${tr('erfolgreich hochgeladen.', 'uploaded successfully.')}`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -101,7 +104,7 @@ export function BrandingTab() {
 
   const handleSave = async () => {
     if (!isPrimaryColorValid) {
-      setError("Bitte geben Sie eine gültige Hex-Farbe im Format #RRGGBB ein.");
+      setError(tr("Bitte geben Sie eine gültige Hex-Farbe im Format #RRGGBB ein.", "Please enter a valid hex color in the format #RRGGBB."));
       return;
     }
 
@@ -126,13 +129,13 @@ export function BrandingTab() {
         });
         if (!res.ok) {
           const errorData = await res.json();
-          throw new Error(errorData.error || `Fehler beim Speichern von ${key}`);
+          throw new Error(errorData.error || tr(`Fehler beim Speichern von ${key}`, `Error saving ${key}`));
         }
       }
 
       const safePrimary = normalizeHexColor(config.BRAND_PRIMARY_COLOR);
       applyBrandingCssVariables(safePrimary);
-      setSuccess("Die Branding-Einstellungen wurden erfolgreich gespeichert.");
+      setSuccess(tr("Die Branding-Einstellungen wurden erfolgreich gespeichert.", "Branding settings saved successfully."));
       window.dispatchEvent(new CustomEvent('branding-updated'));
     } catch (err: any) {
       setError(err.message);
@@ -153,14 +156,14 @@ export function BrandingTab() {
     <div className="space-y-6">
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Fehler</AlertTitle>
+          <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {success && (
         <Alert className="border-green-500 bg-green-50 text-green-900">
-          <AlertTitle>Erfolg</AlertTitle>
+          <AlertTitle>{tr("Erfolg", "Success")}</AlertTitle>
           <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
@@ -171,15 +174,15 @@ export function BrandingTab() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
-              Farben & Stil
+              {tr("Farben & Stil", "Colors & Style")}
             </CardTitle>
             <CardDescription>
-              Passen Sie das Farbschema der Anwendung an.
+              {tr("Passen Sie das Farbschema der Anwendung an.", "Customize the color scheme of the application.")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Primärfarbe (Hex)</label>
+              <label className="text-sm font-medium">{tr("Primärfarbe (Hex)", "Primary Color (Hex)")}</label>
               <div className="flex gap-4">
                 <Input 
                   type="color" 
@@ -206,18 +209,18 @@ export function BrandingTab() {
                 />
               </div>
               {!isPrimaryColorValid && (
-                <p className="text-xs text-red-600">Ungültiges Format. Bitte nutzen Sie #RRGGBB.</p>
+                <p className="text-xs text-red-600">{tr("Ungültiges Format. Bitte nutzen Sie #RRGGBB.", "Invalid format. Please use #RRGGBB.")}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Kontrast (Primärfarbe zu Text): {primaryContrast.toFixed(2)}:1
+                {tr("Kontrast (Primärfarbe zu Text):", "Contrast (primary color to text):")} {primaryContrast.toFixed(2)}:1
               </p>
               <p className="text-xs text-muted-foreground">
-                Diese Farbe wird für Buttons, Navigation und Hervorhebungen verwendet.
+                {tr("Diese Farbe wird für Buttons, Navigation und Hervorhebungen verwendet.", "This color is used for buttons, navigation and highlights.")}
               </p>
             </div>
 
             <div className="pt-4 border-t">
-              <h4 className="text-sm font-medium mb-3">Vorschau</h4>
+              <h4 className="text-sm font-medium mb-3">{tr("Vorschau", "Preview")}</h4>
               <div className="flex flex-wrap gap-2">
                 <Button style={{ backgroundColor: normalizedPrimary, color: computedForeground }}>Button</Button>
                 <Button variant="outline" style={{ borderColor: normalizedPrimary, color: normalizedPrimary }}>Outline</Button>
@@ -235,15 +238,15 @@ export function BrandingTab() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
-              Logos & Icons
+              {tr("Logos & Icons", "Logos & Icons")}
             </CardTitle>
             <CardDescription>
-              Laden Sie Ihr Logo und Favicon hoch (maximal 2MB).
+              {tr("Laden Sie Ihr Logo und Favicon hoch (maximal 2MB).", "Upload your logo and favicon (max 2MB).")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="space-y-3">
-              <label className="text-sm font-medium">Anwendungs-Logo</label>
+              <label className="text-sm font-medium">{tr("Anwendungs-Logo", "Application Logo")}</label>
               <div className="flex flex-col gap-3">
                 <input
                   type="file"
@@ -266,13 +269,13 @@ export function BrandingTab() {
                   <div className="flex flex-col items-center gap-2">
                     <img 
                       src={config.BRAND_LOGO_URL} 
-                      alt="Logo Vorschau" 
+                      alt={tr("Logo Vorschau", "Logo Preview")}
                       className="max-h-32 w-auto object-contain transition-transform group-hover:scale-105"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = 'https://placehold.co/400x100?text=Klicken+zum+Upload';
                       }}
                     />
-                    <span className="text-xs text-muted-foreground mt-2 group-hover:text-primary">Klicken zum Ändern</span>
+                    <span className="text-xs text-muted-foreground mt-2 group-hover:text-primary">{tr("Klicken zum Ändern", "Click to change")}</span>
                   </div>
                 </div>
               </div>
@@ -310,7 +313,7 @@ export function BrandingTab() {
                     />
                   </div>
                 </div>
-                <p className="text-center text-xs text-muted-foreground">Klicken zum Ändern</p>
+                <p className="text-center text-xs text-muted-foreground">{tr("Klicken zum Ändern", "Click to change")}</p>
               </div>
             </div>
           </CardContent>
@@ -325,7 +328,7 @@ export function BrandingTab() {
           style={{ backgroundColor: normalizedPrimary, color: computedForeground }}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Einstellungen speichern
+          {tr("Einstellungen speichern", "Save Settings")}
         </Button>
       </div>
     </div>

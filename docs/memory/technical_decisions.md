@@ -1,4 +1,47 @@
-# Technische Entscheidungen (Stand: 06.04.2026)
+# Technische Entscheidungen (Stand: 28.04.2026)
+
+## KI-Chat Save-Architektur (28.04.2026)
+- **Content-Parameter statt Ref**: `onApplyChanges(content: string)` — der Child (`AIChatPanel`) übergibt den `refinedContent` direkt als Parameter beim Klick. Kein `useRef` + `useEffect`-Sync mehr (war fragil durch stale closures).
+- **Action_Type für KI-Chat omitted**: `'KI-Chat'` ist kein gültiger Airtable Select-Wert für `Action_Type`. Statt einem ungültigen Wert zu senden (422) oder einen falschen zu wählen (`'Optimierung'`), wird `actionType` bei KI-Chat-Saves vollständig weggelassen.
+- **Identifikation via Diff_Summary**: KI-Chat-Saves sind in der Historie erkennbar über `Diff_Summary: 'KI-Chat: KI-Optimierung übernommen'`.
+- **API-Route macht actionType optional**: `/api/planning/history` POST-Handler validiert nur noch `keywordId` als Pflichtfeld. `actionType` ist optional — `createContentLog` in `airtable.ts` löscht `undefined`-Felder ohnehin aktiv.
+
+## Agent-Workflow V2: Orchestrierungsmodell (26.04.2026)
+- **Serielles Parent-Orchestrierungsmodell**:
+  - Die Engine wurde von linearem Topology-Run auf einen orchestrierten Round-Loop umgestellt.
+  - Ablauf: Parent entscheidet -> ein Subagent wird beauftragt -> Ergebnis an Parent zurück -> nächste Entscheidung.
+  - Keine Parallelität auf Subagent-Ebene (bewusste Produktentscheidung).
+- **Parent-Decision Contract**:
+  - Parent muss ein valides JSON liefern (`finalize`, optional `summary`, optional `next`, optional `memoryPatch`).
+  - Bei ungültiger Entscheidung wird ein `control`-Message-Event geschrieben und der Run als fehlerhaft beendet.
+- **A2A Message Typisierung**:
+  - Einführung von `messageType` (`task_request`, `task_result`, `control`) plus `round` und `correlationId` für Nachvollziehbarkeit und Audit-Trails.
+- **Konfigurations-Contract für Subagents**:
+  - Node-Config wurde um `purpose`, `inputContract`, `outputContract` erweitert.
+  - Diese Felder dienen als Entscheidungskontext für den Parent und als Ausführungsrahmen für Subagents.
+- **Run-Version-Semantik explizit gemacht**:
+  - `runFrom` (`draft` oder `published`) wurde als Eingabe eingeführt.
+  - Builder-Default ist `draft`, um UI/Cavas und auszuführende Version konsistent zu halten.
+
+## Integrationsstrategie für Modellauflistung (26.04.2026)
+- **Server-side Discovery only**:
+  - Modelllisten werden ausschließlich serverseitig über `/api/admin/integrations/[provider]/models` geladen.
+  - API-Keys verbleiben im Backend, kein Direct-to-Provider Call aus dem Browser.
+- **Cache-Strategie**:
+  - In-Memory TTL Cache für Modelllisten, optionaler `refresh=1` zur erzwungenen Aktualisierung.
+- **Provider-Abdeckung**:
+  - Discovery für `openai`, `openrouter`, `gemini`, `copilot (GitHub Models)`, `perplexity`.
+- **Spezial-Integrationen**:
+  - **Vertex Legal Agent**: Nutzt spezifische Felder (Project ID, Location, Endpoint ID, Access Token) für die Kommunikation mit Google Cloud Vertex AI Endpunkten.
+  - **DataForSEO**: Nutzt Basic Auth (Username/Password) für den Zugriff auf SEO-Daten-Schnittstellen.
+
+## UX-Entscheidung: Node-Konfiguration (26.04.2026)
+- **Section-first statt Flat-Form**:
+  - Node-Konfiguration wurde in klar benannte, auf-/zuklappbare Sektionen aufgeteilt.
+  - Ziel: geringere kognitive Last, schnellere Orientierung, bessere Erstnutzung ohne Erklärbedarf.
+- **Progressive Disclosure**:
+  - Kernsektionen standardmäßig offen, erweiterte Bereiche separat gekapselt.
+  - Actions im Sticky-Footer für konstante Erreichbarkeit.
 
 ## Optimierte Performance-Architektur (06.04.2026)
 - **Tabellen-Split Strategie**: 
@@ -47,3 +90,21 @@
 - **Row-Action Pattern**: Umstellung von expliziten "Details"-Buttons auf zeilenbasiertes Klicken in der Monitoring-Tabelle zur Verbesserung der UX.
 - **ROI Data Injection**: Die Monitoring-Übersicht API berechnet nun aggregierte Kosten-Einsparungen pro URL on-the-fly, um sie in der Haupttabelle anzuzeigen.
 
+## Internationalisierung (i18n) — Pattern & Regeln (28.04.2026)
+- **Inline-Translate Helper**: Statt eines zentralen `tr`-Exports aus `useI18n` wird `tr` als lokale Funktion in jeder Komponente definiert:
+  ```ts
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
+  ```
+  Dies ist das etablierte, konsistente Pattern im gesamten Projekt.
+- **useI18n API**: Gibt nur `{ locale, setLocale, t }` zurück — kein `tr`. Kein `tr` in den Hook hinzufügen.
+- **Kein Base UI für Language Switcher**: `@base-ui/react DropdownMenu.Trigger` mit Children führt zu Error #31. Language Switcher bleibt als native `<button>` Elemente.
+- **Columns mit Locale-Reaktivität**: Statische `const columns: ColumnDef[]` außerhalb von Komponenten können `useI18n` nicht nutzen. Pflicht-Pattern:
+  ```ts
+  function buildColumns(tr: (de: string, en: string) => string): ColumnDef<T>[] { ... }
+  // In Komponente:
+  const columns = useMemo(() => buildColumns(tr), [locale]);
+  ```
+- **Alle UI-Texte müssen multilingual sein**: Bei jeder neuen Komponente oder jedem neuen Feature müssen alle sichtbaren Strings mit `tr(de, en)` gewrappt werden. Hardcodierte deutsche oder englische UI-Strings sind nicht akzeptiert.
+- **Locale-Persistenz**: Die gewählte Sprache wird in `localStorage` gespeichert (via `LanguageProvider`). Standard-Locale ist `"de"`.
+- **Keine `document.documentElement.lang` für reaktive Übersetzungen**: Dieser Wert reagiert nicht auf React-State-Änderungen und darf nur als Fallback für nicht-reaktive Kontexte (z.B. `toLocaleDateString`) genutzt werden — nicht als Basis für UI-Text-Entscheidungen.

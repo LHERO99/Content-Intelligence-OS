@@ -36,6 +36,7 @@ import { useAlerts } from "@/components/alerts-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentHistoryTable } from "./content-history-table";
+import { useI18n } from "@/i18n/use-i18n";
 
 // --- Helper Components ---
 
@@ -72,6 +73,7 @@ function KPICard({
 
 export default function DashboardPage() {
   const { addAlert } = useAlerts();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
@@ -107,9 +109,9 @@ export default function DashboardPage() {
         diagnosticAlerts.forEach((alert: AuditLog) => {
           addAlert({
             type: 'warning',
-            title: 'System-Diagnose',
+            title: t("dashboard.alerts.diagnosticTitle"),
             message: alert.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Diagnose-Warnung',
-            description: 'Eine neue System-Diagnose-Warnung wurde in den Logs erkannt.'
+            description: t("dashboard.alerts.diagnosticDescription")
           });
         });
       }
@@ -186,7 +188,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center justify-between space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">{t("dashboard.title")}</h1>
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
@@ -196,7 +198,7 @@ export default function DashboardPage() {
             className="border-primary/20 text-primary"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Aktualisieren
+            {t("common.refresh")}
           </Button>
         </div>
       </div>
@@ -204,31 +206,31 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <KPICard 
-          title="Sichtbarkeitsindex Gesamt" 
+          title={t("dashboard.kpi.visibilityIndex")} 
           value={latestVI} 
-          description="Aggregierter Sistrix VI" 
+          description={t("dashboard.kpi.visibilityIndexDesc")} 
           icon={TrendingUp} 
         />
         <KPICard 
-          title="GSC Klicks" 
+          title={t("dashboard.kpi.gscClicks")} 
           value={totalClicks.toLocaleString()} 
-          description="Letzte 30 Tage" 
+          description={t("dashboard.kpi.gscClicksDesc")} 
           icon={MousePointer2} 
         />
         <KPICard 
-          title="Aktive Trends" 
+          title={t("dashboard.kpi.activeTrends")} 
           value={activeTrendsCount} 
-          description="Neue Potenziale identifiziert" 
+          description={t("dashboard.kpi.activeTrendsDesc")} 
           icon={Activity} 
         />
       </div>
 
       <Tabs defaultValue="performance" className="space-y-4">
         <TabsList className="bg-white border border-primary/20">
-          <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Performance</TabsTrigger>
+          <TabsTrigger value="performance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t("dashboard.tabs.performance")}</TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <History className="h-4 w-4 mr-2" />
-            Content-Historie
+            {t("dashboard.tabs.history")}
           </TabsTrigger>
         </TabsList>
 
@@ -237,8 +239,8 @@ export default function DashboardPage() {
             {/* Performance Chart */}
             <Card className="col-span-4 bg-white border-primary/20">
               <CardHeader>
-                <CardTitle className="text-primary">Sichtbarkeitsindex Trend</CardTitle>
-                <CardDescription>Historische Performance über alle Keywords</CardDescription>
+                <CardTitle className="text-primary">{t("dashboard.chart.title")}</CardTitle>
+                <CardDescription>{t("dashboard.chart.description")}</CardDescription>
               </CardHeader>
               <CardContent className="pl-2">
                 <div className="h-[350px] w-full">
@@ -252,7 +254,7 @@ export default function DashboardPage() {
                           fontSize={12} 
                           tickLine={false} 
                           axisLine={false}
-                          tickFormatter={(value) => new Date(value).toLocaleDateString('de-DE', { month: 'short', day: 'numeric' })}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString(locale === "de" ? "de-DE" : "en-US", { month: 'short', day: 'numeric' })}
                         />
                         <YAxis 
                           stroke="var(--primary)" 
@@ -276,19 +278,17 @@ export default function DashboardPage() {
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground">
-                      Keine Performance-Daten verfügbar
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                      <div className="flex h-full items-center justify-center text-muted-foreground">{t("dashboard.chart.noData")}</div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
             {/* Alerts Feed */}
             <Card className="col-span-3 bg-white border-primary/20">
               <CardHeader>
-                <CardTitle className="text-primary">Aktuelle Warnmeldungen</CardTitle>
-                <CardDescription>Closed Loop Diagnosen & Systemaktionen</CardDescription>
+                <CardTitle className="text-primary">{t("dashboard.alerts.title")}</CardTitle>
+                <CardDescription>{t("dashboard.alerts.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -301,15 +301,13 @@ export default function DashboardPage() {
                             {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Aktion'}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {log.Timestamp ? new Date(log.Timestamp).toLocaleString('de-DE') : 'Unbekanntes Datum'}
+                            {log.Timestamp ? new Date(log.Timestamp).toLocaleString(locale === "de" ? "de-DE" : "en-US") : t("common.unknownDate")}
                           </p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Keine aktuellen Warnmeldungen gefunden
-                    </div>
+                      <div className="text-center py-8 text-muted-foreground">{t("dashboard.alerts.none")}</div>
                   )}
                 </div>
               </CardContent>
@@ -320,8 +318,8 @@ export default function DashboardPage() {
         <TabsContent value="history">
           <Card className="bg-white border-primary/20">
             <CardHeader>
-              <CardTitle className="text-primary">Globale Content-Historie</CardTitle>
-              <CardDescription>Letzte Erstellungen und Optimierungen über alle URLs</CardDescription>
+              <CardTitle className="text-primary">{t("dashboard.history.title")}</CardTitle>
+              <CardDescription>{t("dashboard.history.description")}</CardDescription>
             </CardHeader>
             <CardContent>
               <ContentHistoryTable logs={contentHistory} loading={refreshing} />

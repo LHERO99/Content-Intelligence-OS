@@ -67,8 +67,9 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Search_Volume",
     header: "Suchvolumen",
     cell: ({ row }) => {
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const vol = row.getValue("Search_Volume") as number;
-      return vol ? vol.toLocaleString("de-DE") : "-";
+      return vol ? vol.toLocaleString(activeLocale) : "-";
     },
   },
   {
@@ -160,12 +161,13 @@ export const editorialColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Editorial_Deadline",
     header: "Deadline",
     cell: ({ row }) => {
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const date = row.getValue("Editorial_Deadline") as string;
       if (!date) return "-";
       return (
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          {new Date(date).toLocaleDateString("de-DE")}
+          {new Date(date).toLocaleDateString(activeLocale)}
         </div>
       );
     },

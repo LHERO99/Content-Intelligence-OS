@@ -1,4 +1,37 @@
-# Projekt-Status (Stand: 06.04.2026)
+# Projekt-Status (Stand: 28.04.2026)
+
+## KI-Chat Feature (Creation Page) — Status: Funktionsfähig (28.04.2026)
+- **Ziel**: User gibt im KI-Optimierung-Tab eine Anweisung ein → KI überarbeitet Text → linke Vorschau zeigt neuen Text sofort → "Übernehmen" speichert in Airtable via `/api/planning/history`.
+- **Architektur**: `AIEditorWorkspace` (Parent) hält `workingContent` + `previewContent` als State. `AIChatPanel` (Child) ist immer gemountet via `hidden`-Klasse (Chat-State bleibt bei Tab-Wechsel erhalten).
+- **Vorschau**: Nach KI-Antwort → `onPreviewChange(refinedContent)` → linke Vorschau zeigt KI-Vorschlag sofort. "KI-Vorschlag (Vorschau)" + "Nicht gespeichert" Badge werden angezeigt.
+- **Übernehmen-Fix**: `onApplyChanges(content: string)` — `AIChatPanel` übergibt `refinedContent` direkt als Parameter. Kein `useRef`-Syncing mehr nötig (stale-closure race condition behoben).
+- **Ablehnen**: Setzt Vorschau zurück auf `workingContent` (kein Save).
+- **Save-Logik**: POST an `/api/planning/history` ohne `actionType` — KI-Chat-Saves werden über `Diff_Summary: 'KI-Chat: KI-Optimierung übernommen'` identifiziert.
+- **Airtable Action_Type**: `'KI-Chat'` ist kein gültiger Select-Wert in Airtable. Lösung: `actionType` wird für KI-Chat-Saves gar nicht gesendet. `/api/planning/history` macht `actionType` optional (kein 400 bei fehlendem Wert). `createContentLog` löscht `undefined`-Felder bereits aktiv.
+- **Markdown-Stripping**: `stripMarkdownCodeFences()` in `/api/creation/refine/route.ts` entfernt Code-Fences aus KI-Antworten.
+- **Modell-Dropdown**: `AIChatPanel` lädt verfügbare Modelle via `/api/creation/models`. Auto-Select des ersten Modells. Grouped Select (Provider → Modelle).
+
+## Content-Agent Builder V2 (Orchestrierung, UX, Integrationen)
+- **V2 als Standard etabliert**: Der Builder läuft auf `/content-agent-builder`; V1 wurde entfernt und nicht mehr verwendet.
+- **Orchestrator-Loop implementiert**: Ausführung läuft nun seriell in Runden (`Parent -> 1 Subagent -> Parent`), ohne parallele Subagent-Runs.
+- **Entscheidungslogik über Parent-LLM**: Der Parent trifft die nächste Delegationsentscheidung über ein strukturiertes JSON-Schema (`finalize`, `next.targetNodeId`, `objective`, `memoryPatch`).
+- **Run-Metadaten erweitert**: Steps/Messages enthalten nun `round`, `phase`, `correlationId` sowie Message-Typen (`task_request`, `task_result`, `control`) für nachvollziehbares Agent-to-Agent Tracing.
+- **Subagent-Kontext standardisiert**: Node-Config enthält nun `purpose`, `inputContract`, `outputContract`; diese Daten werden in die Parent-Entscheidung und Subagent-Execution eingespeist.
+- **Run-Version explizit steuerbar**: Start eines Flows unterstützt `runFrom` (`draft`/`published`), Default im Builder ist `draft` zur Vermeidung von Draft-vs-Published Mismatches.
+- **Pre-Run Validierung im UI**: Vor Ausführung wird geprüft auf genau 1 Parent, aktiven Parent, mindestens 1 aktiven Subagent und gesetzte Subagent-Purpose.
+
+## Integrationen & Modell-Discovery
+- **Model Discovery ausgebaut**: Serverseitige Modellauflistung via `/api/admin/integrations/[provider]/models` mit Caching und optionalem Refresh.
+- **Unterstützte Discovery-Provider**: `openai`, `openrouter`, `gemini`, `copilot (GitHub Models)`, `perplexity`.
+- **Admin-Integrationen modernisiert**: Master-Detail UI (Provider-Liste links, Detail rechts) statt paralleler Kartenübersicht.
+- **Provider-Portfolio erweitert**: OpenAI für Builder/Runtime ergänzt; Copilot & Perplexity im Integrationsmanagement (Test + Modellauflistung) ergänzt.
+- **Vertex Legal Agent**: Integration eines externen Legal Agents über Vertex AI Endpunkte für rechtliche Prüfungen.
+- **DataForSEO**: Integration für Performance- und SEO-Datenquellen ergänzt.
+
+## Node-Konfigurations-UX (Builder)
+- **Komplette UX-Neustrukturierung**: Node-Drawer in klaren Sektionen (`Rolle & Identität`, `Aufgabe`, `LLM Setup`, `I/O Vertrag`, `Erweitert`) mit selbsterklärender Mikrocopy.
+- **Bessere Bedienbarkeit**: Sektionen sind auf-/zuklappbar, relevante Bereiche initial offen; Sticky-Aktionsleiste im Footer (`Node entfernen`, `Fertig`).
+- **Model-UI harmonisiert**: Einheitliches Verhalten für Laden/Aktualisieren/Auswählen inkl. Admin-Hinweis bei fehlender Provider-Anbindung.
 
 ## Content-Lifecycle & Logging-Events
 - **Status-Workflow**: Der Workflow umfasst nun: `Backlog` -> `Planned` -> `Beauftragt` -> `Angeliefert` -> `Published`.
@@ -72,4 +105,28 @@
 - **Echtzeit-Anwendung**: Der `BrandingProvider` injiziert die Primärfarbe via CSS-Variable (`--primary`) und aktualisiert das Favicon dynamisch im Browser.
 - **Refactoring**: Hardcodierte DocMorris-Brandings in Sidebar und Layout wurden durch dynamische Assets ersetzt.
 
+## Internationalisierung / i18n (28.04.2026)
+- **Vollständige DE/EN Sprachumschaltung**: Die gesamte UI kann per Language Switcher zwischen Deutsch und Englisch umgeschaltet werden.
+- **LanguageProvider**: Eingebunden in `src/app/layout.tsx`; persistiert die gewählte Sprache in `localStorage`.
+- **useI18n Hook** (`src/i18n/use-i18n.ts`): Gibt `{ locale, setLocale, t }` zurück. Liefert kein `tr` direkt — dieses wird per Inline-Helper definiert: `const tr = (de: string, en: string) => (locale === "de" ? de : en);`
+- **Inline-Translate Pattern**: Alle lokalisierten Komponenten verwenden `tr(de, en)` direkt im JSX für schnelle Inline-Übersetzungen. Dictionary-basiertes `t("key")` ist ebenfalls verfügbar.
+- **LanguageSwitcher**: Zwei native `<button>` Elemente (DE / EN) — kein Base UI mehr (Base UI Error #31 bei DropdownMenu.Trigger vermieden).
+- **Lokalisierte Dateien** (vollständig):
+  - `src/components/language-switcher.tsx`
+  - `src/components/app-sidebar.tsx`
+  - `src/components/authenticated-layout.tsx` (Viewport-Warnung)
+  - `src/app/planning/blacklist.tsx` (inkl. dynamische `buildColumns(tr)` Funktion für reaktive Spaltenköpfe)
+  - `src/app/admin/page.tsx`
+  - `src/app/admin/integrations-management.tsx`
+  - `src/app/admin/cost-management.tsx`
+  - `src/app/monitoring/page.tsx`
+  - `src/features/planning/components/keyword-import.tsx`
+  - `src/features/planning/components/KeywordFilterBar.tsx`
+  - `src/features/planning/components/EditorialFilterBar.tsx`
+  - `src/features/planning/components/EditKeywordModal.tsx`
+  - `src/features/planning/components/EditEditorialModal.tsx`
+  - `src/features/admin/components/optimization-rules-tab.tsx`
+  - `src/features/admin/components/branding-tab.tsx`
+- **Bekannte Eigenheit**: Statische `columns`-Arrays (ColumnDef[]) außerhalb von Komponenten können keine Hooks nutzen. Lösung: `buildColumns(tr)` als Funktion + `useMemo(() => buildColumns(tr), [locale])` innerhalb der Hauptkomponente.
+- **Reactive Columns Pattern**: Alle Tabellenspalten-Definitionen, die übersetzbare Header haben, müssen in `useMemo` mit `locale` als Dependency definiert werden.
 

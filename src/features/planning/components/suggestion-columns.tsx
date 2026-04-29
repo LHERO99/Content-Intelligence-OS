@@ -132,19 +132,21 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     accessorKey: "Search_Volume",
     header: "Suchvolumen",
     cell: ({ row }) => {
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const val = row.getValue("Search_Volume") as number;
-      return val ? val.toLocaleString("de-DE") : "-";
+      return val ? val.toLocaleString(activeLocale) : "-";
     },
   },
   {
     accessorKey: "Last_Published",
     header: "Letzte Änderung",
     cell: ({ row }) => {
+      const activeLocale = typeof document !== "undefined" ? document.documentElement.lang || "de-DE" : "de-DE";
       const date = row.getValue("Last_Published") as string;
       if (!date) return <span className="text-sm text-muted-foreground">Neu</span>;
       return (
         <span className="text-sm text-muted-foreground">
-          {new Date(date).toLocaleDateString("de-DE")}
+          {new Date(date).toLocaleDateString(activeLocale)}
         </span>
       );
     },

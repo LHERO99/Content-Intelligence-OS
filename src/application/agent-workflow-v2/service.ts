@@ -761,8 +761,8 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     return finalRun;
   }
 
-  async listRuns(tenantId: string, limit?: number) {
-    return this.runs.listRuns(tenantId, limit);
+  async listRuns(tenantId: string, limit?: number, includeDeleted?: boolean) {
+    return this.runs.listRuns(tenantId, limit, includeDeleted);
   }
 
   async getRun(tenantId: string, runId: string) {
@@ -771,5 +771,17 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
 
   async getRunMessages(tenantId: string, runId: string) {
     return this.runs.getRunMessages(tenantId, runId);
+  }
+
+  async cancelRun(tenantId: string, runId: string) {
+    return this.runs.cancelRun(tenantId, runId);
+  }
+
+  async softDeleteRun(tenantId: string, runId: string) {
+    return this.runs.softDeleteRun(tenantId, runId);
+  }
+
+  async restoreRun(tenantId: string, runId: string) {
+    return this.runs.restoreRun(tenantId, runId);
   }
 }

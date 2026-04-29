@@ -90,6 +90,7 @@ export interface WorkflowRunV2 {
   startedAt: string;
   finishedAt?: string;
   durationMs?: number;
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

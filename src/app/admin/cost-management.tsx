@@ -37,11 +37,14 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Coins, Save, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CostConfig } from "@/lib/airtable-types";
+import { useI18n } from "@/i18n/use-i18n";
 
 const PAGE_TYPES = ["Kategorie", "Ratgeber", "Marke", "Produkt"];
 const ACTION_TYPES = ["Erstellung", "Optimierung"];
 
 export function CostManagement() {
+  const { locale } = useI18n();
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [configs, setConfigs] = useState<CostConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -67,7 +70,7 @@ export function CostManagement() {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/costs");
-      if (!res.ok) throw new Error("Fehler beim Laden der Kostenkonfiguration");
+      if (!res.ok) throw new Error(tr("Fehler beim Laden der Kostenkonfiguration", "Error loading cost configuration"));
       const data = await res.json();
       setConfigs(data);
     } catch (err: any) {
@@ -93,7 +96,7 @@ export function CostManagement() {
         }),
       });
 
-      if (!res.ok) throw new Error("Fehler beim Speichern der Kosten");
+      if (!res.ok) throw new Error(tr("Fehler beim Speichern der Kosten", "Error saving costs"));
       
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -106,7 +109,7 @@ export function CostManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Möchten Sie diesen Eintrag wirklich löschen?")) return;
+    if (!confirm(tr("Möchten Sie diesen Eintrag wirklich löschen?", "Do you really want to delete this entry?"))) return;
     
     setDeletingId(id);
     setError(null);
@@ -115,7 +118,7 @@ export function CostManagement() {
         method: "DELETE",
       });
 
-      if (!res.ok) throw new Error("Fehler beim Löschen des Eintrags");
+      if (!res.ok) throw new Error(tr("Fehler beim Löschen des Eintrags", "Error deleting entry"));
       
       fetchConfigs();
     } catch (err: any) {
@@ -135,7 +138,7 @@ export function CostManagement() {
         body: JSON.stringify(newConfig),
       });
 
-      if (!res.ok) throw new Error("Fehler beim Erstellen des Eintrags");
+      if (!res.ok) throw new Error(tr("Fehler beim Erstellen des Eintrags", "Error creating entry"));
       
       setIsAddDialogOpen(false);
       setNewConfig({
@@ -170,16 +173,19 @@ export function CostManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-primary">
             <Coins className="h-5 w-5" />
-            ROI & Kosten-Konfiguration
+            {tr("ROI & Kosten-Konfiguration", "ROI & Cost Configuration")}
           </CardTitle>
           <CardDescription>
-            Pflegen Sie hier die Standardkosten für Agenturleistung und internen Overhead pro Seitentyp. Diese Werte werden für die ROI-Berechnung im Monitoring verwendet.
+            {tr(
+              "Pflegen Sie hier die Standardkosten für Agenturleistung und internen Overhead pro Seitentyp. Diese Werte werden für die ROI-Berechnung im Monitoring verwendet.",
+              "Manage standard costs for agency services and internal overhead per page type. These values are used for ROI calculation in monitoring."
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Fehler</AlertTitle>
+              <AlertTitle>{tr("Fehler", "Error")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -187,8 +193,8 @@ export function CostManagement() {
           {success && (
             <Alert className="border-green-500 bg-green-50 text-green-700">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle>Erfolg</AlertTitle>
-              <AlertDescription>Kosten wurden erfolgreich gespeichert.</AlertDescription>
+              <AlertTitle>{tr("Erfolg", "Success")}</AlertTitle>
+              <AlertDescription>{tr("Kosten wurden erfolgreich gespeichert.", "Costs saved successfully.")}</AlertDescription>
             </Alert>
           )}
 
@@ -196,11 +202,11 @@ export function CostManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Seitentyp</TableHead>
-                  <TableHead>Aktion</TableHead>
-                  <TableHead>Agentur-Kosten (€)</TableHead>
-                  <TableHead>Overhead-Kosten (€)</TableHead>
-                  <TableHead className="text-right">Aktionen</TableHead>
+                  <TableHead>{tr("Seitentyp", "Page Type")}</TableHead>
+                  <TableHead>{tr("Aktion", "Action")}</TableHead>
+                  <TableHead>{tr("Agentur-Kosten (€)", "Agency Costs (€)")}</TableHead>
+                  <TableHead>{tr("Overhead-Kosten (€)", "Overhead Costs (€)")}</TableHead>
+                  <TableHead className="text-right">{tr("Aktionen", "Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -261,7 +267,7 @@ export function CostManagement() {
                           className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                           {savingId === config.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
-                          Speichern
+                          {tr("Speichern", "Save")}
                         </Button>
                         <Button 
                           size="icon" 
@@ -278,9 +284,9 @@ export function CostManagement() {
                 ))}
                 {configs.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Keine Konfigurationen gefunden. Nutzen Sie das "+" zum Hinzufügen.
-                    </TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    {tr("Keine Konfigurationen gefunden. Nutzen Sie das \"+\" zum Hinzufügen.", "No configurations found. Use \"+\" to add one.")}
+                  </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -302,14 +308,17 @@ export function CostManagement() {
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Neue Kostenkonfiguration</DialogTitle>
+            <DialogTitle>{tr("Neue Kostenkonfiguration", "New Cost Configuration")}</DialogTitle>
             <DialogDescription>
-              Legen Sie Standardkosten für eine bestimmte Kombination aus Seitentyp und Aktion fest.
+              {tr(
+                "Legen Sie Standardkosten für eine bestimmte Kombination aus Seitentyp und Aktion fest.",
+                "Set default costs for a specific combination of page type and action."
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Seitentyp</Label>
+              <Label>{tr("Seitentyp", "Page Type")}</Label>
               <Select 
                 value={newConfig.Page_Type} 
                 onValueChange={(v) => setNewConfig(prev => ({ ...prev, Page_Type: v || "Ratgeber" }))}
@@ -325,7 +334,7 @@ export function CostManagement() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Aktion</Label>
+              <Label>{tr("Aktion", "Action")}</Label>
               <Select 
                 value={newConfig.Action_Type} 
                 onValueChange={(v) => setNewConfig(prev => ({ ...prev, Action_Type: v || "Erstellung" }))}
@@ -342,7 +351,7 @@ export function CostManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Agentur-Kosten (€)</Label>
+                <Label>{tr("Agentur-Kosten (€)", "Agency Costs (€)")}</Label>
                 <Input 
                   type="number" 
                   value={newConfig.Agency_Cost}
@@ -350,7 +359,7 @@ export function CostManagement() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Overhead-Kosten (€)</Label>
+                <Label>{tr("Overhead-Kosten (€)", "Overhead Costs (€)")}</Label>
                 <Input 
                   type="number" 
                   value={newConfig.Overhead_Cost}
@@ -360,14 +369,14 @@ export function CostManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>{tr("Abbrechen", "Cancel")}</Button>
             <Button 
               onClick={handleAdd} 
               disabled={isAdding}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Hinzufügen
+              {tr("Hinzufügen", "Add")}
             </Button>
           </DialogFooter>
         </DialogContent>
