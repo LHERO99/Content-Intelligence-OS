@@ -243,12 +243,11 @@ export async function syncDataForSeoForKeywords(
         dfsPassword
       );
       rankings
-        .filter(r => r.rank !== null)
         .forEach(r => {
           allRankingRecords.push({
             Keyword_ID: [r.keywordId],
             Date: weekDate,
-            Ranking: r.rank as number,
+            Ranking: r.rank ?? 101, // 101 = nicht in Top 100
           });
         });
     } catch (err: any) {

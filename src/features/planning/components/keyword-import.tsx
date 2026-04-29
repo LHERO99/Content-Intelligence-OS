@@ -404,6 +404,19 @@ export function KeywordImport() {
                       </Button>
                     </div>
                   )}
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4 text-left w-full">
+                    <p className="text-sm text-blue-800 flex items-center gap-2 font-semibold mb-1">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {tr("Rankings noch nicht abgefragt", "Rankings not yet fetched")}
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      {tr(
+                        `Rankings für ${importCount} importierte Keywords werden beim nächsten automatischen Sync (montags, 04:30 Uhr) ermittelt. Keywords ohne Ranking in den Top 100 werden als \">100\" markiert. Du kannst den Sync auch manuell im Admin-Bereich starten.`,
+                        `Rankings for ${importCount} imported keywords will be fetched at the next automatic sync (Mondays, 04:30 UTC). Keywords not ranking in the top 100 will be marked as ">100". You can also trigger the sync manually in the Admin area.`
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
               <Button

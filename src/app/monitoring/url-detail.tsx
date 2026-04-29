@@ -306,22 +306,46 @@ export function UrlDetail({ url }: UrlDetailProps) {
             <div className="space-y-2">
               {data.keywords.length > 0 ? (
                 <>
-                  {/* Main Keyword */}
-                  {data.keywords.filter(k => k.Main_Keyword === 'Y').map(k => (
-                    <div key={k.id} className="flex items-center gap-2">
-                      <Badge variant="default" className="text-[10px] py-0 bg-primary text-primary-foreground">Main</Badge>
-                      <span className="text-sm font-bold truncate" title={k.Keyword}>{k.Keyword}</span>
-                    </div>
-                  ))}
+                   {/* Main Keyword */}
+                   {data.keywords.filter(k => k.Main_Keyword === 'Y').map(k => {
+                     const latestKwRanking = filteredKeywordRankings
+                       .filter(r => r.Keyword_ID.includes(k.id))
+                       .sort((a, b) => b.Date.localeCompare(a.Date))[0];
+                     const noRanking = !latestKwRanking || (latestKwRanking.Ranking ?? 0) >= 101;
+                     return (
+                       <div key={k.id} className="flex items-center gap-2">
+                         <Badge variant="default" className="text-[10px] py-0 bg-primary text-primary-foreground">Main</Badge>
+                         <span className="text-sm font-bold truncate" title={k.Keyword}>{k.Keyword}</span>
+                         {noRanking && (
+                           <Badge variant="outline" className="text-[10px] py-0 border-orange-300 text-orange-500 bg-orange-50" title="Aktuell nicht in Top 100">
+                             Kein Ranking
+                           </Badge>
+                         )}
+                       </div>
+                     );
+                   })}
                   
-                  {/* Secondary Keywords */}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {data.keywords.filter(k => k.Main_Keyword !== 'Y').map(k => (
-                      <Badge key={k.id} variant="outline" className="text-[10px] py-0 border-primary/20" title={k.Keyword}>
-                        {k.Keyword}
-                      </Badge>
-                    ))}
-                  </div>
+                   {/* Secondary Keywords */}
+                   <div className="flex flex-wrap gap-1 mt-1">
+                     {data.keywords.filter(k => k.Main_Keyword !== 'Y').map(k => {
+                       const latestKwRanking = filteredKeywordRankings
+                         .filter(r => r.Keyword_ID.includes(k.id))
+                         .sort((a, b) => b.Date.localeCompare(a.Date))[0];
+                       const noRanking = !latestKwRanking || (latestKwRanking.Ranking ?? 0) >= 101;
+                       return (
+                         <span key={k.id} className="inline-flex items-center gap-1">
+                           <Badge variant="outline" className="text-[10px] py-0 border-primary/20" title={k.Keyword}>
+                             {k.Keyword}
+                           </Badge>
+                           {noRanking && (
+                             <Badge variant="outline" className="text-[10px] py-0 border-orange-300 text-orange-500 bg-orange-50" title="Aktuell nicht in Top 100">
+                               &gt;100
+                             </Badge>
+                           )}
+                         </span>
+                       );
+                     })}
+                   </div>
                 </>
               ) : (
                 <p className="text-xs text-muted-foreground italic">{t('monitoringDetail.noKeywordsLinked')}</p>
@@ -472,25 +496,55 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
-                <YAxis reversed domain={[1, 'auto']} fontSize={12} />
+                <YAxis 
+                  reversed 
+                  domain={[1, 101]} 
+                  fontSize={12}
+                  tickFormatter={(v) => v === 101 ? '>100' : String(v)}
+                />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
                   labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
+                  formatter={(value: any, name: any) => [
+                    value === 101 ? 'Nicht in Top 100' : `Position ${value}`,
+                    name,
+                  ] as any}
                 />
                 <Legend content={renderLegend(hiddenRankingLines, setHiddenRankingLines)} />
                 
-                {data.keywords.map((kw, idx) => (
-                  <Line 
-                    key={kw.id}
-                    type="monotone" 
-                    dataKey={kw.Keyword} 
-                    name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '')}
-                    stroke={kw.Main_Keyword === 'Y' ? 'var(--primary)' : `hsl(${(idx * 137) % 360}, 50%, 50%)`}
-                    strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
-                    dot={kw.Main_Keyword === 'Y'}
-                    hide={hiddenRankingLines.has(kw.Keyword)}
-                  />
-                ))}
+                {data.keywords.map((kw, idx) => {
+                  const color = kw.Main_Keyword === 'Y' ? 'var(--primary)' : `hsl(${(idx * 137) % 360}, 50%, 50%)`;
+                  return (
+                    <Line 
+                      key={kw.id}
+                      type="monotone" 
+                      dataKey={kw.Keyword} 
+                      name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '')}
+                      stroke={color}
+                      strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
+                      dot={(props: any) => {
+                        const { cx, cy, value } = props;
+                        if (value === 101) {
+                          return (
+                            <circle
+                              key={`dot-${cx}-${cy}`}
+                              cx={cx}
+                              cy={cy}
+                              r={4}
+                              fill="#fff"
+                              stroke="#94a3b8"
+                              strokeWidth={1.5}
+                              strokeDasharray="2 2"
+                            />
+                          );
+                        }
+                        if (!kw.Main_Keyword || kw.Main_Keyword !== 'Y') return <g key={`dot-${cx}-${cy}`} />;
+                        return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={3} fill={color} />;
+                      }}
+                      hide={hiddenRankingLines.has(kw.Keyword)}
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
