@@ -23,6 +23,7 @@ import {
 import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
 import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash, Calendar, RotateCcw, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { HistoryList } from "@/features/shared/components/HistoryList";
 import { Input } from "@/components/ui/input";
 import { Label as UILabel } from "@/components/ui/label";
@@ -242,6 +243,12 @@ export function UrlDetail({ url }: UrlDetailProps) {
     label: log.Action_Type === 'Erstellung' ? 'E' : 'O'
   }));
 
+  // Logarithmische Transformation für Keyword-Ranking-Chart
+  // log(1)=0 … log(20)≈3 nimmt viel Platz, log(20)…log(101) komprimiert
+  const toLog = (rank: number) => Math.log(rank);
+  const fromLog = (v: number) => Math.round(Math.exp(v));
+  const LOG_TICKS = [1, 3, 5, 10, 20, 50, 101].map(toLog);
+
   // Prepare Keyword Ranking Chart Data
   // We need to group rankings by date
   const rankingDates = Array.from(new Set(filteredKeywordRankings.map(r => r.Date))).sort();
@@ -250,7 +257,9 @@ export function UrlDetail({ url }: UrlDetailProps) {
     data.keywords.forEach(kw => {
       const ranking = filteredKeywordRankings.find(r => r.Date === date && r.Keyword_ID.includes(kw.id));
       if (ranking) {
-        entry[kw.Keyword] = ranking.Ranking;
+        const raw = ranking.Ranking ?? 101;
+        entry[kw.Keyword + '_raw'] = raw;
+        entry[kw.Keyword + '_log'] = toLog(raw);
       }
     });
     return entry;
@@ -302,55 +311,48 @@ export function UrlDetail({ url }: UrlDetailProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold mb-2">{data.keywords.length} Keywords</div>
-            <div className="space-y-2">
-              {data.keywords.length > 0 ? (
-                <>
-                   {/* Main Keyword */}
-                   {data.keywords.filter(k => k.Main_Keyword === 'Y').map(k => {
-                     const latestKwRanking = filteredKeywordRankings
-                       .filter(r => r.Keyword_ID.includes(k.id))
-                       .sort((a, b) => b.Date.localeCompare(a.Date))[0];
-                     const noRanking = !latestKwRanking || (latestKwRanking.Ranking ?? 0) >= 101;
-                     return (
-                       <div key={k.id} className="flex items-center gap-2">
-                         <Badge variant="default" className="text-[10px] py-0 bg-primary text-primary-foreground">Main</Badge>
-                         <span className="text-sm font-bold truncate" title={k.Keyword}>{k.Keyword}</span>
-                         {noRanking && (
-                           <Badge variant="outline" className="text-[10px] py-0 border-orange-300 text-orange-500 bg-orange-50" title="Aktuell nicht in Top 100">
-                             Kein Ranking
-                           </Badge>
-                         )}
-                       </div>
-                     );
-                   })}
-                  
-                   {/* Secondary Keywords */}
-                   <div className="flex flex-wrap gap-1 mt-1">
-                     {data.keywords.filter(k => k.Main_Keyword !== 'Y').map(k => {
-                       const latestKwRanking = filteredKeywordRankings
-                         .filter(r => r.Keyword_ID.includes(k.id))
-                         .sort((a, b) => b.Date.localeCompare(a.Date))[0];
-                       const noRanking = !latestKwRanking || (latestKwRanking.Ranking ?? 0) >= 101;
-                       return (
-                         <span key={k.id} className="inline-flex items-center gap-1">
-                           <Badge variant="outline" className="text-[10px] py-0 border-primary/20" title={k.Keyword}>
-                             {k.Keyword}
-                           </Badge>
-                           {noRanking && (
-                             <Badge variant="outline" className="text-[10px] py-0 border-orange-300 text-orange-500 bg-orange-50" title="Aktuell nicht in Top 100">
-                               &gt;100
-                             </Badge>
-                           )}
-                         </span>
-                       );
-                     })}
-                   </div>
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">{t('monitoringDetail.noKeywordsLinked')}</p>
-              )}
-            </div>
+            {data.keywords.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">{t('monitoringDetail.noKeywordsLinked')}</p>
+            ) : (
+              <ScrollArea className="max-h-[120px]">
+                <div className="space-y-1 pr-1">
+                  {data.keywords.map(k => {
+                    const latestKwRanking = filteredKeywordRankings
+                      .filter(r => r.Keyword_ID.includes(k.id))
+                      .sort((a, b) => b.Date.localeCompare(a.Date))[0];
+                    const rank = latestKwRanking?.Ranking ?? null;
+                    const rankColor =
+                      rank === null    ? 'text-slate-400' :
+                      rank >= 101      ? 'text-orange-400' :
+                      rank <= 10       ? 'text-green-600' :
+                      rank <= 20       ? 'text-lime-600' :
+                      rank <= 50       ? 'text-yellow-600' :
+                                         'text-slate-500';
+                    const rankLabel =
+                      rank === null    ? '–' :
+                      rank >= 101      ? '>100' :
+                                         `#${rank}`;
+                    return (
+                      <div key={k.id} className="flex items-center justify-between gap-2 py-0.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {k.Main_Keyword === 'Y' && (
+                            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/10 text-primary rounded px-1 py-0.5 leading-none">
+                              Main
+                            </span>
+                          )}
+                          <span className="text-xs truncate text-foreground" title={k.Keyword}>
+                            {k.Keyword}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-semibold tabular-nums shrink-0 ${rankColor}`}>
+                          {rankLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
 
@@ -496,35 +498,47 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
                   fontSize={12}
                 />
-                <YAxis 
-                  reversed 
-                  domain={[1, 101]} 
+                <YAxis
+                  reversed
+                  domain={[toLog(1), toLog(101)]}
+                  ticks={LOG_TICKS}
+                  tickFormatter={(v) => {
+                    const raw = fromLog(v);
+                    return raw >= 101 ? '>100' : String(raw);
+                  }}
                   fontSize={12}
-                  tickFormatter={(v) => v === 101 ? '>100' : String(v)}
                 />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
                   labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
-                  formatter={(value: any, name: any) => [
-                    value === 101 ? 'Nicht in Top 100' : `Position ${value}`,
-                    name,
-                  ] as any}
+                  formatter={(value: any, name: any, props: any) => {
+                    // name is e.g. "nutzungsklasse 31_log" — strip suffix for display
+                    const displayName = String(name).replace(/_log$/, '');
+                    const raw = props?.payload?.[displayName + '_raw'];
+                    const label = raw === undefined
+                      ? (fromLog(value) >= 101 ? 'Nicht in Top 100' : `Position ${fromLog(value)}`)
+                      : (raw >= 101 ? 'Nicht in Top 100' : `Position ${raw}`);
+                    return [label, displayName] as any;
+                  }}
                 />
                 <Legend content={renderLegend(hiddenRankingLines, setHiddenRankingLines)} />
-                
+
                 {data.keywords.map((kw, idx) => {
                   const color = kw.Main_Keyword === 'Y' ? 'var(--primary)' : `hsl(${(idx * 137) % 360}, 50%, 50%)`;
+                  const logKey = kw.Keyword + '_log';
                   return (
-                    <Line 
+                    <Line
                       key={kw.id}
-                      type="monotone" 
-                      dataKey={kw.Keyword} 
-                      name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '')}
+                      type="monotone"
+                      dataKey={logKey}
+                      name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '') as any}
                       stroke={color}
                       strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
                       dot={(props: any) => {
-                        const { cx, cy, value } = props;
-                        if (value === 101) {
+                        const { cx, cy, payload } = props;
+                        const raw = payload?.[kw.Keyword + '_raw'];
+                        if (raw === undefined) return <g key={`dot-${cx}-${cy}`} />;
+                        if (raw >= 101) {
                           return (
                             <circle
                               key={`dot-${cx}-${cy}`}
@@ -538,7 +552,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                             />
                           );
                         }
-                        if (!kw.Main_Keyword || kw.Main_Keyword !== 'Y') return <g key={`dot-${cx}-${cy}`} />;
+                        if (kw.Main_Keyword !== 'Y') return <g key={`dot-${cx}-${cy}`} />;
                         return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={3} fill={color} />;
                       }}
                       hide={hiddenRankingLines.has(kw.Keyword)}
