@@ -520,19 +520,23 @@ export async function upsertURLPerformance(data: Partial<URLPerformance>[]): Pro
     const valid = data.filter(item => item.Target_URL && item.Date);
     if (!valid.length) return { created: 0, updated: 0, errors };
 
-    // ── 1. Bulk-read all existing records for these (URL, Date) combinations ──
-    // Build an OR formula over all pairs to fetch everything in one query.
-    const orClauses = valid.map(
-      item => `AND({Target_URL} = '${item.Target_URL!.replace(/'/g, "\\'")}', {Date} = '${item.Date}')`
-    );
-    // Airtable formula length limit ~16 KB; chunk lookups if payload is very large.
-    const LOOKUP_CHUNK = 100;
+    // ── 1. Bulk-read all existing records for these URLs ──────────────────────
+    // Filter only by Target_URL (reliable string match) and do Date matching
+    // client-side after normalising the date string. This avoids Airtable Date
+    // field comparison issues where {Date} = 'YYYY-MM-DD' can fail for Date-type
+    // fields that store a full ISO datetime internally.
+    const uniqueUrls = Array.from(new Set(valid.map(item => item.Target_URL!)));
+    const urlClauses = uniqueUrls.map(url => `{Target_URL} = '${url.replace(/'/g, "\\'")}'`);
+    const LOOKUP_CHUNK = 50;
     const existingMap = new Map<string, string>(); // key: "URL|Date" → record id
 
-    for (let i = 0; i < orClauses.length; i += LOOKUP_CHUNK) {
-      const slice = orClauses.slice(i, i + LOOKUP_CHUNK);
+    for (let i = 0; i < urlClauses.length; i += LOOKUP_CHUNK) {
+      const slice = urlClauses.slice(i, i + LOOKUP_CHUNK);
       const formula = slice.length === 1 ? slice[0] : `OR(${slice.join(',')})`;
-      const page = await base(TABLES.URL_PERFORMANCE).select({ filterByFormula: formula }).all();
+      const page = await base(TABLES.URL_PERFORMANCE).select({
+        filterByFormula: formula,
+        fields: ['Target_URL', 'Date'],
+      }).all();
       page.forEach(record => {
         const url = record.get('Target_URL') as string;
         const date = ((record.get('Date') as string) ?? '').split('T')[0];
@@ -619,17 +623,21 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
     })).filter(item => typeof item._kwId === 'string' && item._kwId.startsWith('rec'));
 
     // ── 1. Bulk-read existing records ─────────────────────────────────────────
-    // Use OR over SEARCH()-based per-id checks, chunked to avoid formula limit.
-    const LOOKUP_CHUNK = 50; // SEARCH formulas are verbose — keep chunks smaller
+    // Filter by Keyword_ID only (SEARCH is reliable); Date matching is done
+    // client-side after normalising the date string to avoid Airtable Date-field
+    // comparison issues.
+    const LOOKUP_CHUNK = 50;
     const existingMap = new Map<string, string>(); // "kwId|Date" → record id
+    const uniqueKwIds = Array.from(new Set(normalised.map(item => item._kwId)));
 
-    for (let i = 0; i < normalised.length; i += LOOKUP_CHUNK) {
-      const slice = normalised.slice(i, i + LOOKUP_CHUNK);
-      const orClauses = slice.map(
-        item => `AND(SEARCH('${item._kwId}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`
-      );
+    for (let i = 0; i < uniqueKwIds.length; i += LOOKUP_CHUNK) {
+      const slice = uniqueKwIds.slice(i, i + LOOKUP_CHUNK);
+      const orClauses = slice.map(id => `SEARCH('${id}', ARRAYJOIN({Keyword_ID}))`);
       const formula = orClauses.length === 1 ? orClauses[0] : `OR(${orClauses.join(',')})`;
-      const page = await base(TABLES.KEYWORD_RANKING_HISTORY).select({ filterByFormula: formula }).all();
+      const page = await base(TABLES.KEYWORD_RANKING_HISTORY).select({
+        filterByFormula: formula,
+        fields: ['Keyword_ID', 'Date'],
+      }).all();
       page.forEach(record => {
         const ids = record.get('Keyword_ID') as string[] | undefined;
         const date = ((record.get('Date') as string) ?? '').split('T')[0];
