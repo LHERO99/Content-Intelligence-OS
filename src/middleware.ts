@@ -25,7 +25,8 @@ export default withAuth(
           path.startsWith("/api/n8n/callback") ||
           path.startsWith("/api/monitoring/import") ||
           path.startsWith("/api/auth/google/gsc/callback") ||
-          path.startsWith("/api/cron/")
+          path.startsWith("/api/cron/") ||
+          path.startsWith("/api/branding")
         ) {
           return true;
         }
@@ -48,6 +49,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public assets (png, svg)
      */
-    "/((?!api/auth|api/monitoring/import|api/auth/google/gsc/callback|api/cron|_next/static|_next/image|favicon.ico|.*\.svg|.*\.png).*)",
+    "/((?!api/auth|api/monitoring/import|api/auth/google/gsc/callback|api/cron|api/branding|_next/static|_next/image|favicon.ico|.*\.svg|.*\.png).*)",
   ],
 };
