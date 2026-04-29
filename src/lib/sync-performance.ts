@@ -34,6 +34,7 @@ import {
   getDateRange,
 } from './google-search-console';
 import { fetchKeywordRankings } from './dataforseo';
+import { fetchSistrixPageVIBatch } from './sistrix';
 
 // ─── Chunk sizes — increase on Vercel Pro ─────────────────────────────────────
 /** URLs processed per cron invocation for GSC sync */
@@ -53,10 +54,12 @@ export interface SyncResult {
   urlsProcessed: number;
   keywordsProcessed: number;
   gscRowsUpserted: number;
+  sistrixRowsUpserted: number;
   rankingRowsUpserted: number;
   rankingsSkipped: number;
   errors: string[];
   skippedGsc: boolean;
+  skippedSistrix: boolean;
   skippedDataforseo: boolean;
 }
 
@@ -147,23 +150,73 @@ export async function syncGscForUrls(
   return { gscRowsUpserted, errors };
 }
 
+// ─── Sistrix sync ─────────────────────────────────────────────────────────────
+
+/**
+ * Fetches page-level Sistrix VI for each URL and merges it into the
+ * URL_Performance rows that already exist for the matching week dates.
+ *
+ * Strategy:
+ *  1. Fetch VI history for each URL via Sistrix API (1 credit per URL)
+ *  2. Build a map of date → VI value per URL
+ *  3. Upsert URL_Performance rows with the Sistrix_VI field populated
+ *     (GSC fields are left undefined so they are not overwritten if already set)
+ */
+export async function syncSistrixForUrls(
+  urls: string[],
+  apiKey: string,
+  isFirstSync: boolean
+): Promise<Pick<SyncResult, 'sistrixRowsUpserted' | 'errors'>> {
+  const errors: string[] = [];
+  const weeksBack = isFirstSync ? 26 : 1; // 26 weeks ≈ 6 months
+
+  const { results, errors: fetchErrors } = await fetchSistrixPageVIBatch(urls, apiKey, weeksBack);
+  errors.push(...fetchErrors);
+
+  // Build upsert payload — only Sistrix_VI is set; GSC fields are omitted
+  const allRows: Parameters<typeof upsertURLPerformance>[0] = [];
+  for (const [url, viRows] of results) {
+    for (const row of viRows) {
+      allRows.push({
+        Target_URL: url,
+        Date: row.date,
+        Sistrix_VI: row.vi,
+      });
+    }
+  }
+
+  let sistrixRowsUpserted = 0;
+  if (allRows.length > 0) {
+    const upsertResult = await upsertURLPerformance(allRows);
+    sistrixRowsUpserted = upsertResult.created + upsertResult.updated;
+    if (upsertResult.errors.length > 0) {
+      errors.push(`Sistrix upsert errors: ${upsertResult.errors.slice(0, 3).map(e => e.error).join(', ')}`);
+    }
+  }
+
+  return { sistrixRowsUpserted, errors };
+}
+
 // ─── DataForSEO sync ──────────────────────────────────────────────────────────
 
 /**
  * Fetches current SERP rankings for the given keywords and bulk-upserts into
- * Keyword_Ranking_History. Skips keywords that already have a record for this week.
+ * Keyword_Ranking_History. Skips keywords that already have a record for this week
+ * unless `force` is true (used for manual re-syncs from the Admin Panel).
  */
 export async function syncDataForSeoForKeywords(
   keywords: Awaited<ReturnType<typeof getKeywordMap>>,
   dfsUsername: string,
-  dfsPassword: string
+  dfsPassword: string,
+  force: boolean = false
 ): Promise<Pick<SyncResult, 'keywordsProcessed' | 'rankingRowsUpserted' | 'rankingsSkipped' | 'errors'>> {
   const errors: string[] = [];
   const weekDate = getCurrentWeekMonday();
 
   // Pre-flight: which keywords already have a ranking for this week?
+  // Skipped when force=true (manual re-sync overwrites existing data).
   const allIds = keywords.map(kw => kw.id);
-  const alreadyRanked = await getExistingRankingDates(allIds, weekDate);
+  const alreadyRanked = force ? new Set<string>() : await getExistingRankingDates(allIds, weekDate);
   const toFetch = keywords.filter(kw => !alreadyRanked.has(kw.id));
   const rankingsSkipped = keywords.length - toFetch.length;
 
@@ -225,7 +278,8 @@ export async function syncDataForSeoForKeywords(
 export async function syncGscChunk(): Promise<ChunkSyncResult> {
   const baseResult: SyncResult = {
     urlsProcessed: 0, keywordsProcessed: 0, gscRowsUpserted: 0,
-    rankingRowsUpserted: 0, rankingsSkipped: 0, errors: [], skippedGsc: false, skippedDataforseo: true,
+    sistrixRowsUpserted: 0, rankingRowsUpserted: 0, rankingsSkipped: 0,
+    errors: [], skippedGsc: false, skippedSistrix: false, skippedDataforseo: true,
   };
 
   let config: Record<string, string>;
@@ -262,6 +316,16 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
   }
 
   const { gscRowsUpserted, errors } = await syncGscForUrls(chunk, accessToken, gscSiteUrl, false);
+  const allErrors = [...errors];
+
+  // ── Sistrix: run in same cron slot (no extra cron needed) ─────────────────
+  let sistrixRowsUpserted = 0;
+  const sistrixApiKey = config.SISTRIX_API_KEY?.trim();
+  if (sistrixApiKey) {
+    const { sistrixRowsUpserted: sRows, errors: sErrors } = await syncSistrixForUrls(chunk, sistrixApiKey, false);
+    sistrixRowsUpserted = sRows;
+    allErrors.push(...sErrors);
+  }
 
   const nextCursor = cursor + chunk.length;
   const hasMore = nextCursor < totalItems;
@@ -271,7 +335,9 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
     ...baseResult,
     urlsProcessed: chunk.length,
     gscRowsUpserted,
-    errors,
+    sistrixRowsUpserted,
+    skippedSistrix: !sistrixApiKey,
+    errors: allErrors,
     hasMore,
     nextCursor: hasMore ? nextCursor : 0,
     totalItems,
@@ -286,7 +352,8 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
 export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
   const baseResult: SyncResult = {
     urlsProcessed: 0, keywordsProcessed: 0, gscRowsUpserted: 0,
-    rankingRowsUpserted: 0, rankingsSkipped: 0, errors: [], skippedGsc: true, skippedDataforseo: false,
+    sistrixRowsUpserted: 0, rankingRowsUpserted: 0, rankingsSkipped: 0,
+    errors: [], skippedGsc: true, skippedSistrix: true, skippedDataforseo: false,
   };
 
   let config: Record<string, string>;
@@ -337,13 +404,14 @@ export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
 
 /**
  * Full sync for a specific set of URLs (used on import — fire & forget).
- * Always treats the URLs as first-sync (180-day GSC window).
+ * Always treats the URLs as first-sync (180-day GSC + 26-week Sistrix window).
  * Also syncs keywords belonging to those URLs via DataForSEO (with dedup check).
  */
 export async function syncPerformanceForUrls(targetUrls: string[]): Promise<SyncResult> {
   const result: SyncResult = {
     urlsProcessed: 0, keywordsProcessed: 0, gscRowsUpserted: 0,
-    rankingRowsUpserted: 0, rankingsSkipped: 0, errors: [], skippedGsc: false, skippedDataforseo: false,
+    sistrixRowsUpserted: 0, rankingRowsUpserted: 0, rankingsSkipped: 0,
+    errors: [], skippedGsc: false, skippedSistrix: false, skippedDataforseo: false,
   };
 
   if (!targetUrls.length) return result;
@@ -358,17 +426,21 @@ export async function syncPerformanceForUrls(targetUrls: string[]): Promise<Sync
 
   const gscRefreshToken = config.GSC_REFRESH_TOKEN?.trim();
   const gscSiteUrl = config.GSC_SITE_URL?.trim();
+  const sistrixApiKey = config.SISTRIX_API_KEY?.trim();
   const dfsUsername = config.DATAFORSEO_USERNAME?.trim();
   const dfsPassword = config.DATAFORSEO_PASSWORD?.trim();
 
   const hasGsc = !!(gscRefreshToken && gscSiteUrl);
+  const hasSistrix = !!sistrixApiKey;
   const hasDfs = !!(dfsUsername && dfsPassword);
 
   result.skippedGsc = !hasGsc;
+  result.skippedSistrix = !hasSistrix;
   result.skippedDataforseo = !hasDfs;
   result.urlsProcessed = targetUrls.length;
 
   if (!hasGsc) result.errors.push('GSC skipped: GSC_REFRESH_TOKEN or GSC_SITE_URL not configured');
+  if (!hasSistrix) result.errors.push('Sistrix skipped: SISTRIX_API_KEY not configured');
   if (!hasDfs) result.errors.push('DataForSEO skipped: DATAFORSEO_USERNAME or DATAFORSEO_PASSWORD not configured');
 
   // ── GSC: 180-day initial sync for these URLs ──────────────────────────────
@@ -380,6 +452,17 @@ export async function syncPerformanceForUrls(targetUrls: string[]): Promise<Sync
       result.errors.push(...errors);
     } catch (err: any) {
       result.errors.push(`GSC token refresh failed: ${err.message}`);
+    }
+  }
+
+  // ── Sistrix: 26-week page-level VI for these URLs ─────────────────────────
+  if (hasSistrix) {
+    try {
+      const { sistrixRowsUpserted, errors } = await syncSistrixForUrls(targetUrls, sistrixApiKey!, true);
+      result.sistrixRowsUpserted = sistrixRowsUpserted;
+      result.errors.push(...errors);
+    } catch (err: any) {
+      result.errors.push(`Sistrix sync failed: ${err.message}`);
     }
   }
 
