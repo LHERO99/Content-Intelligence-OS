@@ -666,7 +666,7 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
         await base(TABLES.KEYWORD_RANKING_HISTORY).create(
           chunk.map(item => ({
             fields: {
-              Keyword_ID: [item._kwId],
+              Keyword_ID: item._kwId,
               Date: item.Date,
               Ranking: item.Ranking,
             },
@@ -686,7 +686,7 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
         await base(TABLES.KEYWORD_RANKING_HISTORY).update(
           chunk.map(({ id, kwId, date, ranking }) => ({
             id,
-            fields: { Keyword_ID: [kwId], Date: date, Ranking: ranking },
+            fields: { Keyword_ID: kwId, Date: date, Ranking: ranking },
           }))
         );
         updated += chunk.length;
