@@ -50,6 +50,8 @@ export function UrlDetail({ url }: UrlDetailProps) {
     start: "",
     end: ""
   });
+  const [hiddenUrlLines, setHiddenUrlLines] = useState<Set<string>>(new Set());
+  const [hiddenRankingLines, setHiddenRankingLines] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchDetail();
@@ -165,8 +167,76 @@ export function UrlDetail({ url }: UrlDetailProps) {
     .filter(r => r.Keyword_ID.includes(mainKeyword.id))
     .sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime())[0] : null;
 
-  const eventMarkers = data.history.map(log => ({
-    date: log.Created_At.split('T')[0],
+  // ── Legend toggle helpers ────────────────────────────────────────────────────
+  const toggleLine = (hidden: Set<string>, setHidden: (s: Set<string>) => void, key: string) => {
+    const next = new Set(hidden);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setHidden(next);
+  };
+
+  const renderLegend = (hidden: Set<string>, setHidden: (s: Set<string>) => void) =>
+    ({ payload }: any) => (
+      <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+        {(payload ?? []).map((entry: any) => {
+          const isHidden = hidden.has(entry.dataKey ?? entry.value);
+          return (
+            <li
+              key={entry.value}
+              className="flex items-center gap-1.5 cursor-pointer select-none text-xs"
+              style={{ opacity: isHidden ? 0.35 : 1 }}
+              onClick={() => toggleLine(hidden, setHidden, entry.dataKey ?? entry.value)}
+            >
+              <span
+                className="inline-block w-5 h-0.5 rounded-full flex-shrink-0"
+                style={{
+                  backgroundColor: entry.color,
+                  textDecoration: isHidden ? 'line-through' : 'none',
+                }}
+              />
+              <span style={{ textDecoration: isHidden ? 'line-through' : 'none' }}>
+                {entry.value}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+
+  // ── Custom event label for ReferenceLine ─────────────────────────────────────
+  const EventLabel = ({ viewBox, type }: { viewBox?: any; type: string }) => {
+    if (!viewBox) return null;
+    const { x, y } = viewBox;
+    const isCreation = type === 'Erstellung';
+    const color = isCreation ? 'var(--primary)' : '#f59e0b';
+    const label = isCreation ? 'Erstellt' : 'Optimiert';
+    const textWidth = label.length * 6 + 10;
+    return (
+      <g>
+        <rect
+          x={x - textWidth / 2}
+          y={y - 22}
+          width={textWidth}
+          height={16}
+          rx={4}
+          fill={color}
+          opacity={0.9}
+        />
+        <text
+          x={x}
+          y={y - 10}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={10}
+          fontWeight={600}
+        >
+          {label}
+        </text>
+      </g>
+    );
+  };
+
+  const eventMarkers = data.history.map(log => ({    date: log.Created_At.split('T')[0],
     type: log.Action_Type,
     label: log.Action_Type === 'Erstellung' ? 'E' : 'O'
   }));
@@ -347,7 +417,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
                   labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
                 />
-                <Legend />
+                <Legend content={renderLegend(hiddenUrlLines, setHiddenUrlLines)} />
                 
                 {eventMarkers.map((marker, idx) => (
                   <ReferenceLine 
@@ -355,9 +425,9 @@ export function UrlDetail({ url }: UrlDetailProps) {
                     x={marker.date} 
                     yAxisId="left" 
                     stroke={marker.type === 'Erstellung' ? 'var(--primary)' : '#f59e0b'} 
-                    strokeDasharray="3 3"
+                    strokeWidth={2}
                   >
-                    <Label value={marker.label} position="top" fill={marker.type === 'Erstellung' ? 'var(--primary)' : '#f59e0b'} />
+                    <Label content={(props: any) => <EventLabel viewBox={props.viewBox} type={marker.type} />} />
                   </ReferenceLine>
                 ))}
 
@@ -369,6 +439,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   stroke="var(--primary)" 
                   strokeWidth={2}
                   dot={false}
+                  hide={hiddenUrlLines.has('GSC_Clicks')}
                 />
                 <Line 
                   yAxisId="right"
@@ -378,6 +449,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   stroke="#82ca9d" 
                   strokeWidth={2}
                   dot={false}
+                  hide={hiddenUrlLines.has('Sistrix_VI')}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -403,7 +475,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
                   labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
                 />
-                <Legend />
+                <Legend content={renderLegend(hiddenRankingLines, setHiddenRankingLines)} />
                 
                 {data.keywords.map((kw, idx) => (
                   <Line 
@@ -414,6 +486,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
                     stroke={kw.Main_Keyword === 'Y' ? 'var(--primary)' : `hsl(${(idx * 137) % 360}, 50%, 50%)`}
                     strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
                     dot={kw.Main_Keyword === 'Y'}
+                    hide={hiddenRankingLines.has(kw.Keyword)}
                   />
                 ))}
               </LineChart>
