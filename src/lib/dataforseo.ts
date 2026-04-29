@@ -84,7 +84,7 @@ async function fetchSerpBatch(
       (item: any) =>
         item.type === 'organic' &&
         item.domain &&
-        extractDomain(item.domain) === task.domain
+        item.domain.replace(/^www\./, '') === task.domain
     );
 
     return {

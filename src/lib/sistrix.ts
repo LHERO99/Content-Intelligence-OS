@@ -6,18 +6,18 @@ import 'server-only';
  * Auth: API key passed as query parameter `api_key`.
  *
  * Endpoint used:
- *   GET https://api.sistrix.com/url.sichtbarkeit
+ *   GET https://api.sistrix.com/url.overview
  *   Params: api_key, url (full page URL), format=json
  *
- * The response contains a `sichtbarkeit` array of weekly data points:
- *   [{ date: "YYYY-MM-DD", value: 0.1234 }, ...]
- * where `date` is the Monday of the ISO week and `value` is the page-level VI.
+ * The response contains an `overview` array of weekly data points:
+ *   [{ date: "YYYY-MM-DD", sichtbarkeit: 0.1234 }, ...]
+ * where `date` is the Monday of the ISO week and `sichtbarkeit` is the page-level VI.
  *
- * Credits: each call to url.sichtbarkeit costs 1 Sistrix credit.
+ * Credits: each call to url.overview costs 1 Sistrix credit.
  * For 180-day history Sistrix returns all available weekly data points in a
  * single call — no pagination required.
  *
- * Note: page-level VI (url.sichtbarkeit) measures the organic search visibility
+ * Note: page-level VI (url.overview) measures the organic search visibility
  * of a single page across all its ranking keywords. It differs from the
  * domain-level VI (domain.sichtbarkeit) which aggregates all pages of a domain.
  */
@@ -31,14 +31,14 @@ export interface SistrixVIRow {
   vi: number;
 }
 
-interface SistrixSichtbarkeitEntry {
+interface SistrixOverviewEntry {
   date: string;
-  value: string | number;
+  sichtbarkeit: string | number;
 }
 
 interface SistrixResponse {
   answer?: Array<{
-    sichtbarkeit?: SistrixSichtbarkeitEntry[];
+    overview?: SistrixOverviewEntry[];
   }>;
   // Error format
   error?: { error_id: number; error_message: string };
@@ -69,7 +69,7 @@ export async function fetchSistrixPageVI(
     format: 'json',
   });
 
-  const res = await fetch(`${SISTRIX_BASE}/url.sichtbarkeit?${params.toString()}`, {
+  const res = await fetch(`${SISTRIX_BASE}/url.overview?${params.toString()}`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
@@ -85,7 +85,7 @@ export async function fetchSistrixPageVI(
     throw new Error(`Sistrix API error ${json.error.error_id}: ${json.error.error_message}`);
   }
 
-  const rows: SistrixSichtbarkeitEntry[] = json.answer?.[0]?.sichtbarkeit ?? [];
+  const rows: SistrixOverviewEntry[] = json.answer?.[0]?.overview ?? [];
 
   if (!rows.length) return [];
 
@@ -95,7 +95,7 @@ export async function fetchSistrixPageVI(
     .filter(row => !cutoffDate || row.date >= cutoffDate)
     .map(row => ({
       date: row.date,
-      vi: typeof row.value === 'string' ? parseFloat(row.value) : row.value,
+      vi: typeof row.sichtbarkeit === 'string' ? parseFloat(row.sichtbarkeit) : row.sichtbarkeit,
     }))
     .filter(row => !isNaN(row.vi))
     .sort((a, b) => a.date.localeCompare(b.date));
