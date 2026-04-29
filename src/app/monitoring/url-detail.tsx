@@ -211,20 +211,21 @@ export function UrlDetail({ url }: UrlDetailProps) {
     const color = isCreation ? 'var(--primary)' : '#f59e0b';
     const label = isCreation ? 'Erstellt' : 'Optimiert';
     const textWidth = label.length * 6 + 10;
+    const flagY = y + 4;
     return (
       <g>
         <rect
           x={x - textWidth / 2}
-          y={y - 22}
+          y={flagY}
           width={textWidth}
           height={16}
-          rx={4}
+          rx={3}
           fill={color}
           opacity={0.9}
         />
         <text
           x={x}
-          y={y - 10}
+          y={flagY + 11}
           textAnchor="middle"
           fill="#fff"
           fontSize={10}
@@ -425,7 +426,8 @@ export function UrlDetail({ url }: UrlDetailProps) {
                     x={marker.date} 
                     yAxisId="left" 
                     stroke={marker.type === 'Erstellung' ? 'var(--primary)' : '#f59e0b'} 
-                    strokeWidth={2}
+                    strokeWidth={1}
+                    strokeDasharray="4 3"
                   >
                     <Label content={(props: any) => <EventLabel viewBox={props.viewBox} type={marker.type} />} />
                   </ReferenceLine>
