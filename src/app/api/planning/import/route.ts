@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bulkCreateKeywords, createContentLog } from '@/lib/airtable';
-import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { syncPerformanceForUrls } from '@/lib/sync-performance';
@@ -21,11 +20,10 @@ export async function POST(req: NextRequest) {
 
     const result = await bulkCreateKeywords(keywords);
 
-    // Create initial history logs and trigger n8n for successfully created keywords
     if (result.created.length > 0) {
       const loggedUrls = new Set<string>();
-      
-      // Group created keywords by URL for n8n trigger
+
+      // Group created keywords by URL
       const keywordsByUrl: Record<string, typeof result.created> = {};
       result.created.forEach(kw => {
         if (kw.Target_URL) {
@@ -40,7 +38,7 @@ export async function POST(req: NextRequest) {
           result.created.map(async (kw) => {
             if (kw.Target_URL && !loggedUrls.has(kw.Target_URL)) {
               loggedUrls.add(kw.Target_URL);
-              
+
               await createContentLog({
                 Keyword_ID: [kw.id],
                 Target_URL: kw.Target_URL,
@@ -60,32 +58,8 @@ export async function POST(req: NextRequest) {
           })
         );
 
-        // 2. Trigger n8n Import Webhook in background (grouped by URL)
-        Object.entries(keywordsByUrl).forEach(([url, kws]) => {
-          const mainKw = kws.find(k => k.Main_Keyword === 'Y') || kws[0];
-          const secondaryKws = kws.filter(k => k.id !== mainKw.id);
-
-          const n8nData: Record<string, any> = {
-            keywordId: mainKw.id,
-            MainKeyword: mainKw.Keyword,
-            targetUrl: url,
-          };
-
-          secondaryKws.forEach((skw, index) => {
-            n8nData[`SecondaryKeyword${index + 1}`] = skw.Keyword;
-          });
-
-          triggerN8nWorkflow({
-            action: 'IMPORT_DATA',
-            data: n8nData,
-            userId: session.user?.email || 'unknown',
-            timestamp: new Date().toISOString()
-          }).catch(err => {
-            console.error('[Background Trigger Import] Error calling n8n for URL:', url, err);
-          });
-        });
-
-        // 3. Trigger performance sync in background (fire & forget)
+        // 2. Trigger performance sync in background (fire & forget)
+        // Pulls 6 months of GSC data + current-week DataForSEO rankings for all new URLs.
         const uniqueUrls = Object.keys(keywordsByUrl);
         if (uniqueUrls.length > 0) {
           syncPerformanceForUrls(uniqueUrls).catch((err) => {
@@ -103,12 +77,12 @@ export async function POST(req: NextRequest) {
       count: result.created.length,
       skippedCount: result.skipped.length,
       records: result.created,
-      skipped: result.skipped
+      skipped: result.skipped,
     });
   } catch (error: any) {
     console.error('[API Import] Error:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Failed to import keywords' 
+    return NextResponse.json({
+      error: error.message || 'Failed to import keywords',
     }, { status: 500 });
   }
 }

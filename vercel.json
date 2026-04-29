@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/sync-performance",
+      "path": "/api/cron/sync-gsc",
       "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/cron/sync-dataforseo",
+      "schedule": "30 4 * * 1"
     }
   ]
 }

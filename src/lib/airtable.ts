@@ -516,37 +516,90 @@ export async function bulkDeleteFromBlacklist(ids: string[]): Promise<boolean> {
 
 export async function upsertURLPerformance(data: Partial<URLPerformance>[]): Promise<{ created: number, updated: number, errors: any[] }> {
   try {
-    let created = 0;
-    let updated = 0;
     const errors: any[] = [];
+    const valid = data.filter(item => item.Target_URL && item.Date);
+    if (!valid.length) return { created: 0, updated: 0, errors };
 
-    for (const item of data) {
-      if (!item.Target_URL || !item.Date) continue;
-      try {
-        const formula = `AND({Target_URL} = '${item.Target_URL}', {Date} = '${item.Date}')`;
-        const existing = await base(TABLES.URL_PERFORMANCE).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
+    // ── 1. Bulk-read all existing records for these (URL, Date) combinations ──
+    // Build an OR formula over all pairs to fetch everything in one query.
+    const orClauses = valid.map(
+      item => `AND({Target_URL} = '${item.Target_URL!.replace(/'/g, "\\'")}', {Date} = '${item.Date}')`
+    );
+    // Airtable formula length limit ~16 KB; chunk lookups if payload is very large.
+    const LOOKUP_CHUNK = 100;
+    const existingMap = new Map<string, string>(); // key: "URL|Date" → record id
 
-        const fields: any = {
-          Target_URL: item.Target_URL,
-          Date: item.Date,
-          GSC_Clicks: item.GSC_Clicks,
-          GSC_Impressions: item.GSC_Impressions,
-          Position: item.Position,
-          Sistrix_VI: item.Sistrix_VI
-        };
-        Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
+    for (let i = 0; i < orClauses.length; i += LOOKUP_CHUNK) {
+      const slice = orClauses.slice(i, i + LOOKUP_CHUNK);
+      const formula = slice.length === 1 ? slice[0] : `OR(${slice.join(',')})`;
+      const page = await base(TABLES.URL_PERFORMANCE).select({ filterByFormula: formula }).all();
+      page.forEach(record => {
+        const url = record.get('Target_URL') as string;
+        const date = record.get('Date') as string;
+        if (url && date) existingMap.set(`${url}|${date}`, record.id);
+      });
+    }
 
-        if (existing.length > 0) {
-          await base(TABLES.URL_PERFORMANCE).update(existing[0].id, fields);
-          updated++;
-        } else {
-          await base(TABLES.URL_PERFORMANCE).create([{ fields }]);
-          created++;
-        }
-      } catch (err: any) {
-        errors.push({ item, error: err.message });
+    // ── 2. Split into create / update buckets ─────────────────────────────────
+    const toCreate: Partial<URLPerformance>[] = [];
+    const toUpdate: { id: string; fields: Record<string, any> }[] = [];
+
+    for (const item of valid) {
+      const fields: Record<string, any> = {
+        Target_URL: item.Target_URL,
+        Date: item.Date,
+        GSC_Clicks: item.GSC_Clicks,
+        GSC_Impressions: item.GSC_Impressions,
+        Position: item.Position,
+        Sistrix_VI: item.Sistrix_VI,
+      };
+      Object.keys(fields).forEach(k => fields[k] === undefined && delete fields[k]);
+
+      const existingId = existingMap.get(`${item.Target_URL}|${item.Date}`);
+      if (existingId) {
+        toUpdate.push({ id: existingId, fields });
+      } else {
+        toCreate.push(item);
       }
     }
+
+    // ── 3. Batch-create (10 per call) ─────────────────────────────────────────
+    let created = 0;
+    for (let i = 0; i < toCreate.length; i += 10) {
+      const chunk = toCreate.slice(i, i + 10);
+      try {
+        await base(TABLES.URL_PERFORMANCE).create(
+          chunk.map(item => ({
+            fields: {
+              Target_URL: item.Target_URL,
+              Date: item.Date,
+              GSC_Clicks: item.GSC_Clicks,
+              GSC_Impressions: item.GSC_Impressions,
+              Position: item.Position,
+              ...(item.Sistrix_VI !== undefined ? { Sistrix_VI: item.Sistrix_VI } : {}),
+            },
+          }))
+        );
+        created += chunk.length;
+      } catch (err: any) {
+        errors.push({ chunk: i, error: err.message });
+      }
+    }
+
+    // ── 4. Batch-update (10 per call) ─────────────────────────────────────────
+    let updated = 0;
+    for (let i = 0; i < toUpdate.length; i += 10) {
+      const chunk = toUpdate.slice(i, i + 10);
+      try {
+        await base(TABLES.URL_PERFORMANCE).update(
+          chunk.map(({ id, fields }) => ({ id, fields }))
+        );
+        updated += chunk.length;
+      } catch (err: any) {
+        errors.push({ chunk: i, error: err.message });
+      }
+    }
+
     return { created, updated, errors };
   } catch (error) {
     return handleAirtableError(error, 'upsertURLPerformance');
@@ -555,38 +608,158 @@ export async function upsertURLPerformance(data: Partial<URLPerformance>[]): Pro
 
 export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHistory>[]): Promise<{ created: number, updated: number, errors: any[] }> {
   try {
-    let created = 0;
-    let updated = 0;
     const errors: any[] = [];
+    const valid = data.filter(item => item.Keyword_ID && item.Date);
+    if (!valid.length) return { created: 0, updated: 0, errors };
 
-    for (const item of data) {
-      if (!item.Keyword_ID || !item.Date) continue;
-      try {
-        const keywordIdStr = Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : item.Keyword_ID;
-        const formula = `AND(SEARCH('${keywordIdStr}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`;
-        const existing = await base(TABLES.KEYWORD_RANKING_HISTORY).select({ filterByFormula: formula, maxRecords: 1 }).firstPage();
+    // Normalise Keyword_ID to plain string for each item
+    const normalised = valid.map(item => ({
+      ...item,
+      _kwId: Array.isArray(item.Keyword_ID) ? item.Keyword_ID[0] : (item.Keyword_ID as unknown as string),
+    }));
 
-        const fields: any = {
-          Keyword_ID: [keywordIdStr],
-          Date: item.Date,
-          Ranking: item.Ranking,
-        };
-        Object.keys(fields).forEach(key => fields[key] === undefined && delete fields[key]);
+    // ── 1. Bulk-read existing records ─────────────────────────────────────────
+    // Use OR over SEARCH()-based per-id checks, chunked to avoid formula limit.
+    const LOOKUP_CHUNK = 50; // SEARCH formulas are verbose — keep chunks smaller
+    const existingMap = new Map<string, string>(); // "kwId|Date" → record id
 
-        if (existing.length > 0) {
-          await base(TABLES.KEYWORD_RANKING_HISTORY).update(existing[0].id, fields);
-          updated++;
-        } else {
-          await base(TABLES.KEYWORD_RANKING_HISTORY).create([{ fields }]);
-          created++;
-        }
-      } catch (err: any) {
-        errors.push({ item, error: err.message });
+    for (let i = 0; i < normalised.length; i += LOOKUP_CHUNK) {
+      const slice = normalised.slice(i, i + LOOKUP_CHUNK);
+      const orClauses = slice.map(
+        item => `AND(SEARCH('${item._kwId}', ARRAYJOIN({Keyword_ID})), {Date} = '${item.Date}')`
+      );
+      const formula = orClauses.length === 1 ? orClauses[0] : `OR(${orClauses.join(',')})`;
+      const page = await base(TABLES.KEYWORD_RANKING_HISTORY).select({ filterByFormula: formula }).all();
+      page.forEach(record => {
+        const ids = record.get('Keyword_ID') as string[] | undefined;
+        const date = record.get('Date') as string;
+        if (ids && date) ids.forEach(id => existingMap.set(`${id}|${date}`, record.id));
+      });
+    }
+
+    // ── 2. Split into create / update buckets ─────────────────────────────────
+    const toCreate: typeof normalised = [];
+    const toUpdate: { id: string; kwId: string; date: string; ranking: number | undefined }[] = [];
+
+    for (const item of normalised) {
+      const existingId = existingMap.get(`${item._kwId}|${item.Date}`);
+      if (existingId) {
+        toUpdate.push({ id: existingId, kwId: item._kwId, date: item.Date!, ranking: item.Ranking });
+      } else {
+        toCreate.push(item);
       }
     }
+
+    // ── 3. Batch-create (10 per call) ─────────────────────────────────────────
+    let created = 0;
+    for (let i = 0; i < toCreate.length; i += 10) {
+      const chunk = toCreate.slice(i, i + 10);
+      try {
+        await base(TABLES.KEYWORD_RANKING_HISTORY).create(
+          chunk.map(item => ({
+            fields: {
+              Keyword_ID: [item._kwId],
+              Date: item.Date,
+              Ranking: item.Ranking,
+            },
+          }))
+        );
+        created += chunk.length;
+      } catch (err: any) {
+        errors.push({ chunk: i, error: err.message });
+      }
+    }
+
+    // ── 4. Batch-update (10 per call) ─────────────────────────────────────────
+    let updated = 0;
+    for (let i = 0; i < toUpdate.length; i += 10) {
+      const chunk = toUpdate.slice(i, i + 10);
+      try {
+        await base(TABLES.KEYWORD_RANKING_HISTORY).update(
+          chunk.map(({ id, kwId, date, ranking }) => ({
+            id,
+            fields: { Keyword_ID: [kwId], Date: date, Ranking: ranking },
+          }))
+        );
+        updated += chunk.length;
+      } catch (err: any) {
+        errors.push({ chunk: i, error: err.message });
+      }
+    }
+
     return { created, updated, errors };
   } catch (error) {
     return handleAirtableError(error, 'upsertKeywordRankingHistory');
+  }
+}
+
+/**
+ * Returns the set of keyword IDs that already have a ranking record for the
+ * given ISO-week date (format: YYYY-MM-DD, Monday of the week).
+ * Used as a pre-flight check before calling DataForSEO to avoid redundant API costs.
+ */
+export async function getExistingRankingDates(
+  keywordIds: string[],
+  weekDate: string
+): Promise<Set<string>> {
+  const found = new Set<string>();
+  if (!keywordIds.length) return found;
+
+  const CHUNK = 50;
+  for (let i = 0; i < keywordIds.length; i += CHUNK) {
+    const slice = keywordIds.slice(i, i + CHUNK);
+    const orClauses = slice.map(id => `SEARCH('${id}', ARRAYJOIN({Keyword_ID}))`);
+    const formula = `AND(OR(${orClauses.join(',')}), {Date} = '${weekDate}')`;
+    try {
+      const records = await base(TABLES.KEYWORD_RANKING_HISTORY)
+        .select({ filterByFormula: formula, fields: ['Keyword_ID', 'Date'] })
+        .all();
+      records.forEach(record => {
+        const ids = record.get('Keyword_ID') as string[] | undefined;
+        if (ids) ids.forEach(id => found.add(id));
+      });
+    } catch (err: any) {
+      console.error('[Airtable] getExistingRankingDates chunk error:', err.message);
+    }
+  }
+  return found;
+}
+
+/**
+ * Reads a numeric sync cursor from the Config table.
+ * Returns 0 if the key does not exist yet (start of a new cycle).
+ */
+export async function getSyncCursor(key: string): Promise<number> {
+  try {
+    const records = await base(TABLES.CONFIG)
+      .select({ filterByFormula: `{Key} = '${key}'`, maxRecords: 1 })
+      .firstPage();
+    if (!records.length) return 0;
+    const val = parseInt(records[0].get('Value') as string, 10);
+    return isNaN(val) ? 0 : val;
+  } catch (err: any) {
+    console.error(`[Airtable] getSyncCursor(${key}) error:`, err.message);
+    return 0;
+  }
+}
+
+/**
+ * Writes (upserts) a numeric sync cursor into the Config table.
+ */
+export async function setSyncCursor(key: string, value: number): Promise<void> {
+  try {
+    const records = await base(TABLES.CONFIG)
+      .select({ filterByFormula: `{Key} = '${key}'`, maxRecords: 1 })
+      .firstPage();
+    if (records.length > 0) {
+      await base(TABLES.CONFIG).update(records[0].id, { Value: String(value) });
+    } else {
+      await base(TABLES.CONFIG).create([{
+        fields: { Key: key, Value: String(value), Description: 'Auto-managed sync cursor — do not edit manually' },
+      }]);
+    }
+  } catch (err: any) {
+    console.error(`[Airtable] setSyncCursor(${key}) error:`, err.message);
   }
 }
 
