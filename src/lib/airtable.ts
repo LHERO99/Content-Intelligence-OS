@@ -535,7 +535,7 @@ export async function upsertURLPerformance(data: Partial<URLPerformance>[]): Pro
       const page = await base(TABLES.URL_PERFORMANCE).select({ filterByFormula: formula }).all();
       page.forEach(record => {
         const url = record.get('Target_URL') as string;
-        const date = record.get('Date') as string;
+        const date = ((record.get('Date') as string) ?? '').split('T')[0];
         if (url && date) existingMap.set(`${url}|${date}`, record.id);
       });
     }
@@ -632,7 +632,7 @@ export async function upsertKeywordRankingHistory(data: Partial<KeywordRankingHi
       const page = await base(TABLES.KEYWORD_RANKING_HISTORY).select({ filterByFormula: formula }).all();
       page.forEach(record => {
         const ids = record.get('Keyword_ID') as string[] | undefined;
-        const date = record.get('Date') as string;
+        const date = ((record.get('Date') as string) ?? '').split('T')[0];
         if (ids && date) ids.forEach(id => existingMap.set(`${id}|${date}`, record.id));
       });
     }

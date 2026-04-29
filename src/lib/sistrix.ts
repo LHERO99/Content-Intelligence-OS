@@ -143,9 +143,11 @@ export async function fetchSistrixPageVIBatch(
 function weeksBackToDate(weeksBack: number): string | null {
   if (weeksBack <= 0) return null;
   const d = new Date();
-  // Go back to last Monday
+  // Go back to the Monday of (weeksBack) weeks ago.
+  // We subtract (weeksBack) full weeks from the current Monday so that
+  // the current week's data point is always included.
   const day = d.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diffToMonday - (weeksBack - 1) * 7);
+  d.setUTCDate(d.getUTCDate() + diffToMonday - weeksBack * 7);
   return d.toISOString().split('T')[0];
 }
