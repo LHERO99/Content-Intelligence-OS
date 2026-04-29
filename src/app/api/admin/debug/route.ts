@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
           const httpStatus = res.status;
           const rawBody = await res.json().catch(() => null);
 
-          const visibilityindex: any[] = rawBody?.answer?.[0]?.visibilityindex ?? [];
+          const visibilityindex: any[] = rawBody?.answer?.[0]?.sichtbarkeitsindex ?? [];
 
           sistrixCheck = {
             httpStatus,

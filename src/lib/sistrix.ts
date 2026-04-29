@@ -9,8 +9,8 @@ import 'server-only';
  *   GET https://api.sistrix.com/domain.visibilityindex
  *   Params: api_key, url (full page URL), history=true, limit=N, format=json
  *
- * The response contains a `visibilityindex` array of weekly data points:
- *   [{ date: "YYYY-MM-DD", value: 0.1234, domain: "..." }, ...]
+ * The response contains a `sichtbarkeitsindex` array of weekly data points:
+ *   [{ date: "YYYY-MM-DD", value: 0.1234, url: "..." }, ...]
  * where `date` is the date of the measurement and `value` is the page-level VI.
  *
  * Credits: 1 credit per returned entry (weekly data point).
@@ -29,15 +29,9 @@ export interface SistrixVIRow {
   vi: number;
 }
 
-interface SistrixOverviewEntry {
-  date: string;
-  sichtbarkeit: string | number;
-}
-
 interface SistrixResponse {
   answer?: Array<{
-    overview?: SistrixOverviewEntry[];
-    visibilityindex?: Array<{ date: string; value: string | number; domain?: string }>;
+    sichtbarkeitsindex?: Array<{ date: string; value: string | number; url?: string }>;
   }>;
   // Error format
   error?: { error_id: number; error_message: string };
@@ -86,7 +80,7 @@ export async function fetchSistrixPageVI(
     throw new Error(`Sistrix API error ${json.error.error_id}: ${json.error.error_message}`);
   }
 
-  const rows = json.answer?.[0]?.visibilityindex ?? [];
+  const rows = json.answer?.[0]?.sichtbarkeitsindex ?? [];
 
   if (!rows.length) return [];
 
