@@ -2,7 +2,7 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, getKeywordMap, getExistingRankingDates } from '@/lib/airtable';
+import { getConfig, getKeywordMap, getExistingRankingDates, upsertKeywordRankingHistory } from '@/lib/airtable';
 import { getCurrentWeekMonday } from '@/lib/sync-performance';
 
 const SISTRIX_BASE = 'https://api.sistrix.com';
@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const testUrl = searchParams.get('url')?.trim() || null;
+    const testWrite = searchParams.get('testWrite') === 'true';
 
     // ── 1. Config check ───────────────────────────────────────────────────────
     let config: Record<string, string> = {};
@@ -280,6 +281,41 @@ export async function GET(req: NextRequest) {
                     note: `Domain "${extractedDomain}" nicht in Top-100 gefunden — kein Ranking-Eintrag`,
                     wouldSkip: true,
                   };
+
+              // 4g. Echter Airtable-Write (nur wenn ?testWrite=true)
+              if (testWrite && matchingItem) {
+                dataforseoCheck.step_4g_actual_upsert = {
+                  note: 'Echter Write-Versuch in Keyword_Ranking_History',
+                  input: {
+                    Keyword_ID: [sampleKeyword.id],
+                    Date: weekDate,
+                    Ranking: matchingItem.rank_absolute,
+                  },
+                };
+                try {
+                  const upsertResult = await upsertKeywordRankingHistory([
+                    {
+                      Keyword_ID: [sampleKeyword.id],
+                      Date: weekDate,
+                      Ranking: matchingItem.rank_absolute,
+                    },
+                  ]);
+                  dataforseoCheck.step_4g_actual_upsert.result = upsertResult;
+                  dataforseoCheck.step_4g_actual_upsert.success = upsertResult.errors.length === 0;
+                } catch (err: any) {
+                  dataforseoCheck.step_4g_actual_upsert.exception = err.message;
+                  dataforseoCheck.step_4g_actual_upsert.success = false;
+                }
+              } else if (testWrite && !matchingItem) {
+                dataforseoCheck.step_4g_actual_upsert = {
+                  note: 'testWrite=true aber kein matchingItem — Write übersprungen',
+                  success: false,
+                };
+              } else {
+                dataforseoCheck.step_4g_actual_upsert = {
+                  note: 'Kein Write durchgeführt. ?testWrite=true anhängen um echten Write zu testen.',
+                };
+              }
 
               // Rohe Task-Response für maximale Transparenz
               dataforseoCheck.step_4e_live_api_call.rawTaskCost = firstTask?.cost ?? null;
