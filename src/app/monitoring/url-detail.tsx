@@ -1,511 +1,381 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
-} from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import {
-  LineChart,
+  ResponsiveContainer,
+  ComposedChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  ResponsiveContainer,
   ReferenceLine,
-  Label
-} from 'recharts';
-import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
-import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash, Calendar, RotateCcw, Target } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { HistoryList } from "@/features/shared/components/HistoryList";
-import { Input } from "@/components/ui/input";
-import { Label as UILabel } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useI18n } from "@/i18n/use-i18n";
-import { toLocaleTag } from "@/i18n/locale-utils";
+  Legend,
+} from "recharts";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, MousePointer2, Eye, TrendingUp, Coins } from "lucide-react";
 
-interface UrlDetailProps {
+// ── Custom event label for ReferenceLine (defined outside component for stable ref) ──
+function EventLabel({ viewBox, type }: { viewBox?: any; type: string }) {
+  if (!viewBox) return null;
+  const { x, y } = viewBox;
+  const isCreation = type === 'Erstellung';
+  const color = isCreation ? 'var(--primary)' : '#f59e0b';
+  const label = isCreation ? 'Erstellt' : 'Optimiert';
+  const textWidth = label.length * 6 + 12;
+  const bx = x - textWidth / 2;
+  const by = y + 6; // inside chart area, near top
+  return (
+    <g>
+      <rect x={bx} y={by} width={textWidth} height={16} rx={4} fill={color} opacity={0.88} />
+      <text x={x} y={by + 11} textAnchor="middle" fill="#fff" fontSize={10} fontWeight={600}>
+        {label}
+      </text>
+    </g>
+  );
+}
+
+interface URLPerformance {
+  id: string;
+  Target_URL: string;
+  Date: string;
+  GSC_Clicks?: number;
+  GSC_Impressions?: number;
+  Position?: number;
+  Sistrix_VI?: number;
+}
+
+interface ContentLog {
+  id: string;
+  Action_Type: string;
+  Created_At: string;
+  Diff_Summary?: string;
+}
+
+interface DetailData {
+  urlPerformance: URLPerformance[];
+  history: ContentLog[];
+  savings: { agency: number; overhead: number };
+}
+
+interface Props {
   url: string;
 }
 
-export function UrlDetail({ url }: UrlDetailProps) {
-  const { locale, t } = useI18n();
-  const localeTag = toLocaleTag(locale);
-  const [data, setData] = useState<{
-    performance: PerformanceData[];
-    urlPerformance: URLPerformance[];
-    keywordRankings: KeywordRankingHistory[];
-    keywords: KeywordMap[];
-    history: ContentLog[];
-    savings: { agency: number; overhead: number };
-  } | null>(null);
+export function UrlDetail({ url }: Props) {
+  const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
-    start: "",
-    end: ""
-  });
-  const [hiddenUrlLines, setHiddenUrlLines] = useState<Set<string>>(new Set());
-  const [hiddenRankingLines, setHiddenRankingLines] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDetail();
+    setLoading(true);
+    setError(null);
+    fetch(`/api/monitoring/detail?url=${encodeURIComponent(url)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Fehler beim Laden der Detail-Daten");
+        return r.json();
+      })
+      .then((json: DetailData) => setData(json))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [url]);
-
-  const fetchDetail = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/monitoring/detail?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error("Failed to fetch detail");
-      const json = await res.json();
-      setData(json);
-      
-      // Auto-set initial date range based on available data
-      const allPerformance = json.urlPerformance.length > 0 ? json.urlPerformance : json.performance;
-      if (allPerformance.length > 0) {
-        const dates = allPerformance.map((p: any) => p.Date).sort();
-        setDateRange({
-          start: dates[0],
-          end: dates[dates.length - 1]
-        });
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredUrlPerformance = useMemo(() => {
-    if (!data) return [];
-    const baseData = data.urlPerformance.length > 0 ? data.urlPerformance : data.performance;
-    return baseData.filter(p => 
-      (!dateRange.start || p.Date >= dateRange.start) && 
-      (!dateRange.end || p.Date <= dateRange.end)
-    );
-  }, [data, dateRange]);
-
-  const filteredKeywordRankings = useMemo(() => {
-    if (!data) return [];
-    return data.keywordRankings.filter(r => 
-      (!dateRange.start || r.Date >= dateRange.start) && 
-      (!dateRange.end || r.Date <= dateRange.end)
-    );
-  }, [data, dateRange]);
-
-  const handleResetDates = () => {
-    if (!data) return;
-    const baseData = data.urlPerformance.length > 0 ? data.urlPerformance : data.performance;
-    if (baseData.length > 0) {
-      const dates = baseData.map(p => p.Date).sort();
-      setDateRange({
-        start: dates[0],
-        end: dates[dates.length - 1]
-      });
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!data) return <div>{t('monitoringDetail.noData')}</div>;
-
-  const getStatusInfo = () => {
-    // Strictly exclude tool/planning logs from counting
-    const deliveryLogs = data.history.filter(log => {
-      const summary = log.Diff_Summary?.toLowerCase() || '';
-      return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
-             !(
-               summary.includes('url wurde dem tool hinzugefügt') || 
-               summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') ||
-               summary.includes('url wurde der redaktionsplanung hinzugefügt')
-             );
-    }).sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
-
-    if (deliveryLogs.length === 0) {
-      return { text: t('monitoringDetail.statusNotOptimized'), version: "" };
-    }
-    
-    // Deduplicate by day
-    const dailyLogs: typeof deliveryLogs = [];
-    const seenDays = new Set<string>();
-
-    deliveryLogs.forEach(log => {
-      const day = new Date(log.Created_At).toISOString().split('T')[0];
-      if (!seenDays.has(day)) {
-        dailyLogs.push(log);
-        seenDays.add(day);
-      }
-    });
-
-    const versionCount = dailyLogs.length;
-    
-    if (versionCount === 1) {
-      return { text: t('monitoringDetail.statusCreated'), version: "" };
-    }
-    
-    return { 
-      text: t('monitoringDetail.statusOptimized'), 
-      version: `(V${versionCount})` 
-    };
-  };
-
-  const statusInfo = getStatusInfo();
-
-  const mainKeyword = data.keywords.find(k => k.Main_Keyword === 'Y');
-  const latestRanking = mainKeyword ? data.keywordRankings
-    .filter(r => r.Keyword_ID.includes(mainKeyword.id))
-    .sort((a, b) => new Date(b.Date).getTime() - new Date(a.Date).getTime())[0] : null;
-
-  // ── Legend toggle helpers ────────────────────────────────────────────────────
-  const toggleLine = (hidden: Set<string>, setHidden: (s: Set<string>) => void, key: string) => {
-    const next = new Set(hidden);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    setHidden(next);
-  };
-
-  const renderLegend = (hidden: Set<string>, setHidden: (s: Set<string>) => void) =>
-    ({ payload }: any) => (
-      <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
-        {(payload ?? []).map((entry: any) => {
-          const isHidden = hidden.has(entry.dataKey ?? entry.value);
-          return (
-            <li
-              key={entry.value}
-              className="flex items-center gap-1.5 cursor-pointer select-none text-xs"
-              style={{ opacity: isHidden ? 0.35 : 1 }}
-              onClick={() => toggleLine(hidden, setHidden, entry.dataKey ?? entry.value)}
-            >
-              <span
-                className="inline-block w-5 h-0.5 rounded-full flex-shrink-0"
-                style={{
-                  backgroundColor: entry.color,
-                  textDecoration: isHidden ? 'line-through' : 'none',
-                }}
-              />
-              <span style={{ textDecoration: isHidden ? 'line-through' : 'none' }}>
-                {entry.value}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    );
-
-  // ── Custom event label for ReferenceLine ─────────────────────────────────────
-  const EventLabel = ({ viewBox, type }: { viewBox?: any; type: string }) => {
-    if (!viewBox) return null;
-    const { x, y } = viewBox;
-    const isCreation = type === 'Erstellung';
-    const color = isCreation ? 'var(--primary)' : '#f59e0b';
-    const label = isCreation ? 'Erstellt' : 'Optimiert';
-    const textWidth = label.length * 6 + 10;
+  if (error) {
     return (
-      <g>
-        <rect
-          x={x - textWidth / 2}
-          y={y - 22}
-          width={textWidth}
-          height={16}
-          rx={4}
-          fill={color}
-          opacity={0.9}
-        />
-        <text
-          x={x}
-          y={y - 10}
-          textAnchor="middle"
-          fill="#fff"
-          fontSize={10}
-          fontWeight={600}
-        >
-          {label}
-        </text>
-      </g>
+      <div className="text-red-600 text-sm py-8 text-center">{error}</div>
     );
-  };
+  }
 
-  const eventMarkers = data.history.map(log => ({    date: log.Created_At.split('T')[0],
-    type: log.Action_Type,
-    label: log.Action_Type === 'Erstellung' ? 'E' : 'O'
+  if (!data) return null;
+
+  // ── Derive content events (Erstellung / Optimierung) from history ──
+  const deliveryLogs = data.history
+    .filter((l) => {
+      const s = l.Diff_Summary?.toLowerCase() || "";
+      return (
+        (s.includes("content angeliefert") || s.includes("content veröffentlicht")) &&
+        !s.includes("url wurde dem tool hinzugefügt") &&
+        !s.includes("url wurde dem tab") &&
+        !s.includes("url wurde der redaktionsplanung")
+      );
+    })
+    .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
+
+  // Deduplicate per day
+  const seenDays = new Set<string>();
+  const events: { date: string; type: string }[] = [];
+  deliveryLogs.forEach((log, idx) => {
+    const day = new Date(log.Created_At).toISOString().split("T")[0];
+    if (!seenDays.has(day)) {
+      seenDays.add(day);
+      events.push({ date: day, type: idx === 0 ? "Erstellung" : "Optimierung" });
+    }
+  });
+
+  // ── Build chart data ──
+  const chartData = data.urlPerformance.map((p) => ({
+    date: p.Date,
+    clicks: p.GSC_Clicks ?? null,
+    impressions: p.GSC_Impressions ?? null,
+    position: p.Position ?? null,
+    vi: p.Sistrix_VI ?? null,
   }));
 
-  // Prepare Keyword Ranking Chart Data
-  // We need to group rankings by date
-  const rankingDates = Array.from(new Set(filteredKeywordRankings.map(r => r.Date))).sort();
-  const keywordChartData = rankingDates.map(date => {
-    const entry: any = { Date: date };
-    data.keywords.forEach(kw => {
-      const ranking = filteredKeywordRankings.find(r => r.Date === date && r.Keyword_ID.includes(kw.id));
-      if (ranking) {
-        entry[kw.Keyword] = ranking.Ranking;
-      }
-    });
-    return entry;
-  });
+  const hasData = chartData.length > 0;
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("de-DE", { month: "short", day: "numeric" });
+
+  const latestPerf = data.urlPerformance[data.urlPerformance.length - 1];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white border-none shadow-sm">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-none shadow-sm bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Coins className="h-4 w-4 text-primary" />
-              {t('monitoringDetail.savedCosts')}
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <MousePointer2 className="h-3.5 w-3.5 text-primary" />
+              Klicks (aktuell)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {(data.savings.agency + data.savings.overhead).toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}
-            </div>
-            <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-              <span>{t('monitoringDetail.agency')}: {data.savings.agency.toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}</span>
-              <span>{t('monitoringDetail.overhead')}: {data.savings.overhead.toLocaleString(localeTag, { style: 'currency', currency: 'EUR' })}</span>
+              {latestPerf?.GSC_Clicks ?? "–"}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-none shadow-sm">
+        <Card className="border-none shadow-sm bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <LayoutPanelLeft className="h-4 w-4 text-primary" />
-              {t('monitoringDetail.contentStatus')}
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <Eye className="h-3.5 w-3.5 text-primary" />
+              Impressionen (aktuell)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{statusInfo.text} {statusInfo.version}</div>
-            <p className="text-xs text-muted-foreground">
-              {data.history.length > 0 
-                ? `${t('monitoringDetail.lastUpdate')}: ${new Date(data.history[0].Created_At).toLocaleDateString(localeTag)}`
-                : t('monitoringDetail.noUpdates')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-none shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Hash className="h-4 w-4 text-primary" />
-              {t('monitoringDetail.keywords')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold mb-2">{data.keywords.length} Keywords</div>
-            <div className="space-y-2">
-              {data.keywords.length > 0 ? (
-                <>
-                  {/* Main Keyword */}
-                  {data.keywords.filter(k => k.Main_Keyword === 'Y').map(k => (
-                    <div key={k.id} className="flex items-center gap-2">
-                      <Badge variant="default" className="text-[10px] py-0 bg-primary text-primary-foreground">Main</Badge>
-                      <span className="text-sm font-bold truncate" title={k.Keyword}>{k.Keyword}</span>
-                    </div>
-                  ))}
-                  
-                  {/* Secondary Keywords */}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {data.keywords.filter(k => k.Main_Keyword !== 'Y').map(k => (
-                      <Badge key={k.id} variant="outline" className="text-[10px] py-0 border-primary/20" title={k.Keyword}>
-                        {k.Keyword}
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">{t('monitoringDetail.noKeywordsLinked')}</p>
-              )}
+            <div className="text-2xl font-bold text-primary">
+              {latestPerf?.GSC_Impressions ?? "–"}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-none shadow-sm">
+        <Card className="border-none shadow-sm bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              {t('monitoringDetail.rankingMain')}
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              Ø Position (aktuell)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className={`text-lg font-bold ${latestRanking?.Ranking ? 'text-primary' : 'text-slate-400'}`}>
-                {latestRanking?.Ranking ? t('monitoringDetail.yes') : t('monitoringDetail.no')}
-              </div>
-              {latestRanking?.Ranking && (
-                <span className="text-sm text-muted-foreground font-medium">
-                  ({t('monitoringDetail.rankPosition')} {latestRanking.Ranking})
-                </span>
-              )}
+            <div className="text-2xl font-bold text-primary">
+              {latestPerf?.Position?.toFixed(1) ?? "–"}
             </div>
-            <p className="text-xs text-muted-foreground truncate" title={mainKeyword?.Keyword}>
-              {mainKeyword?.Keyword || t('monitoringDetail.noMainKeyword')}
-            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <Coins className="h-3.5 w-3.5 text-primary" />
+              Einsparungen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">
+              {(data.savings.agency + data.savings.overhead).toLocaleString("de-DE", {
+                style: "currency",
+                currency: "EUR",
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-white border-none shadow-sm">
-        <CardContent className="py-4">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-1.5">
-              <UILabel htmlFor="start-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                {t('monitoringDetail.periodFrom')}
-              </UILabel>
-              <Input
-                id="start-date"
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="h-9 w-[160px] text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <UILabel htmlFor="end-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                {t('monitoringDetail.periodTo')}
-              </UILabel>
-              <Input
-                id="end-date"
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="h-9 w-[160px] text-sm"
-              />
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleResetDates}
-              className="h-9 gap-2 text-muted-foreground hover:text-primary"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              {t('common.reset')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-white border-none shadow-sm">
-          <CardHeader>
-            <CardTitle>{t('monitoringDetail.urlPerformanceTitle')}</CardTitle>
-            <CardDescription>{t('monitoringDetail.urlPerformanceDesc')}</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filteredUrlPerformance}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis 
-                  dataKey="Date" 
-                  tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
-                  fontSize={12}
-                />
-                <YAxis yAxisId="left" stroke="var(--primary)" fontSize={12} />
-                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
-                  labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
-                />
-                <Legend content={renderLegend(hiddenUrlLines, setHiddenUrlLines)} />
-                
-                {eventMarkers.map((marker, idx) => (
-                  <ReferenceLine 
-                    key={idx} 
-                    x={marker.date} 
-                    yAxisId="left" 
-                    stroke={marker.type === 'Erstellung' ? 'var(--primary)' : '#f59e0b'} 
-                    strokeWidth={2}
-                  >
-                    <Label content={(props: any) => <EventLabel viewBox={props.viewBox} type={marker.type} />} />
-                  </ReferenceLine>
-                ))}
-
-                <Line 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="GSC_Clicks" 
-                  name={t('monitoringDetail.clicks')} 
-                  stroke="var(--primary)" 
-                  strokeWidth={2}
-                  dot={false}
-                  hide={hiddenUrlLines.has('GSC_Clicks')}
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="Sistrix_VI" 
-                  name="Sistrix VI" 
-                  stroke="#82ca9d" 
-                  strokeWidth={2}
-                  dot={false}
-                  hide={hiddenUrlLines.has('Sistrix_VI')}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-none shadow-sm">
-          <CardHeader>
-            <CardTitle>{t('monitoringDetail.keywordRankingTitle')}</CardTitle>
-            <CardDescription>{t('monitoringDetail.keywordRankingDesc')}</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={keywordChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis 
-                  dataKey="Date" 
-                  tickFormatter={(str) => new Date(str).toLocaleDateString(localeTag, { month: 'short', day: 'numeric' })}
-                  fontSize={12}
-                />
-                <YAxis reversed domain={[1, 'auto']} fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid color-mix(in oklab, var(--primary) 20%, white)' }}
-                  labelFormatter={(l) => new Date(l).toLocaleDateString(localeTag)}
-                />
-                <Legend content={renderLegend(hiddenRankingLines, setHiddenRankingLines)} />
-                
-                {data.keywords.map((kw, idx) => (
-                  <Line 
-                    key={kw.id}
-                    type="monotone" 
-                    dataKey={kw.Keyword} 
-                    name={kw.Keyword + (kw.Main_Keyword === 'Y' ? ' (Main)' : '')}
-                    stroke={kw.Main_Keyword === 'Y' ? 'var(--primary)' : `hsl(${(idx * 137) % 360}, 50%, 50%)`}
-                    strokeWidth={kw.Main_Keyword === 'Y' ? 3 : 1.5}
-                    dot={kw.Main_Keyword === 'Y'}
-                    hide={hiddenRankingLines.has(kw.Keyword)}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="bg-white border-none shadow-sm">
+      {/* URL Performance Verlauf */}
+      <Card className="border-none shadow-sm bg-white">
         <CardHeader>
-          <CardTitle>{t('monitoringDetail.contentHistoryTitle')}</CardTitle>
+          <CardTitle className="text-sm font-medium text-primary">URL Performance Verlauf</CardTitle>
+          <CardDescription className="text-[11px]">
+            GSC Klicks &amp; Impressionen über Zeit — Markierungen zeigen Erstellungs- und Optimierungszeitpunkte
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <HistoryList 
-            history={data.history} 
-            isLoading={false} 
-          />
+        <CardContent className="pl-2">
+          {hasData ? (
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 32, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="color-mix(in oklab, var(--primary) 20%, white)"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="var(--primary)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={formatDate}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="var(--primary)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#6366f1"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid color-mix(in oklab, var(--primary) 20%, white)",
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: "var(--primary)", fontWeight: "bold" }}
+                    labelFormatter={(v) => new Date(v).toLocaleDateString("de-DE")}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                    formatter={(value) =>
+                      value === "clicks"
+                        ? "Klicks"
+                        : value === "impressions"
+                        ? "Impressionen"
+                        : value
+                    }
+                  />
+
+                  {/* Event reference lines */}
+                  {events.map((ev) => (
+                    <ReferenceLine
+                      key={ev.date + ev.type}
+                      x={ev.date}
+                      yAxisId="left"
+                      stroke={ev.type === "Erstellung" ? "var(--primary)" : "#f59e0b"}
+                      strokeWidth={1}
+                      strokeDasharray="4 3"
+                      label={(props: any) => <EventLabel {...props} type={ev.type} />}
+                    />
+                  ))}
+
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="clicks"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="impressions"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+              Keine Performance-Daten vorhanden
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Sistrix VI Verlauf */}
+      {hasData && data.urlPerformance.some((p) => p.Sistrix_VI != null) && (
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-primary">Sistrix Visibility Index Verlauf</CardTitle>
+            <CardDescription className="text-[11px]">
+              Entwicklung des Sichtbarkeitsindex über Zeit
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 32, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="color-mix(in oklab, var(--primary) 20%, white)"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="var(--primary)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={formatDate}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    stroke="var(--primary)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid color-mix(in oklab, var(--primary) 20%, white)",
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: "var(--primary)", fontWeight: "bold" }}
+                    labelFormatter={(v) => new Date(v).toLocaleDateString("de-DE")}
+                  />
+
+                  {events.map((ev) => (
+                    <ReferenceLine
+                      key={ev.date + ev.type}
+                      x={ev.date}
+                      stroke={ev.type === "Erstellung" ? "var(--primary)" : "#f59e0b"}
+                      strokeWidth={1}
+                      strokeDasharray="4 3"
+                      label={(props: any) => <EventLabel {...props} type={ev.type} />}
+                    />
+                  ))}
+
+                  <Line
+                    type="monotone"
+                    dataKey="vi"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                    connectNulls
+                    name="Sistrix VI"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
