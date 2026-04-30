@@ -941,6 +941,23 @@ export async function deleteFromBlacklist(id: string): Promise<boolean> {
   }
 }
 
+export async function createAuditLog(action: string, rawPayload?: Record<string, unknown>): Promise<void> {
+  try {
+    await base(TABLES.AUDIT_LOGS).create([
+      {
+        fields: {
+          Action: action,
+          Timestamp: new Date().toISOString(),
+          ...(rawPayload ? { Raw_Payload: JSON.stringify(rawPayload) } : {}),
+        },
+      },
+    ]);
+  } catch (error) {
+    // Log but don't throw — audit log writes should never block critical paths
+    console.error('[Airtable] createAuditLog failed:', error);
+  }
+}
+
 export async function getAuditLogs(): Promise<AuditLog[]> {
   try {
     const records = await base(TABLES.AUDIT_LOGS).select().all();

@@ -141,4 +141,12 @@
 - [x] i18n: admin/integrations-management.tsx lokalisiert.
 - [x] i18n: admin/cost-management.tsx lokalisiert.
 - [x] i18n: features/admin/optimization-rules-tab.tsx lokalisiert.
-- [x] i18n: features/admin/branding-tab.tsx lokalisiert.
+- [x] Fix: `Keyword_ID` in `upsertKeywordRankingHistory` von Array auf plain String geändert (Airtable Feldtyp ist Text, kein Linked Record).
+- [x] Fix: `sync-performance.ts` — `null`-Rankings werden nicht mehr gefiltert, stattdessen `Ranking: 101` als Sonderwert für "nicht in Top 100".
+- [x] Feature: Debug-Endpoint `/api/admin/debug` um vollständige DataForSEO End-to-End-Diagnose erweitert (7 Schritte inkl. Live-API-Call und `?testWrite=true`).
+- [x] UI: Keyword-Ranking-Chart auf logarithmische Y-Achse umgestellt (Datentransformation `Math.log`, Ticks 1·3·5·10·20·50·>100).
+- [x] UI: Keyword-Ranking-Chart — Datenpunkte mit `Ranking=101` als grauer gestrichelter Kreis dargestellt, Tooltip zeigt "Nicht in Top 100".
+- [x] UI: Keywords-Karte in URL-Detail komplett neu gestaltet — tabellarisches Zeilen-Layout mit Ranking-Farbkodierung (grün/lime/gelb/grau/orange), ScrollArea, Main-Pill inline.
+- [x] UI: Content Monitoring URL-Detail — ReferenceLine für Erstellungs-/Optimierungszeitpunkt: gestrichelt, dünn, Flag-Badge ("Erstellt"/"Optimiert") oben an der Linie.
+- [x] UX: Keyword-Import Erfolgsscreen um blauen Hinweis-Block ergänzt ("Rankings werden beim nächsten Sync ermittelt, >100 wird als solches markiert").
+

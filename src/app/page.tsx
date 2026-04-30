@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { 
   PerformanceData,
   PotentialTrend,
-  AuditLog,
   ContentLog
 } from "@/lib/airtable-types";
 import { 
@@ -26,17 +25,16 @@ import {
 import { 
   TrendingUp, 
   MousePointer2, 
-  AlertCircle, 
   Activity,
   RefreshCw,
   History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAlerts } from "@/components/alerts-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentHistoryTable } from "./content-history-table";
 import { useI18n } from "@/i18n/use-i18n";
+import { SystemHealthCard } from "@/components/system-health-card";
 
 // --- Helper Components ---
 
@@ -72,13 +70,11 @@ function KPICard({
 // --- Main Dashboard Page ---
 
 export default function DashboardPage() {
-  const { addAlert } = useAlerts();
   const { t, locale } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [potentialTrends, setPotentialTrends] = useState<PotentialTrend[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [contentHistory, setContentHistory] = useState<ContentLog[]>([]);
 
   const fetchData = async (isRefresh = false) => {
@@ -86,39 +82,18 @@ export default function DashboardPage() {
     else setLoading(true);
 
     try {
-      // Using placeholder API routes to avoid client-side Airtable imports
-      const [perfRes, trendsRes, logsRes, historyRes] = await Promise.all([
+      const [perfRes, trendsRes, historyRes] = await Promise.all([
         fetch('/api/debug/airtable?table=Performance-Data'),
         fetch('/api/debug/airtable?table=Potential-Trends'),
-        fetch('/api/debug/airtable?table=Audit-Logs'),
         fetch('/api/planning/history'),
       ]);
       
       const perf = perfRes.ok ? (await perfRes.json()).records || [] : [];
       const trends = trendsRes.ok ? (await trendsRes.json()).records || [] : [];
-      const logs = logsRes.ok ? (await logsRes.json()).records || [] : [];
       const history = historyRes.ok ? await historyRes.json() : [];
-
-      // Check for new diagnostic alerts since last fetch
-      const diagnosticAlerts = logs.filter((log: AuditLog) => 
-        log.Action?.startsWith("DIAGNOSTIC_ALERT:") && 
-        (!auditLogs.some(oldLog => oldLog.id === log.id))
-      );
-
-      if (isRefresh && diagnosticAlerts.length > 0) {
-        diagnosticAlerts.forEach((alert: AuditLog) => {
-          addAlert({
-            type: 'warning',
-            title: t("dashboard.alerts.diagnosticTitle"),
-            message: alert.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Diagnose-Warnung',
-            description: t("dashboard.alerts.diagnosticDescription")
-          });
-        });
-      }
 
       setPerformanceData(perf);
       setPotentialTrends(trends);
-      setAuditLogs(logs);
       setContentHistory(history);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -158,15 +133,6 @@ export default function DashboardPage() {
   const chartData = Object.entries(chartDataMap)
     .map(([date, vi]) => ({ date, vi }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  const alerts = auditLogs
-    .filter(log => 
-      log.Action?.toLowerCase().includes("closed loop") || 
-      log.Action?.toLowerCase().includes("diagnosis") ||
-      log.Action?.startsWith("DIAGNOSTIC_ALERT:")
-    )
-    .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime())
-    .slice(0, 5);
 
   if (loading) {
     return (
@@ -284,34 +250,8 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-            {/* Alerts Feed */}
-            <Card className="col-span-3 bg-white border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-primary">{t("dashboard.alerts.title")}</CardTitle>
-                <CardDescription>{t("dashboard.alerts.description")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {alerts.length > 0 ? (
-                    alerts.map((log) => (
-                      <div key={log.id} className={`flex items-start space-x-4 rounded-md border p-3 transition-colors ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'border-orange-200 bg-orange-50' : 'border-primary/10 hover:bg-primary/5'}`}>
-                        <AlertCircle className={`mt-0.5 h-5 w-5 ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-600' : 'text-primary'}`} />
-                        <div className="flex-1 space-y-1">
-                          <p className={`text-sm font-medium leading-none ${log.Action?.startsWith('DIAGNOSTIC_ALERT:') ? 'text-orange-900' : 'text-primary'}`}>
-                            {log.Action?.replace('DIAGNOSTIC_ALERT: ', '') || 'Unbekannte Aktion'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {log.Timestamp ? new Date(log.Timestamp).toLocaleString(locale === "de" ? "de-DE" : "en-US") : t("common.unknownDate")}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                      <div className="text-center py-8 text-muted-foreground">{t("dashboard.alerts.none")}</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {/* System Health */}
+            <SystemHealthCard />
           </div>
         </TabsContent>
 

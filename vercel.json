@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/sync-dataforseo",
       "schedule": "30 4 * * 1"
+    },
+    {
+      "path": "/api/cron/check-integrations",
+      "schedule": "0 6 * * *"
     }
   ]
 }

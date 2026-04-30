@@ -64,7 +64,26 @@
   - Alle API-Schnittstellen (Import, Detail, Übersicht) nutzen nun die neue Struktur.
   - Veraltete Debug-Endpunkte (z.B. `/api/debug/trends`), die auf gelöschte Tabellen verweisen, wurden entfernt, um Build-Fehler zu vermeiden.
 
-## Aktuelle Strategien & Patterns
+## Keyword-Ranking: Airtable Feldtyp `Keyword_ID` (29.04.2026)
+- **`Keyword_ID` in `Keyword_Ranking_History` ist ein plain Text-Feld**, kein Linked-Record-Feld.
+- Der Code hat ursprünglich `Keyword_ID: ["recXYZ"]` (Array) geschrieben → Airtable-Fehler `"Field cannot accept the provided value"`.
+- Fix in `upsertKeywordRankingHistory` (`airtable.ts`): `Keyword_ID: item._kwId` (String) statt `Keyword_ID: [item._kwId]`.
+- Gleiches gilt für Update-Calls. Lookup/Dedup-Query via `SEARCH(ARRAYJOIN({Keyword_ID}))` funktioniert unverändert auch mit Text-Feldern.
+
+## Keyword-Ranking: Sonderwert 101 für "nicht in Top 100" (29.04.2026)
+- **Keywords ohne Top-100-Ranking erhalten `Ranking: 101`** statt still verworfen zu werden.
+- Vorteil: Vollständige Datenbasis (jedes Keyword hat jede Woche einen Eintrag), Lückenerkennung im Chart möglich.
+- UI-Konvention: `101` wird als `>100` / "Nicht in Top 100" angezeigt. Datenpunkte mit `101` erhalten einen gesonderten Dot-Style (grauer gestrichelter Kreis).
+
+## Logarithmische Y-Achse im Keyword-Ranking-Chart (29.04.2026)
+- **Recharts unterstützt keine native `scale="log"` mit `reversed`** zuverlässig.
+- Lösung: **Datentransformation** vor dem Render. Jedes Keyword bekommt zwei Felder: `${keyword}_log = Math.log(rank)` und `${keyword}_raw = rank`.
+- `<Line dataKey="${keyword}_log">` — Chart arbeitet mit transformierten Werten.
+- Y-Achse: `ticks={[1,3,5,10,20,50,101].map(Math.log)}`, `tickFormatter` rechnet via `Math.round(Math.exp(v))` zurück.
+- Tooltip: liest `_raw`-Wert aus `props.payload` für korrekte Originalanzeige.
+- Ergebnis: Positionen 1–20 nehmen ~75% der Chart-Höhe ein, 20–100 komprimiert.
+
+
 - **Computed Fields Policy (05.04.2026)**: 
   - Felder, die in Airtable als Lookup oder Formel definiert sind (z.B. `Target_URL` in `Content-Log`), dürfen niemals im `create`- oder `update`-Call der API gesendet werden. 
   - Der Airtable-Service (`createContentLog`) filtert diese nun aktiv aus, um 422 Unprocessable Entity Fehler zu vermeiden.
