@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { KeywordMap, ContentLog } from '@/lib/airtable-types';
+import { triggerN8nAction } from '@/lib/n8n';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
-import { Loader2, Send, Zap, Clock, FileText } from 'lucide-react';
+import { Loader2, Send, Zap, Clock, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +22,23 @@ export default function CreationPage() {
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>('');
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
+
+  const handleRetry = async (kw: KeywordMap) => {
+    try {
+      setRetrying(kw.id);
+      await triggerN8nAction('COMMISSION_CONTENT', {
+        keywordId: kw.id,
+        keyword: kw.Keyword || '',
+        targetUrl: kw.Target_URL || '',
+      });
+      toast.success(tr('Content erneut beauftragt.', 'Content re-commissioned.'));
+    } catch (err) {
+      toast.error(tr('Fehler beim erneuten Beauftragen.', 'Error re-commissioning content.'));
+    } finally {
+      setRetrying(null);
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -64,16 +82,20 @@ export default function CreationPage() {
     
     // Explicitly exclude statuses that shouldn't be in the commissioned list
     // Records that are just 'Planned' stay in the Editorial Plan
-    if (['Planned', 'Backlog'].includes(kw.Status)) {
-      return false;
-    }
+    if (kw.Status === 'Backlog') return false;
 
     const hasAnyHistory = contentLogs.some(l => 
       Array.isArray(l.Keyword_ID) && 
       l.Keyword_ID.includes(kw.id)
     );
+    // "Planned" keywords with history = previously commissioned but failed → show for retry
     return hasCorrectStatus || hasAnyHistory;
   });
+
+  // A keyword is in "failed" state when it was reset to Planned but has prior history
+  const isFailedKeyword = (kw: KeywordMap) =>
+    kw.Status === 'Planned' &&
+    contentLogs.some(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
 
   const relevantLogs = contentLogs.filter((log) => 
     Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(selectedKeywordId)
@@ -185,7 +207,9 @@ export default function CreationPage() {
                               variant="secondary" 
                               className={cn(
                                 "whitespace-nowrap",
-                                (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
+                                isFailedKeyword(kw)
+                                  ? 'bg-red-100 text-red-700 border-red-200'
+                                  : (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
                                   ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                   : kw.Status === 'Angeliefert'
                                   ? 'bg-primary text-primary-foreground border-primary'
@@ -196,7 +220,11 @@ export default function CreationPage() {
                                   : 'bg-primary/15 text-primary border-primary/25'
                               )}
                             >
-                              {(kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit') ? t('creation.inProgress') : kw.Status}
+                              {isFailedKeyword(kw)
+                                ? tr('Fehlgeschlagen', 'Failed')
+                                : (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
+                                ? t('creation.inProgress')
+                                : kw.Status}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -231,7 +259,37 @@ export default function CreationPage() {
                 </div>
                 
                 <div className="flex-1 min-h-0">
-                  {!v2Content ? (
+                  {isFailedKeyword(selectedKeyword!) ? (
+                    <div className="flex flex-col items-center justify-center h-full border border-red-200 rounded-lg bg-red-50/40 gap-4 p-8 text-center">
+                      <AlertTriangle className="h-10 w-10 text-red-500" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-700">
+                          {tr('Agent-Run fehlgeschlagen', 'Agent run failed')}
+                        </p>
+                        <p className="text-xs text-red-500 mt-1">
+                          {tr(
+                            'Der letzte Ausführungsversuch ist fehlgeschlagen. Du kannst den Auftrag erneut anstoßen.',
+                            'The last execution attempt failed. You can re-commission the content.'
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRetry(selectedKeyword!)}
+                        disabled={retrying === selectedKeyword!.id}
+                        className={cn(
+                          "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+                          "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        )}
+                      >
+                        {retrying === selectedKeyword!.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        {tr('Erneut beauftragen', 'Re-commission')}
+                      </button>
+                    </div>
+                  ) : !v2Content ? (
                     <div className="flex flex-col items-center justify-center h-full border rounded-lg bg-muted/10">
                       <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                       <p className="text-sm text-muted-foreground">{t('creation.generating')}</p>

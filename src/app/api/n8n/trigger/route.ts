@@ -142,12 +142,37 @@ export async function POST(req: NextRequest) {
         runFrom: 'published',
       });
 
+      // On failure: reset keyword status to "Planned" so it can be re-commissioned
+      if (run.status === 'failed' && data.keywordId) {
+        try {
+          await updateKeyword(data.keywordId, { Status: 'Planned' });
+        } catch (resetErr) {
+          console.error('[InternalAgent] Failed to reset keyword status:', resetErr);
+        }
+
+        // Extract the first failed step error for a meaningful error message
+        const failedStep = run.steps?.find((s) => s.status === 'failed' && s.error);
+        const errorDetail = failedStep
+          ? `${failedStep.nodeName}: ${failedStep.error}`
+          : 'Unbekannter Fehler im Agent-Run';
+
+        return NextResponse.json({
+          message: `Agent-Run fehlgeschlagen: ${errorDetail}`,
+          mode: 'internal',
+          workflowId: targetWorkflow.id,
+          workflowMode: targetWorkflow.mode,
+          runId: run.id,
+          runStatus: 'failed',
+        }, { status: 500 });
+      }
+
       return NextResponse.json({
         message: 'Action forwarded to internal agent workflow',
         mode: 'internal',
         workflowId: targetWorkflow.id,
         workflowMode: targetWorkflow.mode,
         runId: run.id,
+        runStatus: run.status,
       }, { status: 200 });
     }
 

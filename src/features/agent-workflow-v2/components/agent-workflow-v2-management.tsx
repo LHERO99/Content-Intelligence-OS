@@ -1669,6 +1669,20 @@ export function AgentWorkflowV2Management() {
                             </Button>
                           )}
                         </div>
+                        {selectedRunId === run.id && run.status === "failed" && (() => {
+                          const failedStep = runSteps.find((s) => s.status === "failed" && s.error);
+                          if (!failedStep) return null;
+                          return (
+                            <div className="mt-3 rounded border border-red-500/30 bg-red-500/10 p-2.5">
+                              <p className="text-xs font-semibold text-red-300 mb-1">
+                                Fehler in: {failedStep.nodeName}
+                              </p>
+                              <p className="text-xs text-red-200 font-mono break-words whitespace-pre-wrap leading-relaxed">
+                                {failedStep.error}
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
