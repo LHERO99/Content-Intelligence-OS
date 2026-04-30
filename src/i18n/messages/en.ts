@@ -52,6 +52,51 @@ const en = {
       title: "Global Content History",
       description: "Latest creations and optimizations across all URLs",
     },
+    systemHealth: {
+      title: "System Health",
+      lastChecked: "Last checked: {time}",
+      checking: "Checking…",
+      checkNow: "Check now",
+      loadError: "System health could not be loaded.",
+      overall: {
+        ok: "All systems operational",
+        errors: "{count} error(s) detected",
+        errorsWithWarnings: "{errors} error(s), {warnings} warning(s)",
+        warnings: "{count} warning(s)",
+      },
+      sections: {
+        infra: "Infrastructure",
+        syncs: "Data Sync (Cron)",
+        integrations: "Integrations",
+        workflows: "Workflows & Content",
+      },
+      airtable: {
+        ok: "Connection active",
+        error: "Connection failed",
+      },
+      integration: {
+        ok: "Connected",
+      },
+      cron: {
+        noLog: "No run logged yet",
+        lastRun: "Last run: {time}",
+        stale: "Last run: {time} (>{days} days)",
+        skipped: "Integration not configured — sync skipped",
+        failed: "Error: {error}",
+      },
+      runs: {
+        noStale: "No stale runs",
+        active: "{count} active run(s)",
+        stale: "{count} run(s) stuck (>30 min)",
+        loadError: "Error loading runs",
+      },
+      pipeline: {
+        ok: "{count} active job(s), all current",
+        none: "No active jobs",
+        stale: "{count} keyword(s) without update for >24h",
+        loadError: "Error loading pipeline",
+      },
+    },
   },
   monitoring: {
     title: "Content Monitoring & ROI",

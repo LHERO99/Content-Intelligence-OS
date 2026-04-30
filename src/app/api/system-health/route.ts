@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { base, TABLES, getConfig } from '@/lib/airtable';
-import { PROVIDERS } from '@/lib/admin-integrations';
+import { PROVIDERS, getIntegrationsState, getProviderConfigValues } from '@/lib/admin-integrations';
+import { testProviderConnection, testAgentWebhook } from '@/lib/integration-tests';
 import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '@/app/api/agent-workflows-v2/_service';
 
 export type HealthStatus = 'ok' | 'warning' | 'error' | 'unknown';
@@ -11,8 +12,13 @@ export interface HealthCheck {
   id: string;
   label: string;
   status: HealthStatus;
+  /** Raw detail string — used directly when detailKey is absent (e.g. external API errors). */
   detail: string;
-  checkedAt?: string; // ISO timestamp of last relevant log entry
+  /** i18n key under dashboard.systemHealth.* — when present, component translates this instead of detail. */
+  detailKey?: string;
+  /** Dynamic values interpolated into the translated string, e.g. { time: '…', count: 3 } */
+  detailParams?: Record<string, string | number>;
+  checkedAt?: string;
 }
 
 export interface SystemHealthResponse {
@@ -56,34 +62,25 @@ function daysSince(isoTimestamp: string | undefined): number | null {
   return ms / (1000 * 60 * 60 * 24);
 }
 
-function formatTimestamp(iso: string | undefined): string {
-  if (!iso) return 'Unbekannt';
-  return new Date(iso).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 // ── Individual checks ────────────────────────────────────────────────────────
 
 async function checkAirtable(): Promise<HealthCheck> {
   try {
-    const records = await base(TABLES.USERS).select({ maxRecords: 1 }).firstPage();
+    await base(TABLES.USERS).select({ maxRecords: 1 }).firstPage();
     return {
       id: 'airtable',
       label: 'Airtable',
-      status: records.length >= 0 ? 'ok' : 'error',
-      detail: 'Verbindung aktiv',
+      status: 'ok',
+      detail: 'Connected',
+      detailKey: 'dashboard.systemHealth.airtable.ok',
     };
   } catch (err: any) {
     return {
       id: 'airtable',
       label: 'Airtable',
       status: 'error',
-      detail: err.message ?? 'Verbindung fehlgeschlagen',
+      detail: err.message ?? 'Connection failed',
+      detailKey: 'dashboard.systemHealth.airtable.error',
     };
   }
 }
@@ -101,22 +98,29 @@ async function checkCronSync(
       id,
       label,
       status: 'unknown',
-      detail: 'Noch kein Lauf protokolliert',
+      detail: 'No run logged yet',
+      detailKey: 'dashboard.systemHealth.cron.noLog',
     };
   }
 
-  const isSuccess = latest.action.endsWith(':success') || latest.action.endsWith(':skipped');
   const isError = latest.action.endsWith(':error');
   const age = daysSince(latest.timestamp);
-  const formattedAt = formatTimestamp(latest.timestamp);
 
   if (isError) {
-    let errorMsg = 'Letzter Lauf fehlgeschlagen';
+    let rawError = 'Last run failed';
     try {
       const payload = JSON.parse(latest.rawPayload || '{}');
-      if (payload.error) errorMsg = `Fehler: ${payload.error}`;
+      if (payload.error) rawError = payload.error;
     } catch {}
-    return { id, label, status: 'error', detail: errorMsg, checkedAt: latest.timestamp };
+    return {
+      id,
+      label,
+      status: 'error',
+      detail: rawError,
+      detailKey: 'dashboard.systemHealth.cron.failed',
+      detailParams: { error: rawError },
+      checkedAt: latest.timestamp,
+    };
   }
 
   if (latest.action.endsWith(':skipped')) {
@@ -124,7 +128,8 @@ async function checkCronSync(
       id,
       label,
       status: 'warning',
-      detail: 'Integration nicht konfiguriert — Sync übersprungen',
+      detail: 'Integration not configured — sync skipped',
+      detailKey: 'dashboard.systemHealth.cron.skipped',
       checkedAt: latest.timestamp,
     };
   }
@@ -134,7 +139,9 @@ async function checkCronSync(
       id,
       label,
       status: 'warning',
-      detail: `Zuletzt: ${formattedAt} (>${staleAfterDays} Tage)`,
+      detail: `Last run: ${latest.timestamp} (>${staleAfterDays} days)`,
+      detailKey: 'dashboard.systemHealth.cron.stale',
+      detailParams: { days: staleAfterDays, timestamp: latest.timestamp },
       checkedAt: latest.timestamp,
     };
   }
@@ -143,65 +150,79 @@ async function checkCronSync(
     id,
     label,
     status: 'ok',
-    detail: `Zuletzt: ${formattedAt}`,
+    detail: `Last run: ${latest.timestamp}`,
+    detailKey: 'dashboard.systemHealth.cron.lastRun',
+    detailParams: { timestamp: latest.timestamp },
     checkedAt: latest.timestamp,
   };
 }
 
 async function checkIntegrations(): Promise<HealthCheck[]> {
-  const checks: HealthCheck[] = [];
+  // 1. Determine which providers are configured
+  const integrationStates = await getIntegrationsState();
+  const configuredProviders = integrationStates.filter((s) => s.configured);
 
-  for (const provider of PROVIDERS) {
-    const logs = await getLatestAuditLogByPrefix(`integration:check:${provider.id}:`);
-    const latest = logs[0];
-    const label = provider.name;
-    const checkId = `integration:${provider.id}`;
+  // 2. Load config values for all configured providers in parallel
+  const valueResults = await Promise.allSettled(
+    configuredProviders.map((s) => getProviderConfigValues(s.provider))
+  );
 
-    if (!latest) {
-      checks.push({
+  // 3. Run live connectivity tests for all configured providers in parallel
+  const testResults = await Promise.allSettled(
+    configuredProviders.map((s, i) => {
+      const settled = valueResults[i];
+      if (settled.status === 'rejected') return Promise.reject(settled.reason);
+      return testProviderConnection(s.provider, settled.value);
+    })
+  );
+
+  // 4. Map results to HealthCheck entries (only configured providers appear)
+  const checks: HealthCheck[] = configuredProviders.map((s, i) => {
+    const provider = PROVIDERS.find((p) => p.id === s.provider)!;
+    const result = testResults[i];
+    const checkId = `integration:${s.provider}`;
+
+    if (result.status === 'fulfilled') {
+      return {
         id: checkId,
-        label,
-        status: 'unknown',
-        detail: 'Noch kein Check protokolliert',
+        label: provider.name,
+        status: 'ok',
+        detail: 'Connected',
+        detailKey: 'dashboard.systemHealth.integration.ok',
+      };
+    }
+
+    const errorMsg = result.reason?.message ?? 'Connection error';
+    return {
+      id: checkId,
+      label: provider.name,
+      status: 'error',
+      detail: errorMsg,
+      // No detailKey — raw external error message is shown directly
+    };
+  });
+
+  // 5. Agent Webhook — only include if a URL is configured
+  try {
+    const config = await getConfig();
+    const webhookUrl = config.AGENT_WEBHOOK_URL?.trim();
+
+    if (webhookUrl) {
+      const result = await testAgentWebhook(webhookUrl).then(
+        () => ({ status: 'ok' as const }),
+        (err: any) => ({ status: 'error' as const, error: err.message ?? 'Webhook not reachable' })
+      );
+
+      checks.push({
+        id: 'integration:agent_webhook',
+        label: 'Agent Webhook',
+        status: result.status,
+        detail: result.status === 'ok' ? 'Reachable' : (result as any).error,
+        detailKey: result.status === 'ok' ? 'dashboard.systemHealth.integration.ok' : undefined,
       });
-      continue;
     }
-
-    const formattedAt = formatTimestamp(latest.timestamp);
-
-    if (latest.action.endsWith(':ok')) {
-      checks.push({ id: checkId, label, status: 'ok', detail: `Verbunden — ${formattedAt}`, checkedAt: latest.timestamp });
-    } else if (latest.action.endsWith(':skipped')) {
-      checks.push({ id: checkId, label, status: 'warning', detail: 'Nicht konfiguriert', checkedAt: latest.timestamp });
-    } else if (latest.action.endsWith(':error')) {
-      let errorMsg = 'Verbindungsfehler';
-      try {
-        const payload = JSON.parse(latest.rawPayload || '{}');
-        if (payload.error) errorMsg = payload.error;
-      } catch {}
-      checks.push({ id: checkId, label, status: 'error', detail: errorMsg, checkedAt: latest.timestamp });
-    } else {
-      checks.push({ id: checkId, label, status: 'unknown', detail: 'Unbekannter Status' });
-    }
-  }
-
-  // Agent Webhook
-  const webhookLogs = await getLatestAuditLogByPrefix('integration:check:agent_webhook:');
-  const webhookLatest = webhookLogs[0];
-
-  if (!webhookLatest) {
-    checks.push({ id: 'integration:agent_webhook', label: 'Agent Webhook', status: 'unknown', detail: 'Noch kein Check protokolliert' });
-  } else if (webhookLatest.action.endsWith(':skipped')) {
-    checks.push({ id: 'integration:agent_webhook', label: 'Agent Webhook', status: 'ok', detail: 'Kein Webhook konfiguriert', checkedAt: webhookLatest.timestamp });
-  } else if (webhookLatest.action.endsWith(':ok')) {
-    checks.push({ id: 'integration:agent_webhook', label: 'Agent Webhook', status: 'ok', detail: `Erreichbar — ${formatTimestamp(webhookLatest.timestamp)}`, checkedAt: webhookLatest.timestamp });
-  } else {
-    let errorMsg = 'Webhook nicht erreichbar';
-    try {
-      const payload = JSON.parse(webhookLatest.rawPayload || '{}');
-      if (payload.error) errorMsg = payload.error;
-    } catch {}
-    checks.push({ id: 'integration:agent_webhook', label: 'Agent Webhook', status: 'error', detail: errorMsg, checkedAt: webhookLatest.timestamp });
+  } catch {
+    // Config load failure is already surfaced by the Airtable check
   }
 
   return checks;
@@ -224,18 +245,39 @@ async function checkAgentRuns(): Promise<HealthCheck> {
         id: 'agent_runs',
         label: 'Agent Runs',
         status: 'error',
-        detail: `${staleRuns.length} Run${staleRuns.length > 1 ? 's' : ''} hängen (>30 Min. ohne Update)`,
+        detail: `${staleRuns.length} run(s) stuck (>30 min)`,
+        detailKey: 'dashboard.systemHealth.runs.stale',
+        detailParams: { count: staleRuns.length },
       };
     }
 
     const activeRuns = runs.filter((r) => r.status === 'running');
     if (activeRuns.length > 0) {
-      return { id: 'agent_runs', label: 'Agent Runs', status: 'ok', detail: `${activeRuns.length} Run${activeRuns.length > 1 ? 's' : ''} aktiv` };
+      return {
+        id: 'agent_runs',
+        label: 'Agent Runs',
+        status: 'ok',
+        detail: `${activeRuns.length} active run(s)`,
+        detailKey: 'dashboard.systemHealth.runs.active',
+        detailParams: { count: activeRuns.length },
+      };
     }
 
-    return { id: 'agent_runs', label: 'Agent Runs', status: 'ok', detail: 'Keine hängenden Runs' };
+    return {
+      id: 'agent_runs',
+      label: 'Agent Runs',
+      status: 'ok',
+      detail: 'No stale runs',
+      detailKey: 'dashboard.systemHealth.runs.noStale',
+    };
   } catch (err: any) {
-    return { id: 'agent_runs', label: 'Agent Runs', status: 'error', detail: err.message ?? 'Fehler beim Laden der Runs' };
+    return {
+      id: 'agent_runs',
+      label: 'Agent Runs',
+      status: 'error',
+      detail: err.message ?? 'Error loading runs',
+      detailKey: 'dashboard.systemHealth.runs.loadError',
+    };
   }
 }
 
@@ -254,7 +296,7 @@ async function checkContentPipeline(): Promise<HealthCheck> {
 
     const staleCount = records.filter((r) => {
       const lastMod = r.get('Last Modified') as string | undefined;
-      if (!lastMod) return true; // No modification date — treat as stale
+      if (!lastMod) return true;
       return Date.now() - new Date(lastMod).getTime() > STALE_THRESHOLD_MS;
     }).length;
 
@@ -263,7 +305,9 @@ async function checkContentPipeline(): Promise<HealthCheck> {
         id: 'content_pipeline',
         label: 'Content Pipeline',
         status: 'warning',
-        detail: `${staleCount} Keyword${staleCount > 1 ? 's' : ''} seit >24h ohne Update`,
+        detail: `${staleCount} keyword(s) without update for >24h`,
+        detailKey: 'dashboard.systemHealth.pipeline.stale',
+        detailParams: { count: staleCount },
       };
     }
 
@@ -272,10 +316,20 @@ async function checkContentPipeline(): Promise<HealthCheck> {
       id: 'content_pipeline',
       label: 'Content Pipeline',
       status: 'ok',
-      detail: activeCount > 0 ? `${activeCount} aktive Job${activeCount > 1 ? 's' : ''}, alle aktuell` : 'Keine aktiven Jobs',
+      detail: activeCount > 0 ? `${activeCount} active job(s), all current` : 'No active jobs',
+      detailKey: activeCount > 0
+        ? 'dashboard.systemHealth.pipeline.ok'
+        : 'dashboard.systemHealth.pipeline.none',
+      detailParams: activeCount > 0 ? { count: activeCount } : undefined,
     };
   } catch (err: any) {
-    return { id: 'content_pipeline', label: 'Content Pipeline', status: 'error', detail: err.message ?? 'Fehler beim Laden' };
+    return {
+      id: 'content_pipeline',
+      label: 'Content Pipeline',
+      status: 'error',
+      detail: err.message ?? 'Error loading pipeline',
+      detailKey: 'dashboard.systemHealth.pipeline.loadError',
+    };
   }
 }
 
