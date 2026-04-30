@@ -3,13 +3,18 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
 import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl } from '@/lib/airtable';
+import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 
 // Multi-tenant stub – replace with real tenant resolution once multi-tenancy is implemented
 const DEFAULT_TENANT_ID = 'default';
 
 /**
- * API Route to trigger n8n workflows or an external agent webhook.
+ * API Route to trigger agent workflows or an external agent webhook.
  * Acts as a proxy to include the X-API-KEY and handle authentication.
+ *
+ * Routing logic for COMMISSION_CONTENT / COMMISSION_OPTIMIZATION:
+ *   - EXTERNAL_AGENT_ENABLED = true  →  external webhook (fire & forget)
+ *   - EXTERNAL_AGENT_ENABLED = false →  internal agent: Custom Flow if present, else Default Flow
  */
 export async function POST(req: NextRequest) {
   try {
@@ -45,57 +50,56 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Check if external agent webhook is enabled
+    // 4. Route commissioning actions to the correct agent
     if (action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") {
       const config = await getConfig();
       const externalEnabled = config.EXTERNAL_AGENT_ENABLED === "true";
       const externalUrl = config.EXTERNAL_AGENT_WEBHOOK_URL?.trim();
 
-      if (externalEnabled && externalUrl) {
-        // Build enriched payload with secondary keywords
-        let secondaryKeywords: Array<{
-          id: string;
-          keyword: string;
-          searchVolume: number | null;
-          difficulty: number | null;
-          ranking: number | null;
-        }> = [];
+      // --- Build enriched payload (shared between external and internal paths) ---
+      let secondaryKeywords: Array<{
+        id: string;
+        keyword: string;
+        searchVolume: number | null;
+        difficulty: number | null;
+        ranking: number | null;
+      }> = [];
 
-        if (data.targetUrl) {
-          try {
-            const allKeywords = await getKeywordsByUrl(data.targetUrl);
-            secondaryKeywords = allKeywords
-              .filter((kw) => kw.Main_Keyword === 'N')
-              .map((kw) => ({
-                id: kw.id,
-                keyword: kw.Keyword,
-                searchVolume: kw.Search_Volume ?? null,
-                difficulty: kw.Difficulty ?? null,
-                ranking: kw.Ranking ?? null,
-              }));
-          } catch (kwErr) {
-            console.error('[ExternalAgent] Error fetching secondary keywords:', kwErr);
-          }
+      if (data.targetUrl) {
+        try {
+          const allKeywords = await getKeywordsByUrl(data.targetUrl);
+          secondaryKeywords = allKeywords
+            .filter((kw) => kw.Main_Keyword === 'N')
+            .map((kw) => ({
+              id: kw.id,
+              keyword: kw.Keyword,
+              searchVolume: kw.Search_Volume ?? null,
+              difficulty: kw.Difficulty ?? null,
+              ranking: kw.Ranking ?? null,
+            }));
+        } catch (kwErr) {
+          console.error('[Agent] Error fetching secondary keywords:', kwErr);
         }
+      }
 
-        const appBaseUrl = process.env.NEXTAUTH_URL ?? '';
-        const externalPayload = {
-          action,
-          keywordId: data.keywordId ?? null,
-          targetUrl: data.targetUrl ?? null,
-          mainKeyword: data.keyword ?? null,
-          secondaryKeywords,
-          pageType: data.pageType ?? null,
-          actionType: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
-          tenantId: DEFAULT_TENANT_ID,
-          callbackUrl: `${appBaseUrl}/api/n8n/callback`,
-          userId: session.user?.email ?? 'unknown',
-          timestamp: new Date().toISOString(),
-        };
+      const appBaseUrl = process.env.NEXTAUTH_URL ?? '';
+      const enrichedPayload = {
+        action,
+        keywordId: data.keywordId ?? null,
+        targetUrl: data.targetUrl ?? null,
+        mainKeyword: data.keyword ?? null,
+        secondaryKeywords,
+        pageType: data.pageType ?? null,
+        actionType: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
+        tenantId: DEFAULT_TENANT_ID,
+        callbackUrl: `${appBaseUrl}/api/n8n/callback`,
+        userId: session.user?.email ?? 'unknown',
+        timestamp: new Date().toISOString(),
+      };
 
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
+      // --- Path A: External Agent Webhook ---
+      if (externalEnabled && externalUrl) {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         const secret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
         if (secret) {
           headers['Authorization'] = `Bearer ${secret}`;
@@ -105,7 +109,7 @@ export async function POST(req: NextRequest) {
         fetch(externalUrl, {
           method: 'POST',
           headers,
-          body: JSON.stringify(externalPayload),
+          body: JSON.stringify(enrichedPayload),
         }).catch((err) => {
           console.error('[ExternalAgent] Webhook call failed:', err);
         });
@@ -115,9 +119,39 @@ export async function POST(req: NextRequest) {
           mode: 'external',
         }, { status: 200 });
       }
+
+      // --- Path B: Internal Agent (Custom Flow → Default Flow) ---
+      const agentService = createAgentWorkflowServiceV2();
+      const workflows = await agentService.list(DEFAULT_TENANT_ID);
+
+      // Prefer Custom Flow; fall back to Default Flow (always exists)
+      const targetWorkflow =
+        workflows.find((w) => w.mode === 'custom') ??
+        workflows.find((w) => w.mode === 'default');
+
+      if (!targetWorkflow) {
+        console.error('[InternalAgent] No workflow found for tenant:', DEFAULT_TENANT_ID);
+        return NextResponse.json(
+          { message: 'Kein Agent-Flow konfiguriert. Bitte einen Default Flow anlegen.' },
+          { status: 500 }
+        );
+      }
+
+      const run = await agentService.run(DEFAULT_TENANT_ID, targetWorkflow.id, {
+        input: enrichedPayload,
+        runFrom: 'published',
+      });
+
+      return NextResponse.json({
+        message: 'Action forwarded to internal agent workflow',
+        mode: 'internal',
+        workflowId: targetWorkflow.id,
+        workflowMode: targetWorkflow.mode,
+        runId: run.id,
+      }, { status: 200 });
     }
 
-    // 5. Fallback: Trigger internal n8n Workflow
+    // 5. Fallback for non-commissioning actions: Legacy n8n Workflow
     const result = await triggerN8nWorkflow({
       action,
       data,

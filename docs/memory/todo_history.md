@@ -1,152 +1,60 @@
 # TODO Historie
 
-- [x] Fix: `/api/branding` in Middleware als public path freigeschaltet (war vor Login nicht erreichbar).
-- [x] Fix: Custom `cookies`-Config aus `authOptions` entfernt — verursachte Cookie-Name-Mismatch (`next-auth.session-token` vs. `__Secure-next-auth.session-token`) zwischen Login-Handler und `withAuth` Middleware auf Vercel HTTPS.
-- [x] Fix: `NEXTAUTH_URL` korrekt in Vercel für Production (`content-intelligence-os-sigma.vercel.app`) und Preview gesetzt.
-- [x] Debug: Temporärer `/api/debug/env-check` Endpoint zur Env-Var-Diagnose erstellt und nach Verwendung wieder entfernt.
+## Abgeschlossen (chronologisch)
+
+- [x] Fix: `/api/branding` in Middleware als public path freigeschaltet.
+- [x] Fix: Custom `cookies`-Config aus `authOptions` entfernt (Cookie-Name-Mismatch auf Vercel).
+- [x] Fix: `NEXTAUTH_URL` korrekt in Vercel für Production und Preview gesetzt.
+- [x] Debug: Temporärer `/api/debug/env-check` Endpoint erstellt und wieder entfernt.
 - [x] Feature: Externer Agent Webhook — Admin kann zwischen internem Agent Builder und externem Webhook wechseln.
-- [x] Feature: GSC OAuth Flow — Google Search Console Anbindung via OAuth, Token in Airtable gespeichert.
-- [x] Feature: DataForSEO Integration — Rankings fetchen via SERP-API (batched, rate-limited).
-- [x] Feature: `sync-performance.ts` — Orchestrierung beider Performance-Quellen (GSC + DataForSEO).
-- [x] Feature: Vercel Cron `GET /api/cron/sync-performance` — läuft jeden Montag 04:00 UTC.
+- [x] Feature: GSC OAuth Flow — Google Search Console Anbindung via OAuth.
+- [x] Feature: DataForSEO Integration — Rankings fetchen via SERP-API.
+- [x] Feature: `sync-performance.ts` — Orchestrierung GSC + DataForSEO + Sistrix.
+- [x] Feature: Vercel Cron `GET /api/cron/sync-gsc` (Mo 04:00 UTC) + `sync-dataforseo` (Mo 04:30 UTC).
 - [x] Feature: `getKeywordsByUrl(targetUrl)` in `airtable.ts` ergänzt.
 - [x] Feature: `agent-settings-tab.tsx` — Admin-Tab für externen Webhook mit Test-Ping.
 - [x] Feature: `admin-integrations.ts` — `google_search_console` als neuer Provider.
-
-
-- [x] KI-Chat Feature: `AIChatPanel` + `AIEditorWorkspace` vollständig implementiert (Vorschau, Übernehmen, Ablehnen, Modell-Dropdown).
-- [x] KI-Chat Fix: Stale-closure race condition in `onApplyChanges` behoben — `refinedContent` wird jetzt direkt als Parameter übergeben (kein `previewContentRef` mehr).
-- [x] KI-Chat Fix: Airtable 422 für `Action_Type: 'KI-Chat'` behoben — `actionType` wird bei KI-Chat-Saves weggelassen; Identifikation via `Diff_Summary`.
-- [x] API: `/api/planning/history` POST macht `actionType` optional (nur `keywordId` ist Pflicht).
-- [x] Agent Builder V2 als Standard etabliert (`/content-agent-builder`), V1 entfernt.
-- [x] OpenAI als ausführbarer Provider im Agent-Runner integriert (inkl. API-Key Secret Lookup).
-- [x] Integrationen: Model Discovery Endpoint `/api/admin/integrations/[provider]/models` eingeführt.
-- [x] Integrationen: Discovery für OpenAI, OpenRouter, Gemini ergänzt.
-- [x] Integrationen: Copilot (GitHub Models) und Perplexity im Admin-Integrationsmanagement ergänzt (Test + Modellauflistung).
-- [x] Admin Integrationen-Tab auf Master-Detail UX umgestellt (Provider-Liste links, Detail rechts).
-- [x] Builder: Modell-Auswahl provider-basiert (Dropdown bei verfügbaren Modellen, Fallback-Input bei fehlenden Modellen).
-- [x] Builder: Hinweis + Link ins Admin-Panel bei fehlender Provider-Anbindung/Modellauflistung.
-- [x] Builder: Model-Dropdown optisch an die Drawer-UI angeglichen, explizit nach unten aufklappend.
-- [x] Builder: Edge-Selektion robust gemacht und Keyboard-Delete (`Backspace`/`Delete`) für Edge-Löschung ergänzt.
-- [x] Builder: Parent-Typ im Drawer gegen unbeabsichtigte Typ-Änderung geschützt.
-- [x] Agent Runtime: Orchestrator Round-Loop implementiert (Parent entscheidet seriell den nächsten Subagenten).
-- [x] Agent Runtime: Strukturierte Parent-Decision Auswertung (`finalize`, `next.targetNodeId`, `objective`, `memoryPatch`) implementiert.
-- [x] Agent Runtime: A2A-Messages typisiert (`task_request`, `task_result`, `control`) inkl. `round`/`correlationId`.
-- [x] Agent Runtime: Step-Metadaten (`round`, `phase`, `correlationId`) ergänzt.
+- [x] KI-Chat Feature: `AIChatPanel` + `AIEditorWorkspace` vollständig implementiert.
+- [x] KI-Chat Fix: Stale-closure race condition in `onApplyChanges` behoben.
+- [x] KI-Chat Fix: Airtable 422 für `Action_Type: 'KI-Chat'` behoben.
+- [x] API: `/api/planning/history` POST macht `actionType` optional.
+- [x] Agent Builder V2 als Standard etabliert, V1 entfernt.
+- [x] OpenAI als ausführbarer Provider im Agent-Runner integriert.
+- [x] Integrationen: Model Discovery Endpoint eingeführt (OpenAI, OpenRouter, Gemini, Copilot, Perplexity).
+- [x] Admin Integrationen-Tab auf Master-Detail UX umgestellt.
+- [x] Agent Runtime: Orchestrator Round-Loop implementiert.
+- [x] Agent Runtime: Strukturierte Parent-Decision Auswertung implementiert.
+- [x] Agent Runtime: A2A-Messages typisiert inkl. `round`/`correlationId`.
 - [x] Node-Config Datenmodell um `purpose`, `inputContract`, `outputContract` erweitert.
-- [x] Builder: Node-Konfiguration UX komplett neu strukturiert (Sektionen + selbsterklärende Mikrocopy + Sticky Footer Actions).
-- [x] Builder: Pre-Run Validierung ergänzt (1 Parent, Parent aktiv, mind. 1 aktiver Subagent, Purpose gesetzt).
-- [x] Run-API/Service: `runFrom` (`draft`/`published`) ergänzt; Builder-Default auf Draft gesetzt.
+- [x] Builder: Node-Konfiguration UX komplett neu strukturiert.
+- [x] Builder: Pre-Run Validierung ergänzt.
+- [x] Run-API/Service: `runFrom` ergänzt; Builder-Default auf Draft gesetzt.
 - [x] Ranking-System integriert (Airtable, Types, UI).
-- [x] Striking Distance Priorisierung implementiert (Ranking 11-30 Fokus).
-- [x] Aktualitäts-Faktor (Recency) in Priorisierung aufgenommen.
+- [x] Striking Distance Priorisierung implementiert.
+- [x] Aktualitäts-Faktor in Priorisierung aufgenommen.
 - [x] Tab-Refactoring: Vorschläge-Tab erstellt, Trend-Radar entfernt.
-- [x] Layout-Standardisierung: Filter & Pagination in Planungstabs vereinheitlicht.
-- [x] Sicherheit: "Veröffentlichen"-Button an Status "Angeliefert" gekoppelt.
-- [x] Bugfix: Deployment-Fehler durch `asChild` Props behoben.
-- [x] Bugfix: Airtable 422 Error durch Datumsformatierung behoben.
-- [x] UI: "An Pharma senden" Button entfernt.
-- [x] API: PATCH-Handler für Keywords robuster gestaltet.
-- [x] Airtable 422 Error in `createContentLog` behoben.
-- [x] Kommissionierungs-Zeitstempel fixen & Formatierung anpassen.
-- [x] HTML-Ansicht in "Bearbeiten"-Tab integrieren.
-- [x] Visualisierung von Headlines (H1-H3) und Absätzen im Editor/Vorschau fixen.
-- [x] UI-Farbanpassungen (Zeitstempel-Grau, Typ-Badge-Grau).
-- [x] "Code"-Modus im Editor with Beautifier integrieren.
-- [x] Toolbar-Responsivität (H-Tag Status-Anzeige) & Headline-zu-Text Schalter.
-- [x] "Beauftragen"-Button Synchronisation (Button-Verschwinden fixen).
-- [x] Active-Row-Highlighting in Auftragsliste fixen.
-- [x] Vorschau-Tab Formatierung (Fonts, Abstände, Listen).
-- [x] Synchronisation HTML-Editor <-> Visueller Editor beim Speichern.
-- [x] Layout: Padding in Editor/Vorschau harmonisiert.
-- [x] Layout: Höhe der KI-Optimierungs-Tabs fixiert.
-- [x] Modals: Overflow bei langen URLs & Importer-Layout-Fixes.
-- [x] Konsolidierung: Content-Historie Layout-Design vereinheitlicht.
-- [x] Content-Historie: Nahrungskette von 6 Events implementiert.
-- [x] Content-Historie: UI entschlackt (Nur Event + Zeit).
-- [x] Content-Historie: Versionierung (V1, V2...) nur für Anlieferungen.
-- [x] Content-Historie: /history Pop-up synchronisiert.
-- [x] Zentralisiertes Status-Logging (Backlog, Planned, Beauftragt, Published) in `airtable.ts`.
-- [x] Fix: `Target_URL` Mapping in `bulkCreateKeywords` und `createContentLog`.
-- [x] Performance: Bulk-Logging in 10er-Batches mit Rate-Limiting.
-- [x] UI: "Zuletzt optimiert/erstellt" Kurzansicht in Planungs-Modals.
-- [x] API-Cleanup: Manuelle Log-Aufrufe aus API-Routen entfernt.
-- [x] Bugfix: Next.js 15 Async Params Deployment Fehler behoben.
-- [x] API: Content angeliefert Terminologie vereinheitlicht.
-- [x] API: createContentLog robuster gestaltet (Action_Type Fix).
-- [x] Fix: n8n Callback "Target_URL" computed field Error (422) behoben.
-- [x] Logging: Automatisches Logging für "Vorschläge"-Tab implementiert.
-- [x] Logging: Blacklist-Events ("URL der Blacklist hinzugefügt") integriert.
-- [x] Fix: Persistente Historie nach Blacklisting (OR-Filter Target_URL/Logged_URL).
-- [x] UI: Aggressives URL-Grouping in Historie (Bridging für gelöschte Records).
-- [x] UI: Dynamische Blacklist-Badge Logik (Newest Event wins).
-- [x] Logging: Hinzufügen zum Tool/Vorschläge für manuelle Keyword-Erstellung fixiert.
-- [x] Logging: Monitoring-Vorschläge (Trends) triggern nun Historie-Einträge.
-- [x] Fix: URL-Deduplizierung beim Logging während des Keyword-Imports.
-- [x] API: n8n Webhook-URLs für Import und Erstellung differenziert.
-- [x] Logging: "Beauftragen"-Event in den Server-Proxy verschoben (Fix für blockierte Webhooks).
-- [x] DB: Blacklist-Schema um Target_URL erweitert für persistente Historie.
-- [x] UI: HistoryList um neue Event-Icons und Texte ergänzt.
-- [x] API: Inbound-Endpunkt `/api/monitoring/import` für n8n Performance-Daten erstellt.
-- [x] Performance: n8n-Webhook-Trigger auf asynchronen Hintergrund-Modus umgestellt.
-- [x] Middleware: `src/proxy.ts` durch standardisierte `src/middleware.ts` ersetzt (Next.js Build Fix).
-- [x] Sicherheit: Inbound-Monitoring-API via `x-api-key` Header abgesichert.
-- [x] n8n: Payload für `IMPORT_DATA` um strukturierte Main-/Secondary-Keywords ergänzt.
-- [x] Fix: n8n Callback "Double-JSON Parsing" für robustes Payload-Handling implementiert.
-- [x] Schema: `Reasoning_Chain` systemweit entfernt (Airtable, Types, UI, Routen).
-- [x] Bugfix: Deployment-Fehler in `suggest/route.ts` durch verwaiste `Reasoning_Chain` behoben.
-- [x] Fix: Blacklist-Grund in `Diff_Summary` integriert nach Entfernung des Reasoning-Feldes.
-- [x] Refactor: Blacklist-Logik unterscheidet nun zwischen Keyword- und URL-Typ.
-- [x] Feature: Main Keyword Validierung beim Blacklisting (Schutz vor Löschung).
-- [x] Feature: Double Confirmation & Warnung bei URL-Blacklisting.
-- [x] UI: URL Wrapping im Blacklist-Modal (break-all).
-- [x] UI: Dynamische Blacklist-Badge Logik (Nur bei URL-Event "starts-with" Match).
-- [x] Architektur: Performance-Speicherung von `Performance_Data` (gelöscht) auf `URL_Performance` & `Keyword_Ranking_History` umgestellt.
-- [x] API: Import-Endpunkt auf neue Tabellenstruktur (URL vs. Keyword) refactored.
-- [x] API: Monitoring-Übersicht Route auf neue URL-Metrik-Struktur umgestellt.
-- [x] UI: Monitoring Detail-Ansicht um zwei separate Charts (URL-Performance & Keyword-Trends) erweitert.
-- [x] Fix: Deployment-Fehler durch Löschen verwaister Debug-Routen (`trends/route.ts`) behoben.
-- [x] Cleanup: Vollständiges Entfernen veralteter Tabellen-Konstanten (`PERFORMANCE_DATA`, `POTENTIAL_TRENDS`) aus dem Code.
-- [x] API: Monitoring-Übersicht auf "Try-Catch isolation" für parallele Airtable-Requests umgestellt.
-- [x] Feature: Keyword-Importer unterstützt nun direktes Mapping von `Page_Type`.
-- [x] Feature: Automatisierte `Page_Type` Herleitung über URL-Struktur in der Monitoring-API.
-- [x] UI: URL-Spaltenbreite in Historie auf 800px und Keyword-Map auf 500px erhöht.
-- [x] Logic: Tägliche Deduplizierung von Kosten-Events implementiert.
-- [x] Bugfix: `TypeError: toLowerCase is not a function` in Monitoring-API durch aggressives String-Casting behoben.
-- [x] Feature: Dynamic Branding Tab im Admin-Bereich (Logo, Favicon, Primärfarbe) implementiert.
-- [x] UI: Dynamic Branding Provider & Sidebar Refactoring für konfigurierbares Design.
-- [x] Logic: URL-Sichtbarkeit im Monitoring auch ohne Logs (basierend auf URL_Performance).
-- [x] Refactor: Branding-Upload nutzt nun native Airtable Attachments (Feld `File`) statt Base64 in Textfeldern.
-- [x] Feature: Bild-Upload für Logo und Favicon mit 2MB Limit und Vorschau.
-- [x] UI: Monitoring-Tabelle auf klickbare Zeilen umgestellt (Click-to-Detail).
-- [x] Logic: "Optimierung planen" Sperre eingeführt (erfordert Veröffentlichung des initialen Contents).
-- [x] UI: ROI (Eingesparte Kosten) direkt in der Monitoring-Tabelle pro URL sichtbar.
-- [x] UI: Button "Zur Optimierung" in "Optimierung planen" umbenannt und Verlinkung zum Vorschläge-Tab in Alert integriert.
-- [x] Integrationen: Vertex Legal Agent (Google Cloud Vertex AI Endpoint) im Admin-Bereich integriert.
-- [x] Integrationen: DataForSEO Integration (Username/Password) im Admin-Bereich integriert.
-- [x] Logic: Branding-System um Kontrast-Berechnung und automatische Vordergrundfarben (`getBestForegroundColor`) erweitert.
-- [x] UI: Branding-Update Event-System für Echtzeit-Refreshes im Frontend implementiert.
+- [x] Zentralisiertes Status-Logging in `airtable.ts`.
+- [x] Schema: `Reasoning_Chain` systemweit entfernt.
+- [x] Architektur: Performance-Speicherung auf `URL_Performance` & `Keyword_Ranking_History` umgestellt.
+- [x] Fix: `Keyword_ID` in `upsertKeywordRankingHistory` von Array auf plain String geändert.
+- [x] Fix: `sync-performance.ts` — `null`-Rankings → `Ranking: 101` als Sonderwert.
+- [x] Feature: Debug-Endpoint `/api/admin/debug` um vollständige DataForSEO End-to-End-Diagnose erweitert.
+- [x] UI: Keyword-Ranking-Chart auf logarithmische Y-Achse umgestellt.
+- [x] UI: Keywords-Karte in URL-Detail komplett neu gestaltet.
+- [x] UI: Content Monitoring URL-Detail — ReferenceLine für Erstellungs-/Optimierungszeitpunkt.
+- [x] Feature: Dynamic Branding Tab im Admin-Bereich (Logo, Favicon, Primärfarbe).
+- [x] Refactor: Branding-Upload nutzt nun native Airtable Attachments.
 - [x] i18n: LanguageProvider + useI18n Hook + LanguageSwitcher implementiert (DE/EN).
-- [x] i18n: LanguageSwitcher auf native `<button>` umgebaut (Base UI Error #31 behoben).
-- [x] i18n: app-sidebar.tsx lokalisiert.
-- [x] i18n: authenticated-layout.tsx (Viewport-Warnung) lokalisiert.
-- [x] i18n: blacklist.tsx vollständig lokalisiert inkl. reaktiver Spalten via `buildColumns(tr)` + `useMemo`.
-- [x] i18n: keyword-import.tsx lokalisiert.
-- [x] i18n: KeywordFilterBar.tsx lokalisiert.
-- [x] i18n: EditorialFilterBar.tsx lokalisiert.
-- [x] i18n: EditKeywordModal.tsx lokalisiert.
-- [x] i18n: EditEditorialModal.tsx lokalisiert.
-- [x] i18n: monitoring/page.tsx lokalisiert.
-- [x] i18n: admin/page.tsx lokalisiert.
-- [x] i18n: admin/integrations-management.tsx lokalisiert.
-- [x] i18n: admin/cost-management.tsx lokalisiert.
-- [x] i18n: features/admin/optimization-rules-tab.tsx lokalisiert.
-- [x] Fix: `Keyword_ID` in `upsertKeywordRankingHistory` von Array auf plain String geändert (Airtable Feldtyp ist Text, kein Linked Record).
-- [x] Fix: `sync-performance.ts` — `null`-Rankings werden nicht mehr gefiltert, stattdessen `Ranking: 101` als Sonderwert für "nicht in Top 100".
-- [x] Feature: Debug-Endpoint `/api/admin/debug` um vollständige DataForSEO End-to-End-Diagnose erweitert (7 Schritte inkl. Live-API-Call und `?testWrite=true`).
-- [x] UI: Keyword-Ranking-Chart auf logarithmische Y-Achse umgestellt (Datentransformation `Math.log`, Ticks 1·3·5·10·20·50·>100).
-- [x] UI: Keyword-Ranking-Chart — Datenpunkte mit `Ranking=101` als grauer gestrichelter Kreis dargestellt, Tooltip zeigt "Nicht in Top 100".
-- [x] UI: Keywords-Karte in URL-Detail komplett neu gestaltet — tabellarisches Zeilen-Layout mit Ranking-Farbkodierung (grün/lime/gelb/grau/orange), ScrollArea, Main-Pill inline.
-- [x] UI: Content Monitoring URL-Detail — ReferenceLine für Erstellungs-/Optimierungszeitpunkt: gestrichelt, dünn, Flag-Badge ("Erstellt"/"Optimiert") oben an der Linie.
-- [x] UX: Keyword-Import Erfolgsscreen um blauen Hinweis-Block ergänzt ("Rankings werden beim nächsten Sync ermittelt, >100 wird als solches markiert").
+- [x] i18n: Alle UI-Komponenten vollständig lokalisiert (sidebar, admin, planning, monitoring, etc.).
+- [x] i18n: `dashboard.systemHealth.*` Keys in `de.ts` + `en.ts` ergänzt.
 
+## System Health Dashboard (30.04.2026)
+- [x] Refactor: Provider-Test-Funktionen aus `integrations/[provider]/route.ts` in `src/lib/integration-tests.ts` extrahiert (Shared Lib).
+- [x] Feature: `createAuditLog(action, rawPayload?)` Hilfsfunktion in `airtable.ts` ergänzt.
+- [x] Feature: `src/app/api/cron/sync-gsc/route.ts` — schreibt nach jedem Lauf AuditLog-Einträge für `cron:sync-gsc` und `cron:sync-sistrix`.
+- [x] Feature: Neuer Cron `GET /api/cron/check-integrations` (täglich 06:00 UTC) — testet alle Integrationen und schreibt AuditLog.
+- [x] Feature: Neuer Endpunkt `GET /api/system-health` — Admin-only, aggregiert alle Health-Checks mit Live-Tests für Integrationen.
+- [x] Feature: Neue Komponente `src/components/system-health-card.tsx` — Admin-only, Polling 5 Min, vollständig i18n-fähig via `detailKey`/`detailParams`.
+- [x] Refactor: Dashboard `src/app/page.tsx` — Alerts Feed + Diagnostic-Alert-Polling entfernt, `SystemHealthCard` eingebunden.
+- [x] Config: `vercel.json` — Neuer Cron `check-integrations` täglich 06:00 UTC hinzugefügt.
+- [x] Fix: Content-Pipeline-Check — `fields: ['Last Modified']` entfernt (Airtable-Fehler), nur `fields: ['Status']` abgefragt; Staleness-Prüfung entfällt.
