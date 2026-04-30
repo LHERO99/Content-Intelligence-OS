@@ -91,7 +91,7 @@ const de = {
         loadError: "Fehler beim Laden der Runs",
       },
       pipeline: {
-        ok: "{count} aktive(r) Job(s), alle aktuell",
+        active: "{count} aktive(r) Job(s)",
         none: "Keine aktiven Jobs",
         stale: "{count} Keyword(s) seit >24h ohne Update",
         loadError: "Fehler beim Laden der Pipeline",

@@ -91,7 +91,7 @@ const en = {
         loadError: "Error loading runs",
       },
       pipeline: {
-        ok: "{count} active job(s), all current",
+        active: "{count} active job(s)",
         none: "No active jobs",
         stale: "{count} keyword(s) without update for >24h",
         loadError: "Error loading pipeline",

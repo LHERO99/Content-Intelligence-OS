@@ -283,42 +283,24 @@ async function checkAgentRuns(): Promise<HealthCheck> {
 
 async function checkContentPipeline(): Promise<HealthCheck> {
   try {
-    const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
-    const staleStatuses = ['Beauftragt', 'In Arbeit'];
+    const activeStatuses = ['Beauftragt', 'In Arbeit'];
 
     const records = await base(TABLES.KEYWORD_MAP)
       .select({
-        filterByFormula: `OR(${staleStatuses.map((s) => `{Status} = "${s}"`).join(',')})`,
-        fields: ['Status', 'Last Modified'],
-        maxRecords: 200,
+        filterByFormula: `OR(${activeStatuses.map((s) => `{Status} = "${s}"`).join(',')})`,
+        fields: ['Status'],
+        maxRecords: 500,
       })
       .all();
-
-    const staleCount = records.filter((r) => {
-      const lastMod = r.get('Last Modified') as string | undefined;
-      if (!lastMod) return true;
-      return Date.now() - new Date(lastMod).getTime() > STALE_THRESHOLD_MS;
-    }).length;
-
-    if (staleCount > 0) {
-      return {
-        id: 'content_pipeline',
-        label: 'Content Pipeline',
-        status: 'warning',
-        detail: `${staleCount} keyword(s) without update for >24h`,
-        detailKey: 'dashboard.systemHealth.pipeline.stale',
-        detailParams: { count: staleCount },
-      };
-    }
 
     const activeCount = records.length;
     return {
       id: 'content_pipeline',
       label: 'Content Pipeline',
       status: 'ok',
-      detail: activeCount > 0 ? `${activeCount} active job(s), all current` : 'No active jobs',
+      detail: activeCount > 0 ? `${activeCount} active job(s)` : 'No active jobs',
       detailKey: activeCount > 0
-        ? 'dashboard.systemHealth.pipeline.ok'
+        ? 'dashboard.systemHealth.pipeline.active'
         : 'dashboard.systemHealth.pipeline.none',
       detailParams: activeCount > 0 ? { count: activeCount } : undefined,
     };
