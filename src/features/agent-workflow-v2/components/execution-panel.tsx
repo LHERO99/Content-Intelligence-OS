@@ -128,7 +128,7 @@ export function ExecutionPanel({
           className="h-full flex flex-col"
         >
           {/* Tab bar */}
-          <div className="flex border-b border-white/10 px-5 shrink-0">
+          <TabsList className="flex h-auto w-full justify-start rounded-none border-b border-white/10 bg-transparent px-5 shrink-0 gap-0">
             {(["executions", "timeline", "messages"] as const).map((view) => {
               const labels: Record<string, string> = {
                 executions: t("agentBuilder.executions"),
@@ -148,7 +148,7 @@ export function ExecutionPanel({
                 </TabsTrigger>
               );
             })}
-          </div>
+          </TabsList>
 
           {/* ── Executions Tab ── */}
           <TabsContent value="executions" className="flex-1 overflow-hidden m-0">
