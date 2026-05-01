@@ -759,6 +759,20 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     const finishedAt = nowIso();
     const finalStatus: WorkflowRunWithDetailsV2['status'] = hasFailed ? 'failed' : 'success';
     const finalDurationMs = Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime());
+
+    // Fallback: wenn der Orchestrator kein finalHtml geliefert hat, aus dem letzten
+    // Sub-Agenten-Task-Result extrahieren (html, content, text, finalHtml o.Ä.)
+    if (!capturedFinalHtml && completedTasks.length > 0) {
+      const lastTask = completedTasks[completedTasks.length - 1];
+      const out = (lastTask?.output as Record<string, unknown>) ?? {};
+      capturedFinalHtml =
+        (typeof out.finalHtml === 'string' && out.finalHtml) ||
+        (typeof out.html === 'string' && out.html) ||
+        (typeof out.content === 'string' && out.content) ||
+        (typeof out.text === 'string' && out.text) ||
+        undefined;
+    }
+
     const finalOutput: Record<string, unknown> | undefined = capturedFinalHtml
       ? { finalHtml: capturedFinalHtml }
       : undefined;

@@ -104,6 +104,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const handleCommissionContent = async (id: string) => {
     try {
       setIsCommissioning(id);
+      // Optimistisch sofort auf "Beauftragt" umschalten — nicht auf den Agent-Run warten
+      setCommissionedIds(prev => new Set([...Array.from(prev), id]));
+
       const keyword = keywords.find(k => k.id === id);
 
       await triggerN8nAction('COMMISSION_CONTENT', {
@@ -112,10 +115,11 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         targetUrl: keyword?.Target_URL || '',
       });
 
-      setCommissionedIds(prev => new Set([...Array.from(prev), id]));
       addAlert({ title: "Erfolg", message: "Content beauftragt.", type: "success" });
       PlanningService.refreshData();
     } catch (error: any) {
+      // Bei Fehler das optimistische Update rückgängig machen
+      setCommissionedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       addAlert({ title: "Fehler", message: error?.message || "Fehler beim Beauftragen.", type: "error" });
       PlanningService.refreshData();
     } finally {

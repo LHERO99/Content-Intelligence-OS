@@ -171,7 +171,27 @@ export async function POST(req: NextRequest) {
 
       // On success: extract finalHtml, update keyword status, create content log
       if (run.status === 'success' && data.keywordId) {
-        const finalHtml = typeof run.output?.finalHtml === 'string' ? run.output.finalHtml : undefined;
+        // Primär: aus run.output (vom Service direkt gesetzt)
+        let finalHtml: string | undefined =
+          typeof run.output?.finalHtml === 'string' && run.output.finalHtml
+            ? run.output.finalHtml
+            : undefined;
+
+        // Fallback: letzten erfolgreichen Sub-Agenten-Step durchsuchen
+        if (!finalHtml && run.steps?.length) {
+          const lastSubagentStep = [...run.steps]
+            .reverse()
+            .find((s) => s.phase === 'subagent_execution' && s.status === 'success');
+          if (lastSubagentStep?.output) {
+            const out = lastSubagentStep.output;
+            finalHtml =
+              (typeof out.finalHtml === 'string' && out.finalHtml) ||
+              (typeof out.html === 'string' && out.html) ||
+              (typeof out.content === 'string' && out.content) ||
+              (typeof out.text === 'string' && out.text) ||
+              undefined;
+          }
+        }
         try {
           await updateKeyword(data.keywordId, { Status: 'Angeliefert' });
         } catch (statusErr) {
