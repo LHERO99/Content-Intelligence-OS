@@ -48,10 +48,16 @@ async function persistWorkflows(workflows: WorkflowV2[], versions: WorkflowVersi
 }
 
 /** Maximum number of completed runs to retain in storage. Running runs are always kept. */
-const MAX_RETAINED_RUNS = 50;
+const MAX_RETAINED_RUNS = 20;
+
+/** Maximum number of steps to retain per run. */
+const MAX_STEPS_PER_RUN = 30;
 
 /** Maximum character length for a single message payload when serialized to JSON. */
-const MAX_MESSAGE_PAYLOAD_CHARS = 2000;
+const MAX_MESSAGE_PAYLOAD_CHARS = 1000;
+
+/** Maximum character length for a step input/output when serialized to JSON. */
+const MAX_STEP_PAYLOAD_CHARS = 1500;
 
 /**
  * Trims the stored arrays before writing to Airtable to prevent the JSON blobs
@@ -61,7 +67,8 @@ const MAX_MESSAGE_PAYLOAD_CHARS = 2000;
  *  1. Drop soft-deleted runs (deletedAt set) and their associated steps/messages.
  *  2. Cap active runs at MAX_RETAINED_RUNS, keeping the most recent ones.
  *     Running runs are always preserved.
- *  3. Truncate oversized message payloads.
+ *  3. Cap steps per run at MAX_STEPS_PER_RUN (most recent first).
+ *  4. Truncate oversized step input/output and message payloads.
  */
 function pruneStore(
   runs: WorkflowRunV2[],
@@ -80,28 +87,68 @@ function pruneStore(
   const retainedRuns = [...runningRuns, ...completedRuns];
   const retainedRunIds = new Set(retainedRuns.map((r) => r.id));
 
-  // 3. Drop steps and messages for removed runs
-  const retainedSteps = runSteps.filter((s) => retainedRunIds.has(s.runId));
+  // 3. Drop steps/messages for removed runs; cap steps per run; truncate payloads
+  const stepsByRun = new Map<string, WorkflowRunStepV2[]>();
+  runSteps
+    .filter((s) => retainedRunIds.has(s.runId))
+    .forEach((s) => {
+      const arr = stepsByRun.get(s.runId) ?? [];
+      arr.push(s);
+      stepsByRun.set(s.runId, arr);
+    });
+
+  const truncateStr = (val: unknown, maxLen: number): unknown => {
+    if (typeof val !== 'string') return val;
+    return val.length > maxLen ? val.slice(0, maxLen) + '…[truncated]' : val;
+  };
+
+  const truncatePayload = (payload: Record<string, unknown> | undefined, maxChars: number) => {
+    if (!payload) return payload;
+    const serialized = JSON.stringify(payload);
+    if (serialized.length <= maxChars) return payload;
+    return { _truncated: true, preview: serialized.slice(0, maxChars) + '…' };
+  };
+
+  const retainedSteps: WorkflowRunStepV2[] = [];
+  stepsByRun.forEach((steps, _runId) => {
+    const capped = steps
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(-MAX_STEPS_PER_RUN);
+    capped.forEach((s) => {
+      retainedSteps.push({
+        ...s,
+        input: truncatePayload(s.input, MAX_STEP_PAYLOAD_CHARS) as Record<string, unknown>,
+        output: truncatePayload(s.output as Record<string, unknown> | undefined, MAX_STEP_PAYLOAD_CHARS),
+        error: typeof s.error === 'string'
+          ? (truncateStr(s.error, MAX_STEP_PAYLOAD_CHARS) as string)
+          : s.error,
+      });
+    });
+  });
+
   const retainedMessages = messages
     .filter((m) => retainedRunIds.has(m.runId))
-    .map((m) => {
-      // Truncate large message payloads to stay within field limits
-      const serialized = JSON.stringify(m.payload);
-      if (serialized.length <= MAX_MESSAGE_PAYLOAD_CHARS) return m;
-      return {
-        ...m,
-        payload: { _truncated: true, preview: serialized.slice(0, MAX_MESSAGE_PAYLOAD_CHARS) },
-      };
-    });
+    .map((m) => ({
+      ...m,
+      payload: truncatePayload(m.payload as Record<string, unknown>, MAX_MESSAGE_PAYLOAD_CHARS) as WorkflowMessageV2['payload'],
+    }));
 
   return { runs: retainedRuns, runSteps: retainedSteps, messages: retainedMessages };
 }
 
 async function persistRuns(runs: WorkflowRunV2[], runSteps: WorkflowRunStepV2[], messages: WorkflowMessageV2[]) {
   const pruned = pruneStore(runs, runSteps, messages);
-  await updateConfig(RUNS_KEY, JSON.stringify(pruned.runs));
-  await updateConfig(RUN_STEPS_KEY, JSON.stringify(pruned.runSteps));
-  await updateConfig(MESSAGES_KEY, JSON.stringify(pruned.messages));
+  try {
+    await Promise.all([
+      updateConfig(RUNS_KEY, JSON.stringify(pruned.runs)),
+      updateConfig(RUN_STEPS_KEY, JSON.stringify(pruned.runSteps)),
+      updateConfig(MESSAGES_KEY, JSON.stringify(pruned.messages)),
+    ]);
+  } catch (err: any) {
+    // If the blobs are still too large after pruning, log and continue rather than
+    // crashing the run. The run result is correct — only history persistence failed.
+    console.error('[persistRuns] Failed to persist run data to Airtable (non-fatal):', err?.message ?? err);
+  }
 }
 
 function toWorkflowWithVersions(workflow: WorkflowV2, versions: WorkflowVersionV2[]): WorkflowWithVersionsV2 {
