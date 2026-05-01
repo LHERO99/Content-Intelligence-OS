@@ -44,6 +44,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Bot,
   Brain,
   Calendar,
@@ -126,8 +132,11 @@ type RunRecord = {
   id: string;
   status: "pending" | "running" | "success" | "failed" | "cancelled";
   startedAt: string;
+  finishedAt?: string;
   durationMs?: number;
   deletedAt?: string;
+  workflowId?: string;
+  input?: Record<string, unknown>;
 };
 
 type RunStep = {
@@ -141,7 +150,10 @@ type RunStep = {
   correlationId?: string;
   provider: AgentProvider;
   model: string;
+  input?: Record<string, unknown>;
   output?: Record<string, unknown>;
+  startedAt?: string;
+  finishedAt?: string;
   durationMs?: number;
   error?: string;
 };
@@ -544,6 +556,303 @@ function ConfigSection({
   );
 }
 
+// ─── Live duration counter ────────────────────────────────────────────────────
+function LiveDuration({ startedAt }: { startedAt: string }) {
+  const [elapsed, setElapsed] = useState(() =>
+    Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+  );
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  return <span className="text-[10px] font-mono text-green-400">{m > 0 ? `${m}m ` : ""}{s}s</span>;
+}
+
+// ─── Run card in the Executions list ─────────────────────────────────────────
+function RunCard({
+  run, queueIndex, selectedRunId, runActionLoading, runSteps, localeTag,
+  onOpen, onLoadDetails, onCancel, onSoftDelete, onRestore,
+  stopLabel, hideLabel, restoreLabel,
+}: {
+  run: RunRecord; queueIndex?: number; selectedRunId: string | null;
+  runActionLoading: string | null; runSteps: RunStep[]; localeTag: string;
+  onOpen: () => void; onLoadDetails: () => void;
+  onCancel: () => void; onSoftDelete: () => void; onRestore: () => void;
+  stopLabel: string; hideLabel: string; restoreLabel: string;
+}) {
+  const isActive = run.status === "running" || run.status === "pending";
+  return (
+    <div className={`w-full rounded-md border p-3 text-left transition-colors ${
+      selectedRunId === run.id ? "border-blue-400/70 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
+    }`}>
+      <button type="button" onClick={onLoadDetails} className="w-full text-left">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium flex items-center gap-1.5">
+            {run.status === "running" && <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse shrink-0" />}
+            {run.status === "pending" && <span className="inline-block h-2 w-2 rounded-full bg-yellow-400 shrink-0" />}
+            Run {run.id.slice(0, 8)}
+            {typeof queueIndex === "number" && <span className="text-[10px] text-yellow-300 font-mono">#{queueIndex + 1} in Queue</span>}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {run.status === "running" && <LiveDuration startedAt={run.startedAt} />}
+            <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+          </div>
+        </div>
+        <div className="text-xs text-slate-300 mt-1">
+          Start: {new Date(run.startedAt).toLocaleString(localeTag)}
+          {run.durationMs ? ` | ${(run.durationMs / 1000).toFixed(1)}s` : isActive ? "" : " | –"}
+          {run.deletedAt ? ` | versteckt` : ""}
+        </div>
+      </button>
+      <div className="mt-2 flex gap-2 flex-wrap">
+        <Button size="sm" variant="outline" className="h-7 border-blue-400/50 text-blue-200 hover:bg-blue-500/10"
+          onClick={onOpen}>
+          Details
+        </Button>
+        <Button size="sm" variant="outline" className="h-7"
+          disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
+          onClick={onCancel}>
+          {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : stopLabel}
+        </Button>
+        {!run.deletedAt ? (
+          <Button size="sm" variant="outline" className="h-7 border-amber-400/50 text-amber-200 hover:bg-amber-500/10"
+            disabled={runActionLoading === `delete:${run.id}`} onClick={onSoftDelete}>
+            {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : hideLabel}
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" className="h-7 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/10"
+            disabled={runActionLoading === `restore:${run.id}`} onClick={onRestore}>
+            {runActionLoading === `restore:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : restoreLabel}
+          </Button>
+        )}
+      </div>
+      {selectedRunId === run.id && run.status === "failed" && (() => {
+        const failedStep = runSteps.find((s) => s.status === "failed" && s.error);
+        if (!failedStep) return null;
+        return (
+          <div className="mt-3 rounded border border-red-500/30 bg-red-500/10 p-2.5">
+            <p className="text-xs font-semibold text-red-300 mb-1">Fehler in: {failedStep.nodeName}</p>
+            <p className="text-xs text-red-200 font-mono break-words whitespace-pre-wrap leading-relaxed">{failedStep.error}</p>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ─── Run Detail Modal ─────────────────────────────────────────────────────────
+function RunDetailModal({
+  open, onClose, run, steps, messages, loading, localeTag,
+}: {
+  open: boolean; onClose: () => void;
+  run: RunRecord | null; steps: RunStep[]; messages: RunMessage[];
+  loading: boolean; localeTag: string;
+}) {
+  const [tab, setTab] = useState<"overview" | "timeline" | "messages">("timeline");
+  const [expandedStepIds, setExpandedStepIds] = useState<Set<string>>(new Set());
+  const [expandedMsgIds, setExpandedMsgIds] = useState<Set<string>>(new Set());
+  const [expandedInput, setExpandedInput] = useState(false);
+
+  if (!run) return null;
+
+  const toggleStep = (id: string) => setExpandedStepIds(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const toggleMsg = (id: string) => setExpandedMsgIds(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+
+  const statusColor = (s: string) => {
+    if (s === "success") return "text-emerald-400";
+    if (s === "failed") return "text-red-400";
+    if (s === "running") return "text-blue-400";
+    if (s === "pending") return "text-yellow-400";
+    return "text-slate-400";
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-5xl w-full bg-[#0b1220] text-slate-100 border-white/10 p-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-white/10 shrink-0">
+          <DialogTitle className="flex items-center gap-3 text-slate-100">
+            <span className="font-mono text-sm text-slate-400">Run</span>
+            <span className="font-bold">{run.id.slice(0, 16)}</span>
+            {run.status === "running" && <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-400 animate-pulse" />}
+            <span className={`text-sm font-semibold ${statusColor(run.status)}`}>{run.status}</span>
+            {run.status === "running" && <LiveDuration startedAt={run.startedAt} />}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Tab bar */}
+        <div className="flex gap-1 px-6 pt-3 pb-0 shrink-0 border-b border-white/10">
+          {(["overview", "timeline", "messages"] as const).map((t) => (
+            <button key={t} type="button"
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 text-sm rounded-t font-medium transition-colors ${tab === t ? "bg-white/10 text-slate-100" : "text-slate-400 hover:text-slate-200"}`}>
+              {t === "overview" ? "Übersicht" : t === "timeline" ? `Ausführung (${steps.length})` : `Messages (${messages.length})`}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-40 gap-3 text-slate-400">
+              <Loader2 className="h-5 w-5 animate-spin" /> Lade Run-Details…
+            </div>
+          ) : (
+            <>
+              {/* ── Overview Tab ── */}
+              {tab === "overview" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: "Status", value: <span className={`font-semibold ${statusColor(run.status)}`}>{run.status}</span> },
+                      { label: "Gestartet", value: new Date(run.startedAt).toLocaleString(localeTag) },
+                      { label: "Beendet", value: run.finishedAt ? new Date(run.finishedAt).toLocaleString(localeTag) : run.status === "running" ? <LiveDuration startedAt={run.startedAt} /> : "–" },
+                      { label: "Dauer", value: run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "–" },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="rounded border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">{label}</div>
+                        <div className="text-sm text-slate-100">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded border border-white/10 bg-white/5 p-3">
+                    <button type="button" className="flex items-center justify-between w-full" onClick={() => setExpandedInput(v => !v)}>
+                      <span className="text-sm font-semibold">Input Payload</span>
+                      <span className="text-xs text-slate-400">{expandedInput ? "Einklappen" : "Aufklappen"}</span>
+                    </button>
+                    {expandedInput && (
+                      <pre className="mt-2 text-[11px] font-mono text-slate-200 whitespace-pre-wrap break-words bg-black/30 rounded p-3 overflow-x-auto">
+                        {run.input ? JSON.stringify(run.input, null, 2) : "–"}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Timeline Tab ── */}
+              {tab === "timeline" && (
+                <div className="space-y-2">
+                  {steps.length === 0 ? (
+                    <p className="text-sm text-slate-400">Noch keine Steps aufgezeichnet.</p>
+                  ) : steps.map((step, index) => (
+                    <div key={step.id} className={`rounded border ${
+                      step.status === "failed" ? "border-red-500/40 bg-red-500/5"
+                      : step.status === "running" ? "border-blue-400/40 bg-blue-500/5 animate-pulse"
+                      : step.status === "success" ? "border-emerald-500/30 bg-emerald-500/5"
+                      : "border-white/10 bg-white/3"
+                    }`}>
+                      <button type="button" className="w-full px-4 py-3 text-left" onClick={() => toggleStep(step.id)}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            <span className="text-slate-500 font-mono text-xs w-5 text-right shrink-0">#{index + 1}</span>
+                            {step.status === "running" && <span className="inline-block h-2 w-2 rounded-full bg-blue-400 animate-pulse shrink-0" />}
+                            {step.nodeName}
+                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {step.durationMs != null && <span className="text-[10px] font-mono text-slate-400">{(step.durationMs / 1000).toFixed(1)}s</span>}
+                            <span className={`text-xs font-semibold ${statusColor(step.status)}`}>{step.status}</span>
+                            <span className="text-slate-500 text-xs">{expandedStepIds.has(step.id) ? "▲" : "▼"}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5 pl-7">
+                          Runde {step.round ?? "–"} · {step.phase === "orchestrator_decision" ? "Orchestrator-Entscheidung" : step.phase === "subagent_execution" ? "Sub-Agent" : step.phase ?? "–"}
+                          {" · "}{step.provider}/{step.model}
+                          {step.correlationId ? ` · corr: ${step.correlationId.slice(0, 8)}` : ""}
+                        </div>
+                      </button>
+                      {expandedStepIds.has(step.id) && (
+                        <div className="border-t border-white/10 px-4 py-3 space-y-2">
+                          {step.error && (
+                            <div className="rounded bg-red-500/10 border border-red-500/30 p-3">
+                              <p className="text-xs font-semibold text-red-300 mb-1">Fehler</p>
+                              <pre className="text-xs text-red-200 font-mono whitespace-pre-wrap break-words">{step.error}</pre>
+                            </div>
+                          )}
+                          {step.input && (
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Input</p>
+                              <pre className="text-[11px] font-mono text-slate-300 whitespace-pre-wrap break-words bg-black/30 rounded p-3 overflow-x-auto max-h-60">
+                                {JSON.stringify(step.input, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {step.output && (
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Output</p>
+                              <pre className="text-[11px] font-mono text-slate-200 whitespace-pre-wrap break-words bg-black/30 rounded p-3 overflow-x-auto">
+                                {JSON.stringify(step.output, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {!step.error && !step.input && !step.output && (
+                            <p className="text-xs text-slate-500 italic">Kein Output verfügbar.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Messages Tab ── */}
+              {tab === "messages" && (
+                <div className="space-y-2">
+                  {messages.length === 0 ? (
+                    <p className="text-sm text-slate-400">Noch keine Messages aufgezeichnet.</p>
+                  ) : messages.map((msg) => (
+                    <div key={msg.id} className={`rounded border ${
+                      msg.messageType === "control" ? "border-amber-400/40 bg-amber-500/5"
+                      : msg.messageType === "task_result" ? "border-emerald-400/40 bg-emerald-500/5"
+                      : "border-blue-400/30 bg-blue-500/5"
+                    }`}>
+                      <button type="button" className="w-full px-4 py-3 text-left" onClick={() => toggleMsg(msg.id)}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold flex items-center gap-1.5">
+                            <Send className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="text-slate-100">{msg.fromNodeName}</span>
+                            <span className="text-slate-500">→</span>
+                            <span className="text-slate-100">{msg.toNodeName}</span>
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              msg.messageType === "control" ? "bg-amber-500/20 text-amber-300"
+                              : msg.messageType === "task_result" ? "bg-emerald-500/20 text-emerald-300"
+                              : "bg-blue-500/20 text-blue-300"
+                            }`}>{msg.messageType ?? "message"}</span>
+                            <span className="text-slate-500 text-xs">{expandedMsgIds.has(msg.id) ? "▲" : "▼"}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {msg.channel}
+                          {msg.round ? ` · Runde ${msg.round}` : ""}
+                          {msg.correlationId ? ` · corr: ${msg.correlationId.slice(0, 8)}` : ""}
+                          {" · "}{new Date(msg.createdAt).toLocaleString(localeTag)}
+                        </div>
+                      </button>
+                      {expandedMsgIds.has(msg.id) && (
+                        <div className="border-t border-white/10 px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">Payload</p>
+                          <pre className="text-[11px] font-mono text-slate-200 whitespace-pre-wrap break-words bg-black/30 rounded p-3 overflow-x-auto">
+                            {msg.payload ? JSON.stringify(msg.payload, null, 2) : "–"}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AgentWorkflowV2Management() {
   const { t, locale } = useI18n();
   const localeTag = toLocaleTag(locale);
@@ -583,6 +892,12 @@ export function AgentWorkflowV2Management() {
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
   const [modelsLoadingByProvider, setModelsLoadingByProvider] = useState<Record<string, boolean>>({});
   const [modelErrorsByProvider, setModelErrorsByProvider] = useState<Record<string, string>>({});
+  const [runDetailModalOpen, setRunDetailModalOpen] = useState(false);
+  const [runDetailModalRunId, setRunDetailModalRunId] = useState<string | null>(null);
+  const [runDetailSteps, setRunDetailSteps] = useState<RunStep[]>([]);
+  const [runDetailMessages, setRunDetailMessages] = useState<RunMessage[]>([]);
+  const [runDetailLoading, setRunDetailLoading] = useState(false);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<BezierDataEdge>([]);
@@ -928,6 +1243,36 @@ export function AgentWorkflowV2Management() {
     setExecutionOrderByNode(nextExecutionOrder);
   };
 
+  const loadRunModalDetails = async (runId: string) => {
+    const [runResponse, messageResponse] = await Promise.all([
+      fetch(`/api/agent-workflows-v2/runs/${runId}`),
+      fetch(`/api/agent-workflows-v2/runs/${runId}/messages`),
+    ]);
+    const runData = await runResponse.json();
+    const messageData = await messageResponse.json();
+    if (!runResponse.ok) throw new Error(runData?.error || "Run-Details konnten nicht geladen werden");
+    if (!messageResponse.ok) throw new Error(messageData?.error || "Messages konnten nicht geladen werden");
+    setRunDetailSteps((runData?.run?.steps || []) as RunStep[]);
+    setRunDetailMessages(messageData?.messages || []);
+    // Sync run list entry with latest status
+    setRuns((prev) =>
+      prev.map((r) => (r.id === runId ? { ...r, status: runData?.run?.status ?? r.status, durationMs: runData?.run?.durationMs ?? r.durationMs } : r))
+    );
+  };
+
+  const openRunDetailModal = async (runId: string) => {
+    setRunDetailModalRunId(runId);
+    setRunDetailModalOpen(true);
+    setRunDetailLoading(true);
+    try {
+      await loadRunModalDetails(runId);
+    } catch {
+      // errors shown in modal
+    } finally {
+      setRunDetailLoading(false);
+    }
+  };
+
   const cancelRun = async (runId: string) => {
     try {
       setRunActionLoading(`cancel:${runId}`);
@@ -1060,6 +1405,41 @@ export function AgentWorkflowV2Management() {
     };
     load();
   }, [showHiddenRuns]);
+
+  // Auto-poll run list + selected run details while any run is active
+  useEffect(() => {
+    const hasActiveRun = runs.some((r) => r.status === "running" || r.status === "pending");
+
+    if (!hasActiveRun) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+
+    if (pollingIntervalRef.current) return; // already polling
+
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        await loadRuns();
+        if (selectedRunId) await loadRunDetails(selectedRunId);
+        // Also refresh modal detail if open
+        if (runDetailModalOpen && runDetailModalRunId) {
+          await loadRunModalDetails(runDetailModalRunId);
+        }
+      } catch {
+        // silent — polling should not interrupt the user
+      }
+    }, 2000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [runs, selectedRunId, runDetailModalOpen, runDetailModalRunId]);
 
   useEffect(() => {
     if (!loading) {
@@ -1620,70 +2000,52 @@ export function AgentWorkflowV2Management() {
                   <p className="text-sm text-slate-400">{t("agentBuilder.noRuns")}</p>
                 ) : (
                   <div className="grid gap-2 max-h-[calc(100%-48px)] overflow-auto pr-1">
-                    {filteredRuns.map((run) => (
-                      <div
+                    {/* Active runs group */}
+                    {filteredRuns.filter(r => r.status === "running" || r.status === "pending").length > 0 && (
+                      <>
+                        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold px-1">Aktiv</p>
+                        {filteredRuns.filter(r => r.status === "running" || r.status === "pending").map((run, queueIndex) => (
+                          <RunCard
+                            key={run.id}
+                            run={run}
+                            queueIndex={run.status === "pending" ? queueIndex : undefined}
+                            selectedRunId={selectedRunId}
+                            runActionLoading={runActionLoading}
+                            runSteps={runSteps}
+                            localeTag={localeTag}
+                            onOpen={() => openRunDetailModal(run.id)}
+                            onLoadDetails={() => loadRunDetails(run.id)}
+                            onCancel={() => cancelRun(run.id)}
+                            onSoftDelete={() => softDeleteRun(run.id)}
+                            onRestore={() => restoreRun(run.id)}
+                            stopLabel={t("agentBuilder.stop")}
+                            hideLabel={t("agentBuilder.hide")}
+                            restoreLabel={t("agentBuilder.restore")}
+                          />
+                        ))}
+                        {filteredRuns.filter(r => r.status !== "running" && r.status !== "pending").length > 0 && (
+                          <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold px-1 mt-1">Abgeschlossen</p>
+                        )}
+                      </>
+                    )}
+                    {/* Completed runs */}
+                    {filteredRuns.filter(r => r.status !== "running" && r.status !== "pending").map((run) => (
+                      <RunCard
                         key={run.id}
-                        className={`w-full rounded-md border p-3 text-left transition-colors ${
-                          selectedRunId === run.id ? "border-blue-400/70 bg-blue-500/10" : "border-white/10 hover:bg-white/5"
-                        }`}
-                      >
-                        <button type="button" onClick={() => loadRunDetails(run.id)} className="w-full text-left">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium">Run {run.id.slice(0, 8)}</span>
-                            <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
-                          </div>
-                          <div className="text-xs text-slate-300 mt-1">
-                            Start: {new Date(run.startedAt).toLocaleString(localeTag)} | Dauer: {run.durationMs ? `${run.durationMs} ms` : "-"}
-                            {run.deletedAt ? ` | hidden ${new Date(run.deletedAt).toLocaleString(localeTag)}` : ""}
-                          </div>
-                        </button>
-                        <div className="mt-2 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7"
-                            disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
-                            onClick={() => cancelRun(run.id)}
-                          >
-                            {runActionLoading === `cancel:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.stop")}
-                          </Button>
-                          {!run.deletedAt ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 border-amber-400/50 text-amber-200 hover:bg-amber-500/10"
-                              disabled={runActionLoading === `delete:${run.id}`}
-                              onClick={() => softDeleteRun(run.id)}
-                            >
-                              {runActionLoading === `delete:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.hide")}
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 border-emerald-400/50 text-emerald-200 hover:bg-emerald-500/10"
-                              disabled={runActionLoading === `restore:${run.id}`}
-                              onClick={() => restoreRun(run.id)}
-                            >
-                              {runActionLoading === `restore:${run.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("agentBuilder.restore")}
-                            </Button>
-                          )}
-                        </div>
-                        {selectedRunId === run.id && run.status === "failed" && (() => {
-                          const failedStep = runSteps.find((s) => s.status === "failed" && s.error);
-                          if (!failedStep) return null;
-                          return (
-                            <div className="mt-3 rounded border border-red-500/30 bg-red-500/10 p-2.5">
-                              <p className="text-xs font-semibold text-red-300 mb-1">
-                                Fehler in: {failedStep.nodeName}
-                              </p>
-                              <p className="text-xs text-red-200 font-mono break-words whitespace-pre-wrap leading-relaxed">
-                                {failedStep.error}
-                              </p>
-                            </div>
-                          );
-                        })()}
-                      </div>
+                        run={run}
+                        selectedRunId={selectedRunId}
+                        runActionLoading={runActionLoading}
+                        runSteps={runSteps}
+                        localeTag={localeTag}
+                        onOpen={() => openRunDetailModal(run.id)}
+                        onLoadDetails={() => loadRunDetails(run.id)}
+                        onCancel={() => cancelRun(run.id)}
+                        onSoftDelete={() => softDeleteRun(run.id)}
+                        onRestore={() => restoreRun(run.id)}
+                        stopLabel={t("agentBuilder.stop")}
+                        hideLabel={t("agentBuilder.hide")}
+                        restoreLabel={t("agentBuilder.restore")}
+                      />
                     ))}
                   </div>
                 )}
@@ -1707,8 +2069,14 @@ export function AgentWorkflowV2Management() {
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium">#{index + 1} {step.nodeName}</span>
-                            <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
+                            <span className="text-sm font-medium flex items-center gap-1.5">
+                              {step.status === "running" && <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse" />}
+                              #{index + 1} {step.nodeName}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {step.durationMs != null && <span className="text-[10px] text-slate-400">{step.durationMs}ms</span>}
+                              <Badge variant={statusVariant(step.status)}>{step.status}</Badge>
+                            </div>
                           </div>
                           <div className="text-xs text-slate-300">
                             Runde {step.round ?? "-"} | {step.phase || "-"} | {step.provider}/{step.model}
@@ -1728,9 +2096,10 @@ export function AgentWorkflowV2Management() {
                           </div>
                           <div className="text-xs text-slate-300 mt-1">
                             Runde: {selectedStep.round ?? "-"} | Phase: {selectedStep.phase || "-"}
+                            {selectedStep.durationMs != null ? ` | ${selectedStep.durationMs}ms` : ""}
                             {selectedStep.correlationId ? ` | Correlation: ${selectedStep.correlationId.slice(0, 8)}` : ""}
                           </div>
-                          <div className="mt-2 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-200 overflow-x-auto">
+                          <div className="mt-2 rounded bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-mono text-slate-200 overflow-x-auto max-h-48">
                             {selectedStep.output ? JSON.stringify(selectedStep.output, null, 2) : selectedStep.error || "-"}
                           </div>
                         </div>
@@ -2172,6 +2541,16 @@ export function AgentWorkflowV2Management() {
             )}
           </SheetContent>
         </Sheet>
+
+        <RunDetailModal
+          open={runDetailModalOpen}
+          onClose={() => setRunDetailModalOpen(false)}
+          run={runs.find(r => r.id === runDetailModalRunId) ?? null}
+          steps={runDetailSteps}
+          messages={runDetailMessages}
+          loading={runDetailLoading}
+          localeTag={localeTag}
+        />
       </div>
     </ReactFlowProvider>
   );

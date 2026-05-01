@@ -115,8 +115,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
       setCommissionedIds(prev => new Set([...Array.from(prev), id]));
       addAlert({ title: "Erfolg", message: "Content beauftragt.", type: "success" });
       PlanningService.refreshData();
-    } catch (error) {
-      addAlert({ title: "Fehler", message: "Fehler beim Beauftragen.", type: "error" });
+    } catch (error: any) {
+      addAlert({ title: "Fehler", message: error?.message || "Fehler beim Beauftragen.", type: "error" });
+      PlanningService.refreshData();
     } finally {
       setIsCommissioning(null);
     }
