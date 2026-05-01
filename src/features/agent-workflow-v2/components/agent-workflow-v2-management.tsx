@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Copy, Loader2, Pencil, Play, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, Calendar, Copy, Loader2, Pencil, Play, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 
@@ -403,7 +403,8 @@ export function AgentWorkflowV2Management() {
   }, [showHiddenRuns]);
 
   useEffect(() => {
-    if (!loading) sanitizeParentNode();
+    // Only sanitize when there are already nodes — never auto-create on empty canvas
+    if (!loading && nodes.length > 0) sanitizeParentNode();
   }, [loading, nodes.length]);
 
   useEffect(() => {
@@ -496,24 +497,36 @@ export function AgentWorkflowV2Management() {
     [sameIds]
   );
 
+  const createOrchestratorNode = (): Node<AgentNodeData> => ({
+    id: crypto.randomUUID(),
+    type: "agentNode",
+    position: { x: 80, y: 80 },
+    data: {
+      label: "Parent Agent (Orchestrator)", type: "orchestrator", status: "idle",
+      outputPreview: "Noch kein Run", provider: "openrouter",
+      icon: NODE_STYLE_BY_TYPE.orchestrator.icon, isParent: true,
+      instruction: "Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.",
+      purpose: "Du bist der Orchestrator und entscheidest in jeder Runde, welcher Subagent als nächstes die höchste Priorität hat.",
+      inputContract: "Du erhältst runInput, agentCatalog, workingMemory, completedTasks und lastTaskResult.",
+      outputContract: '{"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
+      model: "openai/gpt-4o-mini", timeoutMs: 45000, retries: 1, enabled: true,
+    } as any,
+  });
+
+  const initCustomFlow = () => {
+    const orchestrator = createOrchestratorNode();
+    setNodes([orchestrator]);
+    setEdges([]);
+    setSelectedNodeId(orchestrator.id);
+    setDrawerOpen(true);
+  };
+
   const sanitizeParentNode = () => {
+    // Only called when nodes.length > 0 — never auto-creates on empty canvas
     const parents = nodes.filter((n) => n.data.isParent || n.data.type === "orchestrator");
     if (parents.length === 0) {
-      const id = crypto.randomUUID();
-      const orchestratorNode: Node<AgentNodeData> = {
-        id, type: "agentNode", position: { x: 80, y: 80 },
-        data: {
-          label: "Parent Agent (Orchestrator)", type: "orchestrator", status: "idle",
-          outputPreview: "Noch kein Run", provider: "openrouter",
-          icon: NODE_STYLE_BY_TYPE.orchestrator.icon, isParent: true,
-          instruction: "Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.",
-          purpose: "Du bist der Orchestrator und entscheidest in jeder Runde, welcher Subagent als nächstes die höchste Priorität hat.",
-          inputContract: "Du erhältst runInput, agentCatalog, workingMemory, completedTasks und lastTaskResult.",
-          outputContract: '{"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
-          model: "openai/gpt-4o-mini", timeoutMs: 45000, retries: 1, enabled: true,
-        } as any,
-      };
-      setNodes((prev) => [orchestratorNode, ...prev]);
+      // Nodes exist but no orchestrator — add one
+      setNodes((prev) => [createOrchestratorNode(), ...prev]);
       return;
     }
     if (parents.length > 1) {
@@ -738,42 +751,78 @@ export function AgentWorkflowV2Management() {
         )}
 
         {/* ── Canvas area ── */}
-        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-          <div className="space-y-4">
-            <NodePalette />
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">{t("agentBuilder.runControls")}</CardTitle>
-                <CardDescription>{t("agentBuilder.autoSaveExecute")}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2 text-xs text-slate-300">
-                  <div className="font-medium text-slate-200">{t("agentBuilder.autoSave")}</div>
-                  {autoSaving ? <div>{t("agentBuilder.saving")}</div> : isDirty ? <div>{t("agentBuilder.unsaved")}</div> : <div>{t("agentBuilder.allSaved")}</div>}
-                  {lastSavedAt && <div className="text-slate-400">{t("agentBuilder.last")}: {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</div>}
-                  {autoSaveError && <div className="text-red-300">{autoSaveError}</div>}
-                </div>
-                <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
-                  {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                  {t("agentBuilder.runStart")}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+        <div className="space-y-3">
+          {/* Amber info-banner when Custom Flow has nodes */}
+          {activeFlowTab === "custom" && nodes.length > 0 && (
+            <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <AlertTitle className="text-amber-300">Custom Flow aktiv</AlertTitle>
+              <AlertDescription className="text-amber-200/80">
+                Dieser Custom Flow überschreibt beim Beauftragen den Default Flow. Nur dieser Flow wird ausgeführt.
+              </AlertDescription>
+            </Alert>
+          )}
 
-          <FlowCanvas
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={(nodeId) => { setSelectedNodeId(nodeId); setDrawerOpen(true); }}
-            onNodeContextMenu={(nodeId, position) => { setSelectedNodeId(nodeId); setContextMenu({ nodeId, ...position }); }}
-            onCanvasInteraction={() => setContextMenu(null)}
-            onDropNode={addNode}
-            onAddNodeInView={addNode}
-            onSelectionChangeEdges={handleSelectionChangeEdges}
-          />
+          <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+            <div className="space-y-4">
+              <NodePalette />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">{t("agentBuilder.runControls")}</CardTitle>
+                  <CardDescription>{t("agentBuilder.autoSaveExecute")}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-2">
+                  <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2 text-xs text-slate-300">
+                    <div className="font-medium text-slate-200">{t("agentBuilder.autoSave")}</div>
+                    {autoSaving ? <div>{t("agentBuilder.saving")}</div> : isDirty ? <div>{t("agentBuilder.unsaved")}</div> : <div>{t("agentBuilder.allSaved")}</div>}
+                    {lastSavedAt && <div className="text-slate-400">{t("agentBuilder.last")}: {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</div>}
+                    {autoSaveError && <div className="text-red-300">{autoSaveError}</div>}
+                  </div>
+                  <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
+                    {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                    {t("agentBuilder.runStart")}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Custom Flow empty state */}
+            {activeFlowTab === "custom" && nodes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 min-h-[420px] gap-5 px-8 text-center">
+                <div className="rounded-full border border-primary/30 bg-primary/10 p-4">
+                  <Sparkles className="h-8 w-8 text-primary/80" />
+                </div>
+                <div className="space-y-2 max-w-md">
+                  <h3 className="text-lg font-semibold text-slate-100">Kein Custom Flow vorhanden</h3>
+                  <p className="text-sm text-slate-400">
+                    Ein Custom Flow erlaubt dir, einen eigenen Agenten-Workflow zu definieren. Er überschreibt beim Beauftragen vollständig den Default Flow — nur dein Custom Flow wird dann ausgeführt.
+                  </p>
+                  <p className="text-xs text-amber-400/80 flex items-center justify-center gap-1.5 pt-1">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Der Default Flow wird beim Beauftragen deaktiviert, sobald ein Custom Flow aktiv ist.
+                  </p>
+                </div>
+                <Button onClick={initCustomFlow} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Ersten Agenten hinzufügen
+                </Button>
+              </div>
+            ) : (
+              <FlowCanvas
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={(nodeId) => { setSelectedNodeId(nodeId); setDrawerOpen(true); }}
+                onNodeContextMenu={(nodeId, position) => { setSelectedNodeId(nodeId); setContextMenu({ nodeId, ...position }); }}
+                onCanvasInteraction={() => setContextMenu(null)}
+                onDropNode={addNode}
+                onAddNodeInView={addNode}
+                onSelectionChangeEdges={handleSelectionChangeEdges}
+              />
+            )}
+          </div>
         </div>
 
         {/* ── Context menu ── */}
