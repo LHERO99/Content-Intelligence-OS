@@ -859,16 +859,16 @@ export function AgentWorkflowV2Management() {
 
             {activeFlowTab === "custom" && !customFlowEnabled && customFlowOptions.length > 0 ? (
               /* Custom Flow exists but is disabled → Reaktivieren view */
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/25 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
-                <div className="rounded-full border border-slate-400/30 bg-slate-500/20 p-4">
-                  <PowerOff className="h-8 w-8 text-slate-300" />
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/30 bg-[#0b1220] h-[calc(100vh-220px)] gap-5 px-8 text-center">
+                <div className="rounded-full border border-white/20 bg-white/10 p-4">
+                  <PowerOff className="h-8 w-8 text-white/70" />
                 </div>
                 <div className="space-y-2 max-w-md">
-                  <h3 className="text-lg font-semibold text-slate-100">{t("agentBuilder.customFlowDisabledTitle")}</h3>
-                  <p className="text-sm text-slate-300">
+                  <h3 className="text-lg font-semibold text-white">{t("agentBuilder.customFlowDisabledTitle")}</h3>
+                  <p className="text-sm text-slate-200">
                     {t("agentBuilder.customFlowDisabledBody")}
                   </p>
-                  <p className="text-xs text-slate-400 pt-1">
+                  <p className="text-xs text-slate-300 pt-1">
                     {(customFlowOptions[0]?.draftVersion?.nodes?.length ?? customFlowOptions[0]?.activeVersion?.nodes?.length ?? 0)} {t("agentBuilder.customFlowDisabledAgents")}
                   </p>
                 </div>
@@ -879,16 +879,16 @@ export function AgentWorkflowV2Management() {
               </div>
             ) : activeFlowTab === "custom" && customFlowOptions.length === 0 ? (
               /* No custom flow exists yet → Empty State */
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/25 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
-                <div className="rounded-full border border-primary/40 bg-primary/15 p-4">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/30 bg-[#0b1220] h-[calc(100vh-220px)] gap-5 px-8 text-center">
+                <div className="rounded-full border border-primary/50 bg-primary/20 p-4">
                   <Sparkles className="h-8 w-8 text-primary/90" />
                 </div>
                 <div className="space-y-2 max-w-md">
-                  <h3 className="text-lg font-semibold text-slate-100">{t("agentBuilder.noCustomFlowTitle")}</h3>
-                  <p className="text-sm text-slate-300">
+                  <h3 className="text-lg font-semibold text-white">{t("agentBuilder.noCustomFlowTitle")}</h3>
+                  <p className="text-sm text-slate-200">
                     {t("agentBuilder.noCustomFlowBody")}
                   </p>
-                  <p className="text-xs text-amber-300/90 flex items-center justify-center gap-1.5 pt-1">
+                  <p className="text-xs text-amber-200 flex items-center justify-center gap-1.5 pt-1">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                     {t("agentBuilder.noCustomFlowWarning")}
                   </p>
