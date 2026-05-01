@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, EyeOff, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Activity, Eye, EyeOff, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import { RunCard } from "./run-card";
 import { RunRecord, RunStep } from "../types";
 
@@ -51,15 +51,23 @@ export function ExecutionPanel({
   t: (key: string) => string;
 }) {
   return (
-    <Card className="overflow-hidden flex flex-col h-full">
+    <Card className="border border-border overflow-hidden flex flex-col h-full">
 
-      <CardHeader className="px-4 py-3 border-b">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-sm font-semibold text-primary">
-              {t("agentBuilder.executionPanel")}
-            </CardTitle>
-            {/* Status filter inline */}
+      <CardHeader className="pb-3 border-b">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary shrink-0" />
+            <div>
+              <CardTitle className="text-sm font-semibold text-primary leading-tight">
+                {t("agentBuilder.executionPanel")}
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                {t("agentBuilder.executionPanelDescription")}
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Status filter */}
             <Select value={runStatusFilter} onValueChange={(v) => onRunStatusFilterChange((v as any) || "all")}>
               <SelectTrigger className="h-6 w-[110px] text-xs focus:ring-0 px-2">
                 <SelectValue />
@@ -72,42 +80,41 @@ export function ExecutionPanel({
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            {/* Actions menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <MoreHorizontal className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[180px]">
+                <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={onToggleHiddenRuns}>
+                  {showHiddenRuns ? (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5" />
+                      {t("agentBuilder.hiddenOn")}
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3.5 w-3.5" />
+                      {t("agentBuilder.hiddenOff")}
+                    </>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-xs gap-2 cursor-pointer text-muted-foreground"
+                  disabled={runActionLoading === "cleanup"}
+                  onClick={onCleanupStaleRuns}
+                >
+                  {runActionLoading === "cleanup" ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  {t("agentBuilder.staleCleanup")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-
-          {/* Actions menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[180px]">
-              <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={onToggleHiddenRuns}>
-                {showHiddenRuns ? (
-                  <>
-                    <EyeOff className="h-3.5 w-3.5" />
-                    {t("agentBuilder.hiddenOn")}
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-3.5 w-3.5" />
-                    {t("agentBuilder.hiddenOff")}
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-xs gap-2 cursor-pointer text-muted-foreground"
-                disabled={runActionLoading === "cleanup"}
-                onClick={onCleanupStaleRuns}
-              >
-                {runActionLoading === "cleanup" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-                {t("agentBuilder.staleCleanup")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </CardHeader>
 

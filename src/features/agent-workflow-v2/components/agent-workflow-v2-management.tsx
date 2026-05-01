@@ -830,7 +830,7 @@ export function AgentWorkflowV2Management() {
             <div className="flex flex-col gap-4 h-[calc(100vh-220px)] overflow-hidden">
               {/* Toolbox */}
               <div className="shrink-0">
-                <NodePalette />
+                <NodePalette t={t} />
               </div>
               {/* Trennlinie */}
               <div className="border-t shrink-0" />

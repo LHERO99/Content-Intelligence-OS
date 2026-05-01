@@ -3,22 +3,31 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { LayoutGrid, Plus } from "lucide-react";
 import { AgentStepType, TOOLBOX_NODE_TYPES } from "../types";
 
 // ─── NodePalette ──────────────────────────────────────────────────────────────
 
-export function NodePalette() {
+export function NodePalette({ t }: { t: (key: string) => string }) {
   const handleDragStart = (event: React.DragEvent, type: AgentStepType) => {
     event.dataTransfer.setData("application/agent-node-type", type);
     event.dataTransfer.effectAllowed = "move";
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base text-primary">Toolbox</CardTitle>
-        <CardDescription>Neue Agenten-Nodes hinzufügen</CardDescription>
+    <Card className="border border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <LayoutGrid className="h-4 w-4 text-primary shrink-0" />
+          <div>
+            <CardTitle className="text-sm font-semibold text-primary leading-tight">
+              {t("agentBuilder.toolboxTitle")}
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              {t("agentBuilder.toolboxDescription")}
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
         {TOOLBOX_NODE_TYPES.map((entry) => (
