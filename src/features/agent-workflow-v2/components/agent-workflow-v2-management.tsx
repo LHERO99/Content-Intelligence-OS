@@ -517,7 +517,7 @@ export function AgentWorkflowV2Management() {
       instruction: "Orchestriere die nachgelagerten Agenten, strukturiere den Kontext und delegiere Aufgaben entlang des Flows.",
       purpose: "Du bist der Orchestrator und entscheidest in jeder Runde, welcher Subagent als nächstes die höchste Priorität hat.",
       inputContract: "Du erhältst runInput, agentCatalog, workingMemory, completedTasks und lastTaskResult.",
-      outputContract: '{"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
+      outputContract: '{"finalize": boolean, "summary"?: string, "finalHtml"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}. Wenn finalize=true, MUSS "finalHtml" den fertigen HTML-Text des Artikels aus dem letzten Sub-Agenten-Ergebnis enthalten.',
       model: "openai/gpt-4o-mini", timeoutMs: 45000, retries: 1, enabled: true,
     } as any,
   });

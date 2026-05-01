@@ -87,6 +87,7 @@ export interface WorkflowRunV2 {
   status: RunStatus;
   idempotencyKey: string;
   input: Record<string, unknown>;
+  output?: Record<string, unknown>;
   startedAt: string;
   finishedAt?: string;
   durationMs?: number;

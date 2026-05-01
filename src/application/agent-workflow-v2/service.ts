@@ -56,7 +56,7 @@ const DEFAULT_NODE_ORDER: Array<{ type: AgentStepType; name: string; instruction
   {
     type: 'review',
     name: 'Review Agent',
-    instruction: 'Prüfe Entwurf auf SEO, Lesbarkeit und Vollständigkeit. Liefere To-dos und Ergebnis.',
+    instruction: 'Prüfe Entwurf auf SEO, Lesbarkeit und Vollständigkeit. Liefere den überarbeiteten, fertigen HTML-Text zurück.',
     x: 320,
     y: 930,
   },
@@ -71,6 +71,7 @@ const MAX_ORCHESTRATOR_ROUNDS = 12;
 type OrchestratorDecision = {
   finalize: boolean;
   summary?: string;
+  finalHtml?: string;
   next?: {
     targetNodeId: string;
     objective: string;
@@ -104,6 +105,7 @@ function extractDecisionFromOutput(output?: Record<string, unknown>): Orchestrat
 
   const finalize = Boolean(candidate.finalize);
   const summary = typeof candidate.summary === 'string' ? candidate.summary : undefined;
+  const finalHtml = typeof candidate.finalHtml === 'string' ? candidate.finalHtml : undefined;
   const nextRaw = candidate.next;
   const memoryPatch =
     candidate.memoryPatch && typeof candidate.memoryPatch === 'object' && !Array.isArray(candidate.memoryPatch)
@@ -119,6 +121,7 @@ function extractDecisionFromOutput(output?: Record<string, unknown>): Orchestrat
     return {
       finalize,
       summary,
+      finalHtml,
       next: {
         targetNodeId,
         objective,
@@ -131,6 +134,7 @@ function extractDecisionFromOutput(output?: Record<string, unknown>): Orchestrat
   return {
     finalize,
     summary,
+    finalHtml,
     memoryPatch,
   };
 }
@@ -217,7 +221,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
         inputContract:
           'Du erhältst runInput, agentCatalog, workingMemory, completedTasks und lastTaskResult. Nutze diese, um die nächste Aufgabe zu planen.',
         outputContract:
-          'Antworte NUR als JSON: {"finalize": boolean, "summary"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}',
+          'Antworte NUR als JSON: {"finalize": boolean, "summary"?: string, "finalHtml"?: string, "next"?: {"targetNodeId": string, "objective": string, "expectedOutput"?: string}, "memoryPatch"?: object}. Wenn finalize=true, MUSS "finalHtml" den fertigen HTML-Text des Artikels enthalten (aus dem letzten Sub-Agenten-Ergebnis).',
         provider: 'openrouter' as const,
         model: 'openai/gpt-4o-mini',
         timeoutMs: 45000,
@@ -529,6 +533,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     let round = 1;
     let finalized = false;
     let lastTaskResult: Record<string, unknown> | null = null;
+    let capturedFinalHtml: string | undefined;
     const completedTasks: Array<Record<string, unknown>> = [];
     const workingMemory: Record<string, unknown> = {
       runInput: input.input || {},
@@ -601,6 +606,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
 
       if (decision.finalize) {
         finalized = true;
+        if (decision.finalHtml) capturedFinalHtml = decision.finalHtml;
         break;
       }
 
@@ -753,6 +759,9 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     const finishedAt = nowIso();
     const finalStatus: WorkflowRunWithDetailsV2['status'] = hasFailed ? 'failed' : 'success';
     const finalDurationMs = Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime());
+    const finalOutput: Record<string, unknown> | undefined = capturedFinalHtml
+      ? { finalHtml: capturedFinalHtml }
+      : undefined;
 
     // Persist final run status. If this fails (e.g. Airtable rate-limit), log
     // and continue — the orchestration loop completed and we must not surface a
@@ -762,6 +771,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
         status: finalStatus,
         finishedAt,
         durationMs: finalDurationMs,
+        output: finalOutput,
       });
     } catch (persistErr) {
       console.error('[AgentService] Failed to persist run status (non-fatal):', persistErr);
@@ -780,6 +790,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       status: finalStatus,
       finishedAt,
       durationMs: finalDurationMs,
+      output: finalOutput,
       steps: [],
       messages: [],
     };

@@ -103,7 +103,7 @@ export function RunDetailModal({
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl bg-[#0b1220] text-slate-100 border-l border-white/10 p-0 flex flex-col overflow-hidden"
+        className="w-full sm:max-w-3xl bg-[#0b1220] text-slate-100 border-l border-white/10 p-0 flex flex-col overflow-hidden"
       >
         {/* ── Header ── */}
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0 space-y-3">
@@ -260,9 +260,31 @@ export function RunDetailModal({
                                   {step.output && (
                                     <div>
                                       <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5">Output</p>
-                                      <pre className="text-[11px] font-mono text-slate-200 whitespace-pre-wrap break-words bg-black/30 rounded-lg p-3 overflow-x-auto border border-white/5 leading-relaxed">
-                                        {JSON.stringify(step.output, null, 2)}
-                                      </pre>
+                                      {typeof (step.output as any).finalHtml === 'string' && (step.output as any).finalHtml ? (
+                                        <div className="space-y-2">
+                                          <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-3">
+                                            <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-2">
+                                              finalHtml — HTML-Vorschau
+                                            </p>
+                                            <div
+                                              className="prose prose-invert prose-sm max-w-none text-slate-200 bg-black/20 rounded-lg p-3 border border-white/5 max-h-80 overflow-y-auto"
+                                              dangerouslySetInnerHTML={{ __html: (step.output as any).finalHtml }}
+                                            />
+                                          </div>
+                                          <details className="group">
+                                            <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 transition-colors select-none">
+                                              Rohdaten anzeigen ▼
+                                            </summary>
+                                            <pre className="mt-1.5 text-[11px] font-mono text-slate-200 whitespace-pre-wrap break-words bg-black/30 rounded-lg p-3 overflow-x-auto border border-white/5 leading-relaxed">
+                                              {JSON.stringify(step.output, null, 2)}
+                                            </pre>
+                                          </details>
+                                        </div>
+                                      ) : (
+                                        <pre className="text-[11px] font-mono text-slate-200 whitespace-pre-wrap break-words bg-black/30 rounded-lg p-3 overflow-x-auto border border-white/5 leading-relaxed">
+                                          {JSON.stringify(step.output, null, 2)}
+                                        </pre>
+                                      )}
                                     </div>
                                   )}
                                   {!step.error && !step.input && !step.output && (

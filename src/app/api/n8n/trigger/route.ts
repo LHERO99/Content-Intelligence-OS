@@ -169,6 +169,30 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
+      // On success: extract finalHtml, update keyword status, create content log
+      if (run.status === 'success' && data.keywordId) {
+        const finalHtml = typeof run.output?.finalHtml === 'string' ? run.output.finalHtml : undefined;
+        try {
+          await updateKeyword(data.keywordId, { Status: 'Angeliefert' });
+        } catch (statusErr) {
+          console.error('[InternalAgent] Failed to set keyword status to Angeliefert:', statusErr);
+        }
+        if (finalHtml) {
+          try {
+            await createContentLog({
+              Keyword_ID: [data.keywordId],
+              Target_URL: data.targetUrl,
+              Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
+              Diff_Summary: 'Content vom Agent angeliefert',
+              Content_Body: finalHtml,
+              Editor: session.user?.email ? [session.user.email] : undefined,
+            });
+          } catch (logErr) {
+            console.error('[InternalAgent] Failed to create content log:', logErr);
+          }
+        }
+      }
+
       return NextResponse.json({
         message: 'Action forwarded to internal agent workflow',
         mode: 'internal',
