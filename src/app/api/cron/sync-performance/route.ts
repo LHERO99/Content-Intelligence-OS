@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { syncPerformanceForUrls } from '@/lib/sync-performance';
+import { syncGscChunk, syncDataForSeoChunk } from '@/lib/sync-performance';
 
 /**
  * GET /api/cron/sync-performance
@@ -11,7 +11,7 @@ import { syncPerformanceForUrls } from '@/lib/sync-performance';
  * Auth: Vercel automatically sets `Authorization: Bearer <CRON_SECRET>` on cron invocations.
  * For manual triggers (e.g. from the admin UI), send the same header.
  *
- * Syncs ALL known URLs (no targetUrls filter → regular weekly sync mode).
+ * Syncs ALL known URLs via chunk-based sync (GSC + DataForSEO).
  */
 export async function GET(req: NextRequest) {
   // Verify Vercel Cron secret or manual trigger secret
@@ -27,8 +27,22 @@ export async function GET(req: NextRequest) {
   console.log('[Cron] sync-performance started at', new Date().toISOString());
 
   try {
-    // Pass no targetUrls → sync all known URLs in regular (7-day) mode
-    const result = await syncPerformanceForUrls();
+    const [gscResult, dfsResult] = await Promise.all([
+      syncGscChunk(),
+      syncDataForSeoChunk(),
+    ]);
+
+    const result = {
+      urlsProcessed: gscResult.urlsProcessed + dfsResult.urlsProcessed,
+      keywordsProcessed: dfsResult.keywordsProcessed,
+      gscRowsUpserted: gscResult.gscRowsUpserted,
+      sistrixRowsUpserted: gscResult.sistrixRowsUpserted,
+      rankingRowsUpserted: dfsResult.rankingRowsUpserted,
+      rankingsSkipped: dfsResult.rankingsSkipped,
+      errors: [...gscResult.errors, ...dfsResult.errors],
+      gscHasMore: gscResult.hasMore,
+      dfsHasMore: dfsResult.hasMore,
+    };
 
     console.log('[Cron] sync-performance completed:', result);
 
