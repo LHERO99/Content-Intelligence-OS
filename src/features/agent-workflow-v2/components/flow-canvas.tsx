@@ -224,7 +224,7 @@ export function FlowCanvas({
   }, [getVisibleCenter, onAddNodeInView]);
 
   return (
-    <div ref={wrapperRef} className="h-[72vh] rounded-2xl border border-white/10 bg-[#0a101d] overflow-hidden" onDragOver={onDragOver} onDrop={onDrop}>
+    <div ref={wrapperRef} className="h-[calc(100vh-220px)] rounded-2xl border border-white/10 bg-[#0a101d] overflow-hidden" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

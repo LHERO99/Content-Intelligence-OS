@@ -17,8 +17,6 @@ import { RunRecord, RunStep } from "../types";
 // ─── ExecutionPanel ───────────────────────────────────────────────────────────
 
 export function ExecutionPanel({
-  executionPanelHeight,
-  onResizeStart,
   runActionLoading,
   showHiddenRuns,
   onToggleHiddenRuns,
@@ -36,8 +34,6 @@ export function ExecutionPanel({
   onRestoreRun,
   t,
 }: {
-  executionPanelHeight: number;
-  onResizeStart: (event: React.MouseEvent) => void;
   runActionLoading: string | null;
   showHiddenRuns: boolean;
   onToggleHiddenRuns: () => void;
@@ -56,15 +52,7 @@ export function ExecutionPanel({
   t: (key: string) => string;
 }) {
   return (
-    <Card className="border-white/10 bg-[#0b1220] text-slate-100 overflow-hidden">
-      {/* Resize handle */}
-      <div
-        className="h-2.5 cursor-row-resize border-b border-white/8 hover:bg-white/5 transition-colors flex items-center justify-center"
-        onMouseDown={onResizeStart}
-        title="Panel Größe ändern"
-      >
-        <div className="w-8 h-0.5 rounded-full bg-white/20" />
-      </div>
+    <Card className="border-white/10 bg-[#0b1220] text-slate-100 overflow-hidden flex flex-col h-full">
 
       <CardHeader className="px-5 py-3 border-b border-white/10">
         <div className="flex items-center justify-between gap-2">
@@ -129,7 +117,7 @@ export function ExecutionPanel({
         </div>
       </CardHeader>
 
-      <CardContent style={{ height: executionPanelHeight }} className="overflow-y-auto px-5 py-3 space-y-3">
+      <CardContent className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-3">
         {filteredRuns.length === 0 ? (
           <p className="text-sm text-slate-600 italic pt-2">{t("agentBuilder.noRuns")}</p>
         ) : (

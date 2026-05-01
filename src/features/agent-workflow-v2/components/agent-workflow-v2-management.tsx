@@ -148,10 +148,7 @@ export function AgentWorkflowV2Management() {
   const [runDetailMessages, setRunDetailMessages] = useState<RunMessage[]>([]);
   const [runDetailLoading, setRunDetailLoading] = useState(false);
 
-  // ── Execution panel resize ──
-  const [executionPanelHeight, setExecutionPanelHeight] = useState(360);
-  const resizeStartYRef = useRef<number | null>(null);
-  const resizeStartHeightRef = useRef<number>(360);
+
 
   // ── Model discovery ──
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, DiscoveredModel[]>>({});
@@ -443,23 +440,11 @@ export function AgentWorkflowV2Management() {
   useEffect(() => {
     if (!selectedNodeRecord || !selectedProviderSupportsDiscovery || !selectedProviderHasModels || selectedModelInProviderList) return;
     const fallback = selectedProviderModels[0]?.id;
-    if (!fallback) return;
-    updateSelectedNode((node) => ({ ...node, data: { ...node.data, model: fallback } as any }));
-  }, [selectedNodeRecord, selectedProviderSupportsDiscovery, selectedProviderHasModels, selectedModelInProviderList, selectedProviderModels]);
+     if (!fallback) return;
+     updateSelectedNode((node) => ({ ...node, data: { ...node.data, model: fallback } as any }));
+   }, [selectedNodeRecord, selectedProviderSupportsDiscovery, selectedProviderHasModels, selectedModelInProviderList, selectedProviderModels]);
 
-  useEffect(() => {
-    const onMove = (event: MouseEvent) => {
-      if (resizeStartYRef.current === null) return;
-      const delta = resizeStartYRef.current - event.clientY;
-      setExecutionPanelHeight(Math.max(260, Math.min(640, resizeStartHeightRef.current + delta)));
-    };
-    const onUp = () => { resizeStartYRef.current = null; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-  }, []);
-
-  useEffect(() => {
+   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Backspace" && event.key !== "Delete") return;
       if (selectedEdgeIds.length === 0) return;
@@ -810,10 +795,14 @@ export function AgentWorkflowV2Management() {
           )}
 
           <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-            <div className="space-y-4">
-              <NodePalette />
+            {/* ── Linke Sidebar ── */}
+            <div className="flex flex-col gap-4 h-[calc(100vh-220px)] overflow-hidden">
+              {/* Toolbox */}
+              <div className="shrink-0">
+                <NodePalette />
+              </div>
               {/* Auto-Save Status */}
-              <div className="flex items-center gap-2 px-1 py-1 text-xs text-slate-500">
+              <div className="flex items-center gap-2 px-1 text-xs text-slate-500 shrink-0">
                 {autoSaveError ? (
                   <>
                     <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
@@ -841,11 +830,34 @@ export function AgentWorkflowV2Management() {
                   </>
                 )}
               </div>
+              {/* Trennlinie */}
+              <div className="border-t border-white/10 shrink-0" />
+              {/* Execution Panel — füllt restliche Höhe */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <ExecutionPanel
+                  runActionLoading={runActionLoading}
+                  showHiddenRuns={showHiddenRuns}
+                  onToggleHiddenRuns={() => setShowHiddenRuns((prev) => !prev)}
+                  onCleanupStaleRuns={cleanupStaleRuns}
+                  runStatusFilter={runStatusFilter}
+                  onRunStatusFilterChange={setRunStatusFilter}
+                  filteredRuns={filteredRuns}
+                  selectedRunId={selectedRunId}
+                  runSteps={runSteps}
+                  localeTag={localeTag}
+                  onOpenRunDetail={openRunDetailModal}
+                  onLoadRunDetails={loadRunDetails}
+                  onCancelRun={cancelRun}
+                  onSoftDeleteRun={softDeleteRun}
+                  onRestoreRun={restoreRun}
+                  t={t}
+                />
+              </div>
             </div>
 
             {activeFlowTab === "custom" && !customFlowEnabled && customFlowOptions.length > 0 ? (
               /* Custom Flow exists but is disabled → Reaktivieren view */
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 min-h-[420px] gap-5 px-8 text-center">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
                 <div className="rounded-full border border-slate-500/30 bg-slate-500/10 p-4">
                   <PowerOff className="h-8 w-8 text-slate-400" />
                 </div>
@@ -865,7 +877,7 @@ export function AgentWorkflowV2Management() {
               </div>
             ) : activeFlowTab === "custom" && customFlowOptions.length === 0 ? (
               /* No custom flow exists yet → Empty State */
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 min-h-[420px] gap-5 px-8 text-center">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
                 <div className="rounded-full border border-primary/30 bg-primary/10 p-4">
                   <Sparkles className="h-8 w-8 text-primary/80" />
                 </div>
@@ -921,32 +933,6 @@ export function AgentWorkflowV2Management() {
             ))}
           </div>
         )}
-
-        {/* ── Execution Panel ── */}
-        <ExecutionPanel
-          executionPanelHeight={executionPanelHeight}
-          onResizeStart={(event) => {
-            resizeStartYRef.current = event.clientY;
-            resizeStartHeightRef.current = executionPanelHeight;
-            event.preventDefault();
-          }}
-          runActionLoading={runActionLoading}
-          showHiddenRuns={showHiddenRuns}
-          onToggleHiddenRuns={() => setShowHiddenRuns((prev) => !prev)}
-          onCleanupStaleRuns={cleanupStaleRuns}
-          runStatusFilter={runStatusFilter}
-          onRunStatusFilterChange={setRunStatusFilter}
-          filteredRuns={filteredRuns}
-          selectedRunId={selectedRunId}
-          runSteps={runSteps}
-          localeTag={localeTag}
-          onOpenRunDetail={openRunDetailModal}
-          onLoadRunDetails={loadRunDetails}
-          onCancelRun={cancelRun}
-          onSoftDeleteRun={softDeleteRun}
-          onRestoreRun={restoreRun}
-          t={t}
-        />
 
         {/* ── Node Editor Sheet ── */}
         <NodeEditorSheet
