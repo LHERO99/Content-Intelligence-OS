@@ -228,6 +228,7 @@ export class AirtableWorkflowRepositoryV2 implements WorkflowRepositoryV2 {
             ...entry,
             name: input.name ?? entry.name,
             description: input.description ?? entry.description,
+            state: input.state ?? entry.state,
             updatedAt,
           }
         : entry

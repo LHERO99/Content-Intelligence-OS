@@ -124,9 +124,9 @@ export async function POST(req: NextRequest) {
       const agentService = createAgentWorkflowServiceV2();
       const workflows = await agentService.list(DEFAULT_TENANT_ID);
 
-      // Prefer Custom Flow; fall back to Default Flow (always exists)
+      // Prefer active Custom Flow; skip archived. Fall back to Default Flow.
       const targetWorkflow =
-        workflows.find((w) => w.mode === 'custom') ??
+        workflows.find((w) => w.mode === 'custom' && w.state !== 'archived') ??
         workflows.find((w) => w.mode === 'default');
 
       if (!targetWorkflow) {

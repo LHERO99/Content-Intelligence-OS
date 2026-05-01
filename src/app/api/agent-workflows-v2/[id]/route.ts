@@ -17,6 +17,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const workflow = await service.update(DEFAULT_TENANT_ID, params.id, {
       name: body?.name,
       description: body?.description,
+      state: body?.state,
       nodes: body?.nodes,
       edges: body?.edges,
     });

@@ -151,6 +151,7 @@ export interface CreateWorkflowInputV2 {
 export interface UpdateWorkflowInputV2 {
   name?: string;
   description?: string;
+  state?: WorkflowState;
   nodes?: Array<{
     id: string;
     name: string;

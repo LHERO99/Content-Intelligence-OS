@@ -4,6 +4,7 @@ import {
   WorkflowNodeV2,
   WorkflowRunStepV2,
   WorkflowRunV2,
+  WorkflowRunWithDetailsV2,
   WorkflowVersionV2,
   WorkflowWithVersionsV2,
 } from '@/domain/agent-workflow-v2/models';
@@ -756,9 +757,25 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       durationMs: Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime()),
     });
 
-    const finalRun = await this.runs.getRunWithDetails(tenantId, run.id);
-    if (!finalRun) throw new Error('Run konnte nach Ausführung nicht geladen werden');
-    return finalRun;
+    // getRunWithDetails is a best-effort read-back. If it fails (e.g. Airtable
+    // rate-limit or clock-skew in pruneStore), return a minimal response built
+    // from what we already know instead of throwing — the run itself completed.
+    try {
+      const finalRun = await this.runs.getRunWithDetails(tenantId, run.id);
+      if (finalRun) return finalRun;
+    } catch (err) {
+      console.error('[AgentService] getRunWithDetails failed after run completion:', err);
+    }
+
+    const fallbackStatus: WorkflowRunWithDetailsV2['status'] = hasFailed ? 'failed' : 'success';
+    return {
+      ...run,
+      status: fallbackStatus,
+      finishedAt,
+      durationMs: Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime()),
+      steps: [],
+      messages: [],
+    };
   }
 
   async listRuns(tenantId: string, limit?: number, includeDeleted?: boolean) {
