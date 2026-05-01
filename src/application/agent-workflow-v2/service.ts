@@ -751,15 +751,23 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     }
 
     const finishedAt = nowIso();
-    await this.runs.updateRun(run.id, {
-      status: hasFailed ? 'failed' : 'success',
-      finishedAt,
-      durationMs: Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime()),
-    });
+    const finalStatus: WorkflowRunWithDetailsV2['status'] = hasFailed ? 'failed' : 'success';
+    const finalDurationMs = Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime());
 
-    // getRunWithDetails is a best-effort read-back. If it fails (e.g. Airtable
-    // rate-limit or clock-skew in pruneStore), return a minimal response built
-    // from what we already know instead of throwing — the run itself completed.
+    // Persist final run status. If this fails (e.g. Airtable rate-limit), log
+    // and continue — the orchestration loop completed and we must not surface a
+    // persistence error as a commissioning failure to the user.
+    try {
+      await this.runs.updateRun(run.id, {
+        status: finalStatus,
+        finishedAt,
+        durationMs: finalDurationMs,
+      });
+    } catch (persistErr) {
+      console.error('[AgentService] Failed to persist run status (non-fatal):', persistErr);
+    }
+
+    // Best-effort read-back for full details (steps + messages).
     try {
       const finalRun = await this.runs.getRunWithDetails(tenantId, run.id);
       if (finalRun) return finalRun;
@@ -767,12 +775,11 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       console.error('[AgentService] getRunWithDetails failed after run completion:', err);
     }
 
-    const fallbackStatus: WorkflowRunWithDetailsV2['status'] = hasFailed ? 'failed' : 'success';
     return {
       ...run,
-      status: fallbackStatus,
+      status: finalStatus,
       finishedAt,
-      durationMs: Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime()),
+      durationMs: finalDurationMs,
       steps: [],
       messages: [],
     };

@@ -120,14 +120,17 @@ export async function POST(req: NextRequest) {
         }, { status: 200 });
       }
 
-      // --- Path B: Internal Agent (Custom Flow → Default Flow) ---
+      // --- Path B: Internal Agent ---
+      // Routing: Custom Flow only if explicitly enabled via CUSTOM_FLOW_ENABLED config key.
+      // This flag is written atomically by /api/agent-workflows-v2/settings and is
+      // independent of the workflow object state to avoid Airtable eventual-consistency races.
       const agentService = createAgentWorkflowServiceV2();
       const workflows = await agentService.list(DEFAULT_TENANT_ID);
 
-      // Prefer active Custom Flow; skip archived. Fall back to Default Flow.
-      const targetWorkflow =
-        workflows.find((w) => w.mode === 'custom' && w.state !== 'archived') ??
-        workflows.find((w) => w.mode === 'default');
+      const customFlowEnabled = config.CUSTOM_FLOW_ENABLED === 'true';
+      const targetWorkflow = customFlowEnabled
+        ? (workflows.find((w) => w.mode === 'custom') ?? workflows.find((w) => w.mode === 'default'))
+        : workflows.find((w) => w.mode === 'default');
 
       if (!targetWorkflow) {
         console.error('[InternalAgent] No workflow found for tenant:', DEFAULT_TENANT_ID);

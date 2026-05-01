@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getConfig } from '@/lib/airtable';
 import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from './_service';
 
 export async function GET() {
@@ -11,8 +12,12 @@ export async function GET() {
     }
 
     const service = createAgentWorkflowServiceV2();
-    const workflows = await service.list(DEFAULT_TENANT_ID);
-    return NextResponse.json({ workflows });
+    const [workflows, config] = await Promise.all([
+      service.list(DEFAULT_TENANT_ID),
+      getConfig(),
+    ]);
+    const customFlowEnabled = config.CUSTOM_FLOW_ENABLED === 'true';
+    return NextResponse.json({ workflows, customFlowEnabled });
   } catch (error: any) {
     console.error('[API Agent Workflows V2] GET error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

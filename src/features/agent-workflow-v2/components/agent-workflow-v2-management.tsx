@@ -121,6 +121,7 @@ export function AgentWorkflowV2Management() {
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | null>(null);
   const [activeFlowTab, setActiveFlowTab] = useState<FlowMode>("default");
+  const [customFlowEnabled, setCustomFlowEnabled] = useState(false);
   const [runStateByNode, setRunStateByNode] = useState<Record<string, RunState>>({});
   const [outputPreviewByNode, setOutputPreviewByNode] = useState<Record<string, string>>({});
   const [executionOrderByNode, setExecutionOrderByNode] = useState<Record<string, number>>({});
@@ -172,14 +173,6 @@ export function AgentWorkflowV2Management() {
   );
   const defaultFlowOptions = useMemo(() => workflows.filter((w) => w.mode === "default"), [workflows]);
   const customFlowOptions = useMemo(() => workflows.filter((w) => w.mode === "custom"), [workflows]);
-  const activeCustomFlow = useMemo(
-    () => customFlowOptions.find((w) => w.state !== "archived") || null,
-    [customFlowOptions]
-  );
-  const archivedCustomFlow = useMemo(
-    () => customFlowOptions.find((w) => w.state === "archived") || null,
-    [customFlowOptions]
-  );
 
   const nodeRecordMap = useMemo(() => {
     const map = new Map<string, WorkflowNodeRecord>();
@@ -305,9 +298,18 @@ export function AgentWorkflowV2Management() {
 
     const list = (data?.workflows || []) as WorkflowRecord[];
     setWorkflows(list);
+    setCustomFlowEnabled(Boolean(data?.customFlowEnabled));
 
-    const selectedId =
-      activeWorkflowId && list.some((e) => e.id === activeWorkflowId) ? activeWorkflowId : list[0]?.id || null;
+    // Determine which workflow to show in the editor:
+    // - If customFlowEnabled, prefer the custom workflow
+    // - Otherwise prefer the default workflow
+    const enabled: boolean = Boolean(data?.customFlowEnabled);
+    const preferredMode: FlowMode = enabled ? "custom" : "default";
+    setActiveFlowTab(preferredMode);
+
+    const modeOptions = list.filter((w) => w.mode === preferredMode);
+    const fallbackOptions = list.filter((w) => w.mode !== preferredMode);
+    const selectedId = modeOptions[0]?.id ?? fallbackOptions[0]?.id ?? null;
     setActiveWorkflowId(selectedId);
 
     if (selectedId) {
@@ -320,7 +322,6 @@ export function AgentWorkflowV2Management() {
       setAutoSaveError(null);
       setLastSavedAt(new Date().toISOString());
       setSelectedNodeId(version?.nodes?.[0]?.id || null);
-      if (workflow?.mode) setActiveFlowTab(workflow.mode);
     } else {
       skipNextAutosaveRef.current = true;
       setNodes([]);
@@ -521,12 +522,23 @@ export function AgentWorkflowV2Management() {
     } as any,
   });
 
-  const initCustomFlow = () => {
+  const initCustomFlow = async () => {
     const orchestrator = createOrchestratorNode();
     setNodes([orchestrator]);
     setEdges([]);
     setSelectedNodeId(orchestrator.id);
     setDrawerOpen(true);
+    // Enable the custom flow routing flag so commissioning uses this flow
+    try {
+      await fetch("/api/agent-workflows-v2/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customFlowEnabled: true }),
+      });
+      setCustomFlowEnabled(true);
+    } catch {
+      // Non-fatal — user can activate manually via the banner
+    }
   };
 
   const sanitizeParentNode = () => {
@@ -674,39 +686,20 @@ export function AgentWorkflowV2Management() {
     finally { setRunActionLoading(null); }
   };
 
-  const archiveCustomFlow = async () => {
-    if (!activeCustomFlow) return;
+  const setCustomFlowActive = async (enabled: boolean) => {
     try {
       setError(null);
-      const res = await fetch(`/api/agent-workflows-v2/${activeCustomFlow.id}`, {
+      const res = await fetch("/api/agent-workflows-v2/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: "archived" }),
+        body: JSON.stringify({ customFlowEnabled: enabled }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Custom Flow konnte nicht deaktiviert werden");
-      await loadWorkflows();
-      setActiveFlowTab("default");
-      setActiveWorkflowId(defaultFlowOptions[0]?.id ?? null);
-    } catch (err: any) {
-      setError(err.message || "Custom Flow konnte nicht deaktiviert werden");
-    }
-  };
-
-  const reactivateCustomFlow = async () => {
-    if (!archivedCustomFlow) return;
-    try {
-      setError(null);
-      const res = await fetch(`/api/agent-workflows-v2/${archivedCustomFlow.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: "draft" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Custom Flow konnte nicht reaktiviert werden");
+      if (!res.ok) throw new Error(data?.error || "Custom Flow Status konnte nicht geändert werden");
+      // Reload workflows — this will also sync customFlowEnabled state and switch tabs correctly
       await loadWorkflows();
     } catch (err: any) {
-      setError(err.message || "Custom Flow konnte nicht reaktiviert werden");
+      setError(err.message || "Custom Flow Status konnte nicht geändert werden");
     }
   };
 
@@ -796,8 +789,8 @@ export function AgentWorkflowV2Management() {
 
         {/* ── Canvas area ── */}
         <div className="space-y-3">
-          {/* Amber info-banner when active Custom Flow has nodes */}
-          {activeFlowTab === "custom" && activeCustomFlow && activeWorkflow?.state !== "archived" && nodes.length > 0 && (
+          {/* Amber info-banner: Custom Flow is enabled and has nodes */}
+          {customFlowEnabled && activeFlowTab === "custom" && nodes.length > 0 && (
             <Alert className="border-amber-500/60 bg-amber-950/60 flex items-start justify-between gap-4">
               <div className="flex gap-3 items-start">
                 <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
@@ -812,7 +805,7 @@ export function AgentWorkflowV2Management() {
                 variant="ghost"
                 size="sm"
                 className="shrink-0 gap-1.5 text-slate-300 border border-white/15 hover:bg-white/10 hover:text-white"
-                onClick={archiveCustomFlow}
+                onClick={() => setCustomFlowActive(false)}
               >
                 <PowerOff className="h-3.5 w-3.5" />
                 Deaktivieren
@@ -843,8 +836,8 @@ export function AgentWorkflowV2Management() {
               </Card>
             </div>
 
-            {/* Custom Flow: archived — show Reaktivieren view */}
-            {activeFlowTab === "custom" && archivedCustomFlow && !activeCustomFlow ? (
+            {activeFlowTab === "custom" && !customFlowEnabled && customFlowOptions.length > 0 ? (
+              /* Custom Flow exists but is disabled → Reaktivieren view */
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 min-h-[420px] gap-5 px-8 text-center">
                 <div className="rounded-full border border-slate-500/30 bg-slate-500/10 p-4">
                   <PowerOff className="h-8 w-8 text-slate-400" />
@@ -852,20 +845,19 @@ export function AgentWorkflowV2Management() {
                 <div className="space-y-2 max-w-md">
                   <h3 className="text-lg font-semibold text-slate-100">Custom Flow deaktiviert</h3>
                   <p className="text-sm text-slate-400">
-                    Der Custom Flow <span className="text-slate-200 font-medium">"{archivedCustomFlow.name}"</span> ist
-                    derzeit deaktiviert. Beim Beauftragen wird der Default Flow verwendet.
+                    Der Custom Flow ist derzeit deaktiviert. Beim Beauftragen wird der Default Flow verwendet.
                   </p>
                   <p className="text-xs text-slate-500 pt-1">
-                    {(archivedCustomFlow.draftVersion?.nodes?.length ?? archivedCustomFlow.activeVersion?.nodes?.length ?? 0)} Agenten gespeichert
+                    {(customFlowOptions[0]?.draftVersion?.nodes?.length ?? customFlowOptions[0]?.activeVersion?.nodes?.length ?? 0)} Agenten gespeichert
                   </p>
                 </div>
-                <Button onClick={reactivateCustomFlow} className="gap-2">
+                <Button onClick={() => setCustomFlowActive(true)} className="gap-2">
                   <Sparkles className="h-4 w-4" />
                   Custom Flow reaktivieren
                 </Button>
               </div>
-            ) : activeFlowTab === "custom" && !activeCustomFlow ? (
-              /* Custom Flow: no flow at all — Empty State */
+            ) : activeFlowTab === "custom" && customFlowOptions.length === 0 ? (
+              /* No custom flow exists yet → Empty State */
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 min-h-[420px] gap-5 px-8 text-center">
                 <div className="rounded-full border border-primary/30 bg-primary/10 p-4">
                   <Sparkles className="h-8 w-8 text-primary/80" />
@@ -886,7 +878,7 @@ export function AgentWorkflowV2Management() {
                 </Button>
               </div>
             ) : (
-              /* Canvas */
+              /* Canvas — shown for default flow always, and custom flow when enabled */
               <FlowCanvas
                 nodes={nodes}
                 edges={edges}
