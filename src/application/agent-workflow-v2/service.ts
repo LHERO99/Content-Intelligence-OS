@@ -761,7 +761,8 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
     const finalDurationMs = Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime());
 
     // Fallback: wenn der Orchestrator kein finalHtml geliefert hat, aus dem letzten
-    // Sub-Agenten-Task-Result extrahieren (html, content, text, finalHtml o.Ä.)
+    // Sub-Agenten-Task-Result extrahieren.
+    // Stufe 1: bekannte Feldnamen
     if (!capturedFinalHtml && completedTasks.length > 0) {
       const lastTask = completedTasks[completedTasks.length - 1];
       const out = (lastTask?.output as Record<string, unknown>) ?? {};
@@ -769,32 +770,42 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
         (typeof out.finalHtml === 'string' && out.finalHtml) ||
         (typeof out.html === 'string' && out.html) ||
         (typeof out.content === 'string' && out.content) ||
+        (typeof out.result === 'string' && out.result) ||
         (typeof out.text === 'string' && out.text) ||
         undefined;
+    }
+    // Stufe 2: längster String-Wert im letzten Task-Output — wahrscheinlich der Artikel
+    if (!capturedFinalHtml && completedTasks.length > 0) {
+      const lastTask = completedTasks[completedTasks.length - 1];
+      const out = (lastTask?.output as Record<string, unknown>) ?? {};
+      const longestStr = Object.values(out)
+        .filter((v): v is string => typeof v === 'string')
+        .sort((a, b) => b.length - a.length)[0];
+      if (longestStr && longestStr.length > 100) capturedFinalHtml = longestStr;
     }
 
     const finalOutput: Record<string, unknown> | undefined = capturedFinalHtml
       ? { finalHtml: capturedFinalHtml }
       : undefined;
 
-    // Persist final run status. If this fails (e.g. Airtable rate-limit), log
-    // and continue — the orchestration loop completed and we must not surface a
-    // persistence error as a commissioning failure to the user.
+    // Persist final run status.
+    // NOTE: finalOutput (finalHtml) wird NICHT in den Store geschrieben — der HTML-Content
+    // würde den Airtable-Blob (100k Limit) sprengen. Er wird rein in-memory zurückgegeben.
     try {
       await this.runs.updateRun(run.id, {
         status: finalStatus,
         finishedAt,
         durationMs: finalDurationMs,
-        output: finalOutput,
       });
     } catch (persistErr) {
       console.error('[AgentService] Failed to persist run status (non-fatal):', persistErr);
     }
 
     // Best-effort read-back for full details (steps + messages).
+    // finalOutput wird direkt in den Rückgabewert injiziert (nicht aus dem Store lesen).
     try {
       const finalRun = await this.runs.getRunWithDetails(tenantId, run.id);
-      if (finalRun) return finalRun;
+      if (finalRun) return { ...finalRun, output: finalOutput };
     } catch (err) {
       console.error('[AgentService] getRunWithDetails failed after run completion:', err);
     }

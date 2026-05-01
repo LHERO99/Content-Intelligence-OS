@@ -104,8 +104,9 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
   const handleCommissionContent = async (id: string) => {
     try {
       setIsCommissioning(id);
-      // Optimistisch sofort auf "Beauftragt" umschalten — nicht auf den Agent-Run warten
+      // Optimistisch sofort auf "Beauftragt" umschalten und Bestätigung anzeigen
       setCommissionedIds(prev => new Set([...Array.from(prev), id]));
+      addAlert({ title: "Erfolg", message: "Content beauftragt.", type: "success" });
 
       const keyword = keywords.find(k => k.id === id);
 
@@ -114,8 +115,6 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         keyword: keyword?.Keyword || '',
         targetUrl: keyword?.Target_URL || '',
       });
-
-      addAlert({ title: "Erfolg", message: "Content beauftragt.", type: "success" });
       PlanningService.refreshData();
     } catch (error: any) {
       // Bei Fehler das optimistische Update rückgängig machen
