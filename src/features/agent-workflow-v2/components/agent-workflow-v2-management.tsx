@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Calendar, Copy, Loader2, Pencil, Play, Plus, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, Calendar, Copy, Loader2, Pencil, Play, Plus, PowerOff, Sparkles, Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 
@@ -754,12 +754,28 @@ export function AgentWorkflowV2Management() {
         <div className="space-y-3">
           {/* Amber info-banner when Custom Flow has nodes */}
           {activeFlowTab === "custom" && nodes.length > 0 && (
-            <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-200">
-              <AlertTriangle className="h-4 w-4 text-amber-400" />
-              <AlertTitle className="text-amber-300">Custom Flow aktiv</AlertTitle>
-              <AlertDescription className="text-amber-200/80">
-                Dieser Custom Flow überschreibt beim Beauftragen den Default Flow. Nur dieser Flow wird ausgeführt.
-              </AlertDescription>
+            <Alert className="border-amber-500/60 bg-amber-950/60 flex items-start justify-between gap-4">
+              <div className="flex gap-3 items-start">
+                <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <AlertTitle className="text-amber-200">Custom Flow aktiv</AlertTitle>
+                  <AlertDescription className="text-slate-300">
+                    Dieser Custom Flow überschreibt beim Beauftragen den Default Flow. Nur dieser Flow wird ausgeführt.
+                  </AlertDescription>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 gap-1.5 text-slate-300 border border-white/15 hover:bg-white/10 hover:text-white"
+                onClick={() => {
+                  setActiveFlowTab("default");
+                  setActiveWorkflowId(defaultFlowOptions[0]?.id ?? null);
+                }}
+              >
+                <PowerOff className="h-3.5 w-3.5" />
+                Deaktivieren
+              </Button>
             </Alert>
           )}
 
