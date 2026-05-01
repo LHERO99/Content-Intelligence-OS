@@ -803,24 +803,24 @@ export function AgentWorkflowV2Management() {
         <div className="space-y-3">
           {/* Amber info-banner: Custom Flow is enabled and has nodes */}
           {customFlowEnabled && activeFlowTab === "custom" && nodes.length > 0 && (
-            <Alert className="border-amber-500/60 bg-amber-950/60 flex items-start justify-between gap-4">
+            <Alert className="border-amber-500/50 bg-amber-950 flex items-start justify-between gap-4">
               <div className="flex gap-3 items-start">
                 <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
                 <div>
-                  <AlertTitle className="text-amber-200">Custom Flow aktiv</AlertTitle>
-                  <AlertDescription className="text-slate-300">
-                    Dieser Custom Flow überschreibt beim Beauftragen den Default Flow. Nur dieser Flow wird ausgeführt.
+                  <AlertTitle className="text-amber-300">{t("agentBuilder.customFlowActiveTitle")}</AlertTitle>
+                  <AlertDescription className="text-amber-100/80">
+                    {t("agentBuilder.customFlowActiveBody")}
                   </AlertDescription>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="shrink-0 gap-1.5 text-slate-300 border border-white/15 hover:bg-white/10 hover:text-white"
+                className="shrink-0 gap-1.5 text-amber-200 border border-amber-500/40 hover:bg-amber-800 hover:text-white"
                 onClick={() => setCustomFlowActive(false)}
               >
                 <PowerOff className="h-3.5 w-3.5" />
-                Deaktivieren
+                {t("agentBuilder.customFlowDeactivate")}
               </Button>
             </Alert>
           )}
