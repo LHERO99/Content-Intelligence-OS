@@ -47,10 +47,61 @@ async function persistWorkflows(workflows: WorkflowV2[], versions: WorkflowVersi
   await updateConfig(VERSIONS_KEY, JSON.stringify(versions));
 }
 
+/** Maximum number of completed runs to retain in storage. Running runs are always kept. */
+const MAX_RETAINED_RUNS = 50;
+
+/** Maximum character length for a single message payload when serialized to JSON. */
+const MAX_MESSAGE_PAYLOAD_CHARS = 2000;
+
+/**
+ * Trims the stored arrays before writing to Airtable to prevent the JSON blobs
+ * from exceeding the Airtable field character limit (~100k chars).
+ *
+ * Strategy:
+ *  1. Drop soft-deleted runs (deletedAt set) and their associated steps/messages.
+ *  2. Cap active runs at MAX_RETAINED_RUNS, keeping the most recent ones.
+ *     Running runs are always preserved.
+ *  3. Truncate oversized message payloads.
+ */
+function pruneStore(
+  runs: WorkflowRunV2[],
+  runSteps: WorkflowRunStepV2[],
+  messages: WorkflowMessageV2[],
+): { runs: WorkflowRunV2[]; runSteps: WorkflowRunStepV2[]; messages: WorkflowMessageV2[] } {
+  // 1. Remove soft-deleted runs
+  const activeRuns = runs.filter((r) => !r.deletedAt);
+
+  // 2. Cap completed runs — always keep running ones
+  const runningRuns = activeRuns.filter((r) => r.status === 'running' || r.status === 'pending');
+  const completedRuns = activeRuns
+    .filter((r) => r.status !== 'running' && r.status !== 'pending')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, MAX_RETAINED_RUNS);
+  const retainedRuns = [...runningRuns, ...completedRuns];
+  const retainedRunIds = new Set(retainedRuns.map((r) => r.id));
+
+  // 3. Drop steps and messages for removed runs
+  const retainedSteps = runSteps.filter((s) => retainedRunIds.has(s.runId));
+  const retainedMessages = messages
+    .filter((m) => retainedRunIds.has(m.runId))
+    .map((m) => {
+      // Truncate large message payloads to stay within field limits
+      const serialized = JSON.stringify(m.payload);
+      if (serialized.length <= MAX_MESSAGE_PAYLOAD_CHARS) return m;
+      return {
+        ...m,
+        payload: { _truncated: true, preview: serialized.slice(0, MAX_MESSAGE_PAYLOAD_CHARS) },
+      };
+    });
+
+  return { runs: retainedRuns, runSteps: retainedSteps, messages: retainedMessages };
+}
+
 async function persistRuns(runs: WorkflowRunV2[], runSteps: WorkflowRunStepV2[], messages: WorkflowMessageV2[]) {
-  await updateConfig(RUNS_KEY, JSON.stringify(runs));
-  await updateConfig(RUN_STEPS_KEY, JSON.stringify(runSteps));
-  await updateConfig(MESSAGES_KEY, JSON.stringify(messages));
+  const pruned = pruneStore(runs, runSteps, messages);
+  await updateConfig(RUNS_KEY, JSON.stringify(pruned.runs));
+  await updateConfig(RUN_STEPS_KEY, JSON.stringify(pruned.runSteps));
+  await updateConfig(MESSAGES_KEY, JSON.stringify(pruned.messages));
 }
 
 function toWorkflowWithVersions(workflow: WorkflowV2, versions: WorkflowVersionV2[]): WorkflowWithVersionsV2 {
