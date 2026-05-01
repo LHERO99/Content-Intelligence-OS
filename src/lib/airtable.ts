@@ -18,16 +18,40 @@ import {
 
 export * from './airtable-types';
 
-if (!process.env.AIRTABLE_API_KEY) {
-  throw new Error('AIRTABLE_API_KEY is not defined');
+// Lazy initialisation — env var validation runs at request time (inside functions),
+// not at module load time. This prevents serverless cold-start crashes on Vercel
+// when env vars might not yet be injected into the module evaluation context.
+function getBase() {
+  if (!process.env.AIRTABLE_API_KEY) {
+    throw new Error('AIRTABLE_API_KEY is not defined');
+  }
+  if (!process.env.AIRTABLE_BASE_ID) {
+    throw new Error('AIRTABLE_BASE_ID is not defined');
+  }
+  return new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 }
 
-if (!process.env.AIRTABLE_BASE_ID) {
-  throw new Error('AIRTABLE_BASE_ID is not defined');
-}
+// Proxy so all existing `base(tableName)` call sites keep working unchanged.
+export const base: ReturnType<Airtable['base']> = new Proxy({} as ReturnType<Airtable['base']>, {
+  apply(_target, _thisArg, args) {
+    return (getBase() as any)(...args);
+  },
+  get(_target, prop) {
+    const b = getBase();
+    const val = (b as any)[prop];
+    return typeof val === 'function' ? val.bind(b) : val;
+  },
+});
 
-export const airtable = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY });
-export const base = airtable.base(process.env.AIRTABLE_BASE_ID);
+// Keep a named export for code that imports `airtable` directly.
+export const airtable = new Proxy({} as Airtable, {
+  get(_target, prop) {
+    if (!process.env.AIRTABLE_API_KEY) throw new Error('AIRTABLE_API_KEY is not defined');
+    const instance = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY });
+    const val = (instance as any)[prop];
+    return typeof val === 'function' ? val.bind(instance) : val;
+  },
+});
 
 // --- Table Names ---
 export const TABLES = {
