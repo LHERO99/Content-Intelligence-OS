@@ -22,7 +22,7 @@ export function LiveDuration({ startedAt }: { startedAt: string }) {
   const m = Math.floor(elapsed / 60);
   const s = elapsed % 60;
   return (
-    <span className="text-[10px] font-mono text-green-400">
+    <span className="text-[10px] font-mono text-green-600">
       {m > 0 ? `${m}m ` : ""}
       {s}s
     </span>
@@ -69,25 +69,25 @@ export function RunCard({
     <div
       className={`w-full rounded-lg border p-3 text-left transition-all ${
         isSelected
-          ? "border-blue-400/60 bg-blue-500/12 shadow-[0_0_0_1px_rgba(96,165,250,0.2)]"
+          ? "border-primary/50 bg-primary/8 shadow-[0_0_0_1px_rgba(0,70,60,0.15)]"
           : isActive
-          ? "border-green-500/30 bg-green-500/5 hover:bg-green-500/8"
-          : "border-white/12 bg-white/4 hover:bg-white/8 hover:border-white/20"
+          ? "border-primary/25 bg-primary/5 hover:bg-primary/8"
+          : "border-border bg-white hover:bg-muted/50 hover:border-primary/20"
       }`}
     >
       <button type="button" onClick={onLoadDetails} className="w-full text-left">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-slate-100 flex items-center gap-1.5">
+          <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             {run.status === "running" && (
-              <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+              <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" />
             )}
             {run.status === "pending" && (
-              <span className="inline-block h-2 w-2 rounded-full bg-yellow-400/80 shrink-0" />
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-400 shrink-0" />
             )}
-            <span className="font-mono text-slate-300">Run</span>
-            <span className="font-bold text-slate-100">{run.id.slice(0, 8)}</span>
+            <span className="font-mono text-muted-foreground">Run</span>
+            <span className="font-bold text-foreground">{run.id.slice(0, 8)}</span>
             {typeof queueIndex === "number" && (
-              <span className="text-[10px] text-yellow-300/90 font-mono bg-yellow-500/10 border border-yellow-500/20 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] text-amber-700 font-mono bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
                 #{queueIndex + 1} Queue
               </span>
             )}
@@ -99,12 +99,12 @@ export function RunCard({
             </Badge>
           </div>
         </div>
-        <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
+        <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-2">
           <span>{new Date(run.startedAt).toLocaleString(localeTag)}</span>
           {run.durationMs && (
-            <span className="text-slate-400 font-medium">{(run.durationMs / 1000).toFixed(1)}s</span>
+            <span className="font-medium">{(run.durationMs / 1000).toFixed(1)}s</span>
           )}
-          {run.deletedAt && <span className="text-amber-500/70">versteckt</span>}
+          {run.deletedAt && <span className="text-amber-600">versteckt</span>}
         </div>
       </button>
 
@@ -112,7 +112,7 @@ export function RunCard({
         <Button
           size="sm"
           variant="outline"
-          className="h-6 px-2.5 text-xs border-blue-400/40 text-blue-300 hover:bg-blue-500/15 hover:border-blue-400/60 bg-transparent"
+          className="h-6 px-2.5 text-xs border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50"
           onClick={onOpen}
         >
           Details
@@ -120,7 +120,7 @@ export function RunCard({
         <Button
           size="sm"
           variant="outline"
-          className="h-6 px-2.5 text-xs border-white/20 text-slate-400 hover:bg-white/10 hover:text-slate-200 bg-transparent disabled:opacity-30"
+          className="h-6 px-2.5 text-xs disabled:opacity-30"
           disabled={run.status !== "running" || runActionLoading === `cancel:${run.id}`}
           onClick={onCancel}
         >
@@ -130,7 +130,7 @@ export function RunCard({
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2.5 text-xs border-amber-500/30 text-amber-400/80 hover:bg-amber-500/10 hover:border-amber-400/50 bg-transparent disabled:opacity-30"
+            className="h-6 px-2.5 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 disabled:opacity-30"
             disabled={runActionLoading === `delete:${run.id}`}
             onClick={onSoftDelete}
           >
@@ -140,7 +140,7 @@ export function RunCard({
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2.5 text-xs border-emerald-500/30 text-emerald-400/80 hover:bg-emerald-500/10 hover:border-emerald-400/50 bg-transparent disabled:opacity-30"
+            className="h-6 px-2.5 text-xs border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 disabled:opacity-30"
             disabled={runActionLoading === `restore:${run.id}`}
             onClick={onRestore}
           >
@@ -159,11 +159,11 @@ export function RunCard({
           const failedStep = runSteps.find((s) => s.status === "failed" && s.error);
           if (!failedStep) return null;
           return (
-            <div className="mt-3 rounded-md border border-red-500/30 bg-red-950/40 p-2.5">
-              <p className="text-[11px] font-bold text-red-300 mb-1 uppercase tracking-wide">
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2.5">
+              <p className="text-[11px] font-bold text-red-700 mb-1 uppercase tracking-wide">
                 Fehler: {failedStep.nodeName}
               </p>
-              <p className="text-xs text-red-200/90 font-mono break-words whitespace-pre-wrap leading-relaxed">
+              <p className="text-xs text-red-600 font-mono break-words whitespace-pre-wrap leading-relaxed">
                 {failedStep.error}
               </p>
             </div>

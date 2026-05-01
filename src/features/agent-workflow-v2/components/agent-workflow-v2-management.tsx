@@ -733,27 +733,58 @@ export function AgentWorkflowV2Management() {
   return (
     <ReactFlowProvider>
       <div className="space-y-6 text-slate-100 pb-6">
-        {/* ── Flow tabs ── */}
-        <Tabs
-          value={activeFlowTab}
-          onValueChange={(value) => {
-            const next = (value as FlowMode) || "default";
-            setActiveFlowTab(next);
-            const options = next === "default" ? defaultFlowOptions : customFlowOptions;
-            setActiveWorkflowId(options.length > 0 ? options[0].id : null);
-          }}
-        >
-          <TabsList className="bg-primary/10 border-primary/10">
-            <TabsTrigger value="default" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Calendar className="mr-2 h-4 w-4" /> Default Flow
-            </TabsTrigger>
-            <TabsTrigger value="custom" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Sparkles className="mr-2 h-4 w-4" /> Custom Flow
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="default" />
-          <TabsContent value="custom" />
-        </Tabs>
+        <div className="flex items-center justify-between gap-4">
+          <Tabs
+            value={activeFlowTab}
+            onValueChange={(value) => {
+              const next = (value as FlowMode) || "default";
+              setActiveFlowTab(next);
+              const options = next === "default" ? defaultFlowOptions : customFlowOptions;
+              setActiveWorkflowId(options.length > 0 ? options[0].id : null);
+            }}
+          >
+            <TabsList className="bg-primary/10 border-primary/10">
+              <TabsTrigger value="default" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Calendar className="mr-2 h-4 w-4" /> Default Flow
+              </TabsTrigger>
+              <TabsTrigger value="custom" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Sparkles className="mr-2 h-4 w-4" /> Custom Flow
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="default" />
+            <TabsContent value="custom" />
+          </Tabs>
+
+          {/* Auto-Save Status */}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+            {autoSaveError ? (
+              <>
+                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                <span className="text-destructive truncate max-w-[200px]">{autoSaveError}</span>
+              </>
+            ) : autoSaving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                <span>{t("agentBuilder.saving")}</span>
+              </>
+            ) : isDirty ? (
+              <>
+                <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                <span className="text-amber-600">{t("agentBuilder.unsaved")}</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                <span>
+                  {t("agentBuilder.allSaved")}
+                  {lastSavedAt && (
+                    <span className="ml-1 text-muted-foreground/60">· {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</span>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
 
         {error && (
           <Alert variant="destructive">
@@ -801,37 +832,8 @@ export function AgentWorkflowV2Management() {
               <div className="shrink-0">
                 <NodePalette />
               </div>
-              {/* Auto-Save Status */}
-              <div className="flex items-center gap-2 px-1 text-xs text-slate-500 shrink-0">
-                {autoSaveError ? (
-                  <>
-                    <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                    <span className="text-red-400 truncate">{autoSaveError}</span>
-                  </>
-                ) : autoSaving ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
-                    <span>{t("agentBuilder.saving")}</span>
-                  </>
-                ) : isDirty ? (
-                  <>
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-400/70 shrink-0" />
-                    <span className="text-amber-400/80">{t("agentBuilder.unsaved")}</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/70 shrink-0" />
-                    <span>
-                      {t("agentBuilder.allSaved")}
-                      {lastSavedAt && (
-                        <span className="ml-1 text-slate-600">· {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</span>
-                      )}
-                    </span>
-                  </>
-                )}
-              </div>
               {/* Trennlinie */}
-              <div className="border-t border-white/10 shrink-0" />
+              <div className="border-t shrink-0" />
               {/* Execution Panel — füllt restliche Höhe */}
               <div className="flex-1 min-h-0 overflow-hidden">
                 <ExecutionPanel

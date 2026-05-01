@@ -8,7 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, EyeOff, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import { RunCard } from "./run-card";
@@ -52,20 +51,20 @@ export function ExecutionPanel({
   t: (key: string) => string;
 }) {
   return (
-    <Card className="border-white/10 bg-[#0b1220] text-slate-100 overflow-hidden flex flex-col h-full">
+    <Card className="overflow-hidden flex flex-col h-full">
 
-      <CardHeader className="px-5 py-3 border-b border-white/10">
+      <CardHeader className="px-4 py-3 border-b">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-sm font-semibold text-slate-200">
+            <CardTitle className="text-sm font-semibold text-primary">
               {t("agentBuilder.executionPanel")}
             </CardTitle>
             {/* Status filter inline */}
             <Select value={runStatusFilter} onValueChange={(v) => onRunStatusFilterChange((v as any) || "all")}>
-              <SelectTrigger className="h-6 w-[110px] bg-white/5 border-white/10 text-slate-400 text-xs focus:ring-0 px-2">
+              <SelectTrigger className="h-6 w-[110px] text-xs focus:ring-0 px-2">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#0f172a] border-white/10 text-slate-200">
+              <SelectContent>
                 <SelectItem value="all">{t("agentBuilder.all")}</SelectItem>
                 <SelectItem value="running">Running</SelectItem>
                 <SelectItem value="success">Success</SelectItem>
@@ -77,31 +76,26 @@ export function ExecutionPanel({
 
           {/* Actions menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger
-              className="h-7 w-7 flex items-center justify-center rounded text-slate-500 hover:text-slate-300 hover:bg-white/8 transition-colors"
-            >
+            <DropdownMenuTrigger className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#0f172a] border-white/10 text-slate-200 min-w-[180px]">
-              <DropdownMenuItem
-                className="text-xs gap-2 cursor-pointer hover:bg-white/8 focus:bg-white/8"
-                onClick={onToggleHiddenRuns}
-              >
+            <DropdownMenuContent align="end" className="min-w-[180px]">
+              <DropdownMenuItem className="text-xs gap-2 cursor-pointer" onClick={onToggleHiddenRuns}>
                 {showHiddenRuns ? (
                   <>
-                    <EyeOff className="h-3.5 w-3.5 text-slate-400" />
+                    <EyeOff className="h-3.5 w-3.5" />
                     {t("agentBuilder.hiddenOn")}
                   </>
                 ) : (
                   <>
-                    <Eye className="h-3.5 w-3.5 text-slate-400" />
+                    <Eye className="h-3.5 w-3.5" />
                     {t("agentBuilder.hiddenOff")}
                   </>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="text-xs gap-2 cursor-pointer hover:bg-white/8 focus:bg-white/8 text-slate-400"
+                className="text-xs gap-2 cursor-pointer text-muted-foreground"
                 disabled={runActionLoading === "cleanup"}
                 onClick={onCleanupStaleRuns}
               >
@@ -117,15 +111,15 @@ export function ExecutionPanel({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-3">
+      <CardContent className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
         {filteredRuns.length === 0 ? (
-          <p className="text-sm text-slate-600 italic pt-2">{t("agentBuilder.noRuns")}</p>
+          <p className="text-sm text-muted-foreground italic pt-2">{t("agentBuilder.noRuns")}</p>
         ) : (
           <div className="space-y-1.5">
             {/* Active group */}
             {filteredRuns.filter((r) => r.status === "running" || r.status === "pending").length > 0 && (
               <>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold px-0.5 pb-1">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-0.5 pb-1">
                   Aktiv
                 </p>
                 {filteredRuns
@@ -150,7 +144,7 @@ export function ExecutionPanel({
                     />
                   ))}
                 {filteredRuns.filter((r) => r.status !== "running" && r.status !== "pending").length > 0 && (
-                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold px-0.5 pt-2 pb-1">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-0.5 pt-2 pb-1">
                     Abgeschlossen
                   </p>
                 )}

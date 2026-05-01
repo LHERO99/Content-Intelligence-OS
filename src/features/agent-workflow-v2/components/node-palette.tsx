@@ -15,10 +15,10 @@ export function NodePalette() {
   };
 
   return (
-    <Card className="border-white/10 bg-[#0b1220]/80 text-slate-100">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-base">Toolbox</CardTitle>
-        <CardDescription className="text-slate-400">Neue Agenten-Nodes hinzufügen</CardDescription>
+        <CardTitle className="text-base text-primary">Toolbox</CardTitle>
+        <CardDescription>Neue Agenten-Nodes hinzufügen</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {TOOLBOX_NODE_TYPES.map((entry) => (
@@ -27,7 +27,7 @@ export function NodePalette() {
             draggable
             onDragStart={(event) => handleDragStart(event, entry.type)}
             variant="outline"
-            className="w-full justify-start border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
+            className="w-full justify-start"
             onClick={() => {
               window.dispatchEvent(new CustomEvent("agent-builder:add-node", { detail: { type: entry.type } }));
             }}
