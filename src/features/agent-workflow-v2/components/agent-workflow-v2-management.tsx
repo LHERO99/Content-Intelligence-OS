@@ -15,9 +15,9 @@ import "@xyflow/react/dist/style.css";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Calendar, Copy, Loader2, Pencil, Play, Plus, PowerOff, Sparkles, Trash2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Calendar, CheckCircle2, Copy, Loader2, Pencil, Plus, PowerOff, Sparkles, Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 
@@ -26,7 +26,6 @@ import {
   AgentProvider,
   AgentStepType,
   DiscoveredModel,
-  ExecutionView,
   FlowMode,
   NODE_STYLE_BY_TYPE,
   RunMessage,
@@ -138,7 +137,6 @@ export function AgentWorkflowV2Management() {
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [runSteps, setRunSteps] = useState<RunStep[]>([]);
   const [runMessages, setRunMessages] = useState<RunMessage[]>([]);
-  const [executionView, setExecutionView] = useState<ExecutionView>("executions");
   const [runActionLoading, setRunActionLoading] = useState<string | null>(null);
   const [showHiddenRuns, setShowHiddenRuns] = useState(false);
   const [runStatusFilter, setRunStatusFilter] = useState<"all" | RunRecord["status"]>("all");
@@ -222,8 +220,6 @@ export function AgentWorkflowV2Management() {
   const enabledSubNodes = nodes.filter(
     (n) => !(n.data.isParent || n.data.type === "orchestrator") && Boolean((n.data as any).enabled ?? true)
   );
-
-  const selectedRun = useMemo(() => runs.find((r) => r.id === selectedRunId) || null, [runs, selectedRunId]);
 
   const filteredRuns = useMemo(() => {
     if (runStatusFilter === "all") return runs;
@@ -816,24 +812,35 @@ export function AgentWorkflowV2Management() {
           <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
             <div className="space-y-4">
               <NodePalette />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{t("agentBuilder.runControls")}</CardTitle>
-                  <CardDescription>{t("agentBuilder.autoSaveExecute")}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                  <div className="space-y-1.5 rounded-md border border-white/10 bg-[#0f172a]/60 p-2 text-xs text-slate-300">
-                    <div className="font-medium text-slate-200">{t("agentBuilder.autoSave")}</div>
-                    {autoSaving ? <div>{t("agentBuilder.saving")}</div> : isDirty ? <div>{t("agentBuilder.unsaved")}</div> : <div>{t("agentBuilder.allSaved")}</div>}
-                    {lastSavedAt && <div className="text-slate-400">{t("agentBuilder.last")}: {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</div>}
-                    {autoSaveError && <div className="text-red-300">{autoSaveError}</div>}
-                  </div>
-                  <Button variant="secondary" onClick={runWorkflow} disabled={!activeWorkflow || running}>
-                    {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                    {t("agentBuilder.runStart")}
-                  </Button>
-                </CardContent>
-              </Card>
+              {/* Auto-Save Status */}
+              <div className="flex items-center gap-2 px-1 py-1 text-xs text-slate-500">
+                {autoSaveError ? (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                    <span className="text-red-400 truncate">{autoSaveError}</span>
+                  </>
+                ) : autoSaving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
+                    <span>{t("agentBuilder.saving")}</span>
+                  </>
+                ) : isDirty ? (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-400/70 shrink-0" />
+                    <span className="text-amber-400/80">{t("agentBuilder.unsaved")}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/70 shrink-0" />
+                    <span>
+                      {t("agentBuilder.allSaved")}
+                      {lastSavedAt && (
+                        <span className="ml-1 text-slate-600">· {new Date(lastSavedAt).toLocaleTimeString(localeTag)}</span>
+                      )}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
 
             {activeFlowTab === "custom" && !customFlowEnabled && customFlowOptions.length > 0 ? (
@@ -923,8 +930,6 @@ export function AgentWorkflowV2Management() {
             resizeStartHeightRef.current = executionPanelHeight;
             event.preventDefault();
           }}
-          executionView={executionView}
-          onExecutionViewChange={setExecutionView}
           runActionLoading={runActionLoading}
           showHiddenRuns={showHiddenRuns}
           onToggleHiddenRuns={() => setShowHiddenRuns((prev) => !prev)}
@@ -934,10 +939,6 @@ export function AgentWorkflowV2Management() {
           filteredRuns={filteredRuns}
           selectedRunId={selectedRunId}
           runSteps={runSteps}
-          runMessages={runMessages}
-          selectedRun={selectedRun}
-          selectedStepId={selectedStepId}
-          onSelectStep={setSelectedStepId}
           localeTag={localeTag}
           onOpenRunDetail={openRunDetailModal}
           onLoadRunDetails={loadRunDetails}

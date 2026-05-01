@@ -28,7 +28,7 @@
 - [x] Node-Config Datenmodell um `purpose`, `inputContract`, `outputContract` erweitert.
 - [x] Builder: Node-Konfiguration UX komplett neu strukturiert.
 - [x] Builder: Pre-Run Validierung ergänzt.
-- [x] Run-API/Service: `runFrom` ergänzt; Builder-Default auf Draft gesetzt.
+- [x] Run-API/Service: `runFrom` ergänzt; Commissioning auf `published` gesetzt.
 - [x] Ranking-System integriert (Airtable, Types, UI).
 - [x] Striking Distance Priorisierung implementiert.
 - [x] Aktualitäts-Faktor in Priorisierung aufgenommen.
@@ -45,16 +45,32 @@
 - [x] Feature: Dynamic Branding Tab im Admin-Bereich (Logo, Favicon, Primärfarbe).
 - [x] Refactor: Branding-Upload nutzt nun native Airtable Attachments.
 - [x] i18n: LanguageProvider + useI18n Hook + LanguageSwitcher implementiert (DE/EN).
-- [x] i18n: Alle UI-Komponenten vollständig lokalisiert (sidebar, admin, planning, monitoring, etc.).
+- [x] i18n: Alle UI-Komponenten vollständig lokalisiert.
 - [x] i18n: `dashboard.systemHealth.*` Keys in `de.ts` + `en.ts` ergänzt.
 
 ## System Health Dashboard (30.04.2026)
-- [x] Refactor: Provider-Test-Funktionen aus `integrations/[provider]/route.ts` in `src/lib/integration-tests.ts` extrahiert (Shared Lib).
+- [x] Refactor: Provider-Test-Funktionen in `src/lib/integration-tests.ts` extrahiert.
 - [x] Feature: `createAuditLog(action, rawPayload?)` Hilfsfunktion in `airtable.ts` ergänzt.
-- [x] Feature: `src/app/api/cron/sync-gsc/route.ts` — schreibt nach jedem Lauf AuditLog-Einträge für `cron:sync-gsc` und `cron:sync-sistrix`.
-- [x] Feature: Neuer Cron `GET /api/cron/check-integrations` (täglich 06:00 UTC) — testet alle Integrationen und schreibt AuditLog.
-- [x] Feature: Neuer Endpunkt `GET /api/system-health` — Admin-only, aggregiert alle Health-Checks mit Live-Tests für Integrationen.
-- [x] Feature: Neue Komponente `src/components/system-health-card.tsx` — Admin-only, Polling 5 Min, vollständig i18n-fähig via `detailKey`/`detailParams`.
-- [x] Refactor: Dashboard `src/app/page.tsx` — Alerts Feed + Diagnostic-Alert-Polling entfernt, `SystemHealthCard` eingebunden.
-- [x] Config: `vercel.json` — Neuer Cron `check-integrations` täglich 06:00 UTC hinzugefügt.
-- [x] Fix: Content-Pipeline-Check — `fields: ['Last Modified']` entfernt (Airtable-Fehler), nur `fields: ['Status']` abgefragt; Staleness-Prüfung entfällt.
+- [x] Feature: `src/app/api/cron/sync-gsc/route.ts` — schreibt AuditLog-Einträge für `cron:sync-gsc` und `cron:sync-sistrix`.
+- [x] Feature: Neuer Cron `GET /api/cron/check-integrations` (täglich 06:00 UTC).
+- [x] Feature: Neuer Endpunkt `GET /api/system-health` — Admin-only, aggregiert alle Health-Checks.
+- [x] Feature: Neue Komponente `src/components/system-health-card.tsx` — Admin-only, i18n-fähig.
+- [x] Refactor: Dashboard `src/app/page.tsx` — Alerts Feed entfernt, `SystemHealthCard` eingebunden.
+- [x] Config: `vercel.json` — Neuer Cron `check-integrations` täglich 06:00 UTC.
+- [x] Fix: Content-Pipeline-Check — `fields: ['Last Modified']` entfernt.
+
+## Agent Flow: finalHtml & Content-Delivery-Pipeline (01.05.2026)
+- [x] Feature: Run Detail Modal Sheet-Breite auf `sm:max-w-3xl` erhöht.
+- [x] Feature: Run Detail Modal — `finalHtml`-Preview im Step-Output (grüne HTML-Vorschau, Rohdaten collapsible).
+- [x] Feature: `OrchestratorDecision` um `finalHtml?: string` erweitert (Service + `createOrchestratorNode`).
+- [x] Feature: `extractDecisionFromOutput` extrahiert `finalHtml` aus Orchestrator-Output.
+- [x] Feature: 3-stufige `capturedFinalHtml`-Fallback-Kette in `service.ts` implementiert (Orchestrator-JSON → bekannte Felder → längster String).
+- [x] Feature: `finalOutput` wird in-memory in Rückgabewert injiziert (`return { ...finalRun, output: finalOutput }`), nicht in Airtable geschrieben.
+- [x] Feature: `WorkflowRunV2.output?: Record<string, unknown>` in Domain-Model ergänzt.
+- [x] Feature: `trigger/route.ts` — Nach erfolgreichem Run `Status: 'Angeliefert'` setzen + `createContentLog` mit `finalHtml`.
+- [x] Fix: `Diff_Summary: 'Content angeliefert'` (exakter String für `HistoryList`-Preview-Gate).
+- [x] Fix: Step-basierten Fallback aus `trigger/route.ts` entfernt (durch `pruneStore`-Truncation unzuverlässig).
+
+## Optimistisches UI: Commissioning-Button (01.05.2026)
+- [x] Fix: `setCommissionedIds` + `addAlert` vor `await triggerN8nAction(...)` verschoben (sofortiges UI-Feedback).
+- [x] Fix: Bei API-Fehler `commissionedIds.delete(id)` (optimistisches Update rückgängig machen).
