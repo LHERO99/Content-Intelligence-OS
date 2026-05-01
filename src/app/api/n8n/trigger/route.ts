@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
               Keyword_ID: [data.keywordId],
               Target_URL: data.targetUrl,
               Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
-              Diff_Summary: 'Content vom Agent angeliefert',
+              Diff_Summary: 'Content angeliefert',
               Content_Body: finalHtml,
               Editor: session.user?.email ? [session.user.email] : undefined,
             });
