@@ -288,6 +288,14 @@ const en = {
     chooseRun: "Select a run first in the Executions tab.",
     noSteps: "No step data available.",
     noMessages: "No messages for this run.",
+    customFlowDisabledTitle: "Custom Flow disabled",
+    customFlowDisabledBody: "The Custom Flow is currently disabled. The Default Flow will be used for processing.",
+    customFlowDisabledAgents: "agents saved",
+    customFlowReactivate: "Reactivate Custom Flow",
+    noCustomFlowTitle: "No Custom Flow yet",
+    noCustomFlowBody: "A Custom Flow lets you define your own agent workflow. It fully overrides the Default Flow — only your Custom Flow will run.",
+    noCustomFlowWarning: "The Default Flow will be disabled once a Custom Flow is active.",
+    noCustomFlowAction: "Add first agent",
   },
 };
 

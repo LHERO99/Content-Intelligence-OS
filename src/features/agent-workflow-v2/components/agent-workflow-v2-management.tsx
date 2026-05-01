@@ -859,43 +859,43 @@ export function AgentWorkflowV2Management() {
 
             {activeFlowTab === "custom" && !customFlowEnabled && customFlowOptions.length > 0 ? (
               /* Custom Flow exists but is disabled → Reaktivieren view */
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
-                <div className="rounded-full border border-slate-500/30 bg-slate-500/10 p-4">
-                  <PowerOff className="h-8 w-8 text-slate-400" />
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/25 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
+                <div className="rounded-full border border-slate-400/30 bg-slate-500/20 p-4">
+                  <PowerOff className="h-8 w-8 text-slate-300" />
                 </div>
                 <div className="space-y-2 max-w-md">
-                  <h3 className="text-lg font-semibold text-slate-100">Custom Flow deaktiviert</h3>
-                  <p className="text-sm text-slate-400">
-                    Der Custom Flow ist derzeit deaktiviert. Beim Beauftragen wird der Default Flow verwendet.
+                  <h3 className="text-lg font-semibold text-slate-100">{t("agentBuilder.customFlowDisabledTitle")}</h3>
+                  <p className="text-sm text-slate-300">
+                    {t("agentBuilder.customFlowDisabledBody")}
                   </p>
-                  <p className="text-xs text-slate-500 pt-1">
-                    {(customFlowOptions[0]?.draftVersion?.nodes?.length ?? customFlowOptions[0]?.activeVersion?.nodes?.length ?? 0)} Agenten gespeichert
+                  <p className="text-xs text-slate-400 pt-1">
+                    {(customFlowOptions[0]?.draftVersion?.nodes?.length ?? customFlowOptions[0]?.activeVersion?.nodes?.length ?? 0)} {t("agentBuilder.customFlowDisabledAgents")}
                   </p>
                 </div>
                 <Button onClick={() => setCustomFlowActive(true)} className="gap-2">
                   <Sparkles className="h-4 w-4" />
-                  Custom Flow reaktivieren
+                  {t("agentBuilder.customFlowReactivate")}
                 </Button>
               </div>
             ) : activeFlowTab === "custom" && customFlowOptions.length === 0 ? (
               /* No custom flow exists yet → Empty State */
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
-                <div className="rounded-full border border-primary/30 bg-primary/10 p-4">
-                  <Sparkles className="h-8 w-8 text-primary/80" />
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/25 bg-[#0b1220]/60 h-[calc(100vh-220px)] gap-5 px-8 text-center">
+                <div className="rounded-full border border-primary/40 bg-primary/15 p-4">
+                  <Sparkles className="h-8 w-8 text-primary/90" />
                 </div>
                 <div className="space-y-2 max-w-md">
-                  <h3 className="text-lg font-semibold text-slate-100">Kein Custom Flow vorhanden</h3>
-                  <p className="text-sm text-slate-400">
-                    Ein Custom Flow erlaubt dir, einen eigenen Agenten-Workflow zu definieren. Er überschreibt beim Beauftragen vollständig den Default Flow — nur dein Custom Flow wird dann ausgeführt.
+                  <h3 className="text-lg font-semibold text-slate-100">{t("agentBuilder.noCustomFlowTitle")}</h3>
+                  <p className="text-sm text-slate-300">
+                    {t("agentBuilder.noCustomFlowBody")}
                   </p>
-                  <p className="text-xs text-amber-400/80 flex items-center justify-center gap-1.5 pt-1">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Der Default Flow wird beim Beauftragen deaktiviert, sobald ein Custom Flow aktiv ist.
+                  <p className="text-xs text-amber-300/90 flex items-center justify-center gap-1.5 pt-1">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    {t("agentBuilder.noCustomFlowWarning")}
                   </p>
                 </div>
                 <Button onClick={initCustomFlow} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  Ersten Agenten hinzufügen
+                  {t("agentBuilder.noCustomFlowAction")}
                 </Button>
               </div>
             ) : (

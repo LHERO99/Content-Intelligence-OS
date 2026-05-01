@@ -288,6 +288,14 @@ const de = {
     chooseRun: "Wähle zuerst einen Run im Tab Executions.",
     noSteps: "Keine Step-Daten vorhanden.",
     noMessages: "Keine Messages für diesen Run.",
+    customFlowDisabledTitle: "Custom Flow deaktiviert",
+    customFlowDisabledBody: "Der Custom Flow ist derzeit deaktiviert. Beim Beauftragen wird der Default Flow verwendet.",
+    customFlowDisabledAgents: "Agenten gespeichert",
+    customFlowReactivate: "Custom Flow reaktivieren",
+    noCustomFlowTitle: "Kein Custom Flow vorhanden",
+    noCustomFlowBody: "Ein Custom Flow erlaubt dir, einen eigenen Agenten-Workflow zu definieren. Er überschreibt beim Beauftragen vollständig den Default Flow — nur dein Custom Flow wird ausgeführt.",
+    noCustomFlowWarning: "Der Default Flow wird deaktiviert, sobald ein Custom Flow aktiv ist.",
+    noCustomFlowAction: "Ersten Agenten hinzufügen",
   },
 };
 
