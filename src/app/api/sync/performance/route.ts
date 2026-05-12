@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertPerformanceData } from '@/lib/airtable';
+import { upsertPerformanceData } from '@/lib/postgres';
 
 export async function POST(req: NextRequest) {
   try {

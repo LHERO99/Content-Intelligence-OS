@@ -1,5 +1,25 @@
 # Technische Entscheidungen (Stand: 01.05.2026)
 
+## Agent Builder: Execution Panel als Side-Panel (01.05.2026)
+- Das Execution Panel sitzt in der linken Sidebar unterhalb der NodePalette — kein Full-Width-Panel mehr.
+- Linke Spalte: `h-[calc(100vh-220px)] flex flex-col overflow-hidden`. NodePalette `shrink-0`, ExecutionPanel `flex-1 min-h-0`.
+- Canvas: gleiche Höhe `h-[calc(100vh-220px)]` für bündiges Alignment.
+- Resize-Mechanismus (State + Refs + MouseMove useEffect) vollständig entfernt — nicht mehr nötig.
+
+## Agent Builder: Keine manuellen Run-Controls (01.05.2026)
+- Run-Button und Run Controls Card entfernt. Runs werden ausschließlich extern getriggert (Commissioning-Flow).
+- Auto-Save-Status ist in der Toolbar-Zeile neben den Flow-Tabs platziert (`flex justify-between`).
+
+## Agent Builder: Dark-Theme-Flächen müssen voll opak sein (01.05.2026)
+- Alle dunklen Hintergründe im Builder (`bg-[#0b1220]`, `bg-amber-950` etc.) müssen **ohne Alpha** gesetzt werden.
+- Der Seiten-Hintergrund ist `bg-white` — ein `bg-[#0b1220]/60` lässt das weiße Layout durchscheinen und erzeugt einen ungewollten Grauschleier.
+- **Regel**: Transparenz-Suffix (`/60`, `/80` etc.) nur auf dunklen Overlays über dunklem Hintergrund verwenden — nie auf Canvas-Flächen über dem hellen Seiten-Layout.
+
+## Agent Builder: App-Styling vs. Dark-Theme (01.05.2026)
+- **Canvas + Nodes**: Behalten dunkles Theme (`bg-[#0a101d]`, `text-slate-100`, etc.).
+- **NodePalette + ExecutionPanel + RunCard**: App-Standard (`bg-white`, `border border-border`, `text-primary`, `text-muted-foreground`).
+- **Empty States + Banner innerhalb des Canvas-Bereichs**: Dunkles Theme mit hohem Kontrast (`text-white`, `text-slate-200`, `text-amber-200`).
+
 ## finalHtml: Nicht in Airtable persistieren (01.05.2026)
 - **Problem**: HTML-Artikel (10–50k Zeichen) × 20 gespeicherte Runs würde den RUNS_KEY-Airtable-Blob (~100k Zeichen Limit) sprengen. `persistRuns` fängt den Fehler still (`console.error`). Beim nächsten `getRunWithDetails`-Readback liest `loadStore()` aus Airtable den alten Stand — `run.output` ist leer.
 - **Lösung**: `finalOutput` wird **nicht** in `updateRun` übergeben. Nach dem Readback-Call wird `output: finalOutput` direkt in den Rückgabewert injiziert: `return { ...finalRun, output: finalOutput }`. Das `finalHtml` existiert rein in-memory und kommt sicher beim Aufrufer an.

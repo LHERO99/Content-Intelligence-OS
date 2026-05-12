@@ -1,4 +1,4 @@
-import { getKeywordMap } from '@/lib/airtable';
+import { getKeywordMap } from '@/lib/postgres';
 import { NextResponse } from 'next/server';
 
 export async function GET() {

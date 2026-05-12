@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getProviderConfigValues } from '@/lib/admin-integrations';
-import { createContentLog } from '@/lib/airtable';
+import { createContentLog } from '@/lib/postgres';
 
 // Multi-tenant stub – replace with real tenant resolution once multi-tenancy is implemented
 const DEFAULT_TENANT_ID = 'default';

@@ -1,5 +1,59 @@
 # Projekt-Status (Stand: 01.05.2026)
 
+## Agent Builder UI — Refactoring (01.05.2026)
+
+### Übersicht
+Umfangreiches UI-Refactoring des Content-Agent Builders. Ziel: Konsistenz mit der restlichen App-UI, klarere Struktur der Seitenleiste, Entfernung ungenutzter Komponenten.
+
+### Änderungen
+
+**Run Controls entfernt:**
+- Die "Run Controls"-Kachel (inkl. manueller Run-Button) wurde entfernt — Runs werden ausschließlich durch externe Aktionen ausgelöst.
+- Auto-Save-Status als kompakter Statusstreifen in die Toolbar-Zeile neben die Flow-Tabs verschoben.
+- Auto-Save-Strip zeigt: `CheckCircle2` (gespeichert + Uhrzeit) / `Loader2` (speichert) / `AlertCircle` amber (ungespeichert) / `AlertCircle` rot (Fehler).
+
+**Execution Panel — Vereinfachung:**
+- Die drei Tabs (Executions / Timeline / Messages) wurden entfernt — Timeline und Messages sind redundant, da das Run-Detail-Modal alle Infos enthält.
+- Panel zeigt nur noch die Run-Liste (gruppiert: Aktiv / Abgeschlossen).
+- Status-Filter direkt im Card-Header (inline neben Titel).
+- Cleanup + Hidden-Runs-Toggle in `...`-DropdownMenu ausgelagert.
+
+**Layout-Umbau (Option B — festes Side-Panel):**
+- Linke Spalte: `h-[calc(100vh-220px)]`, `overflow-hidden`, `flex flex-col`.
+- Reihenfolge: NodePalette (`shrink-0`) → Trennlinie → ExecutionPanel (`flex-1 min-h-0`).
+- ExecutionPanel ist in die linke Spalte integriert — kein Full-Width-Panel unterhalb des Canvas mehr.
+- Resize-Mechanismus (State, Refs, MouseMove-Handler) komplett entfernt.
+- Canvas (`flow-canvas.tsx`): Höhe von `h-[72vh]` auf `h-[calc(100vh-220px)]` angepasst.
+
+**Farb-/Styling-Anpassungen:**
+- NodePalette + ExecutionPanel + RunCard auf App-Standard-Styling umgestellt (weiße Cards, `border border-border`, `text-primary`, `text-muted-foreground`).
+- Canvas und Node-Styles behalten ihr dunkles Theme.
+- Empty States (Custom Flow deaktiviert / kein Custom Flow) auf `bg-[#0b1220]` (voll opak, kein Alpha-Overlay), Texte auf `text-white` / `text-slate-200`.
+- Amber-Banner (Custom Flow aktiv): `bg-amber-950` (voll opak), `text-amber-300` Titel, `text-amber-100/80` Body, kohärenter Button.
+
+**Header-Vereinheitlichung (NodePalette + ExecutionPanel):**
+- Beide Karten haben identische Header-Struktur: Icon (`LayoutGrid` / `Activity`) + Titel (`text-sm font-semibold text-primary`) + Subline (`text-xs text-muted-foreground`).
+- `NodePalette` akzeptiert `t`-Prop für i18n.
+
+**i18n-Erweiterungen (`agentBuilder`-Block in `en.ts` + `de.ts`):**
+- `toolboxTitle`, `toolboxDescription`
+- `executionPanel` (umbenannt auf "Runs"), `executionPanelDescription`
+- `customFlowActiveTitle`, `customFlowActiveBody`, `customFlowDeactivate`
+- `customFlowDisabledTitle`, `customFlowDisabledBody`, `customFlowDisabledAgents`, `customFlowReactivate`
+- `noCustomFlowTitle`, `noCustomFlowBody`, `noCustomFlowWarning`, `noCustomFlowAction`
+- Alle hardcodierten deutschen Texte in Empty States und Banner ausgelagert.
+
+### Betroffene Dateien
+- `src/features/agent-workflow-v2/components/agent-workflow-v2-management.tsx`
+- `src/features/agent-workflow-v2/components/execution-panel.tsx`
+- `src/features/agent-workflow-v2/components/node-palette.tsx`
+- `src/features/agent-workflow-v2/components/run-card.tsx`
+- `src/features/agent-workflow-v2/components/flow-canvas.tsx`
+- `src/i18n/messages/en.ts`
+- `src/i18n/messages/de.ts`
+
+---
+
 ## Agent Flow: finalHtml-Extraction & Content-Delivery-Pipeline (01.05.2026)
 
 ### Ziel

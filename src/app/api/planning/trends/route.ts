@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createTrend, getPotentialTrends, createContentLog } from '@/lib/airtable';
+import { createTrend, getPotentialTrends, createContentLog } from '@/lib/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 

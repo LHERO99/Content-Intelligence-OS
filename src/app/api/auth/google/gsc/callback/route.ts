@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForTokens, listGscSites } from '@/lib/google-search-console';
-import { updateConfig } from '@/lib/airtable';
+import { updateConfig } from '@/lib/postgres';
 
 /**
  * GET /api/auth/google/gsc/callback

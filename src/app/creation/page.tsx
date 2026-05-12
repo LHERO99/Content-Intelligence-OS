@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { KeywordMap, ContentLog } from '@/lib/airtable-types';
+import { KeywordMap, ContentLog } from '@/lib/postgres-types';
 import { triggerN8nAction } from '@/lib/n8n';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';

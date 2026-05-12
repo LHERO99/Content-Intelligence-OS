@@ -2,7 +2,7 @@ import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, getKeywordMap, getExistingRankingDates, upsertKeywordRankingHistory } from '@/lib/airtable';
+import { getConfig, getKeywordMap, getExistingRankingDates, upsertKeywordRankingHistory } from '@/lib/postgres';
 import { getCurrentWeekMonday } from '@/lib/sync-performance';
 
 const SISTRIX_BASE = 'https://api.sistrix.com';

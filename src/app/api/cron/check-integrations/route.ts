@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PROVIDERS, getProviderConfigValues } from '@/lib/admin-integrations';
 import { testProviderConnection, testAgentWebhook } from '@/lib/integration-tests';
-import { createAuditLog, getConfig } from '@/lib/airtable';
+import { createAuditLog, getConfig } from '@/lib/postgres';
 
 /**
  * GET /api/cron/check-integrations

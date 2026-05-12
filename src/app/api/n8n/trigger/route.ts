@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
-import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl } from '@/lib/airtable';
+import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 
 // Multi-tenant stub – replace with real tenant resolution once multi-tenancy is implemented

@@ -8,12 +8,12 @@ import {
   AirtableValidationError,
   createContentLog,
   getAllUsers,
-} from '@/lib/airtable';
+} from '@/lib/postgres';
 import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { calculatePriorityScore, resolvePrioritizationWeights } from '@/lib/prioritization-utils';
-import { getConfig } from '@/lib/airtable';
+import { getConfig } from '@/lib/postgres';
 
 export async function GET() {
   try {

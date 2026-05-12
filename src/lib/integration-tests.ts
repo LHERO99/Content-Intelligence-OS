@@ -5,7 +5,7 @@
  */
 import 'server-only';
 import { IntegrationProvider } from '@/lib/admin-integrations';
-import { getConfig } from '@/lib/airtable';
+import { getConfig } from '@/lib/postgres';
 
 export async function testSistrix(apiKey: string): Promise<void> {
   const sanitizedKey = String(apiKey || '').trim();

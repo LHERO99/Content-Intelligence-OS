@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { updateConfig } from '@/lib/airtable';
+import { updateConfig } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '../_service';
 
 /**

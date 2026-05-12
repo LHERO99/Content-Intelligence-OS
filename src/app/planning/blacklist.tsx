@@ -29,7 +29,7 @@ import {
   EyeOff,
   Calendar
 } from 'lucide-react';
-import { BlacklistEntry } from '@/lib/airtable-types';
+import { BlacklistEntry } from '@/lib/postgres-types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

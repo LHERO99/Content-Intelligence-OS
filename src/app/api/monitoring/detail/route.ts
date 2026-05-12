@@ -6,7 +6,7 @@ import {
   getURLPerformanceHistory, 
   getKeywordRankingHistory,
   getKeywordMap 
-} from '@/lib/airtable';
+} from '@/lib/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 

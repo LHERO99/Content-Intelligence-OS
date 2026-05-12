@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getKeywordMap } from '@/lib/airtable';
+import { getKeywordMap } from '@/lib/postgres';
 
 /**
  * GET /api/admin/sync/urls

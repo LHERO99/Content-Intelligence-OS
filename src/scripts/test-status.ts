@@ -1,4 +1,4 @@
-import { getKeywordMap } from '@/lib/airtable';
+import { getKeywordMap } from '@/lib/postgres';
 
 async function test() {
   try {

@@ -25,6 +25,22 @@ export * from './airtable-types';
 export const airtable = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY ?? '' });
 export const base = airtable.base(process.env.AIRTABLE_BASE_ID ?? '');
 
+// ---------------------------------------------------------------------------
+// Config-Cache
+// getConfig() is called on every agent step (loadStore) and for every API-key
+// lookup. A short-lived in-process cache eliminates the redundant Airtable
+// reads without staling user-facing config changes for more than 30 seconds.
+// updateConfig() always invalidates the cache immediately.
+// ---------------------------------------------------------------------------
+const CONFIG_CACHE_TTL_MS = 30_000;
+let _configCache: Record<string, string> | null = null;
+let _configCacheAt = 0;
+
+export function invalidateConfigCache(): void {
+  _configCache = null;
+  _configCacheAt = 0;
+}
+
 
 // --- Table Names ---
 export const TABLES = {
@@ -1079,83 +1095,165 @@ export async function bulkCreateKeywords(keywords: Partial<KeywordMap>[]): Promi
   try {
     const createdRecords: KeywordMap[] = [];
     const skippedRecords: SkippedKeyword[] = [];
+
+    if (keywords.length === 0) return { created: createdRecords, skipped: skippedRecords };
+
+    // ── 1. Batch-Lookup: fetch all existing records for the relevant URLs in one pass
+    //       instead of one Airtable call per keyword (N+1 → O(urls/50) calls).
+    const uniqueUrls = Array.from(new Set(keywords.map(kw => kw.Target_URL).filter(Boolean))) as string[];
+    const LOOKUP_CHUNK = 50;
+
+    // existingSet: "keyword_lower|url_lower" → true  (duplicate detection)
+    // mainKeywordByUrl: url_lower → true  (Main_Keyword = 'Y' already exists for that URL)
+    // mainKeywordGlobal: keyword_lower → true  (keyword is already a Main Keyword somewhere)
+    const existingSet = new Set<string>();
+    const mainKeywordByUrl = new Set<string>();
+    const mainKeywordGlobal = new Set<string>();
+
+    for (let i = 0; i < uniqueUrls.length; i += LOOKUP_CHUNK) {
+      const slice = uniqueUrls.slice(i, i + LOOKUP_CHUNK);
+      const urlClauses = slice.map(url => `{Target_URL} = '${url.replace(/'/g, "\\'")}'`);
+      const formula = urlClauses.length === 1 ? urlClauses[0] : `OR(${urlClauses.join(',')})`;
+      const existing = await base(TABLES.KEYWORD_MAP).select({
+        filterByFormula: formula,
+        fields: ['Keyword', 'Target_URL', 'Main_Keyword'],
+      }).all();
+
+      existing.forEach(record => {
+        const kw = (record.get('Keyword') as string)?.toLowerCase();
+        const url = (record.get('Target_URL') as string)?.toLowerCase();
+        const isMain = record.get('Main_Keyword') === 'Y';
+
+        if (kw && url) existingSet.add(`${kw}|${url}`);
+        if (isMain && url) mainKeywordByUrl.add(url);
+        if (isMain && kw) mainKeywordGlobal.add(kw);
+      });
+    }
+
+    // ── 2. Validate each keyword against the in-memory sets ──────────────────
     const validKeywords: Partial<KeywordMap>[] = [];
+
     for (const kw of keywords) {
-      if (kw.Target_URL && kw.Keyword) {
-        const existingKeywordUrl = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}')`, maxRecords: 1 }).firstPage();
-        if (existingKeywordUrl.length > 0) {
-          skippedRecords.push({ ...kw, reason: `Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.` });
+      if (!kw.Keyword || !kw.Target_URL) {
+        skippedRecords.push({ ...kw, reason: 'Keyword und Target_URL sind Pflichtfelder.' });
+        continue;
+      }
+
+      const kwLower = kw.Keyword.toLowerCase();
+      const urlLower = kw.Target_URL.toLowerCase();
+
+      if (existingSet.has(`${kwLower}|${urlLower}`)) {
+        skippedRecords.push({ ...kw, reason: `Die Kombination aus Keyword "${kw.Keyword}" und URL "${kw.Target_URL}" existiert bereits.` });
+        continue;
+      }
+
+      if (kw.Main_Keyword === 'Y') {
+        if (mainKeywordByUrl.has(urlLower)) {
+          skippedRecords.push({ ...kw, reason: `Die URL ${kw.Target_URL} hat bereits ein Main Keyword.` });
           continue;
         }
+        if (mainKeywordGlobal.has(kwLower)) {
+          skippedRecords.push({ ...kw, reason: `Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.` });
+          continue;
+        }
+        // Claim this slot so subsequent keywords in the same batch don't conflict
+        mainKeywordByUrl.add(urlLower);
+        mainKeywordGlobal.add(kwLower);
       }
+
+      // Mark as seen so later entries in the same import batch are deduplicated
+      existingSet.add(`${kwLower}|${urlLower}`);
       validKeywords.push(kw);
     }
-    const chunks = [];
-    for (let i = 0; i < validKeywords.length; i += 10) chunks.push(validKeywords.slice(i, i + 10));
-    for (const chunk of chunks) {
-      const currentChunkValid: Partial<KeywordMap>[] = [];
-      for (const kw of chunk) {
-        try {
-          if (kw.Target_URL && kw.Main_Keyword === 'Y') {
-            const existingMainKeywords = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Target_URL} = '${kw.Target_URL}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-            if (existingMainKeywords.length > 0) throw new AirtableValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
-          }
-          if (kw.Keyword && kw.Main_Keyword === 'Y') {
-            const existingGlobalMain = await base(TABLES.KEYWORD_MAP).select({ filterByFormula: `AND({Keyword} = '${kw.Keyword.replace(/'/g, "\\'")}', {Main_Keyword} = 'Y')`, maxRecords: 1 }).firstPage();
-            if (existingGlobalMain.length > 0) throw new AirtableValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
-          }
-          currentChunkValid.push(kw);
-        } catch (error: any) {
-          skippedRecords.push({ ...kw, reason: error.message || 'Unbekannter Validierungsfehler' });
-        }
-      }
-      if (currentChunkValid.length === 0) continue;
+
+    // ── 3. Batch-create (10 per call) ─────────────────────────────────────────
+    for (let i = 0; i < validKeywords.length; i += 10) {
+      const chunk = validKeywords.slice(i, i + 10);
       try {
-        const records = await base(TABLES.KEYWORD_MAP).create(currentChunkValid.map((kw) => ({ 
-          fields: { 
-            Keyword: kw.Keyword, 
-            Target_URL: kw.Target_URL, 
-            Search_Volume: kw.Search_Volume, 
-            Difficulty: kw.Difficulty, 
-            Status: kw.Status || 'Backlog', 
-            Editorial_Deadline: kw.Editorial_Deadline, 
-            Assigned_Editor: kw.Assigned_Editor, 
-            Main_Keyword: kw.Main_Keyword || 'N', 
-            Article_Count: kw.Article_Count, 
-            Avg_Product_Value: kw.Avg_Product_Value, 
+        const records = await base(TABLES.KEYWORD_MAP).create(chunk.map((kw) => ({
+          fields: {
+            Keyword: kw.Keyword,
+            Target_URL: kw.Target_URL,
+            Search_Volume: kw.Search_Volume,
+            Difficulty: kw.Difficulty,
+            Status: kw.Status || 'Backlog',
+            Editorial_Deadline: kw.Editorial_Deadline,
+            Assigned_Editor: kw.Assigned_Editor,
+            Main_Keyword: kw.Main_Keyword || 'N',
+            Article_Count: kw.Article_Count,
+            Avg_Product_Value: kw.Avg_Product_Value,
             Action_Type: kw.Action_Type || 'Erstellung',
-            Page_Type: kw.Page_Type 
-          } 
+            Page_Type: kw.Page_Type,
+          },
         })));
         records.forEach((record) => {
-          createdRecords.push({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Policy: record.get('Policy') as number, Priority_Score: record.get('Priority_Score') as number, Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung', Page_Type: record.get('Page_Type') as any, Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string });
+          createdRecords.push({
+            id: record.id,
+            Keyword: record.get('Keyword') as string,
+            Target_URL: record.get('Target_URL') as string,
+            Search_Volume: record.get('Search_Volume') as number,
+            Difficulty: record.get('Difficulty') as number,
+            Status: record.get('Status') as KeywordStatus,
+            Editorial_Deadline: record.get('Editorial_Deadline') as string,
+            Assigned_Editor: record.get('Assigned_Editor') as string[],
+            Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+            Article_Count: record.get('Article_Count') as number,
+            Avg_Product_Value: record.get('Avg_Product_Value') as number,
+            Policy: record.get('Policy') as number,
+            Priority_Score: record.get('Priority_Score') as number,
+            Action_Type: (record.get('Action_Type') as 'Erstellung' | 'Optimierung') || 'Erstellung',
+            Page_Type: record.get('Page_Type') as any,
+            Ranking: record.get('Ranking') as number,
+            Last_Published: record.get('Last_Published') as string,
+          });
         });
       } catch (error: any) {
         if (error.statusCode === 422 && error.message?.includes('Action_Type')) {
-          const retryRecords = await base(TABLES.KEYWORD_MAP).create(currentChunkValid.map((kw) => ({ 
-            fields: { 
-              Keyword: kw.Keyword, 
-              Target_URL: kw.Target_URL, 
-              Search_Volume: kw.Search_Volume, 
-              Difficulty: kw.Difficulty, 
-              Status: kw.Status || 'Backlog', 
-              Editorial_Deadline: kw.Editorial_Deadline, 
-              Assigned_Editor: kw.Assigned_Editor, 
-              Main_Keyword: kw.Main_Keyword || 'N', 
-              Article_Count: kw.Article_Count, 
+          // Retry without Action_Type if the field is not yet set up in Airtable
+          const retryRecords = await base(TABLES.KEYWORD_MAP).create(chunk.map((kw) => ({
+            fields: {
+              Keyword: kw.Keyword,
+              Target_URL: kw.Target_URL,
+              Search_Volume: kw.Search_Volume,
+              Difficulty: kw.Difficulty,
+              Status: kw.Status || 'Backlog',
+              Editorial_Deadline: kw.Editorial_Deadline,
+              Assigned_Editor: kw.Assigned_Editor,
+              Main_Keyword: kw.Main_Keyword || 'N',
+              Article_Count: kw.Article_Count,
               Avg_Product_Value: kw.Avg_Product_Value,
-              Page_Type: kw.Page_Type
-            } 
+              Page_Type: kw.Page_Type,
+            },
           })));
           retryRecords.forEach((record) => {
-            createdRecords.push({ id: record.id, Keyword: record.get('Keyword') as string, Target_URL: record.get('Target_URL') as string, Search_Volume: record.get('Search_Volume') as number, Difficulty: record.get('Difficulty') as number, Status: record.get('Status') as KeywordStatus, Editorial_Deadline: record.get('Editorial_Deadline') as string, Assigned_Editor: record.get('Assigned_Editor') as string[], Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N', Article_Count: record.get('Article_Count') as number, Avg_Product_Value: record.get('Avg_Product_Value') as number, Action_Type: 'Erstellung', Page_Type: record.get('Page_Type') as any, Ranking: record.get('Ranking') as number, Last_Published: record.get('Last_Published') as string });
+            createdRecords.push({
+              id: record.id,
+              Keyword: record.get('Keyword') as string,
+              Target_URL: record.get('Target_URL') as string,
+              Search_Volume: record.get('Search_Volume') as number,
+              Difficulty: record.get('Difficulty') as number,
+              Status: record.get('Status') as KeywordStatus,
+              Editorial_Deadline: record.get('Editorial_Deadline') as string,
+              Assigned_Editor: record.get('Assigned_Editor') as string[],
+              Main_Keyword: (record.get('Main_Keyword') as 'Y' | 'N') || 'N',
+              Article_Count: record.get('Article_Count') as number,
+              Avg_Product_Value: record.get('Avg_Product_Value') as number,
+              Action_Type: 'Erstellung',
+              Page_Type: record.get('Page_Type') as any,
+              Ranking: record.get('Ranking') as number,
+              Last_Published: record.get('Last_Published') as string,
+            });
           });
-        } else throw error;
+        } else {
+          // Mark the whole chunk as skipped on unexpected errors
+          chunk.forEach(kw => skippedRecords.push({ ...kw, reason: error.message || 'Unbekannter Fehler beim Erstellen' }));
+        }
       }
     }
+
     return { created: createdRecords, skipped: skippedRecords };
   } catch (error) {
-    return handleAirtableError(error,'bulkCreateKeywords');
+    return handleAirtableError(error, 'bulkCreateKeywords');
   }
 }
 
@@ -1237,6 +1335,11 @@ export async function updateKeyword(id: string, kw: Partial<KeywordMap>): Promis
 }
 
 export async function getConfig(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (_configCache && now - _configCacheAt < CONFIG_CACHE_TTL_MS) {
+    return _configCache;
+  }
+
   try {
     const records = await base(TABLES.CONFIG).select().all();
     const config: Record<string, string> = {};
@@ -1253,6 +1356,9 @@ export async function getConfig(): Promise<Record<string, string>> {
         }
       }
     });
+
+    _configCache = config;
+    _configCacheAt = now;
     return config;
   } catch (error) {
     return handleAirtableError(error, 'getConfig');
@@ -1276,35 +1382,42 @@ export async function updateConfig(key: string, value: string, fileUrl?: string)
       fields.Value = value;
     }
 
+    let result: ConfigRecord | null = null;
+
     if (records.length === 0) {
       console.log(`[Airtable] Creating new config record for key: ${key}`);
       const newRecords = await base(TABLES.CONFIG).create([{
         fields: { Key: key, ...fields }
       }]);
       const record = newRecords[0];
-      return {
+      result = {
         id: record.id,
         Key: record.get('Key') as string,
         Value: record.get('Value') as string,
         Description: record.get('Description') as string,
         File: record.get('File') as any[],
       };
+    } else {
+      const recordId = records[0].id;
+      const updatedRecords = await base(TABLES.CONFIG).update([{
+        id: recordId,
+        fields
+      }]);
+
+      const updatedRecord = updatedRecords[0];
+      result = {
+        id: updatedRecord.id,
+        Key: updatedRecord.get('Key') as string,
+        Value: updatedRecord.get('Value') as string,
+        Description: updatedRecord.get('Description') as string,
+        File: updatedRecord.get('File') as any[],
+      };
     }
 
-    const recordId = records[0].id;
-    const updatedRecords = await base(TABLES.CONFIG).update([{
-      id: recordId,
-      fields
-    }]);
+    // Invalidate cache so the next read reflects the new value immediately.
+    invalidateConfigCache();
 
-    const updatedRecord = updatedRecords[0];
-    return {
-      id: updatedRecord.id,
-      Key: updatedRecord.get('Key') as string,
-      Value: updatedRecord.get('Value') as string,
-      Description: updatedRecord.get('Description') as string,
-      File: updatedRecord.get('File') as any[],
-    };
+    return result;
   } catch (error) {
     return handleAirtableError(error, 'updateConfig');
   }

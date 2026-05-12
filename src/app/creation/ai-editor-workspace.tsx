@@ -23,7 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { KeywordStatus } from '@/lib/airtable-types';
+import { KeywordStatus } from '@/lib/postgres-types';
 import { useI18n } from '@/i18n/use-i18n';
 
 import { PlanningService } from "@/features/planning/services/planning-service";

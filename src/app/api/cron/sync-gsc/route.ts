@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncGscChunk } from '@/lib/sync-performance';
-import { createAuditLog } from '@/lib/airtable';
+import { createAuditLog } from '@/lib/postgres';
 
 /**
  * GET /api/cron/sync-gsc

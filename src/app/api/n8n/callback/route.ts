@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig } from '@/lib/airtable';
+import { createContentLog, updateKeyword, getConfig } from '@/lib/postgres';
 
 /**
  * Endpoint for n8n or external agent callbacks to return generated content.

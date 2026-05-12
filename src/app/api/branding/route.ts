@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getConfig } from '@/lib/airtable';
+import { getConfig } from '@/lib/postgres';
 import { normalizeHexColor } from '@/lib/branding';
 
 export async function GET() {

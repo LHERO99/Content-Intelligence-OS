@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getCostConfigs, createCostConfig } from '@/lib/airtable';
+import { getCostConfigs, createCostConfig } from '@/lib/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 

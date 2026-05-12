@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createContentLog, getKeywordMap, updateKeyword } from '@/lib/airtable';
+import { createContentLog, getKeywordMap, updateKeyword } from '@/lib/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 

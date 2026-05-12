@@ -105,8 +105,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    // Poll for updates every 30 seconds
-    const interval = setInterval(() => fetchData(true), 30000);
+    // Poll for updates every 5 minutes. Performance data and trends are updated
+    // by cron jobs at most once a day; polling at 30 s was hitting Airtable
+    // rate limits without any practical benefit.
+    const interval = setInterval(() => fetchData(true), 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

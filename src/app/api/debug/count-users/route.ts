@@ -1,4 +1,4 @@
-import { countUsers } from '@/lib/airtable';
+import { countUsers } from '@/lib/postgres';
 import { NextResponse } from 'next/server';
 
 export async function GET() {

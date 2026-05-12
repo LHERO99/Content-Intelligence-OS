@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { upsertPerformanceData, upsertURLPerformance, upsertKeywordRankingHistory } from '@/lib/airtable';
+import { upsertPerformanceData, upsertURLPerformance, upsertKeywordRankingHistory } from '@/lib/postgres';
 
 /**
  * API Route for n8n to import performance data and keyword rankings.

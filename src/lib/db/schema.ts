@@ -1,0 +1,229 @@
+import {
+  pgTable,
+  text,
+  integer,
+  numeric,
+  boolean,
+  date,
+  timestamp,
+  serial,
+  jsonb,
+  uniqueIndex,
+  index,
+  primaryKey,
+} from 'drizzle-orm/pg-core';
+
+// ---------------------------------------------------------------------------
+// tenants
+// ---------------------------------------------------------------------------
+export const tenants = pgTable('tenants', {
+  id:        text('id').primaryKey(),
+  name:      text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// users
+// ---------------------------------------------------------------------------
+export const users = pgTable(
+  'users',
+  {
+    id:              text('id').primaryKey(),
+    tenantId:        text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    name:            text('name'),
+    email:           text('email').notNull(),
+    role:            text('role').$type<'Admin' | 'Editor' | 'Viewer'>().notNull().default('Editor'),
+    password:        text('password'),
+    passwordChanged: boolean('password_changed').default(false),
+  },
+  (t) => ({
+    emailTenantUnique: uniqueIndex('users_email_tenant_idx').on(t.email, t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// keyword_map
+// ---------------------------------------------------------------------------
+export const keywordMap = pgTable(
+  'keyword_map',
+  {
+    id:               text('id').primaryKey(),
+    tenantId:         text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    keyword:          text('keyword').notNull(),
+    targetUrl:        text('target_url').notNull(),
+    searchVolume:     integer('search_volume'),
+    difficulty:       integer('difficulty'),
+    status:           text('status')
+      .$type<'Backlog' | 'Planned' | 'Beauftragt' | 'In Arbeit' | 'Angeliefert' | 'Review' | 'Optimierung' | 'Published'>()
+      .notNull()
+      .default('Backlog'),
+    editorialDeadline: date('editorial_deadline'),
+    mainKeyword:      text('main_keyword').$type<'Y' | 'N'>().notNull().default('N'),
+    articleCount:     integer('article_count'),
+    avgProductValue:  numeric('avg_product_value'),
+    policy:           numeric('policy'),
+    priorityScore:    numeric('priority_score'),
+    ranking:          integer('ranking'),
+    actionType:       text('action_type').$type<'Erstellung' | 'Optimierung'>().default('Erstellung'),
+    pageType:         text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>(),
+    lastPublished:    date('last_published'),
+  },
+  (t) => ({
+    keywordUrlUnique: uniqueIndex('keyword_map_keyword_url_tenant_idx').on(t.keyword, t.targetUrl, t.tenantId),
+    tenantIdx:        index('keyword_map_tenant_idx').on(t.tenantId),
+    urlIdx:           index('keyword_map_url_idx').on(t.targetUrl),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// keyword_map_editors  (Junction: keyword_map <-> users)
+// ---------------------------------------------------------------------------
+export const keywordMapEditors = pgTable(
+  'keyword_map_editors',
+  {
+    keywordId: text('keyword_id').notNull().references(() => keywordMap.id, { onDelete: 'cascade' }),
+    userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.keywordId, t.userId] }),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// content_log
+// ---------------------------------------------------------------------------
+export const contentLog = pgTable(
+  'content_log',
+  {
+    id:          serial('id').primaryKey(),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    keywordId:   text('keyword_id').references(() => keywordMap.id, { onDelete: 'set null' }),
+    loggedUrl:   text('logged_url'),
+    actionType:  text('action_type').$type<'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat'>(),
+    pageType:    text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>(),
+    contentBody: text('content_body'),
+    diffSummary: text('diff_summary'),
+    editorId:    text('editor_id').references(() => users.id, { onDelete: 'set null' }),
+    timeCreated: timestamp('time_created', { withTimezone: true }).defaultNow().notNull(),
+    timeChanged: timestamp('time_changed', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:  index('content_log_tenant_idx').on(t.tenantId),
+    urlIdx:     index('content_log_logged_url_idx').on(t.loggedUrl),
+    kwIdx:      index('content_log_keyword_idx').on(t.keywordId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// url_performance
+// ---------------------------------------------------------------------------
+export const urlPerformance = pgTable(
+  'url_performance',
+  {
+    id:             serial('id').primaryKey(),
+    tenantId:       text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    targetUrl:      text('target_url').notNull(),
+    date:           date('date').notNull(),
+    gscClicks:      integer('gsc_clicks'),
+    gscImpressions: integer('gsc_impressions'),
+    position:       numeric('position'),
+    sistrixVi:      numeric('sistrix_vi'),
+  },
+  (t) => ({
+    urlDateUnique: uniqueIndex('url_performance_url_date_tenant_idx').on(t.targetUrl, t.date, t.tenantId),
+    tenantIdx:     index('url_performance_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// keyword_ranking_history
+// ---------------------------------------------------------------------------
+export const keywordRankingHistory = pgTable(
+  'keyword_ranking_history',
+  {
+    id:        serial('id').primaryKey(),
+    tenantId:  text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    keywordId: text('keyword_id').notNull().references(() => keywordMap.id, { onDelete: 'cascade' }),
+    date:      date('date').notNull(),
+    ranking:   integer('ranking'),
+  },
+  (t) => ({
+    kwDateUnique: uniqueIndex('keyword_ranking_kw_date_tenant_idx').on(t.keywordId, t.date, t.tenantId),
+    tenantIdx:    index('keyword_ranking_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// blacklist
+// ---------------------------------------------------------------------------
+export const blacklist = pgTable(
+  'blacklist',
+  {
+    id:        serial('id').primaryKey(),
+    tenantId:  text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    keyword:   text('keyword'),
+    targetUrl: text('target_url'),
+    type:      text('type').$type<'Keyword' | 'URL'>().notNull(),
+    reason:    text('reason'),
+    addedAt:   timestamp('added_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('blacklist_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// cost_config
+// ---------------------------------------------------------------------------
+export const costConfig = pgTable(
+  'cost_config',
+  {
+    id:           serial('id').primaryKey(),
+    tenantId:     text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    pageType:     text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>().notNull(),
+    actionType:   text('action_type').$type<'Erstellung' | 'Optimierung'>().notNull(),
+    agencyCost:   numeric('agency_cost').notNull().default('0'),
+    overheadCost: numeric('overhead_cost').notNull().default('0'),
+  },
+  (t) => ({
+    tenantIdx: index('cost_config_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// config  (Key-Value store, replaces Airtable Config table)
+// ---------------------------------------------------------------------------
+export const config = pgTable(
+  'config',
+  {
+    // composite PK: one key per tenant
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    key:         text('key').notNull(),
+    value:       text('value'),
+    description: text('description'),
+    fileUrl:     text('file_url'), // replaces Airtable attachment field
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk:        primaryKey({ columns: [t.tenantId, t.key] }),
+    tenantIdx: index('config_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// audit_logs
+// ---------------------------------------------------------------------------
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id:         serial('id').primaryKey(),
+    tenantId:   text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    action:     text('action').notNull(),
+    timestamp:  timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
+    userId:     text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    rawPayload: jsonb('raw_payload'),
+  },
+  (t) => ({
+    tenantIdx: index('audit_logs_tenant_idx').on(t.tenantId),
+  })
+);

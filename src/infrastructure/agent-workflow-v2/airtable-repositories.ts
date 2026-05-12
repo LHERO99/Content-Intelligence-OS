@@ -10,7 +10,7 @@ import {
   WorkflowV2,
 } from '@/domain/agent-workflow-v2/models';
 import { AgentModelRunnerV2, IntegrationSecretProviderV2, WorkflowRepositoryV2, WorkflowRunRepositoryV2 } from '@/application/agent-workflow-v2/ports';
-import { getConfig, updateConfig } from '@/lib/airtable';
+import { getConfig, updateConfig } from '@/lib/postgres';
 
 const WORKFLOWS_KEY = 'AGENT_WORKFLOWS_V2';
 const VERSIONS_KEY = 'AGENT_WORKFLOW_V2_VERSIONS';

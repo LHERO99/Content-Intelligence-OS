@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bulkCreateKeywords, createContentLog } from '@/lib/airtable';
+import { bulkCreateKeywords, createContentLog } from '@/lib/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { syncPerformanceForUrls } from '@/lib/sync-performance';

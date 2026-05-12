@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ContentLog } from '@/lib/airtable-types';
+import { ContentLog } from '@/lib/postgres-types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { History } from "lucide-react";
 import { ContentHistoryTable } from "../content-history-table";

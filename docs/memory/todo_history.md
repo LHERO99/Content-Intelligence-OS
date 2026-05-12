@@ -74,3 +74,19 @@
 ## Optimistisches UI: Commissioning-Button (01.05.2026)
 - [x] Fix: `setCommissionedIds` + `addAlert` vor `await triggerN8nAction(...)` verschoben (sofortiges UI-Feedback).
 - [x] Fix: Bei API-Fehler `commissionedIds.delete(id)` (optimistisches Update rückgängig machen).
+
+## Agent Builder UI-Refactoring (01.05.2026)
+- [x] Refactor: Run Controls Card + manueller Run-Button entfernt.
+- [x] Refactor: Auto-Save-Strip in Toolbar-Zeile neben Flow-Tabs verschoben.
+- [x] Refactor: Execution Panel — Tabs (Executions/Timeline/Messages) entfernt, nur Run-Liste.
+- [x] Refactor: Status-Filter in Card-Header, Actions in `...`-DropdownMenu.
+- [x] Refactor: Execution Panel in linke Sidebar integriert (Option B: festes Side-Panel).
+- [x] Refactor: Resize-Mechanismus vollständig entfernt.
+- [x] Fix: Canvas-Höhe auf `h-[calc(100vh-220px)]` für bündiges Alignment.
+- [x] Style: NodePalette + ExecutionPanel + RunCard auf App-Standard-Styling (weiße Cards, `border border-border`).
+- [x] Style: Header-Vereinheitlichung — identische Icon+Titel+Subline-Struktur für beide Karten.
+- [x] Fix: Empty States + Amber-Banner — Alpha-Transparenz entfernt (`/60` → voll opak), Kontrast auf `text-white`/`text-slate-200` erhöht.
+- [x] i18n: `toolboxTitle`, `toolboxDescription`, `executionPanel`, `executionPanelDescription` ergänzt.
+- [x] i18n: `customFlowActiveTitle/Body/Deactivate`, `customFlowDisabledTitle/Body/Agents/Reactivate` ergänzt.
+- [x] i18n: `noCustomFlowTitle/Body/Warning/Action` ergänzt.
+- [x] i18n: Alle hardcodierten deutschen Texte in Empty States und Amber-Banner ausgelagert.

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, getKeywordMap, updateConfig, updateKeyword } from '@/lib/airtable';
+import { getConfig, getKeywordMap, updateConfig, updateKeyword } from '@/lib/postgres';
 import { normalizeHexColor } from '@/lib/branding';
 import { calculatePriorityScore, resolvePrioritizationWeights } from '@/lib/prioritization-utils';
 

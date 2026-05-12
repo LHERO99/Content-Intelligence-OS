@@ -1,4 +1,4 @@
-import { getConfig, updateConfig } from '@/lib/airtable';
+import { getConfig, updateConfig } from '@/lib/postgres';
 
 export type IntegrationProvider =
   | 'sistrix'

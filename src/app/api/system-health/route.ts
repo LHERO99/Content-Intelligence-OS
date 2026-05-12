@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { base, TABLES, getConfig } from '@/lib/airtable';
+import { getConfig, getAuditLogs, getKeywordMap } from '@/lib/postgres';
 import { PROVIDERS, getIntegrationsState, getProviderConfigValues } from '@/lib/admin-integrations';
 import { testProviderConnection, testAgentWebhook } from '@/lib/integration-tests';
 import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '@/app/api/agent-workflows-v2/_service';
@@ -38,19 +38,12 @@ async function getLatestAuditLogByPrefix(
   limit = 1
 ): Promise<Array<{ action: string; timestamp: string; rawPayload?: string }>> {
   try {
-    const records = await base(TABLES.AUDIT_LOGS)
-      .select({
-        filterByFormula: `LEFT({Action}, ${prefix.length}) = "${prefix}"`,
-        sort: [{ field: 'Timestamp', direction: 'desc' }],
-        maxRecords: limit,
-      })
-      .firstPage();
-
-    return records.map((r) => ({
-      action: r.get('Action') as string,
-      timestamp: r.get('Timestamp') as string,
-      rawPayload: r.get('Raw_Payload') as string | undefined,
-    }));
+    const all = await getAuditLogs();
+    return all
+      .filter(r => r.Action.startsWith(prefix))
+      .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime())
+      .slice(0, limit)
+      .map(r => ({ action: r.Action, timestamp: r.Timestamp, rawPayload: r.Raw_Payload }));
   } catch {
     return [];
   }
@@ -64,23 +57,23 @@ function daysSince(isoTimestamp: string | undefined): number | null {
 
 // ── Individual checks ────────────────────────────────────────────────────────
 
-async function checkAirtable(): Promise<HealthCheck> {
+async function checkDatabase(): Promise<HealthCheck> {
   try {
-    await base(TABLES.USERS).select({ maxRecords: 1 }).firstPage();
+    await getConfig();
     return {
-      id: 'airtable',
-      label: 'Airtable',
+      id: 'database',
+      label: 'PostgreSQL',
       status: 'ok',
       detail: 'Connected',
-      detailKey: 'dashboard.systemHealth.airtable.ok',
+      detailKey: 'dashboard.systemHealth.database.ok',
     };
   } catch (err: any) {
     return {
-      id: 'airtable',
-      label: 'Airtable',
+      id: 'database',
+      label: 'PostgreSQL',
       status: 'error',
       detail: err.message ?? 'Connection failed',
-      detailKey: 'dashboard.systemHealth.airtable.error',
+      detailKey: 'dashboard.systemHealth.database.error',
     };
   }
 }
@@ -284,16 +277,8 @@ async function checkAgentRuns(): Promise<HealthCheck> {
 async function checkContentPipeline(): Promise<HealthCheck> {
   try {
     const activeStatuses = ['Beauftragt', 'In Arbeit'];
-
-    const records = await base(TABLES.KEYWORD_MAP)
-      .select({
-        filterByFormula: `OR(${activeStatuses.map((s) => `{Status} = "${s}"`).join(',')})`,
-        fields: ['Status'],
-        maxRecords: 500,
-      })
-      .all();
-
-    const activeCount = records.length;
+    const allKeywords = await getKeywordMap();
+    const activeCount = allKeywords.filter(k => activeStatuses.includes(k.Status)).length;
     return {
       id: 'content_pipeline',
       label: 'Content Pipeline',
@@ -325,7 +310,7 @@ export async function GET(req: NextRequest) {
     }
 
     const [
-      airtableCheck,
+      databaseCheck,
       cronGscCheck,
       cronDataforseoCheck,
       cronSistrixCheck,
@@ -333,7 +318,7 @@ export async function GET(req: NextRequest) {
       agentRunsCheck,
       contentPipelineCheck,
     ] = await Promise.all([
-      checkAirtable(),
+      checkDatabase(),
       checkCronSync('cron:sync-gsc', 'GSC Sync'),
       checkCronSync('cron:sync-dataforseo', 'DataForSEO Sync'),
       checkCronSync('cron:sync-sistrix', 'Sistrix Sync'),
@@ -343,7 +328,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const checks: HealthCheck[] = [
-      airtableCheck,
+      databaseCheck,
       cronGscCheck,
       cronSistrixCheck,
       cronDataforseoCheck,

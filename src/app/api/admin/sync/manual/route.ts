@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, getKeywordMap } from '@/lib/airtable';
+import { getConfig, getKeywordMap } from '@/lib/postgres';
 import {
   syncGscForUrls,
   syncSistrixForUrls,

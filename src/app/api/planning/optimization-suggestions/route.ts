@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, getAllContentHistory } from '@/lib/airtable';
+import { createContentLog, getAllContentHistory } from '@/lib/postgres';
 import { evaluateOptimizationSuggestions, getOptimizationRuleSettings } from '@/lib/optimization-rules';
 
 function toDateOnly(value: string): string {

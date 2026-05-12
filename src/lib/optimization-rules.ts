@@ -1,5 +1,5 @@
-import { getAllContentHistory, getConfig, getKeywordMap, getKeywordRankingHistory, getURLPerformanceHistory } from '@/lib/airtable';
-import { KeywordMap, OptimizationRuleSettings, OptimizationSuggestion } from '@/lib/airtable-types';
+import { getAllContentHistory, getConfig, getKeywordMap, getKeywordRankingHistory, getURLPerformanceHistory } from '@/lib/postgres';
+import { KeywordMap, OptimizationRuleSettings, OptimizationSuggestion } from '@/lib/postgres-types';
 
 const DEFAULT_SETTINGS: OptimizationRuleSettings = {
   AGE_DAYS: 180,
