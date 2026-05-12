@@ -11,12 +11,13 @@
  * automatically inside withTenant().
  */
 import 'server-only';
-import { eq, and, or, desc, asc, inArray, sql as drizzleSql } from 'drizzle-orm';
+import { eq, and, desc, asc, inArray, sql as drizzleSql, gte, lte, lt, notExists } from 'drizzle-orm';
 import { db, withTenant, getDefaultTenantId } from './db/index';
 import {
   keywordMap as keywordMapTable,
   keywordMapEditors,
   contentLog as contentLogTable,
+  contentLogBody as contentLogBodyTable,
   urlPerformance as urlPerformanceTable,
   keywordRankingHistory as keywordRankingHistoryTable,
   blacklist as blacklistTable,
@@ -102,7 +103,7 @@ function mapKeywordRow(row: typeof keywordMapTable.$inferSelect, editorIds: stri
   };
 }
 
-function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: string): ContentLog {
+function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: string, body?: { contentBody: string | null; diffSummary: string | null } | null): ContentLog {
   const kwIds = keywordId ? [keywordId] : (row.keywordId ? [row.keywordId] : []);
   return {
     id: String(row.id),
@@ -112,9 +113,9 @@ function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: 
     Logged_URL: row.loggedUrl ?? undefined,
     Action_Type: row.actionType as any,
     Page_Type: row.pageType as any,
-    Version: row.contentBody ? 'v2' : 'v1',
-    Content_Body: row.contentBody ?? undefined,
-    Diff_Summary: row.diffSummary ?? undefined,
+    Version: body?.contentBody ? 'v2' : 'v1',
+    Content_Body: body?.contentBody ?? undefined,
+    Diff_Summary: body?.diffSummary ?? undefined,
     Created_At: row.timeCreated.toISOString(),
     Updated_At: row.timeChanged.toISOString(),
     Editor: row.editorId ? [row.editorId] : undefined,
@@ -127,18 +128,39 @@ function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: 
 export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    // Fetch blacklist for client-side filtering
-    const bl = await tx.select().from(blacklistTable).where(eq(blacklistTable.tenantId, tenant));
-    const blacklistedKeywords = new Set(
-      bl.filter(r => r.type === 'Keyword' || !r.type).map(r => r.keyword?.toLowerCase()).filter(Boolean) as string[]
-    );
-    const blacklistedUrls = new Set(
-      bl.filter(r => r.type === 'URL').map(r => r.keyword?.toLowerCase()).filter(Boolean) as string[]
-    );
+    // Filter blacklisted keywords/URLs directly in SQL via NOT EXISTS.
+    // This avoids loading all rows into JS and then filtering client-side.
+    const rows = await tx
+      .select()
+      .from(keywordMapTable)
+      .where(
+        and(
+          eq(keywordMapTable.tenantId, tenant),
+          // Not a blacklisted keyword
+          notExists(
+            tx.select({ one: drizzleSql`1` })
+              .from(blacklistTable)
+              .where(and(
+                eq(blacklistTable.tenantId, tenant),
+                eq(blacklistTable.type, 'Keyword'),
+                drizzleSql`lower(${blacklistTable.keyword}) = lower(${keywordMapTable.keyword})`,
+              ))
+          ),
+          // Not a blacklisted URL
+          notExists(
+            tx.select({ one: drizzleSql`1` })
+              .from(blacklistTable)
+              .where(and(
+                eq(blacklistTable.tenantId, tenant),
+                eq(blacklistTable.type, 'URL'),
+                drizzleSql`lower(${blacklistTable.targetUrl}) = lower(${keywordMapTable.targetUrl})`,
+              ))
+          ),
+        )
+      )
+      .orderBy(asc(keywordMapTable.keyword));
 
-    const rows = await tx.select().from(keywordMapTable).where(eq(keywordMapTable.tenantId, tenant));
-
-    // Fetch editor assignments in bulk
+    // Bulk-fetch editor assignments in one query instead of N queries
     const kwIds = rows.map(r => r.id);
     const editorRows = kwIds.length
       ? await tx.select().from(keywordMapEditors).where(inArray(keywordMapEditors.keywordId, kwIds))
@@ -150,15 +172,7 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       editorMap.set(e.keywordId, arr);
     }
 
-    return rows
-      .filter(row => {
-        const kw = row.keyword?.toLowerCase();
-        const url = row.targetUrl?.toLowerCase();
-        if (kw && blacklistedKeywords.has(kw)) return false;
-        if (url && blacklistedUrls.has(url)) return false;
-        return true;
-      })
-      .map(row => mapKeywordRow(row, editorMap.get(row.id)));
+    return rows.map(row => mapKeywordRow(row, editorMap.get(row.id)));
   });
 }
 
@@ -458,12 +472,13 @@ export async function bulkUpdateKeywordRankings(
 export async function getContentLogs(tenantId?: string): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
+    // Metadata only — content_body lives in content_log_body and is NOT loaded here
     const rows = await tx
       .select()
       .from(contentLogTable)
       .where(eq(contentLogTable.tenantId, tenant))
       .orderBy(desc(contentLogTable.timeCreated))
-      .limit(100);
+      .limit(200);
     return rows.map(r => mapContentLogRow(r));
   });
 }
@@ -496,10 +511,39 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
   });
 }
 
+/**
+ * Loads the full content body for a single content log entry.
+ * Use this only when the full text is actually needed (e.g. detail view, export).
+ */
+export async function getContentLogBody(
+  contentLogId: number,
+  tenantId?: string
+): Promise<{ Content_Body?: string; Diff_Summary?: string } | null> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    // Verify the log belongs to this tenant first
+    const [meta] = await tx
+      .select({ id: contentLogTable.id })
+      .from(contentLogTable)
+      .where(and(eq(contentLogTable.id, contentLogId), eq(contentLogTable.tenantId, tenant)))
+      .limit(1);
+    if (!meta) return null;
+
+    const [body] = await tx
+      .select()
+      .from(contentLogBodyTable)
+      .where(eq(contentLogBodyTable.contentLogId, contentLogId))
+      .limit(1);
+    return {
+      Content_Body: body?.contentBody ?? undefined,
+      Diff_Summary: body?.diffSummary ?? undefined,
+    };
+  });
+}
+
 export async function createContentLog(log: Partial<ContentLog>, tenantId?: string): Promise<ContentLog | null> {
   const tenant = tid(tenantId);
 
-  // Accept either rec-prefixed IDs (migrated) or UUIDs
   const keywordId = log.Keyword_ID?.[0] ?? null;
   if (!keywordId) {
     console.error('[postgres createContentLog] Validation failed: Keyword_ID missing');
@@ -507,6 +551,7 @@ export async function createContentLog(log: Partial<ContentLog>, tenantId?: stri
   }
 
   return withTenant(tenant, async (tx) => {
+    // 1. Insert metadata row (lightweight)
     const [row] = await tx
       .insert(contentLogTable)
       .values({
@@ -515,40 +560,70 @@ export async function createContentLog(log: Partial<ContentLog>, tenantId?: stri
         loggedUrl: log.Logged_URL ?? log.Target_URL,
         actionType: log.Action_Type,
         pageType: log.Page_Type,
-        contentBody: log.Content_Body,
-        diffSummary: log.Diff_Summary,
         editorId: log.Editor?.[0] ?? null,
       })
       .returning();
-    return mapContentLogRow(row, keywordId);
+
+    // 2. Insert body separately only when content exists
+    let body: { contentBody: string | null; diffSummary: string | null } | null = null;
+    if (log.Content_Body || log.Diff_Summary) {
+      const [bodyRow] = await tx
+        .insert(contentLogBodyTable)
+        .values({
+          contentLogId: row.id,
+          contentBody: log.Content_Body ?? null,
+          diffSummary: log.Diff_Summary ?? null,
+        })
+        .returning();
+      body = { contentBody: bodyRow.contentBody, diffSummary: bodyRow.diffSummary };
+    }
+
+    return mapContentLogRow(row, keywordId, body);
   });
 }
 
 // ---------------------------------------------------------------------------
 // URL Performance
 // ---------------------------------------------------------------------------
-export async function getPerformanceData(tenantId?: string): Promise<PerformanceData[]> {
+
+/** ISO date string for N days ago */
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split('T')[0];
+}
+
+function mapPerformanceRow(r: typeof urlPerformanceTable.$inferSelect): PerformanceData {
+  return {
+    id: String(r.id),
+    ID: r.id,
+    Keyword_ID: [],
+    Target_URL: r.targetUrl,
+    Date: r.date,
+    Ranking: undefined,
+    GSC_Clicks: r.gscClicks ?? undefined,
+    GSC_Impressions: r.gscImpressions ?? undefined,
+    Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
+    Position: r.position ? Number(r.position) : undefined,
+    Source: 'Combined' as const,
+  };
+}
+
+export async function getPerformanceData(tenantId?: string, dayRange = 90): Promise<PerformanceData[]> {
   const tenant = tid(tenantId);
   try {
     return withTenant(tenant, async (tx) => {
+      const since = daysAgo(dayRange);
       const rows = await tx
         .select()
         .from(urlPerformanceTable)
-        .where(eq(urlPerformanceTable.tenantId, tenant))
-        .orderBy(desc(urlPerformanceTable.date));
-      return rows.map(r => ({
-        id: String(r.id),
-        ID: r.id,
-        Keyword_ID: [],
-        Target_URL: r.targetUrl,
-        Date: r.date,
-        Ranking: undefined,
-        GSC_Clicks: r.gscClicks ?? undefined,
-        GSC_Impressions: r.gscImpressions ?? undefined,
-        Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
-        Position: r.position ? Number(r.position) : undefined,
-        Source: 'Combined' as const,
-      }));
+        .where(and(
+          eq(urlPerformanceTable.tenantId, tenant),
+          gte(urlPerformanceTable.date, since),
+        ))
+        .orderBy(desc(urlPerformanceTable.date))
+        .limit(10_000);
+      return rows.map(mapPerformanceRow);
     });
   } catch (err: any) {
     console.warn('[postgres] getPerformanceData error:', err.message);
@@ -556,28 +631,21 @@ export async function getPerformanceData(tenantId?: string): Promise<Performance
   }
 }
 
-export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: string): Promise<PerformanceData[]> {
+export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: string, dayRange = 365): Promise<PerformanceData[]> {
   const tenant = tid(tenantId);
   try {
     return withTenant(tenant, async (tx) => {
+      const since = daysAgo(dayRange);
       const rows = await tx
         .select()
         .from(urlPerformanceTable)
-        .where(and(eq(urlPerformanceTable.tenantId, tenant), eq(urlPerformanceTable.targetUrl, targetUrl)))
+        .where(and(
+          eq(urlPerformanceTable.tenantId, tenant),
+          eq(urlPerformanceTable.targetUrl, targetUrl),
+          gte(urlPerformanceTable.date, since),
+        ))
         .orderBy(asc(urlPerformanceTable.date));
-      return rows.map(r => ({
-        id: String(r.id),
-        ID: r.id,
-        Keyword_ID: [],
-        Target_URL: r.targetUrl,
-        Date: r.date,
-        Ranking: undefined,
-        GSC_Clicks: r.gscClicks ?? undefined,
-        GSC_Impressions: r.gscImpressions ?? undefined,
-        Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
-        Position: r.position ? Number(r.position) : undefined,
-        Source: 'Combined' as const,
-      }));
+      return rows.map(mapPerformanceRow);
     });
   } catch (err: any) {
     console.warn('[postgres] getPerformanceDataByUrl error:', err.message);
@@ -585,13 +653,18 @@ export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: stri
   }
 }
 
-export async function getURLPerformanceHistory(targetUrl: string, tenantId?: string): Promise<URLPerformance[]> {
+export async function getURLPerformanceHistory(targetUrl: string, tenantId?: string, dayRange = 365): Promise<URLPerformance[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
+    const since = daysAgo(dayRange);
     const rows = await tx
       .select()
       .from(urlPerformanceTable)
-      .where(and(eq(urlPerformanceTable.tenantId, tenant), eq(urlPerformanceTable.targetUrl, targetUrl)))
+      .where(and(
+        eq(urlPerformanceTable.tenantId, tenant),
+        eq(urlPerformanceTable.targetUrl, targetUrl),
+        gte(urlPerformanceTable.date, since),
+      ))
       .orderBy(asc(urlPerformanceTable.date));
     return rows.map(r => ({
       id: String(r.id),
@@ -1111,11 +1184,16 @@ export async function createAuditLog(action: string, rawPayload?: Record<string,
   }
 }
 
-export async function getAuditLogs(tenantId?: string): Promise<AuditLog[]> {
+export async function getAuditLogs(tenantId?: string, limit = 500): Promise<AuditLog[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    const rows = await tx.select().from(auditLogsTable).where(eq(auditLogsTable.tenantId, tenant));
-    return rows.map((r, i) => ({
+    const rows = await tx
+      .select()
+      .from(auditLogsTable)
+      .where(eq(auditLogsTable.tenantId, tenant))
+      .orderBy(desc(auditLogsTable.timestamp))
+      .limit(limit);
+    return rows.map(r => ({
       id: String(r.id),
       ID: r.id,
       Action: r.action,
@@ -1123,6 +1201,47 @@ export async function getAuditLogs(tenantId?: string): Promise<AuditLog[]> {
       User_ID: r.userId ? [r.userId] : undefined,
       Raw_Payload: r.rawPayload ? JSON.stringify(r.rawPayload) : undefined,
     }));
+  });
+}
+
+/**
+ * Deletes audit log entries older than `retainDays` days.
+ * Safe to call from a cron job — returns the number of deleted rows.
+ */
+export async function purgeOldAuditLogs(retainDays = 180, tenantId?: string): Promise<number> {
+  const tenant = tid(tenantId);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - retainDays);
+  return withTenant(tenant, async (tx) => {
+    const result = await tx
+      .delete(auditLogsTable)
+      .where(and(
+        eq(auditLogsTable.tenantId, tenant),
+        lt(auditLogsTable.timestamp, cutoff),
+      ))
+      .returning({ id: auditLogsTable.id });
+    return result.length;
+  });
+}
+
+/**
+ * Deletes url_performance entries older than `retainDays` days.
+ * GSC data older than 1 year is typically not needed for dashboards.
+ */
+export async function purgeOldPerformanceData(retainDays = 400, tenantId?: string): Promise<number> {
+  const tenant = tid(tenantId);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - retainDays);
+  const cutoffDate = cutoff.toISOString().split('T')[0];
+  return withTenant(tenant, async (tx) => {
+    const result = await tx
+      .delete(urlPerformanceTable)
+      .where(and(
+        eq(urlPerformanceTable.tenantId, tenant),
+        lt(urlPerformanceTable.date, cutoffDate),
+      ))
+      .returning({ id: urlPerformanceTable.id });
+    return result.length;
   });
 }
 
