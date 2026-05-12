@@ -8,7 +8,7 @@ import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
-import { KeywordMap, PotentialTrend } from "@/lib/airtable-types";
+import { KeywordMap, PotentialTrend } from "@/lib/postgres-types";
 import { useI18n } from "@/i18n/use-i18n";
 
 export default function PlanningPage() {

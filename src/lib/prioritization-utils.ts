@@ -1,4 +1,4 @@
-import { KeywordMap } from "./airtable-types";
+import { KeywordMap } from "./postgres-types";
 
 export interface PrioritizationWeights {
   weight_search_volume: number;

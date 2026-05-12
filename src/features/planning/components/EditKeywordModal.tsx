@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/postgres-types";
 import { useContentHistory } from "../hooks/useContentHistory";
 import { LastActionHistory } from "../../shared/components";
 import { useI18n } from "@/i18n/use-i18n";

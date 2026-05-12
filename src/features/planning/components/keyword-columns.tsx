@@ -3,7 +3,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/postgres-types";
 import { textColumnFilterFn } from "./filter-utils";
 
 export const keywordColumns: ColumnDef<KeywordMap>[] = [

@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ContentLog } from "@/lib/airtable-types";
+import { ContentLog } from "@/lib/postgres-types";
 import { Loader2, History, ExternalLink, ArrowUpDown, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

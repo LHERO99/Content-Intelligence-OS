@@ -1,4 +1,4 @@
-import { KeywordMap, ContentLog } from "@/lib/airtable-types";
+import { KeywordMap, ContentLog } from "@/lib/postgres-types";
 
 /**
  * Service for handling planning-related API interactions.

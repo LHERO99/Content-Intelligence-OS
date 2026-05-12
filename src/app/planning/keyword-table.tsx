@@ -15,7 +15,7 @@ import {
 import { Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/postgres-types";
 import { useAlerts } from "@/components/alerts-provider";
 
 // DND Kit Imports

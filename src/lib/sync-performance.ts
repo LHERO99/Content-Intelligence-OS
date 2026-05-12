@@ -26,7 +26,7 @@ import {
   getExistingRankingDates,
   getSyncCursor,
   setSyncCursor,
-} from './airtable';
+} from './postgres';
 import {
   getAccessToken,
   querySearchAnalytics,

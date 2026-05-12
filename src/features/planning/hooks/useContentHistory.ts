@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ContentLog } from "@/lib/airtable-types";
+import { ContentLog } from "@/lib/postgres-types";
 import { PlanningService } from "../services/planning-service";
 
 export const useContentHistory = (keywordId?: string, targetUrl?: string) => {

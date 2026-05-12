@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/postgres-types";
 import { useContentHistory } from "../hooks/useContentHistory";
 import { LastActionHistory, MetricItem } from "../../shared/components";
 import { useI18n } from "@/i18n/use-i18n";

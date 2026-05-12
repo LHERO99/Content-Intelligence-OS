@@ -5,7 +5,7 @@ import {
   PerformanceData,
   PotentialTrend,
   ContentLog
-} from "@/lib/airtable-types";
+} from "@/lib/postgres-types";
 import { 
   Card, 
   CardContent, 

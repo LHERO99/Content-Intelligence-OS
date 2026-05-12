@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { createUser, getUserByEmail } from "@/lib/airtable";
+import { createUser, getUserByEmail } from "@/lib/postgres";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 

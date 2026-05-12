@@ -4,7 +4,7 @@ import { Calendar, User, ExternalLink, Zap, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/postgres-types";
 import { textColumnFilterFn } from "./filter-utils";
 
 export const editorialColumns: ColumnDef<KeywordMap>[] = [

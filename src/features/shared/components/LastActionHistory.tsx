@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Loader2, CheckCircle, Clock } from "lucide-react";
-import { ContentLog } from "@/lib/airtable-types";
+import { ContentLog } from "@/lib/postgres-types";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 

@@ -36,7 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Coins, Save, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CostConfig } from "@/lib/airtable-types";
+import { CostConfig } from "@/lib/postgres-types";
 import { useI18n } from "@/i18n/use-i18n";
 
 const PAGE_TYPES = ["Kategorie", "Ratgeber", "Marke", "Produkt"];

@@ -16,7 +16,7 @@ import { Calendar } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { triggerN8nAction } from "@/lib/n8n";
-import { KeywordMap } from "@/lib/airtable-types";
+import { KeywordMap } from "@/lib/postgres-types";
 import { useAlerts } from "@/components/alerts-provider";
 
 // DND Kit Imports

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Save, SlidersHorizontal, RefreshCw } from "lucide-react";
-import { OptimizationRuleSettings } from "@/lib/airtable-types";
+import { OptimizationRuleSettings } from "@/lib/postgres-types";
 import { useI18n } from "@/i18n/use-i18n";
 
 const DEFAULT_SETTINGS: OptimizationRuleSettings = {

@@ -20,7 +20,7 @@ import {
   ReferenceLine,
   Label
 } from 'recharts';
-import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/airtable-types";
+import { PerformanceData, ContentLog, URLPerformance, KeywordRankingHistory, KeywordMap } from "@/lib/postgres-types";
 import { Loader2, TrendingUp, TrendingDown, Clock, Coins, LayoutPanelLeft, Hash, Calendar, RotateCcw, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
