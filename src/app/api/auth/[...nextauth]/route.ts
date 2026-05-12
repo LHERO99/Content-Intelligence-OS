@@ -1,6 +1,6 @@
 import NextAuth, { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getUserByEmail, countUsers, createUser } from "@/lib/airtable";
+import { getUserByEmail, countUsers, createUser } from "@/lib/postgres";
 import bcrypt from "bcryptjs";
 
 declare module "next-auth" {
