@@ -3,20 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getKeywordMap } from '@/lib/postgres';
 
-/**
- * GET /api/admin/sync/urls
- *
- * Returns all unique Target_URLs known to the system (from the Keyword-Map table).
- * Used to populate the URL-selection list in the manual sync UI.
- */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
-    const keywords = await getKeywordMap();
+    const keywords = await getKeywordMap(tenantId);
     const urls = [
       ...new Set(
         keywords

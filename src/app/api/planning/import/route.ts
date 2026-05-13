@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const body = await req.json();
     const { keywords } = body;
@@ -18,12 +19,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid keywords data' }, { status: 400 });
     }
 
-    const result = await bulkCreateKeywords(keywords);
+    const result = await bulkCreateKeywords(keywords, tenantId);
 
     if (result.created.length > 0) {
       const loggedUrls = new Set<string>();
 
-      // Group created keywords by URL
       const keywordsByUrl: Record<string, typeof result.created> = {};
       result.created.forEach(kw => {
         if (kw.Target_URL) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
                 Target_URL: kw.Target_URL,
                 Action_Type: kw.Action_Type || 'Erstellung',
                 Diff_Summary: 'URL wurde dem Tool hinzugefügt',
-              });
+              }, tenantId);
 
               if (kw.Status === 'Backlog' && kw.Main_Keyword === 'Y') {
                 await createContentLog({
@@ -52,17 +52,16 @@ export async function POST(req: NextRequest) {
                   Target_URL: kw.Target_URL,
                   Action_Type: kw.Action_Type || 'Erstellung',
                   Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
-                });
+                }, tenantId);
               }
             }
           })
         );
 
         // 2. Trigger performance sync in background (fire & forget)
-        // Pulls 6 months of GSC data + current-week DataForSEO rankings for all new URLs.
         const uniqueUrls = Object.keys(keywordsByUrl);
         if (uniqueUrls.length > 0) {
-          syncPerformanceForUrls(uniqueUrls).catch((err) => {
+          syncPerformanceForUrls(uniqueUrls, tenantId).catch((err) => {
             console.error('[Import] Background performance sync failed:', err);
           });
         }

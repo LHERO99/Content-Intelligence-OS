@@ -9,8 +9,9 @@ export async function GET() {
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
-    const integrations = await getIntegrationsState();
+    const integrations = await getIntegrationsState(tenantId);
     return NextResponse.json({ providers: PROVIDERS, integrations });
   } catch (error: any) {
     console.error('[API] Error fetching integrations:', error);

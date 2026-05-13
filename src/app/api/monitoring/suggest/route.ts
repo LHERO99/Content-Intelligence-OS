@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const tenantId = session.user?.tenantId;
 
   const { urls } = await request.json();
 
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const keywords = await getKeywordMap();
+    const keywords = await getKeywordMap(tenantId);
     const editor = session?.user?.email ? [session.user.email] : undefined;
 
     const results = await Promise.all(
@@ -41,11 +42,11 @@ export async function POST(request: NextRequest) {
           Page_Type: keyword.Page_Type,
           Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)",
           Editor: editor,
-        });
+        }, tenantId);
 
         await updateKeyword(keyword.id, {
           Action_Type: 'Optimierung',
-        });
+        }, tenantId);
 
         return { url, logged: true, keywordId: keyword.id };
       })

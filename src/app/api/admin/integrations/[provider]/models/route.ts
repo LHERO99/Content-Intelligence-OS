@@ -13,6 +13,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ provide
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const params = await context.params;
     if (!isProvider(params.provider)) {
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ provide
 
     const searchParams = req.nextUrl.searchParams;
     const refresh = searchParams.get('refresh') === '1';
-    const models = await discoverProviderModels(params.provider, refresh);
+    const models = await discoverProviderModels(params.provider, refresh, tenantId);
     return NextResponse.json({ models });
   } catch (error: any) {
     console.error('[API] Error discovering provider models:', error);

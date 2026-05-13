@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '../../_service';
+import { createAgentWorkflowServiceV2 } from '../../_service';
 
 export async function GET(_: Request, context: { params: Promise<{ runId: string }> }) {
   try {
@@ -10,9 +10,10 @@ export async function GET(_: Request, context: { params: Promise<{ runId: string
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const params = await context.params;
     const service = createAgentWorkflowServiceV2();
-    const run = await service.getRun(DEFAULT_TENANT_ID, params.runId);
+    const run = await service.getRun(tenantId, params.runId);
 
     if (!run) {
       return NextResponse.json({ error: 'Run nicht gefunden' }, { status: 404 });
@@ -32,19 +33,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ runId
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const params = await context.params;
     const body = await request.json().catch(() => ({}));
     const action = String(body?.action || '').trim();
 
     const service = createAgentWorkflowServiceV2();
     if (action === 'cancel') {
-      const run = await service.cancelRun(DEFAULT_TENANT_ID, params.runId);
+      const run = await service.cancelRun(tenantId, params.runId);
       if (!run) return NextResponse.json({ error: 'Run nicht gefunden' }, { status: 404 });
       return NextResponse.json({ run });
     }
 
     if (action === 'restore') {
-      const run = await service.restoreRun(DEFAULT_TENANT_ID, params.runId);
+      const run = await service.restoreRun(tenantId, params.runId);
       if (!run) return NextResponse.json({ error: 'Run nicht gefunden' }, { status: 404 });
       return NextResponse.json({ run });
     }
@@ -63,9 +65,10 @@ export async function DELETE(_: Request, context: { params: Promise<{ runId: str
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const params = await context.params;
     const service = createAgentWorkflowServiceV2();
-    const run = await service.softDeleteRun(DEFAULT_TENANT_ID, params.runId);
+    const run = await service.softDeleteRun(tenantId, params.runId);
     if (!run) {
       return NextResponse.json({ error: 'Run nicht gefunden' }, { status: 404 });
     }

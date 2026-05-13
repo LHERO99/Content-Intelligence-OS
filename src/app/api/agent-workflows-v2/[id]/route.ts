@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '../_service';
+import { createAgentWorkflowServiceV2 } from '../_service';
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -10,11 +10,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const params = await context.params;
     const body = await request.json();
 
     const service = createAgentWorkflowServiceV2();
-    const workflow = await service.update(DEFAULT_TENANT_ID, params.id, {
+    const workflow = await service.update(tenantId, params.id, {
       name: body?.name,
       description: body?.description,
       state: body?.state,

@@ -274,7 +274,7 @@ export async function syncDataForSeoForKeywords(
  * Resets cursor to 0 when a full cycle is complete.
  * Called by /api/cron/sync-gsc (Vercel Cron, Monday 04:00 UTC).
  */
-export async function syncGscChunk(): Promise<ChunkSyncResult> {
+export async function syncGscChunk(tenantId?: string): Promise<ChunkSyncResult> {
   const baseResult: SyncResult = {
     urlsProcessed: 0, keywordsProcessed: 0, gscRowsUpserted: 0,
     sistrixRowsUpserted: 0, rankingRowsUpserted: 0, rankingsSkipped: 0,
@@ -283,7 +283,7 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
 
   let config: Record<string, string>;
   try {
-    config = await getConfig();
+    config = await getConfig(tenantId);
   } catch (err: any) {
     return { ...baseResult, errors: [`Config load failed: ${err.message}`], hasMore: false, nextCursor: 0, totalItems: 0 };
   }
@@ -295,15 +295,15 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
     return { ...baseResult, skippedGsc: true, errors: ['GSC skipped: GSC_REFRESH_TOKEN or GSC_SITE_URL not configured'], hasMore: false, nextCursor: 0, totalItems: 0 };
   }
 
-  const allKeywords = await getKeywordMap();
+  const allKeywords = await getKeywordMap(tenantId);
   const allUrls = [...new Set(allKeywords.map(kw => kw.Target_URL).filter((u): u is string => Boolean(u)))];
   const totalItems = allUrls.length;
 
-  const cursor = await getSyncCursor(CURSOR_KEY_GSC);
+  const cursor = await getSyncCursor(CURSOR_KEY_GSC, tenantId);
   const chunk = allUrls.slice(cursor, cursor + GSC_CHUNK_SIZE);
 
   if (chunk.length === 0) {
-    await setSyncCursor(CURSOR_KEY_GSC, 0);
+    await setSyncCursor(CURSOR_KEY_GSC, 0, tenantId);
     return { ...baseResult, hasMore: false, nextCursor: 0, totalItems };
   }
 
@@ -328,7 +328,7 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
 
   const nextCursor = cursor + chunk.length;
   const hasMore = nextCursor < totalItems;
-  await setSyncCursor(CURSOR_KEY_GSC, hasMore ? nextCursor : 0);
+  await setSyncCursor(CURSOR_KEY_GSC, hasMore ? nextCursor : 0, tenantId);
 
   return {
     ...baseResult,
@@ -348,7 +348,7 @@ export async function syncGscChunk(): Promise<ChunkSyncResult> {
  * Includes pre-flight dedup to skip already-ranked keywords for this week.
  * Called by /api/cron/sync-dataforseo (Vercel Cron, Monday 04:30 UTC).
  */
-export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
+export async function syncDataForSeoChunk(tenantId?: string): Promise<ChunkSyncResult> {
   const baseResult: SyncResult = {
     urlsProcessed: 0, keywordsProcessed: 0, gscRowsUpserted: 0,
     sistrixRowsUpserted: 0, rankingRowsUpserted: 0, rankingsSkipped: 0,
@@ -357,7 +357,7 @@ export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
 
   let config: Record<string, string>;
   try {
-    config = await getConfig();
+    config = await getConfig(tenantId);
   } catch (err: any) {
     return { ...baseResult, errors: [`Config load failed: ${err.message}`], hasMore: false, nextCursor: 0, totalItems: 0 };
   }
@@ -369,14 +369,14 @@ export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
     return { ...baseResult, skippedDataforseo: true, errors: ['DataForSEO skipped: credentials not configured'], hasMore: false, nextCursor: 0, totalItems: 0 };
   }
 
-  const allKeywords = await getKeywordMap();
+  const allKeywords = await getKeywordMap(tenantId);
   const totalItems = allKeywords.length;
 
-  const cursor = await getSyncCursor(CURSOR_KEY_DFS);
+  const cursor = await getSyncCursor(CURSOR_KEY_DFS, tenantId);
   const chunk = allKeywords.slice(cursor, cursor + DFS_CHUNK_SIZE);
 
   if (chunk.length === 0) {
-    await setSyncCursor(CURSOR_KEY_DFS, 0);
+    await setSyncCursor(CURSOR_KEY_DFS, 0, tenantId);
     return { ...baseResult, hasMore: false, nextCursor: 0, totalItems };
   }
 
@@ -385,7 +385,7 @@ export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
 
   const nextCursor = cursor + chunk.length;
   const hasMore = nextCursor < totalItems;
-  await setSyncCursor(CURSOR_KEY_DFS, hasMore ? nextCursor : 0);
+  await setSyncCursor(CURSOR_KEY_DFS, hasMore ? nextCursor : 0, tenantId);
 
   return {
     ...baseResult,
@@ -406,7 +406,7 @@ export async function syncDataForSeoChunk(): Promise<ChunkSyncResult> {
  * Always treats the URLs as first-sync (180-day GSC + 26-week Sistrix window).
  * Also syncs keywords belonging to those URLs via DataForSEO (with dedup check).
  */
-export async function syncPerformanceForUrls(targetUrls: string[]): Promise<SyncResult> {
+export async function syncPerformanceForUrls(targetUrls: string[], tenantId?: string): Promise<SyncResult> {
   const result: SyncResult = {
     urlsProcessed: 0, keywordsProcessed: 0, gscRowsUpserted: 0,
     sistrixRowsUpserted: 0, rankingRowsUpserted: 0, rankingsSkipped: 0,
@@ -417,7 +417,7 @@ export async function syncPerformanceForUrls(targetUrls: string[]): Promise<Sync
 
   let config: Record<string, string>;
   try {
-    config = await getConfig();
+    config = await getConfig(tenantId);
   } catch (err: any) {
     result.errors.push(`Config load failed: ${err.message}`);
     return result;
@@ -468,7 +468,7 @@ export async function syncPerformanceForUrls(targetUrls: string[]): Promise<Sync
   // ── DataForSEO: current-week rankings for keywords of these URLs ──────────
   if (hasDfs) {
     try {
-      const allKeywords = await getKeywordMap();
+      const allKeywords = await getKeywordMap(tenantId);
       const urlKeywords = allKeywords.filter(
         kw => kw.Target_URL && targetUrls.includes(kw.Target_URL)
       );

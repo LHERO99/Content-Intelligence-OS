@@ -4,7 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getConfig, getAuditLogs, getKeywordMap } from '@/lib/postgres';
 import { PROVIDERS, getIntegrationsState, getProviderConfigValues } from '@/lib/admin-integrations';
 import { testProviderConnection, testAgentWebhook } from '@/lib/integration-tests';
-import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '@/app/api/agent-workflows-v2/_service';
+import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 
 export type HealthStatus = 'ok' | 'warning' | 'error' | 'unknown';
 
@@ -12,11 +12,8 @@ export interface HealthCheck {
   id: string;
   label: string;
   status: HealthStatus;
-  /** Raw detail string — used directly when detailKey is absent (e.g. external API errors). */
   detail: string;
-  /** i18n key under dashboard.systemHealth.* — when present, component translates this instead of detail. */
   detailKey?: string;
-  /** Dynamic values interpolated into the translated string, e.g. { time: '…', count: 3 } */
   detailParams?: Record<string, string | number>;
   checkedAt?: string;
 }
@@ -29,16 +26,13 @@ export interface SystemHealthResponse {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Reads the most recent AuditLog entries whose Action starts with a given prefix.
- * Returns up to `limit` records sorted newest first.
- */
 async function getLatestAuditLogByPrefix(
   prefix: string,
-  limit = 1
+  limit = 1,
+  tenantId?: string
 ): Promise<Array<{ action: string; timestamp: string; rawPayload?: string }>> {
   try {
-    const all = await getAuditLogs();
+    const all = await getAuditLogs(tenantId);
     return all
       .filter(r => r.Action.startsWith(prefix))
       .sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime())
@@ -57,9 +51,9 @@ function daysSince(isoTimestamp: string | undefined): number | null {
 
 // ── Individual checks ────────────────────────────────────────────────────────
 
-async function checkDatabase(): Promise<HealthCheck> {
+async function checkDatabase(tenantId?: string): Promise<HealthCheck> {
   try {
-    await getConfig();
+    await getConfig(tenantId);
     return {
       id: 'database',
       label: 'PostgreSQL',
@@ -81,9 +75,10 @@ async function checkDatabase(): Promise<HealthCheck> {
 async function checkCronSync(
   id: 'cron:sync-gsc' | 'cron:sync-dataforseo' | 'cron:sync-sistrix',
   label: string,
+  tenantId?: string,
   staleAfterDays = 8
 ): Promise<HealthCheck> {
-  const logs = await getLatestAuditLogByPrefix(`${id}:`);
+  const logs = await getLatestAuditLogByPrefix(`${id}:`, 1, tenantId);
   const latest = logs[0];
 
   if (!latest) {
@@ -150,17 +145,14 @@ async function checkCronSync(
   };
 }
 
-async function checkIntegrations(): Promise<HealthCheck[]> {
-  // 1. Determine which providers are configured
-  const integrationStates = await getIntegrationsState();
+async function checkIntegrations(tenantId?: string): Promise<HealthCheck[]> {
+  const integrationStates = await getIntegrationsState(tenantId);
   const configuredProviders = integrationStates.filter((s) => s.configured);
 
-  // 2. Load config values for all configured providers in parallel
   const valueResults = await Promise.allSettled(
-    configuredProviders.map((s) => getProviderConfigValues(s.provider))
+    configuredProviders.map((s) => getProviderConfigValues(s.provider, tenantId))
   );
 
-  // 3. Run live connectivity tests for all configured providers in parallel
   const testResults = await Promise.allSettled(
     configuredProviders.map((s, i) => {
       const settled = valueResults[i];
@@ -169,7 +161,6 @@ async function checkIntegrations(): Promise<HealthCheck[]> {
     })
   );
 
-  // 4. Map results to HealthCheck entries (only configured providers appear)
   const checks: HealthCheck[] = configuredProviders.map((s, i) => {
     const provider = PROVIDERS.find((p) => p.id === s.provider)!;
     const result = testResults[i];
@@ -191,13 +182,12 @@ async function checkIntegrations(): Promise<HealthCheck[]> {
       label: provider.name,
       status: 'error',
       detail: errorMsg,
-      // No detailKey — raw external error message is shown directly
     };
   });
 
-  // 5. Agent Webhook — only include if a URL is configured
+  // Agent Webhook check
   try {
-    const config = await getConfig();
+    const config = await getConfig(tenantId);
     const webhookUrl = config.AGENT_WEBHOOK_URL?.trim();
 
     if (webhookUrl) {
@@ -215,18 +205,18 @@ async function checkIntegrations(): Promise<HealthCheck[]> {
       });
     }
   } catch {
-    // Config load failure is already surfaced by the Airtable check
+    // Config load failure is already surfaced by the database check
   }
 
   return checks;
 }
 
-async function checkAgentRuns(): Promise<HealthCheck> {
+async function checkAgentRuns(tenantId?: string): Promise<HealthCheck> {
   try {
     const service = createAgentWorkflowServiceV2();
-    const runs = await service.listRuns(DEFAULT_TENANT_ID, 100);
+    const runs = await service.listRuns(tenantId ?? '', 100);
 
-    const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+    const STALE_THRESHOLD_MS = 30 * 60 * 1000;
     const staleRuns = runs.filter(
       (r) =>
         r.status === 'running' &&
@@ -274,10 +264,10 @@ async function checkAgentRuns(): Promise<HealthCheck> {
   }
 }
 
-async function checkContentPipeline(): Promise<HealthCheck> {
+async function checkContentPipeline(tenantId?: string): Promise<HealthCheck> {
   try {
     const activeStatuses = ['Beauftragt', 'In Arbeit'];
-    const allKeywords = await getKeywordMap();
+    const allKeywords = await getKeywordMap(tenantId);
     const activeCount = allKeywords.filter(k => activeStatuses.includes(k.Status)).length;
     return {
       id: 'content_pipeline',
@@ -308,6 +298,7 @@ export async function GET(req: NextRequest) {
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
+    const tenantId = session.user?.tenantId;
 
     const [
       databaseCheck,
@@ -318,13 +309,13 @@ export async function GET(req: NextRequest) {
       agentRunsCheck,
       contentPipelineCheck,
     ] = await Promise.all([
-      checkDatabase(),
-      checkCronSync('cron:sync-gsc', 'GSC Sync'),
-      checkCronSync('cron:sync-dataforseo', 'DataForSEO Sync'),
-      checkCronSync('cron:sync-sistrix', 'Sistrix Sync'),
-      checkIntegrations(),
-      checkAgentRuns(),
-      checkContentPipeline(),
+      checkDatabase(tenantId),
+      checkCronSync('cron:sync-gsc', 'GSC Sync', tenantId),
+      checkCronSync('cron:sync-dataforseo', 'DataForSEO Sync', tenantId),
+      checkCronSync('cron:sync-sistrix', 'Sistrix Sync', tenantId),
+      checkIntegrations(tenantId),
+      checkAgentRuns(tenantId),
+      checkContentPipeline(tenantId),
     ]);
 
     const checks: HealthCheck[] = [

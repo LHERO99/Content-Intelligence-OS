@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getConfig } from '@/lib/postgres';
-import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from './_service';
+import { createAgentWorkflowServiceV2 } from './_service';
 
 export async function GET() {
   try {
@@ -10,11 +10,12 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const service = createAgentWorkflowServiceV2();
     const [workflows, config] = await Promise.all([
-      service.list(DEFAULT_TENANT_ID),
-      getConfig(),
+      service.list(tenantId),
+      getConfig(tenantId),
     ]);
     const customFlowEnabled = config.CUSTOM_FLOW_ENABLED === 'true';
     return NextResponse.json({ workflows, customFlowEnabled });
@@ -30,11 +31,12 @@ export async function POST(request: NextRequest) {
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const body = await request.json();
     const service = createAgentWorkflowServiceV2();
     const workflow = await service.create({
-      tenantId: DEFAULT_TENANT_ID,
+      tenantId,
       name: String(body?.name || 'Neuer Workflow V2'),
       description: body?.description ? String(body.description) : undefined,
       mode: body?.mode === 'default' ? 'default' : 'custom',

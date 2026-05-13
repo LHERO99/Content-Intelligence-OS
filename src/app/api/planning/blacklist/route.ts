@@ -14,7 +14,10 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET() {
   try {
-    const blacklist = await getBlacklist();
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+    const blacklist = await getBlacklist(tenantId);
     return NextResponse.json(blacklist);
   } catch (error: any) {
     console.error('[API] Error fetching blacklist:', error);
@@ -28,6 +31,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const body = await request.json();
     const { Keyword, Reason, Type, keywordId, keywordIds } = body;
 
@@ -44,20 +50,20 @@ export async function POST(request: Request) {
       for (const kw of keywords) {
         const blacklistEntry = await addToBlacklist({
           Keyword: Type === 'URL' ? kw.Target_URL : kw.Keyword,
-          Target_URL: Type === 'URL' ? kw.Target_URL : undefined, // Only preserve Target_URL if type is URL
+          Target_URL: Type === 'URL' ? kw.Target_URL : undefined,
           Type: Type || 'Keyword',
           Reason,
-        });
+        }, tenantId);
 
         if (blacklistEntry && kw.Target_URL) {
           try {
             await createContentLog({
               Keyword_ID: [kw.id],
-            Logged_URL: kw.Target_URL, // Pass Target_URL to Logged_URL
-            Action_Type: kw.Action_Type || 'Optimierung',
-            Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
-            Editor: session?.user?.email ? [session.user.email] : undefined
-          });
+              Logged_URL: kw.Target_URL,
+              Action_Type: kw.Action_Type || 'Optimierung',
+              Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
+              Editor: session?.user?.email ? [session.user.email] : undefined
+            }, tenantId);
           } catch (logErr) {
             console.error('[API Blacklist] Error creating bulk log:', logErr);
           }
@@ -65,7 +71,7 @@ export async function POST(request: Request) {
       }
 
       const idsToDelete = keywords.map((k: any) => k.id);
-      await bulkDeleteKeywords(idsToDelete);
+      await bulkDeleteKeywords(idsToDelete, tenantId);
 
       return NextResponse.json({ success: true, movedCount: keywords.length });
     }
@@ -75,10 +81,10 @@ export async function POST(request: Request) {
       const targetUrl = body.Target_URL;
       const result = await addToBlacklist({
         Keyword: Type === 'URL' ? targetUrl : Keyword,
-        Target_URL: Type === 'URL' ? targetUrl : undefined, // Only preserve Target_URL if type is URL
+        Target_URL: Type === 'URL' ? targetUrl : undefined,
         Type: Type || 'Keyword',
         Reason,
-      });
+      }, tenantId);
 
       if (!result) {
         return NextResponse.json(
@@ -87,26 +93,25 @@ export async function POST(request: Request) {
         );
       }
 
-      // Log to history if we have a Target_URL
       if (targetUrl) {
         try {
           await createContentLog({
             Keyword_ID: [keywordId],
-            Logged_URL: targetUrl, // Pass targetUrl to Logged_URL
+            Logged_URL: targetUrl,
             Action_Type: body.Action_Type || 'Optimierung',
             Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
             Editor: session?.user?.email ? [session.user.email] : undefined
-          });
+          }, tenantId);
         } catch (logErr) {
           console.error('[API Blacklist] Error creating single log:', logErr);
         }
       }
 
-      await deleteKeyword(keywordId);
+      await deleteKeyword(keywordId, tenantId);
       return NextResponse.json(result);
     }
 
-    // Case 3: Direct add to Blacklist (existing logic)
+    // Case 3: Direct add to Blacklist
     if (!Keyword || !Reason) {
       return NextResponse.json(
         { error: 'Keyword und Reason sind Pflichtfelder.' },
@@ -118,7 +123,7 @@ export async function POST(request: Request) {
       Keyword,
       Type: Type || 'Keyword',
       Reason,
-    });
+    }, tenantId);
 
     if (!result) {
       return NextResponse.json(
@@ -139,6 +144,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const body = await request.json();
     const { id, ...updates } = body;
 
@@ -149,7 +158,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const result = await updateBlacklist(id, updates);
+    const result = await updateBlacklist(id, updates, tenantId);
 
     if (!result) {
       return NextResponse.json(
@@ -170,13 +179,17 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const idsParam = searchParams.get('ids');
 
     if (idsParam) {
       const ids = idsParam.split(',');
-      await bulkDeleteFromBlacklist(ids);
+      await bulkDeleteFromBlacklist(ids, tenantId);
       return NextResponse.json({ success: true });
     }
 
@@ -187,7 +200,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteFromBlacklist(id);
+    await deleteFromBlacklist(id, tenantId);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[API] Error deleting from blacklist:', error);

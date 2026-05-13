@@ -19,6 +19,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ provi
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const params = await context.params;
     if (!isProvider(params.provider)) {
@@ -27,7 +28,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ provi
 
     const body = await req.json();
     const values = (body?.values || {}) as Record<string, string>;
-    await saveIntegrationValues(params.provider, values);
+    await saveIntegrationValues(params.provider, values, tenantId);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -42,13 +43,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ provid
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const params = await context.params;
     if (!isProvider(params.provider)) {
       return NextResponse.json({ error: 'Provider not supported' }, { status: 400 });
     }
 
-    const storedValues = await getProviderConfigValues(params.provider);
+    const storedValues = await getProviderConfigValues(params.provider, tenantId);
     await testProviderConnection(params.provider, storedValues);
 
     return NextResponse.json({ success: true, message: 'Verbindung erfolgreich getestet.' });

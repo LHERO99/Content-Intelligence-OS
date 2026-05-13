@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncDataForSeoChunk } from '@/lib/sync-performance';
+import { getAllTenants } from '@/lib/postgres';
 
-/**
- * GET /api/cron/sync-dataforseo
- *
- * Vercel Cron endpoint — runs every Monday at 04:30 UTC (30 min after sync-gsc).
- * Processes the next DFS_CHUNK_SIZE keywords from the cursor stored in Airtable Config.
- * Includes a pre-flight dedup check: keywords that already have a ranking record for
- * the current week are skipped without calling the DataForSEO API (saves credits).
- *
- * Chunk size (default 300 keywords):
- *   - Vercel Hobby (60s limit): 300 keywords ≈ 3 DataForSEO batches + Airtable writes
- *   - Vercel Pro  (300s limit): increase DFS_CHUNK_SIZE in sync-performance.ts to ~1500
- *
- * Auth: Vercel sets `Authorization: Bearer <CRON_SECRET>` automatically on cron invocations.
- */
 export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
@@ -28,29 +15,31 @@ export async function GET(req: NextRequest) {
 
   console.log('[Cron] sync-dataforseo started at', new Date().toISOString());
 
-  try {
-    const result = await syncDataForSeoChunk();
+  const tenants = await getAllTenants();
+  const allResults: Array<{ tenantId: string; result: any; error?: string }> = [];
 
-    console.log('[Cron] sync-dataforseo completed:', {
-      keywordsProcessed: result.keywordsProcessed,
-      rankingRowsUpserted: result.rankingRowsUpserted,
-      rankingsSkipped: result.rankingsSkipped,
-      hasMore: result.hasMore,
-      nextCursor: result.nextCursor,
-      totalItems: result.totalItems,
-      errors: result.errors.length,
-    });
+  for (const tenant of tenants) {
+    try {
+      const result = await syncDataForSeoChunk(tenant.id);
 
-    return NextResponse.json({
-      success: true,
-      completedAt: new Date().toISOString(),
-      ...result,
-    });
-  } catch (err: any) {
-    console.error('[Cron] sync-dataforseo failed:', err);
-    return NextResponse.json(
-      { success: false, error: err.message ?? 'Unknown error' },
-      { status: 500 }
-    );
+      console.log(`[Cron] sync-dataforseo tenant=${tenant.id}:`, {
+        keywordsProcessed: result.keywordsProcessed,
+        rankingRowsUpserted: result.rankingRowsUpserted,
+        rankingsSkipped: result.rankingsSkipped,
+        hasMore: result.hasMore,
+        errors: result.errors.length,
+      });
+
+      allResults.push({ tenantId: tenant.id, result });
+    } catch (err: any) {
+      console.error(`[Cron] sync-dataforseo tenant=${tenant.id} failed:`, err);
+      allResults.push({ tenantId: tenant.id, result: null, error: err.message });
+    }
   }
+
+  return NextResponse.json({
+    success: true,
+    completedAt: new Date().toISOString(),
+    tenants: allResults,
+  });
 }

@@ -15,28 +15,13 @@ export interface ManualSyncRequest {
   sources: Array<'gsc' | 'dataforseo' | 'sistrix'>;
 }
 
-/**
- * POST /api/admin/sync/manual
- *
- * Triggers a manual data sync for the selected URLs, time range, and data sources.
- * Runs synchronously so the admin sees the result immediately.
- *
- * Key difference from the automatic cron/import sync:
- *  - DataForSEO: the pre-flight dedup check is bypassed (force=true) so existing
- *    rankings for the current week are always overwritten.
- *  - GSC / Sistrix: upserts already overwrite existing records by design.
- *
- * Body:
- *  urls    — array of Target_URLs to sync
- *  mode    — "week" (last 7 days) or "6months" (last 180 days / 26 weeks)
- *  sources — which data sources to include: "gsc", "dataforseo", "sistrix"
- */
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const body = (await req.json()) as ManualSyncRequest;
     const { urls, mode, sources } = body;
@@ -64,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     let config: Record<string, string>;
     try {
-      config = await getConfig();
+      config = await getConfig(tenantId);
     } catch (err: any) {
       return NextResponse.json({ error: `Config load failed: ${err.message}` }, { status: 500 });
     }
@@ -119,7 +104,7 @@ export async function POST(req: NextRequest) {
         result.skippedDataforseo = true;
       } else {
         try {
-          const allKeywords = await getKeywordMap();
+          const allKeywords = await getKeywordMap(tenantId);
           const urlKeywords = allKeywords.filter(
             kw => kw.Target_URL && urls.includes(kw.Target_URL)
           );

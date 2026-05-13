@@ -5,7 +5,10 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET() {
   try {
-    const trends = await getPotentialTrends();
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+    const trends = await getPotentialTrends(tenantId);
     return NextResponse.json(trends);
   } catch (error: any) {
     console.error('[API] Error fetching trends:', error);
@@ -18,6 +21,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const body = await request.json();
     const { Trend_Topic, Source, Gap_Score, Status } = body;
 
@@ -33,7 +40,7 @@ export async function POST(request: Request) {
       Source,
       Gap_Score: Gap_Score ? Number(Gap_Score) : 0,
       Status: Status || 'New',
-    });
+    }, tenantId);
 
     if (!result) {
       return NextResponse.json(
@@ -42,13 +49,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // --- Add Logging for Creation ---
     try {
-      const session = await getServerSession(authOptions);
       const editor = session?.user?.email ? [session.user.email] : undefined;
-      
-      // If Trend_Topic is a URL, use it as Logged_URL. 
-      // Otherwise, we log it without a URL link but with the topic in reasoning.
       const isUrl = Trend_Topic.startsWith('http');
       
       await createContentLog({
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
         Action_Type: 'Erstellung',
         Diff_Summary: `Manueller Trend-Vorschlag: ${Trend_Topic}`,
         Editor: editor,
-      });
+      }, tenantId);
     } catch (logErr) {
       console.error('[API Trends POST] Error creating creation log:', logErr);
     }

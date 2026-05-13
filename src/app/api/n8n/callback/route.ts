@@ -9,12 +9,31 @@ import { createContentLog, updateKeyword, getConfig } from '@/lib/postgres';
  *   keywordId: string,
  *   content: string,
  *   reasoning?: string,
- *   status?: string
+ *   status?: string,
+ *   tenantId?: string   ← included in the enriched payload from the trigger route
  * }
  */
 export async function POST(request: Request) {
   try {
     const apiKey = request.headers.get('X-API-KEY');
+
+    const rawBody = await request.text();
+    console.log('[API] n8n callback received raw body:', rawBody);
+    
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+      if (typeof body === 'string') {
+        console.log('[API] n8n callback body was double-encoded, parsing again...');
+        body = JSON.parse(body);
+      }
+    } catch (e) {
+      console.error('[API] Failed to parse n8n callback body as JSON:', e);
+      return NextResponse.json({ error: 'Invalid JSON body', raw: rawBody.slice(0, 100) }, { status: 400 });
+    }
+
+    // tenantId is included in the enriched payload sent by the trigger route
+    const tenantId: string | undefined = body?.tenantId || undefined;
 
     // Auth check: accept either the n8n API key or the external agent shared secret
     const isN8n = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
@@ -22,11 +41,10 @@ export async function POST(request: Request) {
     let isExternalAgent = false;
     if (!isN8n && apiKey) {
       try {
-        const config = await getConfig();
+        const config = await getConfig(tenantId);
         const externalSecret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
         isExternalAgent = !!(externalSecret && apiKey === externalSecret);
       } catch {
-        // getConfig failure should not break the auth check; log and deny
         console.error('[API] Failed to load config for callback auth');
       }
     }
@@ -36,22 +54,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const rawBody = await request.text();
-    console.log('[API] n8n callback received raw body:', rawBody);
-    
-    let body;
-    try {
-      body = JSON.parse(rawBody);
-      // Handle double-encoded JSON (n8n sometimes sends a stringified JSON string)
-      if (typeof body === 'string') {
-        console.log('[API] n8n callback body was double-encoded, parsing again...');
-        body = JSON.parse(body);
-      }
-    } catch (e) {
-      console.error('[API] Failed to parse n8n callback body as JSON:', e);
-      return NextResponse.json({ error: 'Invalid JSON body', raw: rawBody.slice(0, 100) }, { status: 400 });
-    }
-    
     // Extract with fallbacks to handle different naming conventions
     const keywordId = body.keywordId || body.Keyword_ID;
     const content = body.content || body.contentBody || body.Content_Body;
@@ -74,10 +76,9 @@ export async function POST(request: Request) {
 
     console.log(`[API] Received content from n8n for Keyword ID: ${keywordId}`);
 
-    // 1. Update Keyword Status to "Angeliefert" once content is received
-    // Explicitly transition from "Beauftragt" to "Angeliefert"
+    // 1. Update Keyword Status to "Angeliefert"
     try {
-      await updateKeyword(keywordId, { Status: 'Angeliefert' });
+      await updateKeyword(keywordId, { Status: 'Angeliefert' }, tenantId);
     } catch (err) {
       console.error('[API] Error updating keyword status to Angeliefert:', err);
     }
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
       Diff_Summary: 'Content angeliefert',
-    });
+    }, tenantId);
 
     return NextResponse.json({
       success: true,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '../_service';
+import { createAgentWorkflowServiceV2 } from '../_service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,13 +10,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit') || '50');
     const includeDeleted = searchParams.get('includeDeleted') === '1';
 
     const service = createAgentWorkflowServiceV2();
     const runs = await service.listRuns(
-      DEFAULT_TENANT_ID,
+      tenantId,
       Number.isFinite(limit) ? Math.max(1, Math.min(200, limit)) : 50,
       includeDeleted
     );
@@ -35,6 +36,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const body = await request.json().catch(() => ({}));
     const action = String(body?.action || '').trim();
     if (action !== 'cleanup_stale_running') {
@@ -42,12 +44,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const service = createAgentWorkflowServiceV2();
-    const runs = await service.listRuns(DEFAULT_TENANT_ID, 200);
+    const runs = await service.listRuns(tenantId, 200);
     const staleRuns = runs.filter((run) => run.status === 'running');
 
     const updated: string[] = [];
     for (const run of staleRuns) {
-      const cancelled = await service.cancelRun(DEFAULT_TENANT_ID, run.id);
+      const cancelled = await service.cancelRun(tenantId, run.id);
       if (cancelled) updated.push(run.id);
     }
 

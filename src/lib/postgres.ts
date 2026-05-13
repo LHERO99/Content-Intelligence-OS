@@ -25,6 +25,7 @@ import {
   config as configTable,
   auditLogs as auditLogsTable,
   users as usersTable,
+  tenants as tenantsTable,
 } from './db/schema';
 
 export * from './postgres-types';
@@ -58,15 +59,17 @@ export class ValidationError extends Error {
 export class AirtableValidationError extends ValidationError {}
 
 // ---------------------------------------------------------------------------
-// Config Cache (same TTL logic as airtable.ts)
+// Config Cache — keyed per tenant to prevent cross-tenant leakage
 // ---------------------------------------------------------------------------
 const CONFIG_CACHE_TTL_MS = 30_000;
-let _configCache: Record<string, string> | null = null;
-let _configCacheAt = 0;
+const _configCacheByTenant = new Map<string, { data: Record<string, string>; at: number }>();
 
-export function invalidateConfigCache(): void {
-  _configCache = null;
-  _configCacheAt = 0;
+export function invalidateConfigCache(tenantId?: string): void {
+  if (tenantId) {
+    _configCacheByTenant.delete(tenantId);
+  } else {
+    _configCacheByTenant.clear();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +77,14 @@ export function invalidateConfigCache(): void {
 // ---------------------------------------------------------------------------
 function tid(tenantId?: string): string {
   return tenantId ?? getDefaultTenantId();
+}
+
+// ---------------------------------------------------------------------------
+// Tenants
+// ---------------------------------------------------------------------------
+export async function getAllTenants(): Promise<{ id: string; name: string }[]> {
+  const rows = await db.select({ id: tenantsTable.id, name: tenantsTable.name }).from(tenantsTable);
+  return rows;
 }
 
 function toIsoDate(d: string | null | undefined): string | undefined {
@@ -990,8 +1001,9 @@ export async function deleteCostConfig(id: string, tenantId?: string): Promise<b
 export async function getConfig(tenantId?: string): Promise<Record<string, string>> {
   const tenant = tid(tenantId);
   const now = Date.now();
-  if (_configCache && now - _configCacheAt < CONFIG_CACHE_TTL_MS) {
-    return _configCache;
+  const cached = _configCacheByTenant.get(tenant);
+  if (cached && now - cached.at < CONFIG_CACHE_TTL_MS) {
+    return cached.data;
   }
   const result = await withTenant(tenant, async (tx) => {
     const rows = await tx.select().from(configTable).where(eq(configTable.tenantId, tenant));
@@ -1006,8 +1018,7 @@ export async function getConfig(tenantId?: string): Promise<Record<string, strin
     }
     return out;
   });
-  _configCache = result;
-  _configCacheAt = now;
+  _configCacheByTenant.set(tenant, { data: result, at: now });
   return result;
 }
 
@@ -1042,7 +1053,7 @@ export async function updateConfig(key: string, value: string, fileUrl?: string,
       File: row.fileUrl ? [{ url: row.fileUrl }] : undefined,
     } as ConfigRecord;
   });
-  invalidateConfigCache();
+  invalidateConfigCache(tenantId);
   return result;
 }
 
@@ -1250,10 +1261,10 @@ export async function purgeOldPerformanceData(retainDays = 400, tenantId?: strin
 // ---------------------------------------------------------------------------
 // Stub functions (no-op, kept for interface compatibility)
 // ---------------------------------------------------------------------------
-export async function getPotentialTrends(): Promise<PotentialTrend[]> {
+export async function getPotentialTrends(_tenantId?: string): Promise<PotentialTrend[]> {
   return [];
 }
 
-export async function createTrend(_trend: Partial<PotentialTrend>): Promise<PotentialTrend | null> {
+export async function createTrend(_trend: Partial<PotentialTrend>, _tenantId?: string): Promise<PotentialTrend | null> {
   return null;
 }

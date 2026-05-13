@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { createAgentWorkflowServiceV2, DEFAULT_TENANT_ID } from '../../_service';
+import { createAgentWorkflowServiceV2 } from '../../_service';
 
 export async function POST(_: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -10,9 +10,10 @@ export async function POST(_: Request, context: { params: Promise<{ id: string }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId ?? '';
     const params = await context.params;
     const service = createAgentWorkflowServiceV2();
-    const workflow = await service.publish(DEFAULT_TENANT_ID, params.id);
+    const workflow = await service.publish(tenantId, params.id);
 
     return NextResponse.json({ workflow });
   } catch (error: any) {

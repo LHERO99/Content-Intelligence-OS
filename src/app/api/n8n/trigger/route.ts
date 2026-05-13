@@ -5,9 +5,6 @@ import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
 import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 
-// Multi-tenant stub – replace with real tenant resolution once multi-tenancy is implemented
-const DEFAULT_TENANT_ID = 'default';
-
 /**
  * API Route to trigger agent workflows or an external agent webhook.
  * Acts as a proxy to include the X-API-KEY and handle authentication.
@@ -23,6 +20,7 @@ export async function POST(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     // 2. Parse Request Body
     const body = await req.json();
@@ -34,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Status update and Logging for Commissioning
     if ((action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") && data.keywordId) {
-      await updateKeyword(data.keywordId, { Status: "Beauftragt" });
+      await updateKeyword(data.keywordId, { Status: "Beauftragt" }, tenantId);
       
       // Log event to database
       try {
@@ -44,7 +42,7 @@ export async function POST(req: NextRequest) {
           Action_Type: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
           Diff_Summary: "Content wurde beauftragt",
           Editor: session.user?.email ? [session.user.email] : undefined
-        });
+        }, tenantId);
       } catch (logErr) {
         console.error('Error creating commissioning log:', logErr);
       }
@@ -52,11 +50,11 @@ export async function POST(req: NextRequest) {
 
     // 4. Route commissioning actions to the correct agent
     if (action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") {
-      const config = await getConfig();
+      const config = await getConfig(tenantId);
       const externalEnabled = config.EXTERNAL_AGENT_ENABLED === "true";
       const externalUrl = config.EXTERNAL_AGENT_WEBHOOK_URL?.trim();
 
-      // --- Build enriched payload (shared between external and internal paths) ---
+      // --- Build enriched payload ---
       let secondaryKeywords: Array<{
         id: string;
         keyword: string;
@@ -67,7 +65,7 @@ export async function POST(req: NextRequest) {
 
       if (data.targetUrl) {
         try {
-          const allKeywords = await getKeywordsByUrl(data.targetUrl);
+          const allKeywords = await getKeywordsByUrl(data.targetUrl, tenantId);
           secondaryKeywords = allKeywords
             .filter((kw) => kw.Main_Keyword === 'N')
             .map((kw) => ({
@@ -91,7 +89,7 @@ export async function POST(req: NextRequest) {
         secondaryKeywords,
         pageType: data.pageType ?? null,
         actionType: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
-        tenantId: DEFAULT_TENANT_ID,
+        tenantId,
         callbackUrl: `${appBaseUrl}/api/n8n/callback`,
         userId: session.user?.email ?? 'unknown',
         timestamp: new Date().toISOString(),
@@ -105,7 +103,6 @@ export async function POST(req: NextRequest) {
           headers['Authorization'] = `Bearer ${secret}`;
         }
 
-        // Fire & forget — do not block the UI response
         fetch(externalUrl, {
           method: 'POST',
           headers,
@@ -121,11 +118,8 @@ export async function POST(req: NextRequest) {
       }
 
       // --- Path B: Internal Agent ---
-      // Routing: Custom Flow only if explicitly enabled via CUSTOM_FLOW_ENABLED config key.
-      // This flag is written atomically by /api/agent-workflows-v2/settings and is
-      // independent of the workflow object state to avoid Airtable eventual-consistency races.
       const agentService = createAgentWorkflowServiceV2();
-      const workflows = await agentService.list(DEFAULT_TENANT_ID);
+      const workflows = await agentService.list(tenantId);
 
       const customFlowEnabled = config.CUSTOM_FLOW_ENABLED === 'true';
       const targetWorkflow = customFlowEnabled
@@ -133,27 +127,26 @@ export async function POST(req: NextRequest) {
         : workflows.find((w) => w.mode === 'default');
 
       if (!targetWorkflow) {
-        console.error('[InternalAgent] No workflow found for tenant:', DEFAULT_TENANT_ID);
+        console.error('[InternalAgent] No workflow found for tenant:', tenantId);
         return NextResponse.json(
           { message: 'Kein Agent-Flow konfiguriert. Bitte einen Default Flow anlegen.' },
           { status: 500 }
         );
       }
 
-      const run = await agentService.run(DEFAULT_TENANT_ID, targetWorkflow.id, {
+      const run = await agentService.run(tenantId, targetWorkflow.id, {
         input: enrichedPayload,
         runFrom: 'published',
       });
 
-      // On failure: reset keyword status to "Planned" so it can be re-commissioned
+      // On failure: reset keyword status to "Planned"
       if (run.status === 'failed' && data.keywordId) {
         try {
-          await updateKeyword(data.keywordId, { Status: 'Planned' });
+          await updateKeyword(data.keywordId, { Status: 'Planned' }, tenantId);
         } catch (resetErr) {
           console.error('[InternalAgent] Failed to reset keyword status:', resetErr);
         }
 
-        // Extract the first failed step error for a meaningful error message
         const failedStep = run.steps?.find((s) => s.status === 'failed' && s.error);
         const errorDetail = failedStep
           ? `${failedStep.nodeName}: ${failedStep.error}`
@@ -169,15 +162,13 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
-      // On success: finalHtml aus run.output (in-memory, nie in Airtable geschrieben),
-      // Keyword-Status auf "Angeliefert" setzen und Content Log anlegen.
       if (run.status === 'success' && data.keywordId) {
         const finalHtml =
           typeof run.output?.finalHtml === 'string' && run.output.finalHtml
             ? run.output.finalHtml
             : undefined;
         try {
-          await updateKeyword(data.keywordId, { Status: 'Angeliefert' });
+          await updateKeyword(data.keywordId, { Status: 'Angeliefert' }, tenantId);
         } catch (statusErr) {
           console.error('[InternalAgent] Failed to set keyword status to Angeliefert:', statusErr);
         }
@@ -190,7 +181,7 @@ export async function POST(req: NextRequest) {
               Diff_Summary: 'Content angeliefert',
               Content_Body: finalHtml,
               Editor: session.user?.email ? [session.user.email] : undefined,
-            });
+            }, tenantId);
           } catch (logErr) {
             console.error('[InternalAgent] Failed to create content log:', logErr);
           }

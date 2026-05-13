@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncGscChunk } from '@/lib/sync-performance';
-import { createAuditLog } from '@/lib/postgres';
+import { createAuditLog, getAllTenants } from '@/lib/postgres';
 
-/**
- * GET /api/cron/sync-gsc
- *
- * Vercel Cron endpoint — runs every Monday at 04:00 UTC.
- * Processes the next GSC_CHUNK_SIZE URLs from the cursor stored in Airtable Config.
- * On a full cycle completion the cursor resets to 0 automatically.
- *
- * Chunk size (default 50 URLs):
- *   - Vercel Hobby (60s limit): handles ~50 URLs comfortably
- *   - Vercel Pro  (300s limit): increase GSC_CHUNK_SIZE in sync-performance.ts to ~250
- *
- * Auth: Vercel sets `Authorization: Bearer <CRON_SECRET>` automatically on cron invocations.
- * For manual triggers from the admin panel, send the same header.
- */
 export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
@@ -29,60 +15,63 @@ export async function GET(req: NextRequest) {
 
   console.log('[Cron] sync-gsc started at', new Date().toISOString());
 
-  try {
-    const result = await syncGscChunk();
+  const tenants = await getAllTenants();
+  const allResults: Array<{ tenantId: string; result: any; error?: string }> = [];
 
-    console.log('[Cron] sync-gsc completed:', {
-      urlsProcessed: result.urlsProcessed,
-      gscRowsUpserted: result.gscRowsUpserted,
-      hasMore: result.hasMore,
-      nextCursor: result.nextCursor,
-      totalItems: result.totalItems,
-      errors: result.errors.length,
-    });
+  for (const tenant of tenants) {
+    try {
+      const result = await syncGscChunk(tenant.id);
 
-    // Write AuditLog entries for health monitoring
-    await Promise.all([
-      createAuditLog(
-        result.errors.some(e => e.toLowerCase().includes('gsc'))
-          ? `cron:sync-gsc:error`
-          : `cron:sync-gsc:success`,
-        {
-          urlsProcessed: result.urlsProcessed,
-          gscRowsUpserted: result.gscRowsUpserted,
-          hasMore: result.hasMore,
-          errors: result.errors.filter(e => e.toLowerCase().includes('gsc')),
-        }
-      ),
-      createAuditLog(
-        result.skippedSistrix
-          ? `cron:sync-sistrix:skipped`
-          : result.errors.some(e => e.toLowerCase().includes('sistrix'))
-          ? `cron:sync-sistrix:error`
-          : `cron:sync-sistrix:success`,
-        {
-          urlsProcessed: result.skippedSistrix ? 0 : result.urlsProcessed,
-          sistrixRowsUpserted: result.sistrixRowsUpserted ?? 0,
-          skipped: result.skippedSistrix ?? false,
-          errors: result.errors.filter(e => e.toLowerCase().includes('sistrix')),
-        }
-      ),
-    ]);
+      console.log(`[Cron] sync-gsc tenant=${tenant.id}:`, {
+        urlsProcessed: result.urlsProcessed,
+        gscRowsUpserted: result.gscRowsUpserted,
+        hasMore: result.hasMore,
+        errors: result.errors.length,
+      });
 
-    return NextResponse.json({
-      success: true,
-      completedAt: new Date().toISOString(),
-      ...result,
-    });
-  } catch (err: any) {
-    console.error('[Cron] sync-gsc failed:', err);
-    await Promise.all([
-      createAuditLog(`cron:sync-gsc:error`, { error: err.message ?? 'Unknown error' }),
-      createAuditLog(`cron:sync-sistrix:error`, { error: 'GSC cron fehlgeschlagen — Sistrix nicht ausgeführt' }),
-    ]);
-    return NextResponse.json(
-      { success: false, error: err.message ?? 'Unknown error' },
-      { status: 500 }
-    );
+      await Promise.all([
+        createAuditLog(
+          result.errors.some(e => e.toLowerCase().includes('gsc'))
+            ? `cron:sync-gsc:error`
+            : `cron:sync-gsc:success`,
+          {
+            urlsProcessed: result.urlsProcessed,
+            gscRowsUpserted: result.gscRowsUpserted,
+            hasMore: result.hasMore,
+            errors: result.errors.filter(e => e.toLowerCase().includes('gsc')),
+          },
+          tenant.id
+        ),
+        createAuditLog(
+          result.skippedSistrix
+            ? `cron:sync-sistrix:skipped`
+            : result.errors.some(e => e.toLowerCase().includes('sistrix'))
+            ? `cron:sync-sistrix:error`
+            : `cron:sync-sistrix:success`,
+          {
+            urlsProcessed: result.skippedSistrix ? 0 : result.urlsProcessed,
+            sistrixRowsUpserted: result.sistrixRowsUpserted ?? 0,
+            skipped: result.skippedSistrix ?? false,
+            errors: result.errors.filter(e => e.toLowerCase().includes('sistrix')),
+          },
+          tenant.id
+        ),
+      ]);
+
+      allResults.push({ tenantId: tenant.id, result });
+    } catch (err: any) {
+      console.error(`[Cron] sync-gsc tenant=${tenant.id} failed:`, err);
+      await Promise.all([
+        createAuditLog(`cron:sync-gsc:error`, { error: err.message ?? 'Unknown error' }, tenant.id),
+        createAuditLog(`cron:sync-sistrix:error`, { error: 'GSC cron fehlgeschlagen' }, tenant.id),
+      ]);
+      allResults.push({ tenantId: tenant.id, result: null, error: err.message });
+    }
   }
+
+  return NextResponse.json({
+    success: true,
+    completedAt: new Date().toISOString(),
+    tenants: allResults,
+  });
 }

@@ -8,22 +8,23 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const tenantId = session.user?.tenantId;
 
   try {
     const [keywords, performance, logs, costs] = await Promise.all([
-      getKeywordMap().catch(err => { 
+      getKeywordMap(tenantId).catch(err => { 
         console.error('[API Monitoring] Critical error fetching keywords:', err); 
         return []; 
       }),
-      getPerformanceData().catch(err => { 
+      getPerformanceData(tenantId).catch(err => { 
         console.error('[API Monitoring] Error fetching performance (continuing with empty data):', err); 
         return []; 
       }),
-      getContentLogs().catch(err => { 
+      getContentLogs(tenantId).catch(err => { 
         console.error('[API Monitoring] Error fetching logs (continuing with empty data):', err); 
         return []; 
       }),
-      getCostConfigs().catch(err => { 
+      getCostConfigs(tenantId).catch(err => { 
         console.error('[API Monitoring] Error fetching costs (continuing with empty data):', err); 
         return []; 
       })

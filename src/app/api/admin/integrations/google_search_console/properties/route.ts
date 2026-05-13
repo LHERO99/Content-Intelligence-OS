@@ -3,18 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getConfig } from '@/lib/postgres';
 
-/**
- * Returns the list of verified GSC properties available for the authenticated Google account.
- * Requires an active OAuth connection (GSC_REFRESH_TOKEN in config).
- */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
-    const config = await getConfig();
+    const config = await getConfig(tenantId);
     const refreshToken = config.GSC_REFRESH_TOKEN?.trim();
 
     if (!refreshToken) {

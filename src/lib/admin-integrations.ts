@@ -195,8 +195,8 @@ function maskValue(raw: string | undefined): string {
   return `${value.slice(0, 3)}${'*'.repeat(Math.max(4, value.length - 7))}${value.slice(-4)}`;
 }
 
-export async function getIntegrationsState(): Promise<IntegrationState[]> {
-  const config = await getConfig();
+export async function getIntegrationsState(tenantId?: string): Promise<IntegrationState[]> {
+  const config = await getConfig(tenantId);
 
   return PROVIDERS.map((provider) => {
     const maskedValues: Record<string, string> = {};
@@ -216,7 +216,8 @@ export async function getIntegrationsState(): Promise<IntegrationState[]> {
 
 export async function saveIntegrationValues(
   providerId: IntegrationProvider,
-  values: Record<string, string>
+  values: Record<string, string>,
+  tenantId?: string
 ): Promise<void> {
   const provider = PROVIDERS.find((entry) => entry.id === providerId);
   if (!provider) throw new Error('Unbekannter Provider');
@@ -229,15 +230,15 @@ export async function saveIntegrationValues(
   }
 
   for (const [key, value] of entries) {
-    await updateConfig(key, String(value));
+    await updateConfig(key, String(value), undefined, tenantId);
   }
 }
 
-export async function getProviderConfigValues(providerId: IntegrationProvider): Promise<Record<string, string>> {
+export async function getProviderConfigValues(providerId: IntegrationProvider, tenantId?: string): Promise<Record<string, string>> {
   const provider = PROVIDERS.find((entry) => entry.id === providerId);
   if (!provider) throw new Error('Unbekannter Provider');
 
-  const config = await getConfig();
+  const config = await getConfig(tenantId);
   const values: Record<string, string> = {};
 
   for (const field of provider.fields) {
@@ -409,12 +410,12 @@ async function discoverPerplexityModels(apiKey: string): Promise<DiscoveredModel
   );
 }
 
-export async function discoverProviderModels(providerId: IntegrationProvider, forceRefresh = false): Promise<DiscoveredModel[]> {
+export async function discoverProviderModels(providerId: IntegrationProvider, forceRefresh = false, tenantId?: string): Promise<DiscoveredModel[]> {
   if (!isDiscoverableProvider(providerId)) {
     throw new Error('Für diesen Provider ist keine Modellabfrage verfügbar.');
   }
 
-  const config = await getProviderConfigValues(providerId);
+  const config = await getProviderConfigValues(providerId, tenantId);
 
   let cacheKey: string = providerId;
   let models: DiscoveredModel[] = [];

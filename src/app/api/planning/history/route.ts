@@ -9,22 +9,23 @@ export async function GET(request: Request) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const { searchParams } = new URL(request.url);
     const keywordId = searchParams.get('keywordId');
     const url = searchParams.get('url');
 
     if (url) {
-      const history = await getContentHistoryByUrl(url);
+      const history = await getContentHistoryByUrl(url, tenantId);
       return NextResponse.json(history);
     }
 
     if (keywordId) {
-      const history = await getContentHistoryByKeyword(keywordId);
+      const history = await getContentHistoryByKeyword(keywordId, tenantId);
       return NextResponse.json(history);
     }
 
-    const allLogs = await getAllContentHistory();
+    const allLogs = await getAllContentHistory(tenantId);
     return NextResponse.json(allLogs);
   } catch (error: any) {
     console.error('[API] Error fetching content history:', error);
@@ -48,9 +49,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId = session?.user?.tenantId;
+
     const body = await request.json();
     
-    // Detailed logging for debugging
     console.log('[API] POST /api/planning/history - Request Body:', JSON.stringify(body, null, 2));
     console.log('[API] POST /api/planning/history - Auth Type:', isInternal ? 'API Key' : 'Session');
     if (isInternal) {
@@ -75,7 +77,6 @@ export async function POST(request: Request) {
       Editor 
     } = body;
 
-    // Standardize field names
     const finalKeywordId = keywordId || Keyword_ID;
     const finalUrl = url || Target_URL || Logged_URL;
     const finalLoggedUrl = Logged_URL || finalUrl;
@@ -89,7 +90,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Ensure keywordId is an array for Airtable Link field
     const keywordIds = Array.isArray(finalKeywordId) ? finalKeywordId : [finalKeywordId];
 
     console.log('[API] Creating content log for URL:', finalLoggedUrl);
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       Content_Body: finalContentBody,
       Diff_Summary: finalDiffSummary,
       Editor: finalEditor || (session?.user?.email ? [session.user.email] : undefined),
-    });
+    }, tenantId);
 
     if (!newLog) {
       console.error('[API] createContentLog returned null');

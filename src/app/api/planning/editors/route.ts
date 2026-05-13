@@ -9,8 +9,9 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
-    const users = await getAllUsers();
+    const users = await getAllUsers(tenantId);
     const assignableUsers = users
       .filter((user) => user.Role === 'Editor' || user.Role === 'Admin')
       .map((user) => ({

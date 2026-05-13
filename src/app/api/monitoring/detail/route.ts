@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const tenantId = session.user?.tenantId;
 
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     };
 
     // 1. Fetch Keyword Map to identify associated keywords for this URL
-    const allKeywords = await getKeywordMap();
+    const allKeywords = await getKeywordMap(tenantId);
     const relatedKeywords = allKeywords.filter(kw => kw.Target_URL === targetUrl);
     const keywordIds = relatedKeywords.map(kw => kw.id);
 
@@ -46,11 +47,11 @@ export async function GET(request: NextRequest) {
       urlPerformance, 
       keywordRankingHistory
     ] = await Promise.all([
-      getPerformanceDataByUrl(targetUrl),
-      getContentHistoryByUrl(targetUrl),
-      getCostConfigs(),
-      getURLPerformanceHistory(targetUrl),
-      getKeywordRankingHistory(keywordIds)
+      getPerformanceDataByUrl(targetUrl, tenantId),
+      getContentHistoryByUrl(targetUrl, tenantId),
+      getCostConfigs(tenantId),
+      getURLPerformanceHistory(targetUrl, tenantId),
+      getKeywordRankingHistory(keywordIds, tenantId)
     ]);
 
     // Calculate individual savings

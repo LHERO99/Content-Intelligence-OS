@@ -208,8 +208,8 @@ function evaluateNoLiftRule(
   return !hasSufficientLift;
 }
 
-export async function getOptimizationRuleSettings(): Promise<OptimizationRuleSettings> {
-  const config = await getConfig();
+export async function getOptimizationRuleSettings(tenantId?: string): Promise<OptimizationRuleSettings> {
+  const config = await getConfig(tenantId);
   return {
     AGE_DAYS: parseNumber(config.OPT_RULE_AGE_DAYS, DEFAULT_SETTINGS.AGE_DAYS),
     TOP_RANK_THRESHOLD: parseNumber(config.OPT_RULE_TOP_RANK_THRESHOLD, DEFAULT_SETTINGS.TOP_RANK_THRESHOLD),
@@ -221,11 +221,11 @@ export async function getOptimizationRuleSettings(): Promise<OptimizationRuleSet
   };
 }
 
-export async function evaluateOptimizationSuggestions(): Promise<OptimizationSuggestion[]> {
+export async function evaluateOptimizationSuggestions(tenantId?: string): Promise<OptimizationSuggestion[]> {
   const [keywords, logs, settings] = await Promise.all([
-    getKeywordMap(),
-    getAllContentHistory(),
-    getOptimizationRuleSettings(),
+    getKeywordMap(tenantId),
+    getAllContentHistory(tenantId),
+    getOptimizationRuleSettings(tenantId),
   ]);
 
   const publishedMainKeywords = keywords.filter((k) => k.Main_Keyword === 'Y' && k.Status === 'Published' && !!k.Target_URL);
@@ -240,8 +240,8 @@ export async function evaluateOptimizationSuggestions(): Promise<OptimizationSug
 
     const lastPublished = latestPublishedDateForKeyword(keyword.id, targetUrl, logs) || keyword.Last_Published;
     const [rankingHistory, urlPerformance] = await Promise.all([
-      getKeywordRankingHistory([keyword.id]),
-      getURLPerformanceHistory(targetUrl),
+      getKeywordRankingHistory([keyword.id], tenantId),
+      getURLPerformanceHistory(targetUrl, tenantId),
     ]);
 
     const currentRanking = getCurrentRanking(keyword, rankingHistory);

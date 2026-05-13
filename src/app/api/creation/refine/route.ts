@@ -4,9 +4,6 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getProviderConfigValues } from '@/lib/admin-integrations';
 import { createContentLog } from '@/lib/postgres';
 
-// Multi-tenant stub – replace with real tenant resolution once multi-tenancy is implemented
-const DEFAULT_TENANT_ID = 'default';
-
 const SYSTEM_PROMPT = `You are an expert SEO content editor. Your task is to refine the provided HTML article content based on the user's instruction.
 
 Rules:
@@ -105,9 +102,10 @@ async function runRefine(
   providerId: SupportedProvider,
   model: string,
   currentContent: string,
-  instructions: string
+  instructions: string,
+  tenantId?: string
 ): Promise<string> {
-  const config = await getProviderConfigValues(providerId);
+  const config = await getProviderConfigValues(providerId, tenantId);
   const userMessage = `INSTRUCTION: ${instructions}\n\nCURRENT CONTENT (HTML):\n${currentContent}`;
 
   switch (providerId) {
@@ -160,6 +158,7 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
     const body = await request.json();
     const {
@@ -169,8 +168,6 @@ export async function POST(request: Request) {
       instructions,
       modelId,
       providerId,
-      // tenantId is a stub for future multi-tenant support
-      // tenantId = DEFAULT_TENANT_ID,
     } = body as {
       keywordId: string;
       keyword: string;
@@ -178,7 +175,6 @@ export async function POST(request: Request) {
       instructions: string;
       modelId: string;
       providerId: SupportedProvider;
-      tenantId?: string;
     };
 
     if (!keywordId || !instructions || !modelId || !providerId) {
@@ -189,15 +185,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'currentContent darf nicht leer sein.' }, { status: 400 });
     }
 
-    console.log(`[/api/creation/refine] provider=${providerId} model=${modelId} keyword=${keyword} user=${session.user?.email} tenant=${DEFAULT_TENANT_ID}`);
+    console.log(`[/api/creation/refine] provider=${providerId} model=${modelId} keyword=${keyword} user=${session.user?.email} tenant=${tenantId}`);
 
-    const refinedContent = stripMarkdownCodeFences(await runRefine(providerId, modelId, currentContent, instructions));
+    const refinedContent = stripMarkdownCodeFences(await runRefine(providerId, modelId, currentContent, instructions, tenantId));
 
     if (!refinedContent) {
       return NextResponse.json({ error: 'Das Modell hat keinen Inhalt zurückgegeben.' }, { status: 502 });
     }
 
-    // Write ContentLog (fire-and-forget – we don't want logging failures to block the response)
+    // Write ContentLog (fire-and-forget)
     createContentLog({
       Keyword_ID: [keywordId],
       Action_Type: 'KI-Chat',
@@ -205,7 +201,7 @@ export async function POST(request: Request) {
       Content_Body: refinedContent,
       Diff_Summary: `KI-Chat (${providerId}/${modelId}): ${instructions.slice(0, 200)}`,
       Editor: session.user?.email ? [session.user.email] : undefined,
-    }).catch((err) => {
+    }, tenantId).catch((err) => {
       console.error('[/api/creation/refine] ContentLog write failed:', err);
     });
 

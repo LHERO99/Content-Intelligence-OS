@@ -19,7 +19,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const integrations = await getIntegrationsState();
+    const tenantId = session.user?.tenantId;
+
+    const integrations = await getIntegrationsState(tenantId);
 
     const configuredAiProviders = integrations.filter(
       (i) => i.configured && (AI_PROVIDERS as string[]).includes(i.provider)
@@ -31,7 +33,7 @@ export async function GET() {
       configuredAiProviders.map(async (integration) => {
         const providerId = integration.provider as DiscoverableModelProvider;
         try {
-          const models = await discoverProviderModels(providerId);
+          const models = await discoverProviderModels(providerId, false, tenantId);
           const providerDef = PROVIDERS.find((p) => p.id === providerId);
           if (models.length > 0) {
             results.push({

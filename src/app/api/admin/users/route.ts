@@ -10,8 +10,9 @@ export async function GET() {
     if (!session || session.user.role !== "Admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const tenantId = session.user?.tenantId;
 
-    const users = await getAllUsers();
+    const users = await getAllUsers(tenantId);
     
     // Remove passwords from the response
     const safeUsers = users.map(({ Password, ...user }) => user);

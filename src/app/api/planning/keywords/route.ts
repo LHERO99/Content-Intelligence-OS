@@ -17,7 +17,10 @@ import { getConfig } from '@/lib/postgres';
 
 export async function GET() {
   try {
-    const keywords = await getKeywordMap();
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+    const keywords = await getKeywordMap(tenantId);
     return NextResponse.json(keywords);
   } catch (error: any) {
     console.error('[API] Error fetching keywords:', error);
@@ -28,8 +31,8 @@ export async function GET() {
   }
 }
 
-async function enrichWithPriorityScore<T extends Record<string, any>>(keyword: T): Promise<T> {
-  const config = await getConfig();
+async function enrichWithPriorityScore<T extends Record<string, any>>(keyword: T, tenantId?: string): Promise<T> {
+  const config = await getConfig(tenantId);
   const weights = resolvePrioritizationWeights(config);
   const score = calculatePriorityScore(keyword as any, weights);
   return {
@@ -48,9 +51,9 @@ function isAssignedEditorParseError(error: any): boolean {
   );
 }
 
-async function updateKeywordWithEditorFallback(id: string, updates: Record<string, any>) {
+async function updateKeywordWithEditorFallback(id: string, updates: Record<string, any>, tenantId?: string) {
   try {
-    return await updateKeyword(id, updates);
+    return await updateKeyword(id, updates, tenantId);
   } catch (error: any) {
     if (!isAssignedEditorParseError(error) || updates.Assigned_Editor === undefined) {
       throw error;
@@ -64,11 +67,11 @@ async function updateKeywordWithEditorFallback(id: string, updates: Record<strin
         : [];
 
     if (assignedValues.length === 0) {
-      return await updateKeyword(id, { ...updates, Assigned_Editor: undefined });
+      return await updateKeyword(id, { ...updates, Assigned_Editor: undefined }, tenantId);
     }
 
     const firstValue = String(assignedValues[0]);
-    const users = await getAllUsers();
+    const users = await getAllUsers(tenantId);
     const matchedUser = users.find((user) => user.id === firstValue || user.Email === firstValue);
 
     const fallbackCandidates: Array<any> = [firstValue];
@@ -81,7 +84,7 @@ async function updateKeywordWithEditorFallback(id: string, updates: Record<strin
         return await updateKeyword(id, {
           ...updates,
           Assigned_Editor: candidate ? [candidate] : undefined,
-        });
+        }, tenantId);
       } catch (candidateError: any) {
         lastError = candidateError;
       }
@@ -93,6 +96,10 @@ async function updateKeywordWithEditorFallback(id: string, updates: Record<strin
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const body = await request.json();
     const { 
       Keyword, 
@@ -121,11 +128,11 @@ export async function POST(request: Request) {
       Avg_Product_Value: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
       Action_Type: 'Erstellung',
       Page_Type: Page_Type || 'Kategorie',
-    });
+    }, tenantId);
 
     if (result) {
-      const enriched = await enrichWithPriorityScore(result as any);
-      const updatedWithScore = await updateKeyword(result.id, { Priority_Score: enriched.Priority_Score });
+      const enriched = await enrichWithPriorityScore(result as any, tenantId);
+      const updatedWithScore = await updateKeyword(result.id, { Priority_Score: enriched.Priority_Score }, tenantId);
       if (updatedWithScore) {
         result = updatedWithScore;
       }
@@ -140,7 +147,6 @@ export async function POST(request: Request) {
 
     // --- Add Logging for Creation ---
     try {
-      const session = await getServerSession(authOptions);
       const editor = session?.user?.email ? [session.user.email] : undefined;
       
       // 1. Base Log: Added to tool
@@ -152,7 +158,7 @@ export async function POST(request: Request) {
         Page_Type: result.Page_Type || 'Kategorie',
         Diff_Summary: 'URL wurde dem Tool hinzugefügt',
         Editor: editor
-      });
+      }, tenantId);
 
         // 2. Conditional Log: Added to Suggestions Tab (if Status=Backlog and Main_Keyword=Y)
         if (result.Status === 'Backlog' && result.Main_Keyword === 'Y') {
@@ -164,7 +170,7 @@ export async function POST(request: Request) {
             Page_Type: result.Page_Type || 'Kategorie',
             Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
             Editor: editor
-          });
+          }, tenantId);
         }
 
         // 3. Trigger n8n Performance Data (History) Webhook in background
@@ -205,6 +211,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const body = await request.json();
     let { id, ...updates } = body;
 
@@ -224,7 +234,7 @@ export async function PATCH(request: Request) {
     }
 
     // 1. Fetch current record to check for status transitions
-    const currentKeywords = await getKeywordMap();
+    const currentKeywords = await getKeywordMap(tenantId);
     const currentKeyword = currentKeywords.find(k => k.id === id);
 
     if (!currentKeyword) {
@@ -258,16 +268,15 @@ export async function PATCH(request: Request) {
         ...currentKeyword,
         ...nextPayload,
       };
-      const enriched = await enrichWithPriorityScore(mergedForScoring as any);
+      const enriched = await enrichWithPriorityScore(mergedForScoring as any, tenantId);
       nextPayload.Priority_Score = enriched.Priority_Score;
     }
 
-    const result = await updateKeywordWithEditorFallback(id, nextPayload);
+    const result = await updateKeywordWithEditorFallback(id, nextPayload, tenantId);
 
     // 3. Status Transition Logging
     if (result && updates.Status && updates.Status !== currentKeyword.Status) {
       try {
-        const session = await getServerSession(authOptions);
         const editor = session?.user?.email ? [session.user.email] : undefined;
 
         if (updates.Status === 'Planned') {
@@ -278,7 +287,7 @@ export async function PATCH(request: Request) {
             Page_Type: result.Page_Type,
             Diff_Summary: 'URL wurde der Redaktionsplanung hinzugefügt',
             Editor: editor
-          });
+          }, tenantId);
         } else if (updates.Status === 'Published') {
           await createContentLog({
             Keyword_ID: [id],
@@ -287,7 +296,7 @@ export async function PATCH(request: Request) {
             Page_Type: result.Page_Type,
             Diff_Summary: 'Content veröffentlicht',
             Editor: editor
-          });
+          }, tenantId);
         }
       } catch (logErr) {
         console.error('[API] Error creating transition log:', logErr);
@@ -321,6 +330,10 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const idsParam = searchParams.get('ids');
@@ -335,9 +348,8 @@ export async function DELETE(request: Request) {
             await updateKeyword(recordId, {
               Status: 'Backlog',
               Editorial_Deadline: undefined,
-              // Use undefined instead of empty array for link fields if empty
               Assigned_Editor: undefined,
-            });
+            }, tenantId);
           }
           return NextResponse.json({ success: true });
         } catch (error: any) {
@@ -348,7 +360,7 @@ export async function DELETE(request: Request) {
           );
         }
       } else {
-        await bulkDeleteKeywords(ids);
+        await bulkDeleteKeywords(ids, tenantId);
       }
       return NextResponse.json({ success: true });
     }
@@ -367,7 +379,7 @@ export async function DELETE(request: Request) {
           Status: 'Backlog',
           Editorial_Deadline: undefined,
           Assigned_Editor: undefined,
-        });
+        }, tenantId);
         return NextResponse.json({ success: true });
       } catch (error: any) {
         console.error('[API] Error soft-deleting keyword:', error);
@@ -377,7 +389,7 @@ export async function DELETE(request: Request) {
         );
       }
     } else {
-      await deleteKeyword(id);
+      await deleteKeyword(id, tenantId);
     }
     return NextResponse.json({ success: true });
   } catch (error: any) {

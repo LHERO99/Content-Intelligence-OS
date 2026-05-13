@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { createContentLog, getAllContentHistory } from '@/lib/postgres';
 import { evaluateOptimizationSuggestions, getOptimizationRuleSettings } from '@/lib/optimization-rules';
 
@@ -8,14 +10,17 @@ function toDateOnly(value: string): string {
   return date.toISOString().split('T')[0];
 }
 
-async function logAutomaticSuggestionEvents(suggestions: Array<{ keywordId: string; targetUrl: string; reasons: string[]; reasonCodes: string[] }>) {
+async function logAutomaticSuggestionEvents(
+  suggestions: Array<{ keywordId: string; targetUrl: string; reasons: string[]; reasonCodes: string[] }>,
+  tenantId?: string
+) {
   const automaticSuggestions = suggestions.filter((item) =>
     item.reasonCodes.some((code) => code !== 'MANUAL_REQUEST')
   );
 
   if (!automaticSuggestions.length) return;
 
-  const existingLogs = await getAllContentHistory();
+  const existingLogs = await getAllContentHistory(tenantId);
   const today = new Date().toISOString().split('T')[0];
 
   for (const suggestion of automaticSuggestions) {
@@ -38,7 +43,7 @@ async function logAutomaticSuggestionEvents(suggestions: Array<{ keywordId: stri
         Logged_URL: suggestion.targetUrl,
         Action_Type: 'Optimierung',
         Diff_Summary: summary,
-      });
+      }, tenantId);
     } catch (error) {
       console.error('[API Optimization Suggestions] Failed to create auto-suggestion log:', error);
     }
@@ -47,9 +52,13 @@ async function logAutomaticSuggestionEvents(suggestions: Array<{ keywordId: stri
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = session.user?.tenantId;
+
     const [settings, suggestions] = await Promise.all([
-      getOptimizationRuleSettings(),
-      evaluateOptimizationSuggestions(),
+      getOptimizationRuleSettings(tenantId),
+      evaluateOptimizationSuggestions(tenantId),
     ]);
 
     await logAutomaticSuggestionEvents(
@@ -58,7 +67,8 @@ export async function GET() {
         targetUrl: item.targetUrl,
         reasons: item.reasons || [],
         reasonCodes: item.reasonCodes || [],
-      }))
+      })),
+      tenantId
     );
 
     return NextResponse.json({
