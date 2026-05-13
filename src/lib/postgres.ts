@@ -1069,13 +1069,14 @@ export async function getUserByEmail(email: string, tenantId?: string): Promise<
       .limit(1);
     if (!row) return null;
     return {
-      id: row.id,
-      Name: row.name ?? '',
-      Email: row.email,
-      Role: row.role as 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer',
-      Password: row.password ?? undefined,
+      id:              row.id,
+      Name:            row.name ?? '',
+      Email:           row.email,
+      Role:            row.role as 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer',
+      TenantId:        row.tenantId,
+      Password:        row.password ?? undefined,
       Password_Changed: row.passwordChanged ?? false,
-      Is_Active: row.isActive ?? true,
+      Is_Active:       row.isActive ?? true,
     };
   });
 }

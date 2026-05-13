@@ -8,12 +8,14 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      tenantId: string;
       passwordChanged: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: string;
+    tenantId: string;
     passwordChanged: boolean;
   }
 }
@@ -22,6 +24,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: string;
+    tenantId: string;
     passwordChanged: boolean;
   }
 }
@@ -31,8 +34,9 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email:    { label: "Email",    type: "email" },
         password: { label: "Password", type: "password" },
+        tenantId: { label: "TenantId", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -40,66 +44,72 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          console.log("[Auth] Authorize attempt for:", credentials.email);
-          // 1. Check if user exists
-          const user = await getUserByEmail(credentials.email);
-          console.log("[Auth] User found in Airtable:", user ? "Yes" : "No");
+          console.log("[Auth] Authorize attempt for:", credentials.email, "tenant:", credentials.tenantId ?? "(default)");
+
+          // When a tenantId is provided (multi-tenant flow), look up within that tenant.
+          // Otherwise fall back to the default tenant (legacy single-tenant behaviour).
+          const user = await getUserByEmail(credentials.email, credentials.tenantId || undefined);
+          console.log("[Auth] User found in DB:", user ? "Yes" : "No");
 
           if (user) {
-            // 2. Check if account is active
+            // Check if account is active
             if (user.Is_Active === false) {
               console.log("[Auth] User account is deactivated");
               return null;
             }
-            // 3. Verify password
+            // Verify password
             if (!user.Password) {
               console.log("[Auth] User has no password set");
               return null;
             }
             const isValid = await bcrypt.compare(credentials.password, user.Password);
             console.log("[Auth] Password valid:", isValid);
-            
+
             if (isValid) {
+              // Derive tenantId: prefer the explicitly passed one, otherwise look it up
+              // from the user record (getUserByEmail stores the tenantId on the row).
+              const tenantId = (credentials.tenantId || user.TenantId) ?? "";
               return {
-                id: user.id,
-                name: user.Name,
-                email: user.Email,
-                role: user.Role,
+                id:              user.id,
+                name:            user.Name,
+                email:           user.Email,
+                role:            user.Role,
+                tenantId,
                 passwordChanged: user.Password_Changed === true,
               };
             }
             return null;
           }
 
-          // 3. If no user, check if table is empty
+          // If no user found, check if the users table is completely empty
+          // (first-time bootstrap: create the initial admin).
           const userCount = await countUsers();
-          console.log("[Auth] User count in table:", userCount);
-          
+          console.log("[Auth] User count in DB:", userCount);
+
           if (userCount === 0) {
             console.log("[Auth] Creating first admin user");
-            // 4. Create first user as Admin
             const hashedPassword = await bcrypt.hash(credentials.password, 10);
             const newUser = await createUser({
-              Name: credentials.email.split('@')[0],
-              Email: credentials.email,
-              Password: hashedPassword,
-              Role: 'Admin',
-              Password_Changed: true, // First user sets their own password immediately
+              Name:             credentials.email.split("@")[0],
+              Email:            credentials.email,
+              Password:         hashedPassword,
+              Role:             "Admin",
+              Password_Changed: true,
             });
 
             if (newUser) {
               console.log("[Auth] First admin user created:", newUser.id);
               return {
-                id: newUser.id,
-                name: newUser.Name,
-                email: newUser.Email,
-                role: newUser.Role,
+                id:              newUser.id,
+                name:            newUser.Name,
+                email:           newUser.Email,
+                role:            newUser.Role,
+                tenantId:        newUser.TenantId ?? "",
                 passwordChanged: true,
               };
             }
           }
 
-          // 5. User not found and table not empty
           console.log("[Auth] User not found and table not empty");
           return null;
         } catch (error) {
@@ -111,10 +121,10 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      console.log("[Auth] JWT Callback - Token:", !!token, "User:", !!user);
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
+        token.id              = user.id;
+        token.role            = user.role;
+        token.tenantId        = user.tenantId;
         token.passwordChanged = user.passwordChanged;
       }
       // Handle session update triggered by update() — e.g. after password change
@@ -124,14 +134,12 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      console.log("[Auth] Session Callback - Session:", !!session, "Token:", !!token);
-      console.log("[Auth] Session Callback - Token ID:", token?.id, "Token Role:", token?.role);
       if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
+        session.user.id              = token.id;
+        session.user.role            = token.role;
+        session.user.tenantId        = token.tenantId;
         session.user.passwordChanged = token.passwordChanged;
       }
-      console.log("[Auth] Session Callback - Final Session User:", !!session.user, "ID:", session.user?.id);
       return session;
     },
   },

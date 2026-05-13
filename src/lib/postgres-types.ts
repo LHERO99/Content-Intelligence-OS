@@ -135,6 +135,7 @@ export interface UserRecord {
   Name: string;
   Email: string;
   Role: 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer';
+  TenantId?: string;
   Password?: string;
   Password_Changed?: boolean;
   Is_Active?: boolean;
