@@ -35,6 +35,7 @@ export const users = pgTable(
     role:            text('role').$type<'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer'>().notNull().default('Editor'),
     password:        text('password'),
     passwordChanged: boolean('password_changed').default(false),
+    isActive:        boolean('is_active').notNull().default(true),
   },
   (t) => ({
     emailTenantUnique: uniqueIndex('users_email_tenant_idx').on(t.email, t.tenantId),

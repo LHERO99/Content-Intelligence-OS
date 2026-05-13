@@ -46,7 +46,12 @@ export const authOptions: NextAuthOptions = {
           console.log("[Auth] User found in Airtable:", user ? "Yes" : "No");
 
           if (user) {
-            // 2. Verify password
+            // 2. Check if account is active
+            if (user.Is_Active === false) {
+              console.log("[Auth] User account is deactivated");
+              return null;
+            }
+            // 3. Verify password
             if (!user.Password) {
               console.log("[Auth] User has no password set");
               return null;

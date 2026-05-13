@@ -46,3 +46,6 @@ CREATE INDEX IF NOT EXISTS feature_requests_type_idx   ON feature_requests(type)
 
 -- 5. Quarterly planning field (added in follow-up iteration)
 ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;
+
+-- 6. User active/inactive status (account locking)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;

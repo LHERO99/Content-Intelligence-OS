@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,13 @@ import {
   Link2,
   Activity,
   Plug,
+  Pencil,
+  Clock,
+  HelpCircle,
+  CreditCard,
+  CalendarDays,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,6 +86,23 @@ interface IntegrationDetail {
   detail: string;
 }
 
+interface CronEntry {
+  key: string;
+  label: string;
+  status: "ok" | "warning" | "error" | "unknown";
+  timestamp: string | null;
+  detail: string;
+}
+
+interface TenantUser {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "Admin" | "Editor" | "Viewer" | "SuperAdmin";
+  passwordChanged: boolean | null;
+  isActive: boolean;
+}
+
 interface TenantHealth {
   tenant: { id: string; name: string; createdAt: string };
   health: {
@@ -101,11 +126,13 @@ interface TenantHealth {
   subscription: {
     tierId: string | null;
     billingCycle: "monthly" | "yearly";
-    status: string;
+    status: "active" | "inactive" | "trial";
+    startDate: string | null;
     tierName: string | null;
     monthlyPrice: string | null;
     yearlyPrice: string | null;
   } | null;
+  cronStatus: CronEntry[];
 }
 
 interface PricingTier {
@@ -141,6 +168,19 @@ function formatPrice(price: string | null, cycle: "monthly" | "yearly" | null): 
   return `€${num.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} / ${cycle === "yearly" ? "Jahr" : "Monat"}`;
 }
 
+function relativeTime(isoTimestamp: string | null): string {
+  if (!isoTimestamp) return "—";
+  const ms = Date.now() - new Date(isoTimestamp).getTime();
+  const mins  = Math.floor(ms / 60_000);
+  const hours = Math.floor(ms / 3_600_000);
+  const days  = Math.floor(ms / 86_400_000);
+  if (mins  < 2)  return "gerade eben";
+  if (mins  < 60) return `vor ${mins} Min.`;
+  if (hours < 24) return `vor ${hours} Std.`;
+  if (days  < 30) return `vor ${days} Tag${days !== 1 ? "en" : ""}`;
+  return new Date(isoTimestamp).toLocaleDateString("de-DE");
+}
+
 const KEYWORD_STATUS_ORDER = [
   "Published", "In Arbeit", "Angeliefert", "Review",
   "Optimierung", "Beauftragt", "Planned", "Backlog",
@@ -156,7 +196,16 @@ export default function TenantsPage() {
   const [tenantDetail, setTenantDetail]           = useState<TenantHealth | null>(null);
   const [detailLoading, setDetailLoading]         = useState(false);
   const [subForm, setSubForm]                     = useState<{ tierId: string; billingCycle: string } | null>(null);
+  const [subEditOpen, setSubEditOpen]             = useState(false);
   const [savingSub, setSavingSub]                 = useState(false);
+
+  // Users state
+  const [tenantUsers, setTenantUsers]             = useState<TenantUser[]>([]);
+  const [usersLoading, setUsersLoading]           = useState(false);
+  const [editUser, setEditUser]                   = useState<TenantUser | null>(null);
+  const [userForm, setUserForm]                   = useState({ name: "", email: "", role: "Editor", isActive: true });
+  const [savingUser, setSavingUser]               = useState(false);
+  const [userError, setUserError]                 = useState<string | null>(null);
 
   // Create tenant dialog
   const [createOpen, setCreateOpen]   = useState(false);
@@ -184,11 +233,19 @@ export default function TenantsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadUsers = useCallback(async (tenantId: string) => {
+    setUsersLoading(true);
+    const res = await fetch(`/api/super-admin/tenants/${tenantId}/users`);
+    setTenantUsers(await res.json());
+    setUsersLoading(false);
+  }, []);
+
   // Open detail view
   const openDetail = useCallback(async (tenantId: string) => {
     setSelectedTenantId(tenantId);
     setDetailLoading(true);
     setTenantDetail(null);
+    setSubEditOpen(false);
     const res  = await fetch(`/api/super-admin/tenants/${tenantId}`);
     const data = await res.json();
     setTenantDetail(data);
@@ -197,11 +254,14 @@ export default function TenantsPage() {
       billingCycle: data.subscription?.billingCycle ?? "monthly",
     });
     setDetailLoading(false);
-  }, []);
+    loadUsers(tenantId);
+  }, [loadUsers]);
 
   const closeDetail = () => {
     setSelectedTenantId(null);
     setTenantDetail(null);
+    setTenantUsers([]);
+    setSubEditOpen(false);
   };
 
   const saveSub = async () => {
@@ -218,9 +278,34 @@ export default function TenantsPage() {
       }),
     });
     setSavingSub(false);
-    // Refresh detail
+    setSubEditOpen(false);
     openDetail(tenantDetail.tenant.id);
     load();
+  };
+
+  const openEditUser = (u: TenantUser) => {
+    setEditUser(u);
+    setUserForm({ name: u.name ?? "", email: u.email, role: u.role, isActive: u.isActive });
+    setUserError(null);
+  };
+
+  const saveUser = async () => {
+    if (!editUser || !selectedTenantId) return;
+    setUserError(null);
+    setSavingUser(true);
+    const res = await fetch(`/api/super-admin/tenants/${selectedTenantId}/users/${editUser.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userForm),
+    });
+    const data = await res.json();
+    setSavingUser(false);
+    if (!res.ok) {
+      setUserError(data.error ?? "Fehler beim Speichern.");
+      return;
+    }
+    setEditUser(null);
+    loadUsers(selectedTenantId);
   };
 
   const submitCreate = async () => {
@@ -249,17 +334,93 @@ export default function TenantsPage() {
   // ── Detail view (full page, Monitoring pattern) ──────────────────────────
   if (selectedTenantId) {
     return (
-      <TenantDetailView
-        tenantDetail={tenantDetail}
-        loading={detailLoading}
-        tiers={tiers}
-        subForm={subForm}
-        setSubForm={setSubForm}
-        savingSub={savingSub}
-        onSaveSub={saveSub}
-        onBack={closeDetail}
-        onRefresh={() => openDetail(selectedTenantId)}
-      />
+      <>
+        <TenantDetailView
+          tenantDetail={tenantDetail}
+          loading={detailLoading}
+          tiers={tiers}
+          subForm={subForm}
+          setSubForm={setSubForm}
+          subEditOpen={subEditOpen}
+          setSubEditOpen={setSubEditOpen}
+          savingSub={savingSub}
+          onSaveSub={saveSub}
+          onBack={closeDetail}
+          onRefresh={() => openDetail(selectedTenantId)}
+          tenantUsers={tenantUsers}
+          usersLoading={usersLoading}
+          onEditUser={openEditUser}
+        />
+
+        {/* Edit User Dialog */}
+        <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nutzer bearbeiten</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {userError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{userError}</AlertDescription>
+                </Alert>
+              )}
+              <div>
+                <Label>Name</Label>
+                <Input
+                  value={userForm.name}
+                  onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                  placeholder="Vorname Nachname"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>E-Mail</Label>
+                <Input
+                  type="email"
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Rolle</Label>
+                <Select
+                  value={userForm.role}
+                  onValueChange={(v) => setUserForm({ ...userForm, role: v ?? userForm.role })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Editor">Editor</SelectItem>
+                    <SelectItem value="Viewer">Viewer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Account aktiv</p>
+                  <p className="text-xs text-muted-foreground">
+                    Gesperrte Nutzer können sich nicht einloggen.
+                  </p>
+                </div>
+                <Switch
+                  checked={userForm.isActive}
+                  onCheckedChange={(v) => setUserForm({ ...userForm, isActive: v })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditUser(null)}>Abbrechen</Button>
+              <Button onClick={saveUser} disabled={savingUser || !userForm.email}>
+                {savingUser && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                Speichern
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
@@ -499,20 +660,30 @@ function TenantDetailView({
   tiers,
   subForm,
   setSubForm,
+  subEditOpen,
+  setSubEditOpen,
   savingSub,
   onSaveSub,
   onBack,
   onRefresh,
+  tenantUsers,
+  usersLoading,
+  onEditUser,
 }: {
   tenantDetail: TenantHealth | null;
   loading: boolean;
   tiers: PricingTier[];
   subForm: { tierId: string; billingCycle: string } | null;
   setSubForm: (f: { tierId: string; billingCycle: string }) => void;
+  subEditOpen: boolean;
+  setSubEditOpen: (o: boolean) => void;
   savingSub: boolean;
   onSaveSub: () => void;
   onBack: () => void;
   onRefresh: () => void;
+  tenantUsers: TenantUser[];
+  usersLoading: boolean;
+  onEditUser: (u: TenantUser) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -599,83 +770,17 @@ function TenantDetailView({
               </CardContent>
             </Card>
 
-            {/* Subscription */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Subscription</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {tenantDetail.subscription && (
-                  <div className="rounded-lg bg-muted/30 border p-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Aktueller Tier</span>
-                      <Badge variant="outline">{tenantDetail.subscription.tierName ?? "Kein Tier"}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Billing</span>
-                      <Badge variant="secondary">
-                        {tenantDetail.subscription.billingCycle === "yearly" ? "Jährlich" : "Monatlich"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Preis</span>
-                      <span className="text-sm font-mono font-medium">
-                        {formatPrice(
-                          tenantDetail.subscription.billingCycle === "yearly"
-                            ? tenantDetail.subscription.yearlyPrice
-                            : tenantDetail.subscription.monthlyPrice,
-                          tenantDetail.subscription.billingCycle
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {subForm && (
-                  <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground font-medium">Subscription ändern</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs mb-1 block">Tier</Label>
-                        <Select
-                          value={subForm.tierId || "none"}
-                          onValueChange={(v) => setSubForm({ ...subForm, tierId: v === "none" ? "" : (v ?? "") })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Kein Tier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Kein Tier</SelectItem>
-                            {tiers.map((t) => (
-                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1 block">Cycle</Label>
-                        <Select
-                          value={subForm.billingCycle}
-                          onValueChange={(v) => setSubForm({ ...subForm, billingCycle: v ?? "monthly" })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="monthly">Monatlich</SelectItem>
-                            <SelectItem value="yearly">Jährlich</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button onClick={onSaveSub} disabled={savingSub} className="w-full">
-                      {savingSub && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                      Speichern
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Subscription — redesigned */}
+            <SubscriptionCard
+              subscription={tenantDetail.subscription}
+              tiers={tiers}
+              subForm={subForm}
+              setSubForm={setSubForm}
+              subEditOpen={subEditOpen}
+              setSubEditOpen={setSubEditOpen}
+              savingSub={savingSub}
+              onSaveSub={onSaveSub}
+            />
           </div>
 
           {/* Stats row */}
@@ -700,6 +805,9 @@ function TenantDetailView({
               )}
             </p>
           )}
+
+          {/* Cron Status */}
+          <CronStatusCard cronStatus={tenantDetail.cronStatus} />
 
           {/* Bottom row: Keywords by status + Integrations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -776,9 +884,314 @@ function TenantDetailView({
               </CardContent>
             </Card>
           </div>
+
+          {/* Users Card */}
+          <UsersCard
+            users={tenantUsers}
+            loading={usersLoading}
+            onEdit={onEditUser}
+          />
         </>
       )}
     </div>
+  );
+}
+
+// ─── Subscription Card ────────────────────────────────────────────────────────
+
+function SubscriptionCard({
+  subscription,
+  tiers,
+  subForm,
+  setSubForm,
+  subEditOpen,
+  setSubEditOpen,
+  savingSub,
+  onSaveSub,
+}: {
+  subscription: TenantHealth["subscription"];
+  tiers: PricingTier[];
+  subForm: { tierId: string; billingCycle: string } | null;
+  setSubForm: (f: { tierId: string; billingCycle: string }) => void;
+  subEditOpen: boolean;
+  setSubEditOpen: (o: boolean) => void;
+  savingSub: boolean;
+  onSaveSub: () => void;
+}) {
+  const statusConfig = {
+    active:   { label: "Aktiv",   className: "bg-green-100 text-green-800 border-green-200" },
+    trial:    { label: "Trial",   className: "bg-blue-100 text-blue-800 border-blue-200" },
+    inactive: { label: "Inaktiv", className: "bg-gray-100 text-gray-600 border-gray-200" },
+  };
+
+  const price = subscription
+    ? formatPrice(
+        subscription.billingCycle === "yearly" ? subscription.yearlyPrice : subscription.monthlyPrice,
+        subscription.billingCycle
+      )
+    : null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CreditCard className="w-4 h-4" /> Subscription
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {subscription ? (
+          <div className="space-y-3">
+            {/* Tier + Status */}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xl font-bold leading-tight">
+                  {subscription.tierName ?? "Kein Tier"}
+                </p>
+                {price && (
+                  <p className="text-2xl font-bold text-primary mt-0.5">{price}</p>
+                )}
+              </div>
+              {subscription.status && (
+                <Badge className={`${statusConfig[subscription.status]?.className ?? ""} shrink-0`}>
+                  {statusConfig[subscription.status]?.label ?? subscription.status}
+                </Badge>
+              )}
+            </div>
+
+            {/* Details row */}
+            <div className="rounded-lg bg-muted/30 border divide-y text-sm">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5" /> Billing
+                </span>
+                <span className="font-medium">
+                  {subscription.billingCycle === "yearly" ? "Jährlich" : "Monatlich"}
+                </span>
+              </div>
+              {subscription.startDate && (
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5" /> Seit
+                  </span>
+                  <span className="font-medium">
+                    {new Date(subscription.startDate).toLocaleDateString("de-DE")}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed p-4 text-center">
+            <CreditCard className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Keine Subscription hinterlegt</p>
+          </div>
+        )}
+
+        {/* Edit toggle */}
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5"
+            onClick={() => setSubEditOpen(!subEditOpen)}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            {subEditOpen ? "Abbrechen" : "Subscription bearbeiten"}
+          </Button>
+
+          {subEditOpen && subForm && (
+            <div className="mt-3 space-y-3 rounded-lg border bg-muted/20 p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs mb-1 block">Tier</Label>
+                  <Select
+                    value={subForm.tierId || "none"}
+                    onValueChange={(v) => setSubForm({ ...subForm, tierId: v === "none" ? "" : (v ?? "") })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kein Tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein Tier</SelectItem>
+                      {tiers.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Cycle</Label>
+                  <Select
+                    value={subForm.billingCycle}
+                    onValueChange={(v) => setSubForm({ ...subForm, billingCycle: v ?? "monthly" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monatlich</SelectItem>
+                      <SelectItem value="yearly">Jährlich</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button onClick={onSaveSub} disabled={savingSub} className="w-full" size="sm">
+                {savingSub && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                Speichern
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Cron Status Card ─────────────────────────────────────────────────────────
+
+function CronStatusCard({ cronStatus }: { cronStatus: CronEntry[] }) {
+  function CronIcon({ status }: { status: CronEntry["status"] }) {
+    if (status === "ok")      return <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />;
+    if (status === "error")   return <XCircle      className="w-4 h-4 text-red-500 shrink-0" />;
+    if (status === "warning") return <Clock        className="w-4 h-4 text-yellow-500 shrink-0" />;
+    return                           <HelpCircle   className="w-4 h-4 text-muted-foreground/50 shrink-0" />;
+  }
+
+  function CronBadge({ status }: { status: CronEntry["status"] }) {
+    if (status === "ok")      return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">OK</Badge>;
+    if (status === "error")   return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">Fehler</Badge>;
+    if (status === "warning") return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs">Warnung</Badge>;
+    return                           <Badge variant="outline" className="text-xs text-muted-foreground">Unbekannt</Badge>;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" /> Datenaktualisierungen (Cronjobs)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {cronStatus.map((job) => (
+            <div key={job.key} className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CronIcon status={job.status} />
+                  <span className="text-sm font-medium">{job.label}</span>
+                </div>
+                <CronBadge status={job.status} />
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{job.detail}</p>
+              {job.timestamp && (
+                <p className="text-xs text-muted-foreground/70">
+                  {relativeTime(job.timestamp)}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Users Card ───────────────────────────────────────────────────────────────
+
+function UsersCard({
+  users,
+  loading,
+  onEdit,
+}: {
+  users: TenantUser[];
+  loading: boolean;
+  onEdit: (u: TenantUser) => void;
+}) {
+  const roleConfig: Record<string, string> = {
+    Admin:   "bg-purple-100 text-purple-800 border-purple-200",
+    Editor:  "bg-blue-100 text-blue-800 border-blue-200",
+    Viewer:  "bg-gray-100 text-gray-700 border-gray-200",
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Users className="w-4 h-4" /> Nutzer
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Keine Nutzer vorhanden.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>E-Mail</TableHead>
+                <TableHead>Rolle</TableHead>
+                <TableHead>Eingeloggt</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">
+                    {u.name ?? <span className="text-muted-foreground italic">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm">{u.email}</TableCell>
+                  <TableCell>
+                    <Badge className={`text-xs ${roleConfig[u.role] ?? ""}`}>
+                      {u.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {u.passwordChanged ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Ja
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5" /> Ausstehend
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {u.isActive ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Aktiv
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-red-500">
+                        <ShieldOff className="w-3.5 h-3.5" /> Gesperrt
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {u.role !== "SuperAdmin" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => onEdit(u)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

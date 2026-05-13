@@ -10,8 +10,9 @@ import {
   tenantSubscriptions,
   pricingTiers,
   users,
+  auditLogs,
 } from "@/lib/db/schema";
-import { eq, count, sql, and, gte, max } from "drizzle-orm";
+import { eq, count, sql, and, gte, max, desc, like } from "drizzle-orm";
 
 export async function GET(
   _req: Request,
@@ -202,6 +203,7 @@ export async function GET(
         tierId:       tenantSubscriptions.tierId,
         billingCycle: tenantSubscriptions.billingCycle,
         status:       tenantSubscriptions.status,
+        startDate:    tenantSubscriptions.startDate,
         tierName:     pricingTiers.name,
         monthlyPrice: pricingTiers.monthlyPrice,
         yearlyPrice:  pricingTiers.yearlyPrice,
@@ -210,6 +212,53 @@ export async function GET(
       .leftJoin(pricingTiers, eq(pricingTiers.id, tenantSubscriptions.tierId))
       .where(eq(tenantSubscriptions.tenantId, tenantId))
       .limit(1);
+
+    // ── Cron status ───────────────────────────────────────────────────────────
+    // Read the most recent audit log entry per cron job prefix for this tenant
+    const CRON_JOBS = [
+      { key: "cron:sync-gsc",        label: "GSC Sync" },
+      { key: "cron:sync-dataforseo", label: "DataForSEO Sync" },
+      { key: "cron:sync-sistrix",    label: "Sistrix Sync" },
+    ] as const;
+
+    const cronStatus = await Promise.all(
+      CRON_JOBS.map(async ({ key, label }) => {
+        const [latest] = await db
+          .select({ action: auditLogs.action, timestamp: auditLogs.timestamp, rawPayload: auditLogs.rawPayload })
+          .from(auditLogs)
+          .where(and(
+            eq(auditLogs.tenantId, tenantId),
+            like(auditLogs.action, `${key}:%`),
+          ))
+          .orderBy(desc(auditLogs.timestamp))
+          .limit(1);
+
+        if (!latest) {
+          return { key, label, status: "unknown" as const, timestamp: null, detail: "Noch kein Lauf protokolliert" };
+        }
+
+        const suffix    = latest.action.replace(`${key}:`, "");
+        const ts        = latest.timestamp instanceof Date ? latest.timestamp.toISOString() : String(latest.timestamp);
+        const ageMs     = Date.now() - new Date(ts).getTime();
+        const ageDays   = ageMs / 86_400_000;
+
+        if (suffix === "error") {
+          let errMsg = "Letzter Lauf fehlgeschlagen";
+          try {
+            const p = latest.rawPayload as Record<string, unknown> | null;
+            if (p?.error && typeof p.error === "string") errMsg = p.error;
+          } catch {}
+          return { key, label, status: "error" as const, timestamp: ts, detail: errMsg };
+        }
+        if (suffix === "skipped") {
+          return { key, label, status: "warning" as const, timestamp: ts, detail: "Integration nicht konfiguriert — Sync übersprungen" };
+        }
+        if (ageDays > 8) {
+          return { key, label, status: "warning" as const, timestamp: ts, detail: `Letzter Lauf vor ${Math.floor(ageDays)} Tagen` };
+        }
+        return { key, label, status: "ok" as const, timestamp: ts, detail: "Erfolgreich synchronisiert" };
+      })
+    );
 
     return NextResponse.json({
       tenant,
@@ -228,6 +277,7 @@ export async function GET(
       integrationDetails,
       agentType,
       subscription: sub ?? null,
+      cronStatus,
     });
   } catch (error) {
     console.error("[SuperAdmin] Error fetching tenant health:", error);

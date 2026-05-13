@@ -134,9 +134,10 @@ export interface UserRecord {
   id: string;
   Name: string;
   Email: string;
-  Role: 'Admin' | 'Editor' | 'Viewer';
+  Role: 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer';
   Password?: string;
   Password_Changed?: boolean;
+  Is_Active?: boolean;
 }
 
 export interface OptimizationRuleSettings {

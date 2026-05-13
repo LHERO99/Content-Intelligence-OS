@@ -1072,9 +1072,10 @@ export async function getUserByEmail(email: string, tenantId?: string): Promise<
       id: row.id,
       Name: row.name ?? '',
       Email: row.email,
-      Role: row.role as 'Admin' | 'Editor' | 'Viewer',
+      Role: row.role as 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer',
       Password: row.password ?? undefined,
       Password_Changed: row.passwordChanged ?? false,
+      Is_Active: row.isActive ?? true,
     };
   });
 }
