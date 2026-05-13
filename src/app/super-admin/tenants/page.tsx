@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,10 +26,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Building2,
   RefreshCw,
@@ -36,6 +37,7 @@ import {
   AlertTriangle,
   XCircle,
   ChevronRight,
+  ArrowLeft,
   Bot,
   Loader2,
   Plus,
@@ -111,7 +113,6 @@ interface PricingTier {
   name: string;
   monthlyPrice: string;
   yearlyPrice: string;
-  features: string[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -148,61 +149,121 @@ const KEYWORD_STATUS_ORDER = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TenantsPage() {
-  const [tenants, setTenants]               = useState<Tenant[]>([]);
-  const [loading, setLoading]               = useState(true);
-  const [selectedTenant, setSelectedTenant] = useState<TenantHealth | null>(null);
-  const [detailLoading, setDetailLoading]   = useState(false);
-  const [tiers, setTiers]                   = useState<PricingTier[]>([]);
-  const [subForm, setSubForm]               = useState<{ tierId: string; billingCycle: string } | null>(null);
-  const [savingSub, setSavingSub]           = useState(false);
+  const [tenants, setTenants]                     = useState<Tenant[]>([]);
+  const [tiers, setTiers]                         = useState<PricingTier[]>([]);
+  const [loading, setLoading]                     = useState(true);
+  const [selectedTenantId, setSelectedTenantId]   = useState<string | null>(null);
+  const [tenantDetail, setTenantDetail]           = useState<TenantHealth | null>(null);
+  const [detailLoading, setDetailLoading]         = useState(false);
+  const [subForm, setSubForm]                     = useState<{ tierId: string; billingCycle: string } | null>(null);
+  const [savingSub, setSavingSub]                 = useState(false);
+
+  // Create tenant dialog
+  const [createOpen, setCreateOpen]   = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creating, setCreating]       = useState(false);
+  const [createForm, setCreateForm]   = useState({
+    tenantName:    "",
+    adminName:     "",
+    adminEmail:    "",
+    adminPassword: "",
+    tierId:        "",
+    billingCycle:  "monthly",
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [tenantsRes, tiersRes] = await Promise.all([
-        fetch("/api/super-admin/tenants"),
-        fetch("/api/super-admin/pricing-tiers"),
-      ]);
-      setTenants(await tenantsRes.json());
-      setTiers(await tiersRes.json());
-    } finally {
-      setLoading(false);
-    }
+    const [tenantsRes, tiersRes] = await Promise.all([
+      fetch("/api/super-admin/tenants"),
+      fetch("/api/super-admin/pricing-tiers"),
+    ]);
+    setTenants(await tenantsRes.json());
+    setTiers(await tiersRes.json());
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const openDetail = async (tenantId: string) => {
+  // Open detail view
+  const openDetail = useCallback(async (tenantId: string) => {
+    setSelectedTenantId(tenantId);
     setDetailLoading(true);
-    setSelectedTenant(null);
+    setTenantDetail(null);
     const res  = await fetch(`/api/super-admin/tenants/${tenantId}`);
     const data = await res.json();
-    setSelectedTenant(data);
+    setTenantDetail(data);
     setSubForm({
       tierId:       data.subscription?.tierId       ?? "",
       billingCycle: data.subscription?.billingCycle ?? "monthly",
     });
     setDetailLoading(false);
+  }, []);
+
+  const closeDetail = () => {
+    setSelectedTenantId(null);
+    setTenantDetail(null);
   };
 
   const saveSub = async () => {
-    if (!selectedTenant || !subForm) return;
+    if (!tenantDetail || !subForm) return;
     setSavingSub(true);
     await fetch("/api/super-admin/subscriptions", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tenantId:     selectedTenant.tenant.id,
+        tenantId:     tenantDetail.tenant.id,
         tierId:       subForm.tierId || null,
         billingCycle: subForm.billingCycle,
         status:       "active",
       }),
     });
     setSavingSub(false);
-    setSelectedTenant(null);
+    // Refresh detail
+    openDetail(tenantDetail.tenant.id);
     load();
   };
 
+  const submitCreate = async () => {
+    setCreateError(null);
+    if (!createForm.tenantName || !createForm.adminEmail || !createForm.adminPassword) {
+      setCreateError("Unternehmensname, E-Mail und Passwort sind Pflichtfelder.");
+      return;
+    }
+    setCreating(true);
+    const res = await fetch("/api/super-admin/tenants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(createForm),
+    });
+    const data = await res.json();
+    setCreating(false);
+    if (!res.ok) {
+      setCreateError(data.error ?? "Fehler beim Anlegen des Tenants.");
+      return;
+    }
+    setCreateOpen(false);
+    setCreateForm({ tenantName: "", adminName: "", adminEmail: "", adminPassword: "", tierId: "", billingCycle: "monthly" });
+    load();
+  };
+
+  // ── Detail view (full page, Monitoring pattern) ──────────────────────────
+  if (selectedTenantId) {
+    return (
+      <TenantDetailView
+        tenantDetail={tenantDetail}
+        loading={detailLoading}
+        tiers={tiers}
+        subForm={subForm}
+        setSubForm={setSubForm}
+        savingSub={savingSub}
+        onSaveSub={saveSub}
+        onBack={closeDetail}
+        onRefresh={() => openDetail(selectedTenantId)}
+      />
+    );
+  }
+
+  // ── List view ────────────────────────────────────────────────────────────
   return (
     <>
       <div className="space-y-6">
@@ -292,193 +353,307 @@ export default function TenantsPage() {
         </Card>
       </div>
 
-      {/* ── Tenant Detail Dialog ─────────────────────────────────────────────── */}
-      <Dialog
-        open={!!selectedTenant || detailLoading}
-        onOpenChange={(o) => { if (!o) setSelectedTenant(null); }}
+      {/* ── FAB ── */}
+      <Button
+        className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-xl z-50"
+        size="icon"
+        onClick={() => setCreateOpen(true)}
+        title="Neuen Tenant anlegen"
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          {detailLoading || !selectedTenant ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <Plus className="h-6 w-6" />
+      </Button>
+
+      {/* ── Create Tenant Dialog ── */}
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreateError(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Neuen Tenant anlegen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            {createError && (
+              <Alert variant="destructive">
+                <AlertDescription>{createError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Unternehmen
+              </p>
+              <div>
+                <Label>Unternehmensname <span className="text-destructive">*</span></Label>
+                <Input
+                  value={createForm.tenantName}
+                  onChange={(e) => setCreateForm({ ...createForm, tenantName: e.target.value })}
+                  placeholder="z.B. Acme GmbH"
+                  className="mt-1"
+                />
+              </div>
             </div>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-xl">{selectedTenant.tenant.name}</DialogTitle>
-                <DialogDescription>
-                  Tenant seit {new Date(selectedTenant.tenant.createdAt).toLocaleDateString("de-DE")}
-                  {" · "}
-                  {selectedTenant.stats.userCount} Nutzer
-                </DialogDescription>
-              </DialogHeader>
 
-              <div className="space-y-6 py-2">
+            <Separator />
 
-                {/* ── Health Score Bar ─────────────────────────────────────── */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Admin-Account
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <Label>Name</Label>
+                  <Input
+                    value={createForm.adminName}
+                    onChange={(e) => setCreateForm({ ...createForm, adminName: e.target.value })}
+                    placeholder="Vorname Nachname"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>E-Mail <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="email"
+                    value={createForm.adminEmail}
+                    onChange={(e) => setCreateForm({ ...createForm, adminEmail: e.target.value })}
+                    placeholder="admin@unternehmen.de"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Initiales Passwort <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="password"
+                    value={createForm.adminPassword}
+                    onChange={(e) => setCreateForm({ ...createForm, adminPassword: e.target.value })}
+                    placeholder="Min. 8 Zeichen"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Der Admin wird beim ersten Login aufgefordert, das Passwort zu ändern.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Subscription (optional)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Pricing Tier</Label>
+                  <Select
+                    value={createForm.tierId || "none"}
+                    onValueChange={(v) => setCreateForm({ ...createForm, tierId: v === "none" ? "" : (v ?? "") })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Kein Tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein Tier</SelectItem>
+                      {tiers.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Billing Cycle</Label>
+                  <Select
+                    value={createForm.billingCycle}
+                    onValueChange={(v) => setCreateForm({ ...createForm, billingCycle: v ?? "monthly" })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monatlich</SelectItem>
+                      <SelectItem value="yearly">Jährlich</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
+            <Button
+              onClick={submitCreate}
+              disabled={creating || !createForm.tenantName || !createForm.adminEmail || !createForm.adminPassword}
+            >
+              {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Tenant anlegen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ─── Detail View Component (full page, no modal) ──────────────────────────────
+
+function TenantDetailView({
+  tenantDetail,
+  loading,
+  tiers,
+  subForm,
+  setSubForm,
+  savingSub,
+  onSaveSub,
+  onBack,
+  onRefresh,
+}: {
+  tenantDetail: TenantHealth | null;
+  loading: boolean;
+  tiers: PricingTier[];
+  subForm: { tierId: string; billingCycle: string } | null;
+  setSubForm: (f: { tierId: string; billingCycle: string }) => void;
+  savingSub: boolean;
+  onSaveSub: () => void;
+  onBack: () => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack} className="gap-2 -ml-2">
+          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+        </Button>
+        {tenantDetail && (
+          <Button variant="outline" size="sm" onClick={onRefresh} className="gap-1">
+            <RefreshCw className="w-3 h-3" /> Aktualisieren
+          </Button>
+        )}
+      </div>
+
+      {loading || !tenantDetail ? (
+        <div className="flex justify-center py-24">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* Page title */}
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{tenantDetail.tenant.name}</h1>
+            <p className="text-muted-foreground mt-1">
+              Tenant seit {new Date(tenantDetail.tenant.createdAt).toLocaleDateString("de-DE")}
+              {" · "}
+              {tenantDetail.stats.userCount} Nutzer
+            </p>
+          </div>
+
+          {/* Top row: Health + Subscription */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Health Score */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Health Score</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold">Health Score</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">{selectedTenant.health.score}</span>
-                      <span className="text-muted-foreground text-sm">/ 100</span>
-                      <HealthBadge status={selectedTenant.health.status} />
+                      <span className="text-3xl font-bold">{tenantDetail.health.score}</span>
+                      <span className="text-muted-foreground">/ 100</span>
                     </div>
+                    <HealthBadge status={tenantDetail.health.status} />
                   </div>
                   <div className="h-3 rounded-full bg-muted overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        selectedTenant.health.status === "healthy" ? "bg-green-500" :
-                        selectedTenant.health.status === "warning"  ? "bg-yellow-500" :
+                        tenantDetail.health.status === "healthy" ? "bg-green-500" :
+                        tenantDetail.health.status === "warning"  ? "bg-yellow-500" :
                         "bg-red-500"
                       }`}
-                      style={{ width: `${selectedTenant.health.score}%` }}
+                      style={{ width: `${tenantDetail.health.score}%` }}
                     />
                   </div>
                 </div>
 
-                {/* ── Health Criteria Breakdown ─────────────────────────────── */}
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="bg-muted/40 px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Health Breakdown
-                  </div>
-                  <div className="divide-y">
-                    {selectedTenant.health.criteria.map((c) => (
-                      <div key={c.key} className="flex items-start gap-3 px-4 py-3">
-                        <div className="mt-0.5 shrink-0">
-                          {c.passed
-                            ? <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            : <XCircle className="w-4 h-4 text-red-400" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium">{c.label}</span>
-                            <span className={`text-xs font-mono font-bold shrink-0 ${
-                              c.passed ? "text-green-600" : "text-muted-foreground"
-                            }`}>
-                              +{c.points} / {c.maxPoints} Pkt.
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{c.detail}</p>
-                        </div>
+                {/* Breakdown */}
+                <div className="rounded-lg border divide-y">
+                  {tenantDetail.health.criteria.map((c) => (
+                    <div key={c.key} className="flex items-start gap-3 px-3 py-2.5">
+                      <div className="mt-0.5 shrink-0">
+                        {c.passed
+                          ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          : <XCircle className="w-4 h-4 text-red-400" />}
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── Stats Overview ────────────────────────────────────────── */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <MiniStat icon={<FileText className="w-4 h-4" />}  label="Keywords"         value={selectedTenant.stats.keywordCount.toLocaleString("de-DE")} />
-                  <MiniStat icon={<Link2 className="w-4 h-4" />}     label="URLs"             value={selectedTenant.stats.urlCount.toLocaleString("de-DE")} />
-                  <MiniStat icon={<Activity className="w-4 h-4" />}  label="Logs gesamt"      value={selectedTenant.stats.totalContentLogs.toLocaleString("de-DE")} />
-                  <MiniStat icon={<Users className="w-4 h-4" />}     label="Nutzer"           value={String(selectedTenant.stats.userCount)} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <MiniStat icon={<Plus className="w-4 h-4" />}      label="Erstellungen (30d)"  value={String(selectedTenant.stats.erstellungen30d)} />
-                  <MiniStat icon={<RefreshCw className="w-4 h-4" />} label="Optimierungen (30d)" value={String(selectedTenant.stats.optimierungen30d)} />
-                </div>
-
-                {selectedTenant.stats.lastActivityDate && (
-                  <p className="text-xs text-muted-foreground px-1">
-                    Letzte Aktivität:{" "}
-                    <span className="font-medium text-foreground">
-                      {new Date(selectedTenant.stats.lastActivityDate).toLocaleDateString("de-DE")}
-                    </span>
-                    {selectedTenant.stats.daysSinceActivity !== null && (
-                      <> &mdash; vor {selectedTenant.stats.daysSinceActivity} Tagen</>
-                    )}
-                  </p>
-                )}
-
-                {/* ── Keyword Status Breakdown ──────────────────────────────── */}
-                {selectedTenant.stats.keywordsByStatus.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-sm font-semibold mb-2">Keywords nach Status</p>
-                      <div className="flex flex-wrap gap-2">
-                        {[...selectedTenant.stats.keywordsByStatus]
-                          .sort((a, b) => {
-                            const ai = KEYWORD_STATUS_ORDER.indexOf(a.status);
-                            const bi = KEYWORD_STATUS_ORDER.indexOf(b.status);
-                            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-                          })
-                          .map((ks) => (
-                            <div
-                              key={ks.status}
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-muted/30 text-xs"
-                            >
-                              <span className="font-medium">{ks.status}</span>
-                              <span className="text-muted-foreground bg-background px-1.5 py-0.5 rounded-full font-mono">
-                                {ks.count}
-                              </span>
-                            </div>
-                          ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium">{c.label}</span>
+                          <span className={`text-xs font-mono font-bold shrink-0 ${
+                            c.passed ? "text-green-600" : "text-muted-foreground"
+                          }`}>
+                            +{c.points}/{c.maxPoints}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{c.detail}</p>
                       </div>
                     </div>
-                  </>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Subscription */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Subscription</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {tenantDetail.subscription && (
+                  <div className="rounded-lg bg-muted/30 border p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Aktueller Tier</span>
+                      <Badge variant="outline">{tenantDetail.subscription.tierName ?? "Kein Tier"}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Billing</span>
+                      <Badge variant="secondary">
+                        {tenantDetail.subscription.billingCycle === "yearly" ? "Jährlich" : "Monatlich"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Preis</span>
+                      <span className="text-sm font-mono font-medium">
+                        {formatPrice(
+                          tenantDetail.subscription.billingCycle === "yearly"
+                            ? tenantDetail.subscription.yearlyPrice
+                            : tenantDetail.subscription.monthlyPrice,
+                          tenantDetail.subscription.billingCycle
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 )}
 
-                {/* ── Integrations ──────────────────────────────────────────── */}
-                <Separator />
-                <div>
-                  <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                    <Plug className="w-4 h-4" /> Integrationen
-                  </p>
-                  <div className="space-y-2">
-                    {selectedTenant.integrationDetails.map((intg) => (
-                      <div key={intg.name} className="flex items-start gap-2.5">
-                        {intg.connected
-                          ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                          : <XCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
-                        <div>
-                          <span className={`text-sm font-medium ${!intg.connected ? "text-muted-foreground" : ""}`}>
-                            {intg.name}
-                          </span>
-                          <p className="text-xs text-muted-foreground">{intg.detail}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── Agent Type ────────────────────────────────────────────── */}
-                <div className="flex items-center gap-2 text-sm">
-                  <Bot className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium">Agent-Typ:</span>
-                  <Badge variant="secondary">
-                    {selectedTenant.agentType === "internal"  ? "Intern (n8n)" :
-                     selectedTenant.agentType === "external"  ? "Extern" :
-                     "Nicht konfiguriert"}
-                  </Badge>
-                </div>
-
-                {/* ── Subscription ──────────────────────────────────────────── */}
-                <Separator />
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold">Subscription</p>
-                  {subForm && (
+                {subForm && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground font-medium">Subscription ändern</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs text-muted-foreground mb-1 block">Pricing Tier</Label>
+                        <Label className="text-xs mb-1 block">Tier</Label>
                         <Select
-                          value={subForm.tierId}
-                          onValueChange={(v) => setSubForm({ ...subForm, tierId: v ?? "" })}
+                          value={subForm.tierId || "none"}
+                          onValueChange={(v) => setSubForm({ ...subForm, tierId: v === "none" ? "" : (v ?? "") })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Kein Tier" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Kein Tier</SelectItem>
-                            {tiers.map((tier) => (
-                              <SelectItem key={tier.id} value={tier.id}>{tier.name}</SelectItem>
+                            <SelectItem value="none">Kein Tier</SelectItem>
+                            {tiers.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs text-muted-foreground mb-1 block">Billing Cycle</Label>
+                        <Label className="text-xs mb-1 block">Cycle</Label>
                         <Select
                           value={subForm.billingCycle}
                           onValueChange={(v) => setSubForm({ ...subForm, billingCycle: v ?? "monthly" })}
@@ -493,27 +668,121 @@ export default function TenantsPage() {
                         </Select>
                       </div>
                     </div>
-                  )}
+                    <Button onClick={onSaveSub} disabled={savingSub} className="w-full">
+                      {savingSub && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      Speichern
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MiniStat icon={<FileText className="w-4 h-4" />}  label="Keywords"         value={tenantDetail.stats.keywordCount.toLocaleString("de-DE")} />
+            <MiniStat icon={<Link2 className="w-4 h-4" />}     label="URLs"             value={tenantDetail.stats.urlCount.toLocaleString("de-DE")} />
+            <MiniStat icon={<Activity className="w-4 h-4" />}  label="Content-Logs"     value={tenantDetail.stats.totalContentLogs.toLocaleString("de-DE")} />
+            <MiniStat icon={<Users className="w-4 h-4" />}     label="Nutzer"           value={String(tenantDetail.stats.userCount)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat icon={<Plus className="w-4 h-4" />}      label="Erstellungen (30 Tage)"  value={String(tenantDetail.stats.erstellungen30d)} />
+            <MiniStat icon={<RefreshCw className="w-4 h-4" />} label="Optimierungen (30 Tage)" value={String(tenantDetail.stats.optimierungen30d)} />
+          </div>
+          {tenantDetail.stats.lastActivityDate && (
+            <p className="text-xs text-muted-foreground">
+              Letzte Aktivität:{" "}
+              <span className="font-medium text-foreground">
+                {new Date(tenantDetail.stats.lastActivityDate).toLocaleDateString("de-DE")}
+              </span>
+              {tenantDetail.stats.daysSinceActivity !== null && (
+                <> — vor {tenantDetail.stats.daysSinceActivity} Tagen</>
+              )}
+            </p>
+          )}
+
+          {/* Bottom row: Keywords by status + Integrations */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Keyword status breakdown */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Keywords nach Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {tenantDetail.stats.keywordsByStatus.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {[...tenantDetail.stats.keywordsByStatus]
+                      .sort((a, b) => {
+                        const ai = KEYWORD_STATUS_ORDER.indexOf(a.status);
+                        const bi = KEYWORD_STATUS_ORDER.indexOf(b.status);
+                        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                      })
+                      .map((ks) => (
+                        <div
+                          key={ks.status}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border bg-muted/30 text-xs"
+                        >
+                          <span className="font-medium">{ks.status}</span>
+                          <span className="text-muted-foreground bg-background px-1.5 py-0.5 rounded-full font-mono">
+                            {ks.count}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Keine Keywords vorhanden.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Integrations + Agent */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Plug className="w-4 h-4" /> Integrationen &amp; Agent
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2.5">
+                  {tenantDetail.integrationDetails.map((intg) => (
+                    <div key={intg.name} className="flex items-start gap-2.5">
+                      {intg.connected
+                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                        : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />}
+                      <div>
+                        <span className={`text-sm font-medium ${!intg.connected ? "text-muted-foreground" : ""}`}>
+                          {intg.name}
+                        </span>
+                        <p className="text-xs text-muted-foreground">{intg.detail}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-              </div>
+                <Separator />
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setSelectedTenant(null)}>Schließen</Button>
-                <Button onClick={saveSub} disabled={savingSub}>
-                  {savingSub && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  Subscription speichern
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+                <div className="flex items-center gap-2 text-sm">
+                  <Bot className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium">Agent-Typ:</span>
+                  <Badge variant="secondary">
+                    {tenantDetail.agentType === "external" ? "Extern (Custom Webhook)" :
+                     tenantDetail.agentType === "internal" ? "Intern (n8n)" :
+                     "Nicht konfiguriert"}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
-// ─── Mini Stat Card ───────────────────────────────────────────────────────────
+// ─── Mini Stat ────────────────────────────────────────────────────────────────
 
 function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

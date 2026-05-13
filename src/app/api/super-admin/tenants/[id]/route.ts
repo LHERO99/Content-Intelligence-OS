@@ -25,7 +25,6 @@ export async function GET(
 
     const { id: tenantId } = await params;
 
-    // Check tenant exists
     const [tenant] = await db
       .select()
       .from(tenants)
@@ -48,7 +47,6 @@ export async function GET(
       .from(keywordMap)
       .where(eq(keywordMap.tenantId, tenantId));
 
-    // Keywords grouped by status
     const kwByStatus = await db
       .select({ status: keywordMap.status, total: count() })
       .from(keywordMap)
@@ -77,7 +75,7 @@ export async function GET(
     const erstellungen30d  = contentStats.find((s) => s.actionType === "Erstellung")?.total  ?? 0;
     const optimierungen30d = contentStats.find((s) => s.actionType === "Optimierung")?.total ?? 0;
 
-    // ── All-time content count + last activity date ───────────────────────────
+    // ── All-time content count + last activity ────────────────────────────────
     const [allTimeRow] = await db
       .select({ total: count(), lastActivity: max(contentLog.timeCreated) })
       .from(contentLog)
@@ -88,7 +86,8 @@ export async function GET(
       ? Math.floor((Date.now() - new Date(lastActivityDate).getTime()) / 86_400_000)
       : null;
 
-    // ── Config: integrations & agent ──────────────────────────────────────────
+    // ── Config ────────────────────────────────────────────────────────────────
+    // Keys are stored UPPERCASE — match exactly as written by the app
     const configRows = await db
       .select({ key: config.key, value: config.value })
       .from(config)
@@ -99,7 +98,8 @@ export async function GET(
       if (row.value) cfg[row.key] = row.value;
     }
 
-    // Build detailed integration list
+    // ── Integration details ───────────────────────────────────────────────────
+    // Key names match exactly what the app writes (UPPERCASE, see admin-integrations.ts)
     const integrationDetails: Array<{
       name: string;
       connected: boolean;
@@ -107,34 +107,44 @@ export async function GET(
     }> = [
       {
         name:      "Google Search Console",
-        connected: !!(cfg["gsc_connected"] === "true" || cfg["gsc_site_url"]),
-        detail:    cfg["gsc_site_url"] ? `Site: ${cfg["gsc_site_url"]}` : "Nicht verbunden",
+        connected: !!(cfg["GSC_SITE_URL"] || cfg["GSC_REFRESH_TOKEN"]),
+        detail:    cfg["GSC_SITE_URL"]
+          ? `Site: ${cfg["GSC_SITE_URL"]}${cfg["GSC_CONNECTED_EMAIL"] ? ` (${cfg["GSC_CONNECTED_EMAIL"]})` : ""}`
+          : "Nicht verbunden",
       },
       {
         name:      "Sistrix",
-        connected: !!cfg["sistrix_api_key"],
-        detail:    cfg["sistrix_api_key"] ? "API Key hinterlegt" : "Nicht verbunden",
+        connected: !!cfg["SISTRIX_API_KEY"],
+        detail:    cfg["SISTRIX_API_KEY"] ? "API Key hinterlegt" : "Nicht verbunden",
       },
       {
         name:      "DataForSEO",
-        connected: !!cfg["dataforseo_login"],
-        detail:    cfg["dataforseo_login"] ? `Login: ${cfg["dataforseo_login"]}` : "Nicht verbunden",
+        connected: !!cfg["DATAFORSEO_USERNAME"],
+        detail:    cfg["DATAFORSEO_USERNAME"]
+          ? `Nutzer: ${cfg["DATAFORSEO_USERNAME"]}`
+          : "Nicht verbunden",
       },
       {
-        name:      "n8n Webhook",
-        connected: !!(cfg["n8n_webhook_url"] || cfg["agent_webhook_url"]),
-        detail:    cfg["n8n_webhook_url"] || cfg["agent_webhook_url"]
-          ? "Webhook URL konfiguriert"
-          : "Nicht verbunden",
+        name:      "Externer Agent (Webhook)",
+        connected: !!(cfg["EXTERNAL_AGENT_WEBHOOK_URL"] && cfg["EXTERNAL_AGENT_ENABLED"] === "true"),
+        detail:    cfg["EXTERNAL_AGENT_WEBHOOK_URL"]
+          ? cfg["EXTERNAL_AGENT_ENABLED"] === "true"
+            ? "Webhook aktiv"
+            : "Webhook konfiguriert, aber deaktiviert"
+          : "Nicht konfiguriert",
       },
     ];
 
     const connectedIntegrations = integrationDetails.filter((i) => i.connected);
 
-    // Agent type
-    const agentType = cfg["agent_type"] ?? (cfg["n8n_webhook_url"] ? "internal" : "none");
+    // ── Agent type ────────────────────────────────────────────────────────────
+    // EXTERNAL_AGENT_ENABLED = "true" → external; webhook URL present → internal (n8n); else none
+    const agentType =
+      cfg["EXTERNAL_AGENT_ENABLED"] === "true"  ? "external" :
+      cfg["EXTERNAL_AGENT_WEBHOOK_URL"]          ? "internal" :
+                                                   "none";
 
-    // ── Health score — per-criterion breakdown ────────────────────────────────
+    // ── Health criteria breakdown ─────────────────────────────────────────────
     const criteria = [
       {
         key:       "integrations",
@@ -180,7 +190,7 @@ export async function GET(
       },
     ];
 
-    const healthScore = criteria.reduce((sum, c) => sum + c.points, 0);
+    const healthScore  = criteria.reduce((sum, c) => sum + c.points, 0);
     const healthStatus =
       healthScore >= 100 ? "healthy" :
       healthScore >= 50  ? "warning" :
@@ -203,20 +213,16 @@ export async function GET(
 
     return NextResponse.json({
       tenant,
-      health: {
-        score:    healthScore,
-        status:   healthStatus,
-        criteria, // full breakdown for the UI
-      },
+      health: { score: healthScore, status: healthStatus, criteria },
       stats: {
-        keywordCount:      kwTotalRow?.total     ?? 0,
-        urlCount:          urlRow?.total         ?? 0,
+        keywordCount:      kwTotalRow?.total   ?? 0,
+        urlCount:          urlRow?.total       ?? 0,
         erstellungen30d,
         optimierungen30d,
-        totalContentLogs:  allTimeRow?.total     ?? 0,
+        totalContentLogs:  allTimeRow?.total   ?? 0,
         lastActivityDate,
         daysSinceActivity,
-        userCount:         userCountRow?.total   ?? 0,
+        userCount:         userCountRow?.total ?? 0,
         keywordsByStatus:  kwByStatus.map((r) => ({ status: r.status, count: r.total })),
       },
       integrationDetails,
