@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
@@ -59,10 +59,30 @@ const adminItems = [
   },
 ]
 
+const superAdminItems = [
+  {
+    title: "Tenants",
+    url: "/super-admin/tenants",
+    icon: Building2,
+  },
+  {
+    title: "Pricing Tiers",
+    url: "/super-admin/pricing",
+    icon: BarChart3,
+  },
+  {
+    title: "Feature & Bugs",
+    url: "/super-admin/feedback",
+    icon: MessageSquare,
+  },
+]
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   const { logoUrl, primaryColor } = useBranding()
   const { t } = useI18n()
+
+  const isSuperAdmin = session?.user?.role === "SuperAdmin"
 
   return (
     <Sidebar {...props}>
@@ -85,51 +105,78 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("sidebar.navigation")}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => {
-                const localizedTitle =
-                  item.url === "/"
-                    ? t("sidebar.dashboard")
-                    : item.url === "/planning"
-                      ? t("sidebar.contentPlanning")
-                      : item.url === "/creation"
-                        ? t("sidebar.contentCreation")
-                        : item.url === "/monitoring"
-                          ? t("sidebar.contentMonitoring")
-                          : item.url === "/history"
-                            ? t("sidebar.contentHistory")
-                            : item.title
-                return (
+
+        {/* ── Super-Admin Navigation ── */}
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Super-Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {superAdminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton render={<Link href={item.url} />}>
                       <item.icon />
-                      <span>{localizedTitle}</span>
+                      <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-            {session?.user?.role === "Admin" && (
-              <>
-                <Separator className="my-2" />
-                <SidebarMenu>
-                  {adminItems.map((item) => (
+        {/* ── Regular Content Navigation (hidden for SuperAdmin) ── */}
+        {!isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("sidebar.navigation")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map((item) => {
+                  const localizedTitle =
+                    item.url === "/"
+                      ? t("sidebar.dashboard")
+                      : item.url === "/planning"
+                        ? t("sidebar.contentPlanning")
+                        : item.url === "/creation"
+                          ? t("sidebar.contentCreation")
+                          : item.url === "/monitoring"
+                            ? t("sidebar.contentMonitoring")
+                            : item.url === "/history"
+                              ? t("sidebar.contentHistory")
+                              : item.title
+                  return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton render={<Link href={item.url} />}>
                         <item.icon />
-                        <span>{t("sidebar.agentBuilder")}</span>
+                        <span>{localizedTitle}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </>
-            )}
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  )
+                })}
+              </SidebarMenu>
+
+              {session?.user?.role === "Admin" && (
+                <>
+                  <Separator className="my-2" />
+                  <SidebarMenu>
+                    {adminItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton render={<Link href={item.url} />}>
+                          <item.icon />
+                          <span>{t("sidebar.agentBuilder")}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </>
+              )}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
       </SidebarContent>
       <SidebarFooter className="p-3">
         <Separator className="mb-3" />
@@ -157,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </Link>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton 
+                <SidebarMenuButton
                   onClick={() => signOut({ callbackUrl: "/auth/signin" })}
                   className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 >

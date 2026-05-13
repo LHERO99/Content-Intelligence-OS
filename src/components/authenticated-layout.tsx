@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -14,15 +14,36 @@ import { useI18n } from "@/i18n/use-i18n";
 const VIEWPORT_WARNING_BREAKPOINT = 1240;
 const VIEWPORT_WARNING_STORAGE_KEY = "viewport-warning-dismissed";
 
+// Routes that belong exclusively to the Super-Admin area
+const SUPER_ADMIN_PREFIX = "/super-admin";
+
+// Content routes that are not relevant for SuperAdmins
+const CONTENT_ROUTES = ["/", "/planning", "/creation", "/monitoring", "/history", "/content-agent-builder"];
+
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [dismissedViewportWarning, setDismissedViewportWarning] = useState(false);
   const [showViewportWarning, setShowViewportWarning] = useState(false);
 
   const isAuthPage = pathname?.startsWith("/auth/");
+
+  // Redirect SuperAdmin away from content routes → super-admin area
+  useEffect(() => {
+    if (status !== "authenticated" || !session || isAuthPage) return;
+    const isSuperAdmin = session.user.role === "SuperAdmin";
+    const isOnContentRoute = CONTENT_ROUTES.some(
+      (r) => r === "/" ? pathname === "/" : pathname?.startsWith(r)
+    );
+    const isOnSuperAdminRoute = pathname?.startsWith(SUPER_ADMIN_PREFIX);
+
+    if (isSuperAdmin && !isOnSuperAdminRoute) {
+      router.replace("/super-admin/tenants");
+    }
+  }, [status, session, pathname, isAuthPage, router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
