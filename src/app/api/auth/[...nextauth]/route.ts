@@ -105,12 +105,16 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       console.log("[Auth] JWT Callback - Token:", !!token, "User:", !!user);
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.passwordChanged = user.passwordChanged;
+      }
+      // Handle session update triggered by update() — e.g. after password change
+      if (trigger === "update" && session?.user?.passwordChanged !== undefined) {
+        token.passwordChanged = session.user.passwordChanged;
       }
       return token;
     },
