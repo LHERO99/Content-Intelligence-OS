@@ -61,17 +61,22 @@ const adminItems = [
 
 const superAdminItems = [
   {
-    title: "Tenants",
+    title: "navDashboard",
+    url: "/super-admin/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "navTenants",
     url: "/super-admin/tenants",
     icon: Building2,
   },
   {
-    title: "Pricing Tiers",
+    title: "navPricing",
     url: "/super-admin/pricing",
     icon: BarChart3,
   },
   {
-    title: "Feature & Bugs",
+    title: "navFeedback",
     url: "/super-admin/feedback",
     icon: MessageSquare,
   },
@@ -111,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroup>
             <SidebarGroupLabel className="flex items-center gap-1.5">
               <ShieldAlert className="h-3.5 w-3.5" />
-              Super-Admin
+              {t("superAdmin.groupLabel")}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -119,7 +124,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton render={<Link href={item.url} />}>
                       <item.icon />
-                      <span>{item.title}</span>
+                      <span>{t(`superAdmin.${item.title}`)}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

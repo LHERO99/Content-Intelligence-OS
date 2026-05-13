@@ -55,6 +55,7 @@ import {
   ShieldCheck,
   ShieldOff,
 } from "lucide-react";
+import { useI18n } from "@/i18n/use-i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,23 +163,15 @@ function HealthBadge({ status }: { status: "healthy" | "warning" | "critical" })
   );
 }
 
-function formatPrice(price: string | null, cycle: "monthly" | "yearly" | null): string {
+function formatPrice(
+  price: string | null,
+  cycle: "monthly" | "yearly" | null,
+  monthlyLabel: string,
+  yearlyLabel: string
+): string {
   if (!price) return "—";
   const num = parseFloat(price);
-  return `€${num.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} / ${cycle === "yearly" ? "Jahr" : "Monat"}`;
-}
-
-function relativeTime(isoTimestamp: string | null): string {
-  if (!isoTimestamp) return "—";
-  const ms = Date.now() - new Date(isoTimestamp).getTime();
-  const mins  = Math.floor(ms / 60_000);
-  const hours = Math.floor(ms / 3_600_000);
-  const days  = Math.floor(ms / 86_400_000);
-  if (mins  < 2)  return "gerade eben";
-  if (mins  < 60) return `vor ${mins} Min.`;
-  if (hours < 24) return `vor ${hours} Std.`;
-  if (days  < 30) return `vor ${days} Tag${days !== 1 ? "en" : ""}`;
-  return new Date(isoTimestamp).toLocaleDateString("de-DE");
+  return `€${num.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} / ${cycle === "yearly" ? yearlyLabel : monthlyLabel}`;
 }
 
 const KEYWORD_STATUS_ORDER = [
@@ -189,6 +182,8 @@ const KEYWORD_STATUS_ORDER = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TenantsPage() {
+  const { t } = useI18n();
+
   const [tenants, setTenants]                     = useState<Tenant[]>([]);
   const [tiers, setTiers]                         = useState<PricingTier[]>([]);
   const [loading, setLoading]                     = useState(true);
@@ -240,7 +235,6 @@ export default function TenantsPage() {
     setUsersLoading(false);
   }, []);
 
-  // Open detail view
   const openDetail = useCallback(async (tenantId: string) => {
     setSelectedTenantId(tenantId);
     setDetailLoading(true);
@@ -301,7 +295,7 @@ export default function TenantsPage() {
     const data = await res.json();
     setSavingUser(false);
     if (!res.ok) {
-      setUserError(data.error ?? "Fehler beim Speichern.");
+      setUserError(data.error ?? t("superAdmin.tenantsSaveError"));
       return;
     }
     setEditUser(null);
@@ -311,7 +305,7 @@ export default function TenantsPage() {
   const submitCreate = async () => {
     setCreateError(null);
     if (!createForm.tenantName || !createForm.adminEmail || !createForm.adminPassword) {
-      setCreateError("Unternehmensname, E-Mail und Passwort sind Pflichtfelder.");
+      setCreateError(t("superAdmin.tenantsRequiredFields"));
       return;
     }
     setCreating(true);
@@ -323,7 +317,7 @@ export default function TenantsPage() {
     const data = await res.json();
     setCreating(false);
     if (!res.ok) {
-      setCreateError(data.error ?? "Fehler beim Anlegen des Tenants.");
+      setCreateError(data.error ?? t("superAdmin.tenantsCreateError"));
       return;
     }
     setCreateOpen(false);
@@ -331,7 +325,7 @@ export default function TenantsPage() {
     load();
   };
 
-  // ── Detail view (full page, Monitoring pattern) ──────────────────────────
+  // ── Detail view ──────────────────────────────────────────────────────────
   if (selectedTenantId) {
     return (
       <>
@@ -350,13 +344,14 @@ export default function TenantsPage() {
           tenantUsers={tenantUsers}
           usersLoading={usersLoading}
           onEditUser={openEditUser}
+          t={t}
         />
 
         {/* Edit User Dialog */}
         <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Nutzer bearbeiten</DialogTitle>
+              <DialogTitle>{t("superAdmin.tenantsEditUser")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
               {userError && (
@@ -365,16 +360,16 @@ export default function TenantsPage() {
                 </Alert>
               )}
               <div>
-                <Label>Name</Label>
+                <Label>{t("superAdmin.tenantsAdminName")}</Label>
                 <Input
                   value={userForm.name}
                   onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                  placeholder="Vorname Nachname"
+                  placeholder={t("superAdmin.tenantsAdminNamePlaceholder")}
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label>E-Mail</Label>
+                <Label>{t("superAdmin.tenantsAdminEmail")}</Label>
                 <Input
                   type="email"
                   value={userForm.email}
@@ -383,7 +378,7 @@ export default function TenantsPage() {
                 />
               </div>
               <div>
-                <Label>Rolle</Label>
+                <Label>{t("superAdmin.tenantsColRole")}</Label>
                 <Select
                   value={userForm.role}
                   onValueChange={(v) => setUserForm({ ...userForm, role: v ?? userForm.role })}
@@ -400,9 +395,9 @@ export default function TenantsPage() {
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <p className="text-sm font-medium">Account aktiv</p>
+                  <p className="text-sm font-medium">{t("superAdmin.tenantsAccountActiveLabel")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Gesperrte Nutzer können sich nicht einloggen.
+                    {t("superAdmin.tenantsAccountActiveHint")}
                   </p>
                 </div>
                 <Switch
@@ -412,10 +407,10 @@ export default function TenantsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditUser(null)}>Abbrechen</Button>
+              <Button variant="outline" onClick={() => setEditUser(null)}>{t("superAdmin.tenantsCancel")}</Button>
               <Button onClick={saveUser} disabled={savingUser || !userForm.email}>
                 {savingUser && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                Speichern
+                {t("superAdmin.tenantsSave")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -430,23 +425,19 @@ export default function TenantsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Building2 className="w-6 h-6" /> Tenants
+            <Building2 className="w-6 h-6" /> {t("superAdmin.tenantsTitle")}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Alle registrierten Kunden-Accounts. Klicke auf einen Eintrag für den Health-Status und Details.
-          </p>
+          <p className="text-muted-foreground mt-1">{t("superAdmin.tenantsSubtitle")}</p>
         </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Tenant-Übersicht</CardTitle>
-              <CardDescription>
-                Klicke auf einen Eintrag für den vollständigen Health-Breakdown und Subscription-Verwaltung.
-              </CardDescription>
+              <CardTitle>{t("superAdmin.tenantsCardTitle")}</CardTitle>
+              <CardDescription>{t("superAdmin.tenantsCardDesc")}</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={load} className="gap-1">
-              <RefreshCw className="w-3 h-3" /> Aktualisieren
+              <RefreshCw className="w-3 h-3" /> {t("superAdmin.refresh")}
             </Button>
           </CardHeader>
           <CardContent>
@@ -458,42 +449,48 @@ export default function TenantsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Tier</TableHead>
-                    <TableHead>Billing</TableHead>
-                    <TableHead>Preis</TableHead>
-                    <TableHead>Nutzer</TableHead>
-                    <TableHead>Erstellt</TableHead>
+                    <TableHead>{t("superAdmin.tenantsColName")}</TableHead>
+                    <TableHead>{t("superAdmin.tenantsColTier")}</TableHead>
+                    <TableHead>{t("superAdmin.tenantsColBilling")}</TableHead>
+                    <TableHead>{t("superAdmin.tenantsColPrice")}</TableHead>
+                    <TableHead>{t("superAdmin.tenantsColUsers")}</TableHead>
+                    <TableHead>{t("superAdmin.tenantsColCreated")}</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tenants.map((t) => (
+                  {tenants.map((ten) => (
                     <TableRow
-                      key={t.id}
+                      key={ten.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => openDetail(t.id)}
+                      onClick={() => openDetail(ten.id)}
                     >
-                      <TableCell className="font-medium">{t.name}</TableCell>
+                      <TableCell className="font-medium">{ten.name}</TableCell>
                       <TableCell>
-                        {t.tierName
-                          ? <Badge variant="outline">{t.tierName}</Badge>
+                        {ten.tierName
+                          ? <Badge variant="outline">{ten.tierName}</Badge>
                           : <span className="text-muted-foreground text-sm">—</span>}
                       </TableCell>
                       <TableCell>
-                        {t.billingCycle
-                          ? <Badge variant="secondary">{t.billingCycle === "yearly" ? "Jährlich" : "Monatlich"}</Badge>
+                        {ten.billingCycle
+                          ? <Badge variant="secondary">
+                              {ten.billingCycle === "yearly"
+                                ? t("superAdmin.tenantsYearly")
+                                : t("superAdmin.tenantsMonthly")}
+                            </Badge>
                           : <span className="text-muted-foreground text-sm">—</span>}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {formatPrice(
-                          t.billingCycle === "yearly" ? t.yearlyPrice : t.monthlyPrice,
-                          t.billingCycle
+                          ten.billingCycle === "yearly" ? ten.yearlyPrice : ten.monthlyPrice,
+                          ten.billingCycle,
+                          t("superAdmin.tenantsMonthly"),
+                          t("superAdmin.tenantsYearly")
                         )}
                       </TableCell>
-                      <TableCell>{t.userCount}</TableCell>
+                      <TableCell>{ten.userCount}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {new Date(t.createdAt).toLocaleDateString("de-DE")}
+                        {new Date(ten.createdAt).toLocaleDateString("de-DE")}
                       </TableCell>
                       <TableCell>
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -503,7 +500,7 @@ export default function TenantsPage() {
                   {tenants.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        Noch keine Tenants angelegt.
+                        {t("superAdmin.tenantsEmpty")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -519,7 +516,7 @@ export default function TenantsPage() {
         className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-xl z-50"
         size="icon"
         onClick={() => setCreateOpen(true)}
-        title="Neuen Tenant anlegen"
+        title={t("superAdmin.tenantsCreateTitle")}
       >
         <Plus className="h-6 w-6" />
       </Button>
@@ -528,7 +525,7 @@ export default function TenantsPage() {
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreateError(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Neuen Tenant anlegen</DialogTitle>
+            <DialogTitle>{t("superAdmin.tenantsCreateTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 py-2">
             {createError && (
@@ -539,14 +536,14 @@ export default function TenantsPage() {
 
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Unternehmen
+                {t("superAdmin.tenantsCompany")}
               </p>
               <div>
-                <Label>Unternehmensname <span className="text-destructive">*</span></Label>
+                <Label>{t("superAdmin.tenantsCompanyName")} <span className="text-destructive">*</span></Label>
                 <Input
                   value={createForm.tenantName}
                   onChange={(e) => setCreateForm({ ...createForm, tenantName: e.target.value })}
-                  placeholder="z.B. Acme GmbH"
+                  placeholder={t("superAdmin.tenantsCompanyPlaceholder")}
                   className="mt-1"
                 />
               </div>
@@ -556,39 +553,39 @@ export default function TenantsPage() {
 
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Admin-Account
+                {t("superAdmin.tenantsAdminAccount")}
               </p>
               <div className="space-y-3">
                 <div>
-                  <Label>Name</Label>
+                  <Label>{t("superAdmin.tenantsAdminName")}</Label>
                   <Input
                     value={createForm.adminName}
                     onChange={(e) => setCreateForm({ ...createForm, adminName: e.target.value })}
-                    placeholder="Vorname Nachname"
+                    placeholder={t("superAdmin.tenantsAdminNamePlaceholder")}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label>E-Mail <span className="text-destructive">*</span></Label>
+                  <Label>{t("superAdmin.tenantsAdminEmail")} <span className="text-destructive">*</span></Label>
                   <Input
                     type="email"
                     value={createForm.adminEmail}
                     onChange={(e) => setCreateForm({ ...createForm, adminEmail: e.target.value })}
-                    placeholder="admin@unternehmen.de"
+                    placeholder={t("superAdmin.tenantsAdminEmailPlaceholder")}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label>Initiales Passwort <span className="text-destructive">*</span></Label>
+                  <Label>{t("superAdmin.tenantsAdminPassword")} <span className="text-destructive">*</span></Label>
                   <Input
                     type="password"
                     value={createForm.adminPassword}
                     onChange={(e) => setCreateForm({ ...createForm, adminPassword: e.target.value })}
-                    placeholder="Min. 8 Zeichen"
+                    placeholder={t("superAdmin.tenantsAdminPasswordPlaceholder")}
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Der Admin wird beim ersten Login aufgefordert, das Passwort zu ändern.
+                    {t("superAdmin.tenantsAdminPasswordHint")}
                   </p>
                 </div>
               </div>
@@ -598,28 +595,28 @@ export default function TenantsPage() {
 
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Subscription (optional)
+                {t("superAdmin.tenantsSubscriptionOptional")}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Pricing Tier</Label>
+                  <Label>{t("superAdmin.tenantsPricingTier")}</Label>
                   <Select
                     value={createForm.tierId || "none"}
                     onValueChange={(v) => setCreateForm({ ...createForm, tierId: v === "none" ? "" : (v ?? "") })}
                   >
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Kein Tier" />
+                      <SelectValue placeholder={t("superAdmin.tenantsNoTier")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Kein Tier</SelectItem>
-                      {tiers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      <SelectItem value="none">{t("superAdmin.tenantsNoTier")}</SelectItem>
+                      {tiers.map((tier) => (
+                        <SelectItem key={tier.id} value={tier.id}>{tier.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Billing Cycle</Label>
+                  <Label>{t("superAdmin.tenantsBillingCycle")}</Label>
                   <Select
                     value={createForm.billingCycle}
                     onValueChange={(v) => setCreateForm({ ...createForm, billingCycle: v ?? "monthly" })}
@@ -628,8 +625,8 @@ export default function TenantsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="monthly">Monatlich</SelectItem>
-                      <SelectItem value="yearly">Jährlich</SelectItem>
+                      <SelectItem value="monthly">{t("superAdmin.tenantsMonthly")}</SelectItem>
+                      <SelectItem value="yearly">{t("superAdmin.tenantsYearly")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -637,13 +634,13 @@ export default function TenantsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Abbrechen</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t("superAdmin.tenantsCancel")}</Button>
             <Button
               onClick={submitCreate}
               disabled={creating || !createForm.tenantName || !createForm.adminEmail || !createForm.adminPassword}
             >
               {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Tenant anlegen
+              {t("superAdmin.tenantsCreateButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -652,7 +649,7 @@ export default function TenantsPage() {
   );
 }
 
-// ─── Detail View Component (full page, no modal) ──────────────────────────────
+// ─── Detail View Component ────────────────────────────────────────────────────
 
 function TenantDetailView({
   tenantDetail,
@@ -669,6 +666,7 @@ function TenantDetailView({
   tenantUsers,
   usersLoading,
   onEditUser,
+  t,
 }: {
   tenantDetail: TenantHealth | null;
   loading: boolean;
@@ -684,17 +682,18 @@ function TenantDetailView({
   tenantUsers: TenantUser[];
   usersLoading: boolean;
   onEditUser: (u: TenantUser) => void;
+  t: (key: string) => string;
 }) {
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack} className="gap-2 -ml-2">
-          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+          <ArrowLeft className="w-4 h-4" /> {t("superAdmin.tenantsBack")}
         </Button>
         {tenantDetail && (
           <Button variant="outline" size="sm" onClick={onRefresh} className="gap-1">
-            <RefreshCw className="w-3 h-3" /> Aktualisieren
+            <RefreshCw className="w-3 h-3" /> {t("superAdmin.refresh")}
           </Button>
         )}
       </div>
@@ -709,19 +708,18 @@ function TenantDetailView({
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{tenantDetail.tenant.name}</h1>
             <p className="text-muted-foreground mt-1">
-              Tenant seit {new Date(tenantDetail.tenant.createdAt).toLocaleDateString("de-DE")}
+              {t("superAdmin.tenantsSince")} {new Date(tenantDetail.tenant.createdAt).toLocaleDateString("de-DE")}
               {" · "}
-              {tenantDetail.stats.userCount} Nutzer
+              {tenantDetail.stats.userCount} {t("superAdmin.tenantsUsers")}
             </p>
           </div>
 
           {/* Top row: Health + Subscription */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
             {/* Health Score */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Health Score</CardTitle>
+                <CardTitle className="text-base">{t("superAdmin.tenantsHealthScore")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -743,7 +741,6 @@ function TenantDetailView({
                     />
                   </div>
                 </div>
-
                 {/* Breakdown */}
                 <div className="rounded-lg border divide-y">
                   {tenantDetail.health.criteria.map((c) => (
@@ -770,7 +767,7 @@ function TenantDetailView({
               </CardContent>
             </Card>
 
-            {/* Subscription — redesigned */}
+            {/* Subscription */}
             <SubscriptionCard
               subscription={tenantDetail.subscription}
               tiers={tiers}
@@ -780,43 +777,42 @@ function TenantDetailView({
               setSubEditOpen={setSubEditOpen}
               savingSub={savingSub}
               onSaveSub={onSaveSub}
+              t={t}
             />
           </div>
 
           {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <MiniStat icon={<FileText className="w-4 h-4" />}  label="Keywords"         value={tenantDetail.stats.keywordCount.toLocaleString("de-DE")} />
-            <MiniStat icon={<Link2 className="w-4 h-4" />}     label="URLs"             value={tenantDetail.stats.urlCount.toLocaleString("de-DE")} />
-            <MiniStat icon={<Activity className="w-4 h-4" />}  label="Content-Logs"     value={tenantDetail.stats.totalContentLogs.toLocaleString("de-DE")} />
-            <MiniStat icon={<Users className="w-4 h-4" />}     label="Nutzer"           value={String(tenantDetail.stats.userCount)} />
+            <MiniStat icon={<FileText className="w-4 h-4" />}  label={t("superAdmin.tenantsKeywords")}    value={tenantDetail.stats.keywordCount.toLocaleString("de-DE")} />
+            <MiniStat icon={<Link2 className="w-4 h-4" />}     label={t("superAdmin.tenantsUrls")}        value={tenantDetail.stats.urlCount.toLocaleString("de-DE")} />
+            <MiniStat icon={<Activity className="w-4 h-4" />}  label={t("superAdmin.tenantsContentLogs")} value={tenantDetail.stats.totalContentLogs.toLocaleString("de-DE")} />
+            <MiniStat icon={<Users className="w-4 h-4" />}     label={t("superAdmin.tenantsUsers")}       value={String(tenantDetail.stats.userCount)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <MiniStat icon={<Plus className="w-4 h-4" />}      label="Erstellungen (30 Tage)"  value={String(tenantDetail.stats.erstellungen30d)} />
-            <MiniStat icon={<RefreshCw className="w-4 h-4" />} label="Optimierungen (30 Tage)" value={String(tenantDetail.stats.optimierungen30d)} />
+            <MiniStat icon={<Plus className="w-4 h-4" />}      label={t("superAdmin.tenantsCreations30d")}    value={String(tenantDetail.stats.erstellungen30d)} />
+            <MiniStat icon={<RefreshCw className="w-4 h-4" />} label={t("superAdmin.tenantsOptimizations30d")} value={String(tenantDetail.stats.optimierungen30d)} />
           </div>
           {tenantDetail.stats.lastActivityDate && (
             <p className="text-xs text-muted-foreground">
-              Letzte Aktivität:{" "}
+              {t("superAdmin.tenantsLastActivity")}:{" "}
               <span className="font-medium text-foreground">
                 {new Date(tenantDetail.stats.lastActivityDate).toLocaleDateString("de-DE")}
               </span>
               {tenantDetail.stats.daysSinceActivity !== null && (
-                <> — vor {tenantDetail.stats.daysSinceActivity} Tagen</>
+                <> — {t("superAdmin.tenantsDaysAgo").replace("{count}", String(tenantDetail.stats.daysSinceActivity))}</>
               )}
             </p>
           )}
 
           {/* Cron Status */}
-          <CronStatusCard cronStatus={tenantDetail.cronStatus} />
+          <CronStatusCard cronStatus={tenantDetail.cronStatus} t={t} />
 
           {/* Bottom row: Keywords by status + Integrations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-            {/* Keyword status breakdown */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Keywords nach Status
+                  <FileText className="w-4 h-4" /> {t("superAdmin.tenantsKeywordsByStatus")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -841,16 +837,15 @@ function TenantDetailView({
                       ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Keine Keywords vorhanden.</p>
+                  <p className="text-sm text-muted-foreground">{t("superAdmin.tenantsNoKeywords")}</p>
                 )}
               </CardContent>
             </Card>
 
-            {/* Integrations + Agent */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Plug className="w-4 h-4" /> Integrationen &amp; Agent
+                  <Plug className="w-4 h-4" /> {t("superAdmin.tenantsIntegrations")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -869,16 +864,14 @@ function TenantDetailView({
                     </div>
                   ))}
                 </div>
-
                 <Separator />
-
                 <div className="flex items-center gap-2 text-sm">
                   <Bot className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium">Agent-Typ:</span>
+                  <span className="font-medium">{t("superAdmin.tenantsAgentType")}</span>
                   <Badge variant="secondary">
-                    {tenantDetail.agentType === "external" ? "Extern (Custom Webhook)" :
-                     tenantDetail.agentType === "internal" ? "Intern (n8n)" :
-                     "Nicht konfiguriert"}
+                    {tenantDetail.agentType === "external" ? t("superAdmin.tenantsAgentExternal") :
+                     tenantDetail.agentType === "internal" ? t("superAdmin.tenantsAgentInternal") :
+                     t("superAdmin.tenantsAgentNone")}
                   </Badge>
                 </div>
               </CardContent>
@@ -890,6 +883,7 @@ function TenantDetailView({
             users={tenantUsers}
             loading={usersLoading}
             onEdit={onEditUser}
+            t={t}
           />
         </>
       )}
@@ -908,6 +902,7 @@ function SubscriptionCard({
   setSubEditOpen,
   savingSub,
   onSaveSub,
+  t,
 }: {
   subscription: TenantHealth["subscription"];
   tiers: PricingTier[];
@@ -917,17 +912,20 @@ function SubscriptionCard({
   setSubEditOpen: (o: boolean) => void;
   savingSub: boolean;
   onSaveSub: () => void;
+  t: (key: string) => string;
 }) {
   const statusConfig = {
-    active:   { label: "Aktiv",   className: "bg-green-100 text-green-800 border-green-200" },
-    trial:    { label: "Trial",   className: "bg-blue-100 text-blue-800 border-blue-200" },
-    inactive: { label: "Inaktiv", className: "bg-gray-100 text-gray-600 border-gray-200" },
+    active:   { label: t("superAdmin.tenantsStatusActive"),   className: "bg-green-100 text-green-800 border-green-200" },
+    trial:    { label: t("superAdmin.tenantsStatusTrial"),    className: "bg-blue-100 text-blue-800 border-blue-200" },
+    inactive: { label: t("superAdmin.tenantsStatusInactive"), className: "bg-gray-100 text-gray-600 border-gray-200" },
   };
 
   const price = subscription
     ? formatPrice(
         subscription.billingCycle === "yearly" ? subscription.yearlyPrice : subscription.monthlyPrice,
-        subscription.billingCycle
+        subscription.billingCycle,
+        t("superAdmin.tenantsBillingMonthly"),
+        t("superAdmin.tenantsBillingYearly")
       )
     : null;
 
@@ -935,17 +933,16 @@ function SubscriptionCard({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <CreditCard className="w-4 h-4" /> Subscription
+          <CreditCard className="w-4 h-4" /> {t("superAdmin.tenantsSubscription")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {subscription ? (
           <div className="space-y-3">
-            {/* Tier + Status */}
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xl font-bold leading-tight">
-                  {subscription.tierName ?? "Kein Tier"}
+                  {subscription.tierName ?? t("superAdmin.tenantsNoTier")}
                 </p>
                 {price && (
                   <p className="text-2xl font-bold text-primary mt-0.5">{price}</p>
@@ -957,21 +954,21 @@ function SubscriptionCard({
                 </Badge>
               )}
             </div>
-
-            {/* Details row */}
             <div className="rounded-lg bg-muted/30 border divide-y text-sm">
               <div className="flex items-center justify-between px-3 py-2">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <RefreshCw className="w-3.5 h-3.5" /> Billing
                 </span>
                 <span className="font-medium">
-                  {subscription.billingCycle === "yearly" ? "Jährlich" : "Monatlich"}
+                  {subscription.billingCycle === "yearly"
+                    ? t("superAdmin.tenantsBillingYearly")
+                    : t("superAdmin.tenantsBillingMonthly")}
                 </span>
               </div>
               {subscription.startDate && (
                 <div className="flex items-center justify-between px-3 py-2">
                   <span className="text-muted-foreground flex items-center gap-1.5">
-                    <CalendarDays className="w-3.5 h-3.5" /> Seit
+                    <CalendarDays className="w-3.5 h-3.5" /> {t("superAdmin.tenantsBillingSince")}
                   </span>
                   <span className="font-medium">
                     {new Date(subscription.startDate).toLocaleDateString("de-DE")}
@@ -983,11 +980,10 @@ function SubscriptionCard({
         ) : (
           <div className="rounded-lg border border-dashed p-4 text-center">
             <CreditCard className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Keine Subscription hinterlegt</p>
+            <p className="text-sm text-muted-foreground">{t("superAdmin.tenantsNoSubscription")}</p>
           </div>
         )}
 
-        {/* Edit toggle */}
         <div>
           <Button
             variant="outline"
@@ -996,31 +992,31 @@ function SubscriptionCard({
             onClick={() => setSubEditOpen(!subEditOpen)}
           >
             <Pencil className="w-3.5 h-3.5" />
-            {subEditOpen ? "Abbrechen" : "Subscription bearbeiten"}
+            {subEditOpen ? t("superAdmin.tenantsCancelEdit") : t("superAdmin.tenantsEditSubscription")}
           </Button>
 
           {subEditOpen && subForm && (
             <div className="mt-3 space-y-3 rounded-lg border bg-muted/20 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs mb-1 block">Tier</Label>
+                  <Label className="text-xs mb-1 block">{t("superAdmin.tenantsPricingTier")}</Label>
                   <Select
                     value={subForm.tierId || "none"}
                     onValueChange={(v) => setSubForm({ ...subForm, tierId: v === "none" ? "" : (v ?? "") })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Kein Tier" />
+                      <SelectValue placeholder={t("superAdmin.tenantsNoTier")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Kein Tier</SelectItem>
-                      {tiers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      <SelectItem value="none">{t("superAdmin.tenantsNoTier")}</SelectItem>
+                      {tiers.map((tier) => (
+                        <SelectItem key={tier.id} value={tier.id}>{tier.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1 block">Cycle</Label>
+                  <Label className="text-xs mb-1 block">{t("superAdmin.tenantsBillingCycle")}</Label>
                   <Select
                     value={subForm.billingCycle}
                     onValueChange={(v) => setSubForm({ ...subForm, billingCycle: v ?? "monthly" })}
@@ -1029,15 +1025,15 @@ function SubscriptionCard({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="monthly">Monatlich</SelectItem>
-                      <SelectItem value="yearly">Jährlich</SelectItem>
+                      <SelectItem value="monthly">{t("superAdmin.tenantsMonthly")}</SelectItem>
+                      <SelectItem value="yearly">{t("superAdmin.tenantsYearly")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <Button onClick={onSaveSub} disabled={savingSub} className="w-full" size="sm">
                 {savingSub && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                Speichern
+                {t("superAdmin.tenantsSave")}
               </Button>
             </div>
           )}
@@ -1049,7 +1045,7 @@ function SubscriptionCard({
 
 // ─── Cron Status Card ─────────────────────────────────────────────────────────
 
-function CronStatusCard({ cronStatus }: { cronStatus: CronEntry[] }) {
+function CronStatusCard({ cronStatus, t }: { cronStatus: CronEntry[]; t: (key: string) => string }) {
   function CronIcon({ status }: { status: CronEntry["status"] }) {
     if (status === "ok")      return <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />;
     if (status === "error")   return <XCircle      className="w-4 h-4 text-red-500 shrink-0" />;
@@ -1058,17 +1054,17 @@ function CronStatusCard({ cronStatus }: { cronStatus: CronEntry[] }) {
   }
 
   function CronBadge({ status }: { status: CronEntry["status"] }) {
-    if (status === "ok")      return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">OK</Badge>;
-    if (status === "error")   return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">Fehler</Badge>;
-    if (status === "warning") return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs">Warnung</Badge>;
-    return                           <Badge variant="outline" className="text-xs text-muted-foreground">Unbekannt</Badge>;
+    if (status === "ok")      return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">{t("superAdmin.tenantsCronOk")}</Badge>;
+    if (status === "error")   return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">{t("superAdmin.tenantsCronError")}</Badge>;
+    if (status === "warning") return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs">{t("superAdmin.tenantsCronWarning")}</Badge>;
+    return                           <Badge variant="outline" className="text-xs text-muted-foreground">{t("superAdmin.tenantsCronUnknown")}</Badge>;
   }
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <RefreshCw className="w-4 h-4" /> Datenaktualisierungen (Cronjobs)
+          <RefreshCw className="w-4 h-4" /> {t("superAdmin.tenantsCronTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -1085,7 +1081,7 @@ function CronStatusCard({ cronStatus }: { cronStatus: CronEntry[] }) {
               <p className="text-xs text-muted-foreground leading-relaxed">{job.detail}</p>
               {job.timestamp && (
                 <p className="text-xs text-muted-foreground/70">
-                  {relativeTime(job.timestamp)}
+                  {new Date(job.timestamp).toLocaleString("de-DE")}
                 </p>
               )}
             </div>
@@ -1102,10 +1098,12 @@ function UsersCard({
   users,
   loading,
   onEdit,
+  t,
 }: {
   users: TenantUser[];
   loading: boolean;
   onEdit: (u: TenantUser) => void;
+  t: (key: string) => string;
 }) {
   const roleConfig: Record<string, string> = {
     Admin:   "bg-purple-100 text-purple-800 border-purple-200",
@@ -1117,7 +1115,7 @@ function UsersCard({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Users className="w-4 h-4" /> Nutzer
+          <Users className="w-4 h-4" /> {t("superAdmin.tenantsUsersCard")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -1126,16 +1124,16 @@ function UsersCard({
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : users.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Keine Nutzer vorhanden.</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">{t("superAdmin.tenantsNoUsers")}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>E-Mail</TableHead>
-                <TableHead>Rolle</TableHead>
-                <TableHead>Eingeloggt</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("superAdmin.tenantsColUserName")}</TableHead>
+                <TableHead>{t("superAdmin.tenantsColEmail")}</TableHead>
+                <TableHead>{t("superAdmin.tenantsColRole")}</TableHead>
+                <TableHead>{t("superAdmin.tenantsColLoggedIn")}</TableHead>
+                <TableHead>{t("superAdmin.tenantsColStatus")}</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -1154,22 +1152,22 @@ function UsersCard({
                   <TableCell>
                     {u.passwordChanged ? (
                       <span className="flex items-center gap-1 text-xs text-green-600">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Ja
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("superAdmin.tenantsAccountActive")}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5" /> Ausstehend
+                        <Clock className="w-3.5 h-3.5" /> {t("superAdmin.tenantsLoginPending")}
                       </span>
                     )}
                   </TableCell>
                   <TableCell>
                     {u.isActive ? (
                       <span className="flex items-center gap-1 text-xs text-green-600">
-                        <ShieldCheck className="w-3.5 h-3.5" /> Aktiv
+                        <ShieldCheck className="w-3.5 h-3.5" /> {t("superAdmin.tenantsAccountActive")}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-xs text-red-500">
-                        <ShieldOff className="w-3.5 h-3.5" /> Gesperrt
+                        <ShieldOff className="w-3.5 h-3.5" /> {t("superAdmin.tenantsAccountLocked")}
                       </span>
                     )}
                   </TableCell>
