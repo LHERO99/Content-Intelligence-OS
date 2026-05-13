@@ -32,7 +32,7 @@ export const users = pgTable(
     tenantId:        text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
     name:            text('name'),
     email:           text('email').notNull(),
-    role:            text('role').$type<'Admin' | 'Editor' | 'Viewer'>().notNull().default('Editor'),
+    role:            text('role').$type<'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer'>().notNull().default('Editor'),
     password:        text('password'),
     passwordChanged: boolean('password_changed').default(false),
   },
@@ -237,6 +237,58 @@ export const config = pgTable(
   (t) => ({
     pk:        primaryKey({ columns: [t.tenantId, t.key] }),
     tenantIdx: index('config_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// pricing_tiers
+// ---------------------------------------------------------------------------
+export const pricingTiers = pgTable('pricing_tiers', {
+  id:           text('id').primaryKey(),
+  name:         text('name').notNull(),
+  monthlyPrice: numeric('monthly_price').notNull().default('0'),
+  yearlyPrice:  numeric('yearly_price').notNull().default('0'),
+  features:     jsonb('features').$type<string[]>().default([]),
+  createdAt:    timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:    timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// tenant_subscriptions
+// ---------------------------------------------------------------------------
+export const tenantSubscriptions = pgTable('tenant_subscriptions', {
+  tenantId:     text('tenant_id').primaryKey().references(() => tenants.id, { onDelete: 'cascade' }),
+  tierId:       text('tier_id').references(() => pricingTiers.id, { onDelete: 'set null' }),
+  billingCycle: text('billing_cycle').$type<'monthly' | 'yearly'>().notNull().default('monthly'),
+  startDate:    timestamp('start_date', { withTimezone: true }).defaultNow().notNull(),
+  status:       text('status').$type<'active' | 'inactive' | 'trial'>().notNull().default('active'),
+  updatedAt:    timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// feature_requests
+// ---------------------------------------------------------------------------
+export const featureRequests = pgTable(
+  'feature_requests',
+  {
+    id:          text('id').primaryKey(),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    userId:      text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    type:        text('type').$type<'feature' | 'bug'>().notNull().default('feature'),
+    title:       text('title').notNull(),
+    description: text('description'),
+    status:      text('status')
+      .$type<'Open' | 'InValidation' | 'Planned' | 'InDevelopment' | 'Released' | 'Cancelled'>()
+      .notNull()
+      .default('Open'),
+    priority:    text('priority').$type<'low' | 'medium' | 'high'>().notNull().default('medium'),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:   index('feature_requests_tenant_idx').on(t.tenantId),
+    statusIdx:   index('feature_requests_status_idx').on(t.status),
+    typeIdx:     index('feature_requests_type_idx').on(t.type),
   })
 );
 

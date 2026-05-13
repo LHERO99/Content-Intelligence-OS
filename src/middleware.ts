@@ -11,6 +11,19 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
+    // Protect super-admin routes: only SuperAdmin role may access
+    if (
+      path.startsWith("/super-admin") ||
+      path.startsWith("/api/super-admin")
+    ) {
+      if (!token || token.role !== "SuperAdmin") {
+        if (path.startsWith("/api/")) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+    }
+
     return NextResponse.next();
   },
   {
