@@ -14,10 +14,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId;
     const { id } = await params;
     const body = await request.json();
 
-    const updatedUser = await updateUser(id, body);
+    const updatedUser = await updateUser(id, body, tenantId);
 
     if (!updatedUser) {
       return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
@@ -41,8 +42,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId;
     const { id } = await params;
-    const success = await deleteUser(id);
+    const success = await deleteUser(id, tenantId);
 
     if (!success) {
       return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });

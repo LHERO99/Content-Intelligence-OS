@@ -5,8 +5,6 @@ import { db } from "@/lib/db";
 import { featureRequests } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { getDefaultTenantId } from "@/lib/db";
-
 // POST: submit a new feature request or bug report (tenant-side)
 export async function POST(req: Request) {
   try {
@@ -15,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = getDefaultTenantId();
+    const tenantId = (session.user as any)?.tenantId ?? 'default';
     const body = await req.json();
     const { type, title, description, priority } = body;
 
@@ -53,7 +51,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = getDefaultTenantId();
+    const tenantId = (session.user as any)?.tenantId ?? 'default';
 
     const rows = await db
       .select()

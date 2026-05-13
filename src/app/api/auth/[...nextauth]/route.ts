@@ -66,15 +66,15 @@ export const authOptions: NextAuthOptions = {
             console.log("[Auth] Password valid:", isValid);
 
             if (isValid) {
-              // Derive tenantId: prefer the explicitly passed one, otherwise look it up
-              // from the user record (getUserByEmail stores the tenantId on the row).
-              const tenantId = (credentials.tenantId || user.TenantId) ?? "";
+              // Always use tenantId from the DB row — never trust the client-supplied value.
+              // getUserByEmail already filters by (email AND tenantId), so user.TenantId
+              // is guaranteed to match the tenant that was queried.
               return {
                 id:              user.id,
                 name:            user.Name,
                 email:           user.Email,
                 role:            user.Role,
-                tenantId,
+                tenantId:        user.TenantId ?? "",
                 passwordChanged: user.Password_Changed === true,
               };
             }

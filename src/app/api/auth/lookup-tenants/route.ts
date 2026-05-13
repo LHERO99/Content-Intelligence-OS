@@ -44,29 +44,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ungültige E-Mail oder Passwort." }, { status: 401 });
     }
 
-    // Verify password against the first row (all rows for the same email share the same hash
-    // because the password is set per-user, but we verify once and apply to all matches)
-    const firstWithPassword = rows.find((r) => r.password);
-    if (!firstWithPassword?.password) {
+    // Verify password individually per tenant row.
+    // A tenant is only included if its own user record has a matching password hash.
+    // This prevents a user from accessing Tenant B just because Tenant A's password matched.
+    const verifiedTenants: { tenantId: string; tenantName: string }[] = [];
+    for (const row of rows) {
+      if (row.isActive === false) continue;
+      if (!row.password) continue;
+      const isValid = await bcrypt.compare(password, row.password);
+      if (isValid) {
+        verifiedTenants.push({ tenantId: row.tenantId, tenantName: row.tenantName });
+      }
+    }
+
+    if (verifiedTenants.length === 0) {
       return NextResponse.json({ error: "Ungültige E-Mail oder Passwort." }, { status: 401 });
     }
 
-    const isValid = await bcrypt.compare(password, firstWithPassword.password);
-    if (!isValid) {
-      return NextResponse.json({ error: "Ungültige E-Mail oder Passwort." }, { status: 401 });
-    }
-
-    // Filter out inactive accounts
-    const activeTenants = rows
-      .filter((r) => r.isActive !== false)
-      .map((r) => ({ tenantId: r.tenantId, tenantName: r.tenantName }));
-
-    if (activeTenants.length === 0) {
-      return NextResponse.json(
-        { error: "Dein Account ist deaktiviert. Bitte wende dich an deinen Administrator." },
-        { status: 403 }
-      );
-    }
+    const activeTenants = verifiedTenants;
 
     return NextResponse.json({ tenants: activeTenants });
   } catch (error) {

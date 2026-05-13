@@ -19,8 +19,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const tenantId = (session.user as any)?.tenantId;
+
     // Check if user already exists
-    const existingUser = await getUserByEmail(email);
+    const existingUser = await getUserByEmail(email, tenantId);
     if (existingUser) {
       return NextResponse.json({ error: "User already exists" }, { status: 400 });
     }
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
       Name: name,
       Role: role,
       Password: hashedPassword,
-    });
+    }, tenantId);
 
     if (!newUser) {
       return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
 
     // In a real app, we would send an email here.
     // For now, we return the invite link/temp password.
-    const baseUrl = "https://content-intelligence-os-sigma.vercel.app";
+    const baseUrl = process.env.NEXTAUTH_URL ?? "https://content-intelligence-os-sigma.vercel.app";
     const inviteLink = `${baseUrl}/auth/signin?email=${encodeURIComponent(email)}&temp=${tempPassword}`;
 
     return NextResponse.json({ 

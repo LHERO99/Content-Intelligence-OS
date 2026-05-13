@@ -12,11 +12,12 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId;
   const { id } = await params;
   const body = await request.json();
 
   try {
-    const updated = await updateCostConfig(id, body);
+    const updated = await updateCostConfig(id, body, tenantId);
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,10 +33,11 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId;
   const { id } = await params;
 
   try {
-    await deleteCostConfig(id);
+    await deleteCostConfig(id, tenantId);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

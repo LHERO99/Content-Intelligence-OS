@@ -9,8 +9,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId;
+
   try {
-    const configs = await getCostConfigs();
+    const configs = await getCostConfigs(tenantId);
     return NextResponse.json(configs);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -23,9 +25,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId;
+
   try {
     const body = await request.json();
-    const config = await createCostConfig(body);
+    const config = await createCostConfig(body, tenantId);
     return NextResponse.json(config);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

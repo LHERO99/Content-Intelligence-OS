@@ -76,6 +76,9 @@ export function invalidateConfigCache(tenantId?: string): void {
 // Helpers
 // ---------------------------------------------------------------------------
 function tid(tenantId?: string): string {
+  if (!tenantId) {
+    console.warn('[postgres] tid() called without tenantId — falling back to default tenant. Check the call stack for missing tenant isolation.');
+  }
   return tenantId ?? getDefaultTenantId();
 }
 
