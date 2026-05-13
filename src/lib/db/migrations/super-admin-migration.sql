@@ -43,3 +43,6 @@ CREATE TABLE IF NOT EXISTS feature_requests (
 CREATE INDEX IF NOT EXISTS feature_requests_tenant_idx ON feature_requests(tenant_id);
 CREATE INDEX IF NOT EXISTS feature_requests_status_idx ON feature_requests(status);
 CREATE INDEX IF NOT EXISTS feature_requests_type_idx   ON feature_requests(type);
+
+-- 5. Quarterly planning field (added in follow-up iteration)
+ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;

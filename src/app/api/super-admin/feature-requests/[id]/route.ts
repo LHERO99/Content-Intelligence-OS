@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { featureRequests } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
-// PATCH: update status/priority of a feature request
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -18,15 +17,18 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { status, priority } = body;
+    const { status, priority, plannedQuarter } = body;
+
+    const updateData: Partial<typeof featureRequests.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (status         !== undefined) updateData.status         = status;
+    if (priority       !== undefined) updateData.priority       = priority;
+    if (plannedQuarter !== undefined) updateData.plannedQuarter = plannedQuarter === "" ? null : plannedQuarter;
 
     const [updated] = await db
       .update(featureRequests)
-      .set({
-        status:    status ?? undefined,
-        priority:  priority ?? undefined,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(featureRequests.id, id))
       .returning();
 

@@ -282,6 +282,7 @@ export const featureRequests = pgTable(
       .notNull()
       .default('Open'),
     priority:    text('priority').$type<'low' | 'medium' | 'high'>().notNull().default('medium'),
+    plannedQuarter: text('planned_quarter'), // Format: "Q1 2025", nullable — set by SuperAdmin only
     createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },

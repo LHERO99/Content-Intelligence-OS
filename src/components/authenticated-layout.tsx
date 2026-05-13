@@ -17,9 +17,6 @@ const VIEWPORT_WARNING_STORAGE_KEY = "viewport-warning-dismissed";
 // Routes that belong exclusively to the Super-Admin area
 const SUPER_ADMIN_PREFIX = "/super-admin";
 
-// Content routes that are not relevant for SuperAdmins
-const CONTENT_ROUTES = ["/", "/planning", "/creation", "/monitoring", "/history", "/content-agent-builder"];
-
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
@@ -32,15 +29,16 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
   const isAuthPage = pathname?.startsWith("/auth/");
 
   // Redirect SuperAdmin away from content routes → super-admin area
+  // Exempt: /profile and /auth/* so SuperAdmin can still manage their account
+  const SUPER_ADMIN_EXEMPT_PREFIXES = ["/profile", "/auth/"];
+
   useEffect(() => {
     if (status !== "authenticated" || !session || isAuthPage) return;
     const isSuperAdmin = session.user.role === "SuperAdmin";
-    const isOnContentRoute = CONTENT_ROUTES.some(
-      (r) => r === "/" ? pathname === "/" : pathname?.startsWith(r)
-    );
     const isOnSuperAdminRoute = pathname?.startsWith(SUPER_ADMIN_PREFIX);
+    const isExempt = SUPER_ADMIN_EXEMPT_PREFIXES.some((p) => pathname?.startsWith(p));
 
-    if (isSuperAdmin && !isOnSuperAdminRoute) {
+    if (isSuperAdmin && !isOnSuperAdminRoute && !isExempt) {
       router.replace("/super-admin/tenants");
     }
   }, [status, session, pathname, isAuthPage, router]);
