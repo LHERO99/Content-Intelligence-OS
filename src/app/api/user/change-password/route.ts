@@ -23,14 +23,15 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    const updatedUser = await updateUser(session.user.id, {
-      Password: hashedPassword,
-      Password_Changed: true,
-    });
+    const updatedUser = await updateUser(
+      session.user.id,
+      { Password: hashedPassword, Password_Changed: true },
+      session.user.tenantId,
+    );
 
     if (!updatedUser) {
       return NextResponse.json(
-        { error: "Fehler beim Aktualisieren des Passworts in Airtable" },
+        { error: "Fehler beim Aktualisieren des Passworts" },
         { status: 500 }
       );
     }

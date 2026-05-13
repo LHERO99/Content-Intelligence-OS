@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SEO Content Intelligence OS",
+  title: "Plexaro",
   description: "Advanced SEO Content Management System",
   robots: {
     index: false,
