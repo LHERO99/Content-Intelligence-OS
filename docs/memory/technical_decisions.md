@@ -1,4 +1,23 @@
-# Technische Entscheidungen (Stand: 01.05.2026)
+# Technische Entscheidungen (Stand: 13.05.2026)
+
+## Tenant-Isolation: tenantId immer aus DB-Row, nie aus Client-Input (13.05.2026)
+- In `authorize()` (NextAuth) wird `tenantId` ausschließlich aus `user.TenantId` (DB-Row) genommen — nie aus `credentials.tenantId`
+- `credentials.tenantId` dient nur als Filter-Parameter für `getUserByEmail`, hat aber keinen Einfluss auf den JWT-Inhalt
+- Begründung: Client-seitig übermittelte Werte dürfen nicht direkt in den Session-Token fließen
+
+## Tenant-Isolation: Password-Verifikation pro Tenant in lookup-tenants (13.05.2026)
+- `lookup-tenants` prüft das Passwort **für jeden Tenant-Row einzeln** via `bcrypt.compare()`
+- Vorher: "first-password-wins" — Passwort wurde nur gegen den ersten gefundenen User-Row geprüft, alle weiteren Tenants kamen automatisch zurück
+- Nachher: Nur Tenants, bei denen `bcrypt.compare(password, row.password)` `true` ergibt, sind im Response
+- Rows ohne Passwort oder mit `isActive === false` werden übersprungen
+
+## Tenant-Isolation: tid()-Fallback-Warnung (13.05.2026)
+- `tid()` in `postgres.ts` loggt `console.warn` wenn `tenantId` fehlt und auf `getDefaultTenantId()` zurückgefallen wird
+- Dient als Frühwarnsystem für fehlende tenantId-Weitergabe in neuen API-Routes
+
+## Tenant-Isolation: Hardcodierte baseUrl in invite/route.ts (13.05.2026)
+- `baseUrl` in `admin/invite/route.ts` wurde von `"https://content-intelligence-os-sigma.vercel.app"` auf `process.env.NEXTAUTH_URL ?? "..."` geändert
+- Begründung: Invite-Links müssen zur jeweiligen Deploy-URL passen, nicht zu einer hardcodierten Production-URL
 
 ## Agent Builder: Execution Panel als Side-Panel (01.05.2026)
 - Das Execution Panel sitzt in der linken Sidebar unterhalb der NodePalette — kein Full-Width-Panel mehr.

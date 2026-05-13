@@ -75,7 +75,21 @@
 - [x] Fix: `setCommissionedIds` + `addAlert` vor `await triggerN8nAction(...)` verschoben (sofortiges UI-Feedback).
 - [x] Fix: Bei API-Fehler `commissionedIds.delete(id)` (optimistisches Update rückgängig machen).
 
-## Agent Builder UI-Refactoring (01.05.2026)
+## Tenant-Isolation (13.05.2026)
+- [x] Alle API-Routes unter `planning/`, `admin/`, `agent-workflows-v2/`, `cron/`, `n8n/`, `monitoring/`, `creation/`, `system-health/`, `branding/`, `feedback/` auf `session.user.tenantId` umgestellt
+- [x] `DEFAULT_TENANT_ID` aus allen agent-workflows-v2 Sub-Routes entfernt
+- [x] `postgres.ts`: `getAllTenants()`, `getPotentialTrends(_tenantId?)`, `createTrend(_tenantId?)`, `invalidateConfigCache(tenantId)` gefixt
+- [x] `admin-integrations.ts`, `optimization-rules.ts`, `sync-performance.ts`: alle Funktionen mit tenantId
+- [x] `admin/costs/route.ts` + `admin/costs/[id]/route.ts`: tenantId an alle Cost-DB-Calls
+- [x] `admin/users/[id]/route.ts`: tenantId an updateUser + deleteUser
+- [x] `admin/invite/route.ts`: tenantId an getUserByEmail + createUser; hardcodierte baseUrl durch NEXTAUTH_URL ersetzt
+- [x] `feedback/route.ts`: getDefaultTenantId() durch session.user.tenantId ersetzt
+- [x] Security-Fix: `lookup-tenants/route.ts` — Passwort wird pro Tenant einzeln geprüft (first-password-wins Bug behoben)
+- [x] Security-Fix: `[...nextauth]/route.ts` — tenantId im JWT kommt nur noch aus DB-Row, nicht aus credentials
+- [x] `postgres.ts` `tid()`: console.warn bei fehlendem tenantId
+- [x] `app-sidebar.tsx`: App-Name von "SEO Content Intelligence" auf "Plexaro" geändert
+
+
 - [x] Refactor: Run Controls Card + manueller Run-Button entfernt.
 - [x] Refactor: Auto-Save-Strip in Toolbar-Zeile neben Flow-Tabs verschoben.
 - [x] Refactor: Execution Panel — Tabs (Executions/Timeline/Messages) entfernt, nur Run-Liste.

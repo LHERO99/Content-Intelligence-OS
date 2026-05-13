@@ -100,7 +100,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
           <div className="flex items-center gap-2 font-bold px-1" style={{ color: primaryColor }}>
             <ShieldCheck className="h-4 w-4" />
-              <span className="text-xs">SEO Content Intelligence</span>
+              <span className="text-xs">Plexaro</span>
             </div>
           </div>
         </SidebarHeader>

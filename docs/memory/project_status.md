@@ -1,4 +1,98 @@
-# Projekt-Status (Stand: 01.05.2026)
+# Projekt-Status (Stand: 13.05.2026)
+
+## Tenant-Isolation: Vollständig abgeschlossen (13.05.2026)
+
+### Ziel
+Vollständige Multi-Tenant-Datenisolation: Jeder eingeloggte User sieht und bearbeitet ausschließlich die Daten seines eigenen Tenants. `session.user.tenantId` wird überall an DB-Funktionen weitergereicht.
+
+### Strategie
+- `session.user.tenantId` stammt aus dem JWT (gesetzt beim Login via `getUserByEmail`)
+- Alle DB-Funktionen in `postgres.ts` akzeptieren `tenantId?: string`
+- `withTenant(tenantId, ...)` setzt via `set_config('app.tenant_id', tenantId, true)` einen transaktionslokalen PostgreSQL-Kontext
+- Cron-Jobs iterieren über alle Tenants via `getAllTenants()`
+
+### Vollständig gefixt — API Routes
+
+**Planning:**
+- `planning/keywords/route.ts` ✅
+- `planning/blacklist/route.ts` ✅
+- `planning/history/route.ts` ✅
+- `planning/trends/route.ts` ✅
+- `planning/editors/route.ts` ✅
+- `planning/import/route.ts` ✅
+- `planning/optimization-suggestions/route.ts` ✅
+
+**Admin:**
+- `admin/config/route.ts` ✅
+- `admin/users/route.ts` ✅
+- `admin/users/[id]/route.ts` ✅ (updateUser + deleteUser mit tenantId)
+- `admin/invite/route.ts` ✅ (getUserByEmail + createUser mit tenantId; baseUrl aus NEXTAUTH_URL)
+- `admin/costs/route.ts` ✅ (getCostConfigs + createCostConfig mit tenantId)
+- `admin/costs/[id]/route.ts` ✅ (updateCostConfig + deleteCostConfig mit tenantId)
+- `admin/sync/manual/route.ts` ✅
+- `admin/sync/urls/route.ts` ✅
+- `admin/integrations/route.ts` ✅
+- `admin/integrations/[provider]/route.ts` ✅
+- `admin/integrations/[provider]/models/route.ts` ✅
+- `admin/integrations/google_search_console/properties/route.ts` ✅
+
+**Sonstige:**
+- `branding/route.ts` ✅
+- `monitoring/route.ts` ✅
+- `monitoring/detail/route.ts` ✅
+- `monitoring/suggest/route.ts` ✅
+- `creation/refine/route.ts` ✅
+- `creation/models/route.ts` ✅
+- `feedback/route.ts` ✅ (getDefaultTenantId() ersetzt durch session.user.tenantId)
+- `agent-workflows-v2/route.ts` ✅
+- `agent-workflows-v2/settings/route.ts` ✅
+- `agent-workflows-v2/[id]/route.ts` ✅
+- `agent-workflows-v2/[id]/publish/route.ts` ✅
+- `agent-workflows-v2/[id]/run/route.ts` ✅
+- `agent-workflows-v2/runs/route.ts` ✅
+- `agent-workflows-v2/runs/[runId]/route.ts` ✅
+- `agent-workflows-v2/runs/[runId]/messages/route.ts` ✅
+- `n8n/trigger/route.ts` ✅
+- `n8n/callback/route.ts` ✅
+- `system-health/route.ts` ✅
+
+**Crons:**
+- `cron/sync-gsc/route.ts` ✅ (iteriert alle Tenants via getAllTenants())
+- `cron/sync-dataforseo/route.ts` ✅
+- `cron/sync-performance/route.ts` ✅
+- `cron/check-integrations/route.ts` ✅
+
+### Vollständig gefixt — Lib-Funktionen
+- `postgres.ts`: `getAllTenants()`, `invalidateConfigCache(tenantId)`, `getPotentialTrends(_tenantId?)`, `createTrend(_trend, _tenantId?)`
+- `postgres.ts` `tid()`: Loggt `console.warn` wenn tenantId fehlt und auf Default-Tenant gefallen wird
+- `admin-integrations.ts`: alle Funktionen mit tenantId
+- `optimization-rules.ts`: alle Funktionen mit tenantId
+- `sync-performance.ts`: alle Funktionen mit tenantId
+
+### Login-Flow Security-Fixes (13.05.2026)
+
+**Bug:** Ein User konnte sich mit dem Passwort von Tenant A in Tenant B einloggen, wenn dieselbe E-Mail in beiden Tenants existierte. `lookup-tenants` prüfte das Passwort nur gegen den ersten gefundenen User-Row.
+
+**Fix 1 — `api/auth/lookup-tenants/route.ts`:**
+- Passwort wird jetzt **pro Tenant einzeln** via `bcrypt.compare()` geprüft
+- Nur Tenants, bei denen der eigene Password-Hash übereinstimmt, kommen in die Rückgabe
+- Inaktive Accounts und Accounts ohne Passwort werden übersprungen
+
+**Fix 2 — `api/auth/[...nextauth]/route.ts`:**
+- `tenantId` im JWT kommt jetzt ausschließlich aus dem **DB-Row** (`user.TenantId`)
+- Der client-seitig übermittelte `credentials.tenantId` wird nur noch für die `getUserByEmail`-Abfrage genutzt, aber nie mehr direkt in den Token geschrieben
+
+**Fix 3 — `lib/postgres.ts` `tid()`:**
+- `console.warn` wenn tenantId fehlt und auf Default-Tenant gefallen wird
+
+### Noch ausstehend
+- DB-Migration ausführen:
+  ```sql
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+  ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;
+  ```
+
+---
 
 ## Agent Builder UI — Refactoring (01.05.2026)
 
