@@ -103,37 +103,6 @@ export async function testDataforseo(username: string, password: string): Promis
   }
 }
 
-export async function testVertexLegal(
-  projectId: string,
-  location: string,
-  endpointId: string,
-  accessToken: string
-): Promise<void> {
-  const sanitizedProject = String(projectId || '').trim();
-  const sanitizedLocation = String(location || '').trim();
-  const sanitizedEndpoint = String(endpointId || '').trim();
-  const sanitizedToken = String(accessToken || '').trim();
-
-  if (!sanitizedProject || !sanitizedLocation || !sanitizedEndpoint || !sanitizedToken) {
-    throw new Error(
-      'Vertex Legal Test fehlgeschlagen: Project, Location, Endpoint und Access Token sind erforderlich.'
-    );
-  }
-
-  const url = `https://${sanitizedLocation}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(sanitizedProject)}/locations/${encodeURIComponent(sanitizedLocation)}/endpoints/${encodeURIComponent(sanitizedEndpoint)}:predict`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${sanitizedToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ instances: [{ ping: true, source: 'content-agent-builder-healthcheck' }] }),
-  });
-  if (!response.ok) {
-    throw new Error(`Vertex Legal Test fehlgeschlagen (${response.status})`);
-  }
-}
-
 export async function testGoogleSearchConsole(): Promise<void> {
   const config = await getConfig();
   const refreshToken = config.GSC_REFRESH_TOKEN?.trim();
@@ -196,13 +165,6 @@ export async function testProviderConnection(
       return testPerplexity(values.PERPLEXITY_API_KEY || '');
     case 'dataforseo':
       return testDataforseo(values.DATAFORSEO_USERNAME || '', values.DATAFORSEO_PASSWORD || '');
-    case 'vertex_legal':
-      return testVertexLegal(
-        values.VERTEX_AI_PROJECT_ID || '',
-        values.VERTEX_AI_LOCATION || '',
-        values.VERTEX_AI_ENDPOINT_ID || '',
-        values.VERTEX_AI_ACCESS_TOKEN || ''
-      );
     case 'google_search_console':
       return testGoogleSearchConsole();
     default:

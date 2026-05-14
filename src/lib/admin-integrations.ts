@@ -8,7 +8,6 @@ export type IntegrationProvider =
   | 'copilot'
   | 'perplexity'
   | 'dataforseo'
-  | 'vertex_legal'
   | 'google_search_console';
 
 export type ProviderFieldType = 'password' | 'text';
@@ -126,37 +125,6 @@ export const PROVIDERS: ProviderDefinition[] = [
     ],
   },
   {
-    id: 'vertex_legal',
-    name: 'Vertex Legal Agent',
-    description: 'Externer Legal Agent via Vertex AI Endpoint.',
-    fields: [
-      {
-        key: 'VERTEX_AI_PROJECT_ID',
-        label: 'Project ID',
-        type: 'text',
-        placeholder: 'my-gcp-project',
-      },
-      {
-        key: 'VERTEX_AI_LOCATION',
-        label: 'Location',
-        type: 'text',
-        placeholder: 'europe-west4',
-      },
-      {
-        key: 'VERTEX_AI_ENDPOINT_ID',
-        label: 'Endpoint ID',
-        type: 'text',
-        placeholder: '1234567890123456789',
-      },
-      {
-        key: 'VERTEX_AI_ACCESS_TOKEN',
-        label: 'Access Token',
-        type: 'password',
-        placeholder: 'ya29....',
-      },
-    ],
-  },
-  {
     id: 'google_search_console',
     name: 'Google Search Console',
     description: 'Klicks, Impressionen und Positionen aus der Google Search Console.',
@@ -200,11 +168,28 @@ export async function getIntegrationsState(tenantId?: string): Promise<Integrati
 
   return PROVIDERS.map((provider) => {
     const maskedValues: Record<string, string> = {};
-    const configured = provider.fields.every((field) => {
+
+    // Collect masked values for all declared fields
+    provider.fields.forEach((field) => {
       const value = config[field.key];
       maskedValues[field.key] = maskValue(value);
-      return Boolean(value && String(value).trim());
     });
+
+    // GSC is "configured" as soon as a refresh token exists (OAuth connected),
+    // regardless of whether GSC_SITE_URL has been selected yet.
+    let configured: boolean;
+    if (provider.id === 'google_search_console') {
+      const refreshToken = config['GSC_REFRESH_TOKEN'];
+      configured = Boolean(refreshToken && String(refreshToken).trim());
+      // Also expose masked token and connected email for the UI
+      maskedValues['GSC_REFRESH_TOKEN'] = maskValue(config['GSC_REFRESH_TOKEN']);
+      maskedValues['GSC_CONNECTED_EMAIL'] = config['GSC_CONNECTED_EMAIL'] ?? '';
+    } else {
+      configured = provider.fields.every((field) => {
+        const value = config[field.key];
+        return Boolean(value && String(value).trim());
+      });
+    }
 
     return {
       provider: provider.id,

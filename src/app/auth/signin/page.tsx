@@ -29,6 +29,7 @@ function SignInForm() {
   const [password, setPassword]   = useState("");
   const [tenants, setTenants]     = useState<TenantOption[]>([]);
   const [error, setError]         = useState("");
+  const [isDisabled, setIsDisabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Step 1: look up which tenants this email/password belongs to ──────────
@@ -36,6 +37,7 @@ function SignInForm() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setIsDisabled(false);
 
     try {
       const res  = await fetch("/api/auth/lookup-tenants", {
@@ -46,6 +48,9 @@ function SignInForm() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.code === "ACCOUNT_DISABLED") {
+          setIsDisabled(true);
+        }
         setError(data.error ?? "Ungültige E-Mail oder Passwort.");
         setIsLoading(false);
         return;
@@ -128,9 +133,17 @@ function SignInForm() {
         </div>
 
         {/* Error */}
-        {error && (
+        {error && !isDisabled && (
           <div className="rounded bg-red-50 p-2 text-sm text-red-500 text-center">
             {error}
+          </div>
+        )}
+
+        {/* Account deactivated */}
+        {isDisabled && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 text-center space-y-1">
+            <p className="font-semibold">Account deaktiviert</p>
+            <p>Dein Account wurde gesperrt. Bitte wende dich an den Tool-Support, um wieder Zugang zu erhalten.</p>
           </div>
         )}
 

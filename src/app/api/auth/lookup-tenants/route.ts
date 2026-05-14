@@ -48,16 +48,28 @@ export async function POST(req: Request) {
     // A tenant is only included if its own user record has a matching password hash.
     // This prevents a user from accessing Tenant B just because Tenant A's password matched.
     const verifiedTenants: { tenantId: string; tenantName: string }[] = [];
+    let hasDeactivatedMatch = false;
+
     for (const row of rows) {
-      if (row.isActive === false) continue;
       if (!row.password) continue;
       const isValid = await bcrypt.compare(password, row.password);
-      if (isValid) {
+      if (!isValid) continue;
+
+      if (row.isActive === false) {
+        hasDeactivatedMatch = true;
+      } else {
         verifiedTenants.push({ tenantId: row.tenantId, tenantName: row.tenantName });
       }
     }
 
     if (verifiedTenants.length === 0) {
+      // If credentials matched but all matching accounts are deactivated, give a specific hint
+      if (hasDeactivatedMatch) {
+        return NextResponse.json(
+          { error: "Dein Account wurde deaktiviert. Bitte wende dich an den Tool-Support.", code: "ACCOUNT_DISABLED" },
+          { status: 403 }
+        );
+      }
       return NextResponse.json({ error: "Ungültige E-Mail oder Passwort." }, { status: 401 });
     }
 

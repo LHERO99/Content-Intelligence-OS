@@ -5,6 +5,10 @@
  * Liest die letzten Audit-Log-Einträge aller Tenants und berechnet
  * einen zusammengefassten Health-Status pro Tenant und Cron-Job.
  *
+ * Pro Job wird der neueste Eintrag aus BEIDEN Quellen herangezogen:
+ *   1. Cron-Job-Logs  (z.B. cron:sync-sistrix:error)
+ *   2. Integration-Check-Logs  (z.B. integration:check:sistrix:error)
+ *
  * Kein Live-Test – rein audit-log-basiert.
  */
 
@@ -13,16 +17,28 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/db';
 import { tenants, auditLogs } from '@/lib/db/schema';
-import { eq, desc, inArray, gte } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 
-const CRON_JOBS = [
-  'cron:sync-gsc',
-  'cron:sync-sistrix',
-  'cron:sync-dataforseo',
-  'cron:check-integrations',
+// Each job definition contains all audit-log prefixes that are relevant for it.
+// The most recent entry across ALL prefixes wins.
+const JOBS = [
+  {
+    key: 'cron:sync-gsc',
+    prefixes: ['cron:sync-gsc', 'integration:check:google_search_console'],
+  },
+  {
+    key: 'cron:sync-sistrix',
+    prefixes: ['cron:sync-sistrix', 'integration:check:sistrix'],
+  },
+  {
+    key: 'cron:sync-dataforseo',
+    prefixes: ['cron:sync-dataforseo', 'integration:check:dataforseo'],
+  },
+  {
+    key: 'cron:check-integrations',
+    prefixes: ['cron:check-integrations'],
+  },
 ] as const;
-
-type CronJobKey = typeof CRON_JOBS[number];
 
 export interface TenantHealthStatus {
   tenantId: string;
@@ -41,6 +57,21 @@ export interface HealthSummaryResponse {
   totalTenants: number;
   tenantsWithErrors: number;
   generatedAt: string;
+}
+
+function deriveStatus(action: string): 'ok' | 'error' | 'skipped' | 'unknown' {
+  if (action.endsWith(':success') || action.endsWith(':ok')) return 'ok';
+  if (action.endsWith(':error')) return 'error';
+  if (action.endsWith(':skipped')) return 'skipped';
+  return 'unknown';
+}
+
+function extractDetail(payload: unknown): string | null {
+  const p = payload as Record<string, unknown> | null;
+  if (!p) return null;
+  if (p.error) return String(p.error);
+  if (Array.isArray(p.errors) && p.errors.length > 0) return (p.errors as string[]).join('; ');
+  return null;
 }
 
 export async function GET() {
@@ -65,10 +96,9 @@ export async function GET() {
       } satisfies HealthSummaryResponse);
     }
 
-    // Load recent audit logs for all tenants (last 48h)
-    const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const tenantIds = allTenants.map(t => t.id);
 
+    // Load recent audit logs for all tenants (last 48h)
     const logs = await db
       .select({
         tenantId: auditLogs.tenantId,
@@ -77,51 +107,33 @@ export async function GET() {
         rawPayload: auditLogs.rawPayload,
       })
       .from(auditLogs)
-      .where(
-        inArray(auditLogs.tenantId, tenantIds)
-      )
+      .where(inArray(auditLogs.tenantId, tenantIds))
       .orderBy(desc(auditLogs.timestamp))
       .limit(5000);
 
     // Build health summary per tenant
     const tenantHealth: TenantHealthStatus[] = allTenants.map(tenant => {
       const tenantLogs = logs.filter(l => l.tenantId === tenant.id);
-
       const jobs: TenantHealthStatus['jobs'] = {};
 
-      for (const cronJob of CRON_JOBS) {
-        // Find the most recent log entry for this cron job
-        const relevantLog = tenantLogs
-          .filter(l => l.action.startsWith(cronJob))
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      for (const job of JOBS) {
+        // Collect all log entries matching ANY of the job's prefixes
+        const relevantLogs = tenantLogs
+          .filter(l => job.prefixes.some(prefix => l.action.startsWith(prefix)))
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-        if (!relevantLog) {
-          jobs[cronJob] = { status: 'unknown', lastRunAt: null, detail: null };
+        // Take the most recent entry across all prefix sources
+        const mostRecent = relevantLogs[0];
+
+        if (!mostRecent) {
+          jobs[job.key] = { status: 'unknown', lastRunAt: null, detail: null };
           continue;
         }
 
-        let status: 'ok' | 'error' | 'skipped' | 'unknown';
-        if (relevantLog.action.endsWith(':success') || relevantLog.action.endsWith(':ok')) {
-          status = 'ok';
-        } else if (relevantLog.action.endsWith(':error')) {
-          status = 'error';
-        } else if (relevantLog.action.endsWith(':skipped')) {
-          status = 'skipped';
-        } else {
-          status = 'unknown';
-        }
-
-        const payload = relevantLog.rawPayload as Record<string, unknown> | null;
-        const detail = payload?.error
-          ? String(payload.error)
-          : payload?.errors && Array.isArray(payload.errors) && payload.errors.length > 0
-          ? (payload.errors as string[]).join('; ')
-          : null;
-
-        jobs[cronJob] = {
-          status,
-          lastRunAt: new Date(relevantLog.timestamp).toISOString(),
-          detail,
+        jobs[job.key] = {
+          status: deriveStatus(mostRecent.action),
+          lastRunAt: new Date(mostRecent.timestamp).toISOString(),
+          detail: extractDetail(mostRecent.rawPayload),
         };
       }
 
