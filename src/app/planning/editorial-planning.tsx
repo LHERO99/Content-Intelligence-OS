@@ -12,7 +12,7 @@ import {
   useReactTable,
   ColumnOrderState,
 } from "@tanstack/react-table";
-import { Calendar } from "lucide-react";
+import { Calendar, Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { triggerN8nAction } from "@/lib/n8n";
@@ -42,6 +42,7 @@ import { useI18n } from "@/i18n/use-i18n";
 
 interface EditorialPlanningProps {
   keywords: KeywordMap[];
+  onGoToKeywordMap?: () => void;
 }
 
 interface EditorOption {
@@ -51,7 +52,7 @@ interface EditorOption {
   role: 'Admin' | 'Editor' | 'Viewer';
 }
 
-export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
+export function EditorialPlanning({ keywords, onGoToKeywordMap }: EditorialPlanningProps) {
   const { t } = useI18n();
   const { addAlert } = useAlerts();
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "Priority_Score", desc: true }]);
@@ -179,35 +180,48 @@ export function EditorialPlanning({ keywords }: EditorialPlanningProps) {
         title={t("planning.editorialPlanning")} 
         description={t("planning.editorialPlanningDesc")} 
       />
-      <EditorialFilterBar table={table} columns={columns} />
-      <PlanningTable 
-        table={table} 
-        columnOrder={columnOrder} 
-        sensors={sensors} 
-        onDragEnd={handleDragEnd} 
-        onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
-      />
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {t("planning.selectedRows")
-            .replace("{selected}", String(table.getFilteredSelectedRowModel().rows.length))
-            .replace("{total}", String(table.getFilteredRowModel().rows.length))}
+      {keywords.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 text-center">
+          <Map className="h-12 w-12 text-primary/30" />
+          <div>
+            <p className="text-lg font-semibold text-primary">{t("onboarding.keywordMapRequired")}</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">{t("onboarding.keywordMapRequiredDesc")}</p>
+          </div>
+          <Button onClick={onGoToKeywordMap}>{t("onboarding.goToKeywordMap")}</Button>
         </div>
-        <div className="space-x-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{t("planning.previous")}</Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{t("planning.next")}</Button>
-        </div>
-      </div>
-      <EditEditorialModal 
-        keyword={editingKeyword} 
-        open={isEditModalOpen} 
-        onOpenChange={setIsEditModalOpen} 
-        onSave={updateData} 
-        onCommission={handleCommissionContent} 
-        isCommissioning={!!isCommissioning} 
-        commissionedIds={commissionedIds}
-        editorOptions={editorOptions}
-      />
+      ) : (
+        <>
+          <EditorialFilterBar table={table} columns={columns} />
+          <PlanningTable 
+            table={table} 
+            columnOrder={columnOrder} 
+            sensors={sensors} 
+            onDragEnd={handleDragEnd} 
+            onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
+          />
+          <div className="flex items-center justify-end space-x-2 py-4">
+            <div className="flex-1 text-sm text-muted-foreground">
+              {t("planning.selectedRows")
+                .replace("{selected}", String(table.getFilteredSelectedRowModel().rows.length))
+                .replace("{total}", String(table.getFilteredRowModel().rows.length))}
+            </div>
+            <div className="space-x-2">
+              <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{t("planning.previous")}</Button>
+              <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{t("planning.next")}</Button>
+            </div>
+          </div>
+          <EditEditorialModal 
+            keyword={editingKeyword} 
+            open={isEditModalOpen} 
+            onOpenChange={setIsEditModalOpen} 
+            onSave={updateData} 
+            onCommission={handleCommissionContent} 
+            isCommissioning={!!isCommissioning} 
+            commissionedIds={commissionedIds}
+            editorOptions={editorOptions}
+          />
+        </>
+      )}
     </div>
   );
 }

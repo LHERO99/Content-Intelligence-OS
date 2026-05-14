@@ -149,6 +149,14 @@ const en = {
     switchToSuggestions: "Switch to Suggestions tab",
     addedToSuggestions: "Selection was added to suggestions for editorial planning",
   },
+  onboarding: {
+    keywordMapRequired: "Start with the Keyword Map",
+    keywordMapRequiredDesc: "Add your keywords to the Keyword Map first – all other sections depend on this data.",
+    goToKeywordMap: "Go to Keyword Map",
+    dashboardBannerTitle: "Get started: set up your Keyword Map",
+    dashboardBannerDesc: "The Keyword Map is the foundation of Plexaro. Add your keywords to enable suggestions, editorial planning, content creation, and monitoring.",
+    dashboardBannerCta: "Add keywords now",
+  },
   planning: {
     keywordMap: "Keyword Map",
     keywordMapDesc: "Central repository of all keywords and their performance metrics.",

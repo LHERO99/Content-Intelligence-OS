@@ -37,8 +37,10 @@ import {
   LayoutDashboard,
   List,
   Calendar as CalendarIcon,
-  RotateCcw
+  RotateCcw,
+  Map
 } from "lucide-react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAlerts } from "@/components/alerts-provider";
@@ -574,8 +576,19 @@ export default function MonitoringPage() {
                         ))}
                     {filteredUrls.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? t("monitoring.noUrlsFound") : t("monitoring.noMonitoringData")}
+                        <TableCell colSpan={6} className="text-center py-12">
+                          {searchTerm ? (
+                            <span className="text-muted-foreground">{t("monitoring.noUrlsFound")}</span>
+                          ) : (
+                            <div className="flex flex-col items-center gap-3">
+                              <Map className="h-8 w-8 text-primary/30" />
+                              <p className="text-sm font-medium text-primary">{t("onboarding.keywordMapRequired")}</p>
+                              <p className="text-xs text-muted-foreground max-w-xs">{t("onboarding.keywordMapRequiredDesc")}</p>
+                              <Link href="/planning" className="text-xs text-primary underline hover:no-underline font-medium">
+                                {t("onboarding.goToKeywordMap")}
+                              </Link>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     )}

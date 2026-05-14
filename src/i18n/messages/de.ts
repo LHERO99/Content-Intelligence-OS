@@ -149,6 +149,14 @@ const de = {
     switchToSuggestions: "Zum Vorschläge-Tab wechseln",
     addedToSuggestions: "Die Auswahl wurde in die Vorschläge für die Redaktionsplanung mit aufgenommen",
   },
+  onboarding: {
+    keywordMapRequired: "Starte mit der Keyword-Map",
+    keywordMapRequiredDesc: "Lege zuerst Keywords in der Keyword-Map an – alle anderen Bereiche bauen darauf auf.",
+    goToKeywordMap: "Zur Keyword-Map",
+    dashboardBannerTitle: "Erste Schritte: Keyword-Map anlegen",
+    dashboardBannerDesc: "Die Keyword-Map ist das Fundament von Plexaro. Trage deine Keywords ein, damit Vorschläge, Redaktionsplanung, Content-Erstellung und Monitoring funktionieren.",
+    dashboardBannerCta: "Jetzt Keywords anlegen",
+  },
   planning: {
     keywordMap: "Keyword-Map",
     keywordMapDesc: "Zentrales Repository aller Keywords und deren Performance-Metriken.",

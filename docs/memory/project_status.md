@@ -94,6 +94,42 @@ Vollständige Multi-Tenant-Datenisolation: Jeder eingeloggte User sieht und bear
 
 ---
 
+## Multi-Tenant Isolation — Sicherheitslücken geschlossen (14.05.2026)
+
+### Audit-Ergebnis
+Vollständiger Multi-Tenant-Sicherheits-Audit durchgeführt. Folgende Lücken identifiziert und geschlossen:
+
+### Fix #1 — `monitoring/import/route.ts` (kritisch)
+- **Problem**: n8n-Webhook schrieb alle Performance-Daten ohne tenantId → alles landete beim Default-Tenant
+- **Fix**: `tenantId` wird aus `body.tenantId` oder `x-tenant-id`-Header gelesen; fehlt beides → HTTP 400
+- **Explizit an** `upsertURLPerformance()` + `upsertKeywordRankingHistory()` übergeben
+- **Achtung**: n8n-Workflows müssen `tenantId` im Payload ergänzen
+
+### Fix #2 — `cron/purge-old-data/route.ts` (kritisch)
+- **Problem**: Purge-Funktionen wurden ohne tenantId aufgerufen → nur Default-Tenant wurde bereinigt
+- **Fix**: Loopt jetzt über alle Tenants via `getAllTenants()`, ruft Purge + AuditLog pro Tenant auf
+- **Response** enthält zusätzlich `tenantsProcessed`
+
+### Fix #3 — `admin/upload/route.ts` (mittel)
+- **Problem**: Blob-Pfad hatte kein Tenant-Präfix → alle Branding-Dateien lagen im gemeinsamen `branding/`-Namespace
+- **Fix**: Pfad ist jetzt `branding/{tenantId}/logo-…` / `branding/{tenantId}/favicon-…`
+- `tenantId` wird aus Session gelesen; fehlt sie → HTTP 400
+- Bestehende Blob-URLs in der `config`-Tabelle funktionieren weiterhin (Vercel Blob-URLs sind unveränderlich)
+
+### Fix #4 — `src/lib/db/migrations/0001_add_row_level_security.sql` (neu)
+- Neue Migration-Datei mit Postgres RLS-Policies auf allen 9 tenant-scoped Tabellen
+- `current_tenant_id()` Helper-Funktion liest `app.tenant_id` aus dem Transaktionskontext (gesetzt von `withTenant()`)
+- Ohne `FORCE ROW LEVEL SECURITY` → Table Owner bypassed RLS (SuperAdmin-Queries + `getAllTenants()` bleiben unverändert)
+- **Muss manuell ausgeführt werden**: `psql $DATABASE_URL < src/lib/db/migrations/0001_add_row_level_security.sql`
+
+### Fix #5 — `postgres.ts` `tid()`-Funktion (niedrig)
+- **Neu**: Env-Variable `MULTI_TENANT=true` aktiviert Hard-Fail-Modus
+- Im Hard-Fail: fehlendes `tenantId` → Exception statt stillem Env-Var-Fallback
+- Im Legacy-Modus: wie bisher, `console.warn`
+- Empfehlung: `MULTI_TENANT=true` in Production setzen sobald alle n8n-Workflows angepasst sind
+
+---
+
 ## Super-Admin-Bereich & UI-Verbesserungen (14.05.2026)
 
 ### Super-Admin Dashboard + i18n

@@ -27,7 +27,9 @@ import {
   MousePointer2, 
   Activity,
   RefreshCw,
-  History
+  History,
+  Map,
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentHistoryTable } from "./content-history-table";
 import { useI18n } from "@/i18n/use-i18n";
 import { SystemHealthCard } from "@/components/system-health-card";
+import Link from "next/link";
 
 // --- Helper Components ---
 
@@ -76,25 +79,29 @@ export default function DashboardPage() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [potentialTrends, setPotentialTrends] = useState<PotentialTrend[]>([]);
   const [contentHistory, setContentHistory] = useState<ContentLog[]>([]);
+  const [keywordCount, setKeywordCount] = useState<number | null>(null);
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const [perfRes, trendsRes, historyRes] = await Promise.all([
+      const [perfRes, trendsRes, historyRes, kwRes] = await Promise.all([
         fetch('/api/debug/airtable?table=Performance-Data'),
         fetch('/api/debug/airtable?table=Potential-Trends'),
         fetch('/api/planning/history'),
+        fetch('/api/planning/keywords'),
       ]);
       
       const perf = perfRes.ok ? (await perfRes.json()).records || [] : [];
       const trends = trendsRes.ok ? (await trendsRes.json()).records || [] : [];
       const history = historyRes.ok ? await historyRes.json() : [];
+      const kw = kwRes.ok ? await kwRes.json() : [];
 
       setPerformanceData(perf);
       setPotentialTrends(trends);
       setContentHistory(history);
+      setKeywordCount(Array.isArray(kw) ? kw.length : 0);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -170,6 +177,25 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Onboarding banner — shown when no keywords exist yet */}
+      {keywordCount === 0 && (
+        <div className="flex items-start gap-4 rounded-xl border border-primary/30 bg-primary/5 p-5">
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Map className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-primary">{t("onboarding.dashboardBannerTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.dashboardBannerDesc")}</p>
+          </div>
+          <Link href="/planning">
+            <Button size="sm" className="shrink-0 gap-1.5">
+              {t("onboarding.dashboardBannerCta")}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">

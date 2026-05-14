@@ -5,7 +5,8 @@ import { KeywordMap, ContentLog } from '@/lib/postgres-types';
 import { triggerN8nAction } from '@/lib/n8n';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
-import { Loader2, Send, Zap, Clock, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, Send, Zap, Clock, FileText, AlertTriangle, RefreshCw, Map } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -229,6 +230,19 @@ export default function CreationPage() {
                           </TableCell>
                         </TableRow>
                       ))
+                    ) : keywords.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={2} className="py-10 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <Map className="h-8 w-8 text-primary/30" />
+                            <p className="text-sm font-medium text-primary">{t("onboarding.keywordMapRequired")}</p>
+                            <p className="text-xs text-muted-foreground max-w-[180px]">{t("onboarding.keywordMapRequiredDesc")}</p>
+                            <Link href="/planning" className="text-xs text-primary underline hover:no-underline font-medium">
+                              {t("onboarding.goToKeywordMap")}
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       <TableRow>
                         <TableCell colSpan={2} className="h-32 text-center text-muted-foreground italic">
@@ -283,7 +297,20 @@ export default function CreationPage() {
                       >
                         {retrying === selectedKeyword!.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
+                    ) : keywords.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={2} className="py-10 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <Map className="h-8 w-8 text-primary/30" />
+                            <p className="text-sm font-medium text-primary">{t("onboarding.keywordMapRequired")}</p>
+                            <p className="text-xs text-muted-foreground max-w-[180px]">{t("onboarding.keywordMapRequiredDesc")}</p>
+                            <Link href="/planning" className="text-xs text-primary underline hover:no-underline font-medium">
+                              {t("onboarding.goToKeywordMap")}
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
                           <RefreshCw className="h-4 w-4" />
                         )}
                         {tr('Erneut beauftragen', 'Re-commission')}

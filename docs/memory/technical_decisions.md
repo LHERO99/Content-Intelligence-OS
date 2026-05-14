@@ -15,7 +15,32 @@
 - `tid()` in `postgres.ts` loggt `console.warn` wenn `tenantId` fehlt und auf `getDefaultTenantId()` zurückgefallen wird
 - Dient als Frühwarnsystem für fehlende tenantId-Weitergabe in neuen API-Routes
 
-## Tenant-Isolation: Hardcodierte baseUrl in invite/route.ts (13.05.2026)
+## Tenant-Isolation: MULTI_TENANT=true schaltet tid() auf Hard Fail (14.05.2026)
+- Env-Variable `MULTI_TENANT=true` → `tid()` wirft Exception wenn kein `tenantId` übergeben wird
+- Ohne `MULTI_TENANT=true`: Legacy-Modus mit `console.warn` + Fallback auf `TENANT_ID` Env-Var
+- Empfehlung: in Production auf `true` setzen sobald alle n8n-Webhooks angepasst sind
+
+## Tenant-Isolation: Blob-Upload Pfad-Struktur (14.05.2026)
+- Blob-Pfad für Branding-Uploads: `branding/{tenantId}/{prefix}-{timestamp}.{ext}`
+- Physische Isolation auf Vercel Blob Storage-Ebene pro Tenant
+- `tenantId` kommt aus `session.user.tenantId` — nie aus Client-Input
+
+## Tenant-Isolation: Postgres RLS als zweite Schutzschicht (14.05.2026)
+- Migration `0001_add_row_level_security.sql` fügt RLS-Policies auf allen 9 tenant-scoped Tabellen hinzu
+- `current_tenant_id()` Helper liest `app.tenant_id` aus dem Postgres-Transaktionskontext (via `withTenant()`)
+- **Kein `FORCE ROW LEVEL SECURITY`** — Table Owner bypassed RLS automatisch → SuperAdmin-Abfragen und `getAllTenants()` ohne Transaktionskontext funktionieren
+- In hardened Setup: separaten unprivilegierten DB-User anlegen → dann greift RLS auch für App-Queries ohne Owner-Bypass
+- **Muss manuell ausgeführt werden** (kein Drizzle-managed Migration-File)
+
+## Tenant-Isolation: monitoring/import Webhook erfordert explizite tenantId (14.05.2026)
+- `POST /api/monitoring/import` verweigert Requests ohne `tenantId` mit HTTP 400
+- Auflösung: `body.tenantId` > `x-tenant-id`-Header
+- n8n-Workflows müssen `tenantId` im Payload oder Header mitschicken
+
+## Tenant-Isolation: purge-old-data loopt über alle Tenants (14.05.2026)
+- `GET /api/cron/purge-old-data` loopt via `getAllTenants()` über alle Tenants
+- Purge-Funktionen + AuditLog werden pro Tenant einzeln aufgerufen
+- Entspricht dem Pattern aller anderen Cron-Jobs (`sync-gsc`, `sync-dataforseo`, etc.)
 - `baseUrl` in `admin/invite/route.ts` wurde von `"https://content-intelligence-os-sigma.vercel.app"` auf `process.env.NEXTAUTH_URL ?? "..."` geändert
 - Begründung: Invite-Links müssen zur jeweiligen Deploy-URL passen, nicht zu einer hardcodierten Production-URL
 

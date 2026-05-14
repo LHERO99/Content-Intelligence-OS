@@ -12,7 +12,7 @@ import {
   useReactTable,
   ColumnOrderState,
 } from "@tanstack/react-table";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { KeywordMap } from "@/lib/postgres-types";
@@ -41,9 +41,10 @@ import { useI18n } from "@/i18n/use-i18n";
 
 interface SuggestionsTableProps {
   keywords: KeywordMap[];
+  onGoToKeywordMap?: () => void;
 }
 
-export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
+export function SuggestionsTable({ keywords, onGoToKeywordMap }: SuggestionsTableProps) {
   const { t } = useI18n();
   const { addAlert } = useAlerts();
   const [optimizationSuggestions, setOptimizationSuggestions] = React.useState<Record<string, { reasons: string[]; reasonCodes: string[] }>>({});
@@ -169,31 +170,44 @@ export function SuggestionsTable({ keywords }: SuggestionsTableProps) {
         title={t("planning.suggestions")} 
         description={t("planning.suggestionsDesc")} 
       />
-      <KeywordFilterBar table={table} columns={columns} hideImport={true} />
-      <PlanningTable 
-        table={table} 
-        columnOrder={columnOrder} 
-        sensors={sensors} 
-        onDragEnd={handleDragEnd} 
-        onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
-      />
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {t("planning.selectedRows")
-            .replace("{selected}", String(table.getFilteredSelectedRowModel().rows.length))
-            .replace("{total}", String(table.getFilteredRowModel().rows.length))}
+      {keywords.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 text-center">
+          <Map className="h-12 w-12 text-primary/30" />
+          <div>
+            <p className="text-lg font-semibold text-primary">{t("onboarding.keywordMapRequired")}</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">{t("onboarding.keywordMapRequiredDesc")}</p>
+          </div>
+          <Button onClick={onGoToKeywordMap}>{t("onboarding.goToKeywordMap")}</Button>
         </div>
-        <div className="space-x-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{t("planning.previous")}</Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{t("planning.next")}</Button>
-        </div>
-      </div>
-      <EditKeywordModal 
-        keyword={editingKeyword} 
-        open={isEditModalOpen} 
-        onOpenChange={setIsEditModalOpen} 
-        onSave={updateData} 
-      />
+      ) : (
+        <>
+          <KeywordFilterBar table={table} columns={columns} hideImport={true} />
+          <PlanningTable 
+            table={table} 
+            columnOrder={columnOrder} 
+            sensors={sensors} 
+            onDragEnd={handleDragEnd} 
+            onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
+          />
+          <div className="flex items-center justify-end space-x-2 py-4">
+            <div className="flex-1 text-sm text-muted-foreground">
+              {t("planning.selectedRows")
+                .replace("{selected}", String(table.getFilteredSelectedRowModel().rows.length))
+                .replace("{total}", String(table.getFilteredRowModel().rows.length))}
+            </div>
+            <div className="space-x-2">
+              <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{t("planning.previous")}</Button>
+              <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{t("planning.next")}</Button>
+            </div>
+          </div>
+          <EditKeywordModal 
+            keyword={editingKeyword} 
+            open={isEditModalOpen} 
+            onOpenChange={setIsEditModalOpen} 
+            onSave={updateData} 
+          />
+        </>
+      )}
     </div>
   );
 }

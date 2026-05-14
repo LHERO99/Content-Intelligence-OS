@@ -6,7 +6,8 @@ import { SuggestionsTable } from "./suggestions-table";
 import { EditorialPlanning } from "./editorial-planning";
 import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
+import { Map, Calendar, ShieldAlert, Loader2, Sparkles, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddEntryFab } from "./add-entry-fab";
 import { KeywordMap, PotentialTrend } from "@/lib/postgres-types";
 import { useI18n } from "@/i18n/use-i18n";
@@ -15,9 +16,9 @@ export default function PlanningPage() {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('planning-active-tab') || "editorial";
+      return localStorage.getItem('planning-active-tab') || "keyword-map";
     }
-    return "editorial";
+    return "keyword-map";
   });
   const [data, setData] = useState<{ keywords: KeywordMap[], trends: PotentialTrend[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,34 +88,57 @@ export default function PlanningPage() {
         className="space-y-4"
       >
         <TabsList className="bg-primary/10 border-primary/10">
-          <TabsTrigger value="editorial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Calendar className="mr-2 h-4 w-4" />
-            {t("planning.editorialPlanning")}
-          </TabsTrigger>
-          <TabsTrigger value="suggestions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Sparkles className="mr-2 h-4 w-4" />
-            {t("planning.suggestions")}
-          </TabsTrigger>
           <TabsTrigger value="keyword-map" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Map className="mr-2 h-4 w-4" />
-            {t("planning.keywordMap")}
+            1. {t("planning.keywordMap")}
           </TabsTrigger>
+
+          <TabsTrigger value="suggestions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Sparkles className="mr-2 h-4 w-4" />
+            2. {t("planning.suggestions")}
+            {data.keywords.length === 0 && (
+              <Tooltip>
+                <TooltipTrigger className="ml-1.5 flex items-center">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t("onboarding.keywordMapRequiredDesc")}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </TabsTrigger>
+
+          <TabsTrigger value="editorial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Calendar className="mr-2 h-4 w-4" />
+            3. {t("planning.editorialPlanning")}
+            {data.keywords.length === 0 && (
+              <Tooltip>
+                <TooltipTrigger className="ml-1.5 flex items-center">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t("onboarding.keywordMapRequiredDesc")}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </TabsTrigger>
+
           <TabsTrigger value="blacklist" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <ShieldAlert className="mr-2 h-4 w-4" />
             {t("planning.tabBlacklist")}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="editorial" className="space-y-4">
-          <EditorialPlanning keywords={data.keywords} />
+        <TabsContent value="keyword-map" className="space-y-4">
+          <KeywordTable keywords={data.keywords} />
         </TabsContent>
 
         <TabsContent value="suggestions" className="space-y-4">
-          <SuggestionsTable keywords={data.keywords} />
+          <SuggestionsTable keywords={data.keywords} onGoToKeywordMap={() => { setActiveTab('keyword-map'); localStorage.setItem('planning-active-tab', 'keyword-map'); }} />
         </TabsContent>
 
-        <TabsContent value="keyword-map" className="space-y-4">
-          <KeywordTable keywords={data.keywords} />
+        <TabsContent value="editorial" className="space-y-4">
+          <EditorialPlanning keywords={data.keywords} onGoToKeywordMap={() => { setActiveTab('keyword-map'); localStorage.setItem('planning-active-tab', 'keyword-map'); }} />
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4">

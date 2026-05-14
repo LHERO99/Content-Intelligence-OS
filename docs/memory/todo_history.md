@@ -128,10 +128,20 @@
 - [x] Fix: Login-Seite scrollbar — `fixed inset-0` statt `h-screen`, Auth-Layout-Branch ohne `p-6`-Wrapper
 - [x] Feature: Login-Seite Footer — Impressum/Datenschutz/AGB Links + Copyright
 
+## Multi-Tenant Sicherheitslücken (14.05.2026)
+- [x] Security-Fix: `monitoring/import/route.ts` — tenantId aus body/Header, Hard 400 wenn fehlend, explizit an upsert-Funktionen übergeben
+- [x] Security-Fix: `cron/purge-old-data/route.ts` — loopt über alle Tenants via getAllTenants(), Purge + AuditLog pro Tenant
+- [x] Security-Fix: `admin/upload/route.ts` — Blob-Pfad enthält jetzt `tenantId` (`branding/{tenantId}/...`)
+- [x] Feature: `src/lib/db/migrations/0001_add_row_level_security.sql` — RLS-Policies auf 9 tenant-scoped Tabellen + `current_tenant_id()` Helper
+- [x] Refactor: `postgres.ts` `tid()` — MULTI_TENANT=true schaltet auf Hard-Fail (Exception statt warn+fallback)
+
 ## Offen / Ausstehend
-- [ ] DB-Migration ausführen:
+- [ ] DB-Migration ausführen (manuell via psql):
   ```sql
   ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
   ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;
   ```
+- [ ] RLS-Migration auf DB einspielen: `psql $DATABASE_URL < src/lib/db/migrations/0001_add_row_level_security.sql`
+- [ ] Env-Variable `MULTI_TENANT=true` in Production setzen (nach n8n-Webhook-Anpassung)
+- [ ] n8n-Workflows: `tenantId` im Payload oder `x-tenant-id`-Header beim `/api/monitoring/import`-Webhook ergänzen
 - [ ] Legal-Seite: Tatsächliche Inhalte für Impressum, Datenschutz, AGB, Copyright eintragen (aktuell Platzhalter in `de.ts`/`en.ts`)
