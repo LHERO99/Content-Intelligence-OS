@@ -340,6 +340,7 @@ const de = {
     navTenants: "Tenants",
     navPricing: "Pricing Tiers",
     navFeedback: "Feature & Bugs",
+    navHealth: "System-Gesundheit",
     groupLabel: "Super-Admin",
 
     // Dashboard

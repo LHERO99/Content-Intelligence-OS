@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link } from "lucide-react";
 import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
@@ -60,6 +60,9 @@ export default function AdminPage() {
   const [inviteResult, setInviteResult] = useState<{ inviteLink: string; tempPassword: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [inviteMode, setInviteMode] = useState<"email" | "copy" | null>(null);
 
   // Editing state
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -74,6 +77,10 @@ export default function AdminPage() {
       router.push("/");
     } else if (status === "authenticated") {
       fetchUsers();
+      fetch("/api/admin/smtp-status")
+        .then((r) => r.json())
+        .then((d) => setSmtpConfigured(d.configured === true))
+        .catch(() => setSmtpConfigured(false));
     }
   }, [status, session, router]);
 
@@ -91,11 +98,12 @@ export default function AdminPage() {
     }
   };
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleInvite = async (mode: "email" | "copy") => {
     setInviting(true);
+    setInviteMode(mode);
     setError(null);
     setInviteResult(null);
+    setLinkCopied(false);
 
     try {
       const res = await fetch("/api/admin/invite", {
@@ -107,13 +115,21 @@ export default function AdminPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t("admin.errorInvitingUser"));
 
-      setInviteResult(data);
+      if (mode === "copy") {
+        navigator.clipboard.writeText(data.inviteLink);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2500);
+      } else {
+        setInviteResult(data);
+      }
+
       setInviteData({ name: "", email: "", role: "Editor" });
-      fetchUsers(); // Refresh list
+      fetchUsers();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setInviting(false);
+      setInviteMode(null);
     }
   };
 
@@ -233,7 +249,7 @@ export default function AdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleInvite} className="space-y-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t("admin.fullName")}</label>
                     <Input 
@@ -241,7 +257,6 @@ export default function AdminPage() {
                       value={inviteData.name}
                       onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
                       className="h-10"
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -252,7 +267,6 @@ export default function AdminPage() {
                       value={inviteData.email}
                       onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
                       className="h-10"
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -271,10 +285,56 @@ export default function AdminPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={inviting}>
-                    {inviting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("admin.generateInvite")}
-                  </Button>
-                </form>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2 pt-1">
+                    {/* E-Mail senden */}
+                    <Button
+                      type="button"
+                      className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground"
+                      disabled={inviting || !smtpConfigured || !inviteData.name || !inviteData.email}
+                      onClick={() => handleInvite("email")}
+                      title={!smtpConfigured ? tr("SMTP nicht konfiguriert", "SMTP not configured") : undefined}
+                    >
+                      {inviting && inviteMode === "email" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="mr-2 h-4 w-4" />
+                      )}
+                      {tr("Per E-Mail einladen", "Send invite email")}
+                    </Button>
+
+                    {/* Invite-Link kopieren */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 h-10"
+                      disabled={inviting || !inviteData.name || !inviteData.email}
+                      onClick={() => handleInvite("copy")}
+                    >
+                      {inviting && inviteMode === "copy" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : linkCopied ? (
+                        <Check className="mr-2 h-4 w-4 text-green-500" />
+                      ) : (
+                        <Link className="mr-2 h-4 w-4" />
+                      )}
+                      {linkCopied
+                        ? tr("Invite-Link kopiert!", "Invite link copied!")
+                        : tr("Invite-Link kopieren", "Copy invite link")}
+                    </Button>
+                  </div>
+
+                  {!smtpConfigured && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      {tr(
+                        "E-Mail-Versand nicht verfügbar – SMTP ist nicht konfiguriert.",
+                        "Email sending unavailable – SMTP is not configured."
+                      )}
+                    </p>
+                  )}
+                </div>
 
                 {inviteResult && (
                   <div className="mt-6 space-y-4 rounded-lg border bg-muted p-4">

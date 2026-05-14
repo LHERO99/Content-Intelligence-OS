@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncGscChunk } from '@/lib/sync-performance';
 import { createAuditLog, getAllTenants } from '@/lib/postgres';
+import { notifySuperAdminDigest } from '@/lib/alerts/superadmin-notifications';
+import type { CronErrorEntry } from '@/lib/email/templates/superadmin-alert';
 
 export const maxDuration = 60;
 
@@ -17,6 +19,7 @@ export async function GET(req: NextRequest) {
 
   const tenants = await getAllTenants();
   const allResults: Array<{ tenantId: string; result: any; error?: string }> = [];
+  const cronErrors: CronErrorEntry[] = [];
 
   for (const tenant of tenants) {
     try {
@@ -29,44 +32,76 @@ export async function GET(req: NextRequest) {
         errors: result.errors.length,
       });
 
+      const gscErrors = result.errors.filter(e => e.toLowerCase().includes('gsc'));
+      const sistrixErrors = result.errors.filter(e => e.toLowerCase().includes('sistrix'));
+
       await Promise.all([
         createAuditLog(
-          result.errors.some(e => e.toLowerCase().includes('gsc'))
-            ? `cron:sync-gsc:error`
-            : `cron:sync-gsc:success`,
+          gscErrors.length > 0 ? `cron:sync-gsc:error` : `cron:sync-gsc:success`,
           {
             urlsProcessed: result.urlsProcessed,
             gscRowsUpserted: result.gscRowsUpserted,
             hasMore: result.hasMore,
-            errors: result.errors.filter(e => e.toLowerCase().includes('gsc')),
+            errors: gscErrors,
           },
           tenant.id
         ),
         createAuditLog(
           result.skippedSistrix
             ? `cron:sync-sistrix:skipped`
-            : result.errors.some(e => e.toLowerCase().includes('sistrix'))
+            : sistrixErrors.length > 0
             ? `cron:sync-sistrix:error`
             : `cron:sync-sistrix:success`,
           {
             urlsProcessed: result.skippedSistrix ? 0 : result.urlsProcessed,
             sistrixRowsUpserted: result.sistrixRowsUpserted ?? 0,
             skipped: result.skippedSistrix ?? false,
-            errors: result.errors.filter(e => e.toLowerCase().includes('sistrix')),
+            errors: sistrixErrors,
           },
           tenant.id
         ),
       ]);
 
+      if (gscErrors.length > 0) {
+        cronErrors.push({
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          cronJob: 'sync-gsc',
+          error: gscErrors.join('; '),
+        });
+      }
+      if (sistrixErrors.length > 0) {
+        cronErrors.push({
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          cronJob: 'sync-sistrix',
+          error: sistrixErrors.join('; '),
+        });
+      }
+
       allResults.push({ tenantId: tenant.id, result });
     } catch (err: any) {
+      const errMsg = err.message ?? 'Unknown error';
       console.error(`[Cron] sync-gsc tenant=${tenant.id} failed:`, err);
       await Promise.all([
-        createAuditLog(`cron:sync-gsc:error`, { error: err.message ?? 'Unknown error' }, tenant.id),
+        createAuditLog(`cron:sync-gsc:error`, { error: errMsg }, tenant.id),
         createAuditLog(`cron:sync-sistrix:error`, { error: 'GSC cron fehlgeschlagen' }, tenant.id),
       ]);
-      allResults.push({ tenantId: tenant.id, result: null, error: err.message });
+      cronErrors.push({
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        cronJob: 'sync-gsc',
+        error: errMsg,
+      });
+      allResults.push({ tenantId: tenant.id, result: null, error: errMsg });
     }
+  }
+
+  // SuperAdmin digest – fire & forget
+  if (cronErrors.length > 0) {
+    notifySuperAdminDigest(cronErrors).catch(e =>
+      console.error('[Cron] SuperAdmin digest failed:', e)
+    );
   }
 
   return NextResponse.json({

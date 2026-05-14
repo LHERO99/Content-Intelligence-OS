@@ -369,7 +369,9 @@ export function AlertRulesTab() {
                 onValueChange={(v) => handleMetricChange(v as AlertMetric)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {locale === "de" ? METRIC_LABELS[form.metric].de : METRIC_LABELS[form.metric].en}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(METRIC_LABELS) as AlertMetric[]).map((m) => (
@@ -391,7 +393,9 @@ export function AlertRulesTab() {
                 onValueChange={(v) => setForm({ ...form, operator: v as AlertOperator })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {locale === "de" ? OPERATOR_LABELS[form.operator].de : OPERATOR_LABELS[form.operator].en}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(OPERATOR_LABELS) as AlertOperator[]).map((op) => (

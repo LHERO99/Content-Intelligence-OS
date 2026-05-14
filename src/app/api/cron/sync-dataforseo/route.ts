@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncDataForSeoChunk } from '@/lib/sync-performance';
-import { getAllTenants } from '@/lib/postgres';
+import { getAllTenants, createAuditLog } from '@/lib/postgres';
+import { notifySuperAdminDigest } from '@/lib/alerts/superadmin-notifications';
+import type { CronErrorEntry } from '@/lib/email/templates/superadmin-alert';
 
 export const maxDuration = 60;
 
@@ -17,6 +19,7 @@ export async function GET(req: NextRequest) {
 
   const tenants = await getAllTenants();
   const allResults: Array<{ tenantId: string; result: any; error?: string }> = [];
+  const cronErrors: CronErrorEntry[] = [];
 
   for (const tenant of tenants) {
     try {
@@ -30,11 +33,48 @@ export async function GET(req: NextRequest) {
         errors: result.errors.length,
       });
 
+      const hasError = result.errors.length > 0;
+      await createAuditLog(
+        hasError ? 'cron:sync-dataforseo:error' : 'cron:sync-dataforseo:success',
+        {
+          keywordsProcessed: result.keywordsProcessed,
+          rankingRowsUpserted: result.rankingRowsUpserted,
+          rankingsSkipped: result.rankingsSkipped,
+          hasMore: result.hasMore,
+          errors: result.errors,
+        },
+        tenant.id
+      );
+
+      if (hasError) {
+        cronErrors.push({
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          cronJob: 'sync-dataforseo',
+          error: result.errors.join('; '),
+        });
+      }
+
       allResults.push({ tenantId: tenant.id, result });
     } catch (err: any) {
+      const errMsg = err.message ?? 'Unbekannter Fehler';
       console.error(`[Cron] sync-dataforseo tenant=${tenant.id} failed:`, err);
-      allResults.push({ tenantId: tenant.id, result: null, error: err.message });
+      await createAuditLog('cron:sync-dataforseo:error', { error: errMsg }, tenant.id);
+      cronErrors.push({
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        cronJob: 'sync-dataforseo',
+        error: errMsg,
+      });
+      allResults.push({ tenantId: tenant.id, result: null, error: errMsg });
     }
+  }
+
+  // SuperAdmin digest – fire & forget
+  if (cronErrors.length > 0) {
+    notifySuperAdminDigest(cronErrors).catch(e =>
+      console.error('[Cron] SuperAdmin digest failed:', e)
+    );
   }
 
   return NextResponse.json({

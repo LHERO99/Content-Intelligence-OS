@@ -87,6 +87,11 @@ const superAdminItems = [
     url: "/super-admin/feedback",
     icon: MessageSquare,
   },
+  {
+    title: "navHealth",
+    url: "/super-admin/health",
+    icon: Activity,
+  },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

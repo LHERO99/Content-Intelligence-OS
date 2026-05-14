@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PROVIDERS, getProviderConfigValues } from '@/lib/admin-integrations';
 import { testProviderConnection, testAgentWebhook } from '@/lib/integration-tests';
 import { createAuditLog, getConfig, getAllTenants } from '@/lib/postgres';
+import { notifySuperAdminDigest } from '@/lib/alerts/superadmin-notifications';
+import type { CronErrorEntry } from '@/lib/email/templates/superadmin-alert';
 
 export const maxDuration = 60;
 
@@ -18,6 +20,7 @@ export async function GET(req: NextRequest) {
 
   const tenants = await getAllTenants();
   const allTenantResults: Array<{ tenantId: string; results: any[] }> = [];
+  const cronErrors: CronErrorEntry[] = [];
 
   for (const tenant of tenants) {
     const tenantId = tenant.id;
@@ -52,6 +55,7 @@ export async function GET(req: NextRequest) {
         await createAuditLog(`integration:check:${provider.id}:error`, { error: msg }, tenantId);
         results.push({ provider: provider.id, status: 'error', detail: msg });
         console.error(`[Cron] check-integrations tenant=${tenantId} ${provider.id} failed:`, msg);
+        cronErrors.push({ tenantId, tenantName: tenant.name, cronJob: `check-integrations:${provider.id}`, error: msg });
       }
     }
 
@@ -73,6 +77,7 @@ export async function GET(req: NextRequest) {
           await createAuditLog('integration:check:agent_webhook:error', { error: msg, url: webhookUrl }, tenantId);
           results.push({ provider: 'agent_webhook', status: 'error', detail: msg });
           console.error(`[Cron] check-integrations tenant=${tenantId} agent_webhook failed:`, msg);
+          cronErrors.push({ tenantId, tenantName: tenant.name, cronJob: 'check-integrations:agent_webhook', error: msg });
         }
       }
     } catch (configErr: any) {
@@ -86,6 +91,13 @@ export async function GET(req: NextRequest) {
     (sum, t) => sum + t.results.filter(r => r.status === 'error').length, 0
   );
   console.log(`[Cron] check-integrations completed: ${tenants.length} tenants, ${totalErrors} errors`);
+
+  // SuperAdmin digest – fire & forget
+  if (cronErrors.length > 0) {
+    notifySuperAdminDigest(cronErrors).catch(e =>
+      console.error('[Cron] SuperAdmin digest failed:', e)
+    );
+  }
 
   return NextResponse.json({
     success: true,
