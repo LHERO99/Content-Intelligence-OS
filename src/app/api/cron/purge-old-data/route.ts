@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { purgeOldAuditLogs, purgeOldPerformanceData, createAuditLog, getAllTenants } from '@/lib/postgres';
+import { purgeOldAuditLogs, createAuditLog, getAllTenants } from '@/lib/postgres';
 
 /**
  * GET /api/cron/purge-old-data
  *
  * Deletes stale rows to keep the database lean:
  *   - audit_logs older than 180 days
- *   - url_performance older than 400 days (~13 months)
+ *
+ * Performance-Daten (url_performance) werden NICHT gelöscht.
  *
  * Trigger this via Coolify Cron (or any scheduler) once per week.
  * Protect with CRON_SECRET env variable.
@@ -24,20 +25,14 @@ export async function GET(req: NextRequest) {
     const tenants = await getAllTenants();
 
     let totalDeletedAudit = 0;
-    let totalDeletedPerf = 0;
 
     for (const tenant of tenants) {
-      const [deletedAudit, deletedPerf] = await Promise.all([
-        purgeOldAuditLogs(180, tenant.id),
-        purgeOldPerformanceData(400, tenant.id),
-      ]);
+      const deletedAudit = await purgeOldAuditLogs(180, tenant.id);
       totalDeletedAudit += deletedAudit;
-      totalDeletedPerf += deletedPerf;
 
       await createAuditLog('cron:purge-old-data:success', {
         tenantId: tenant.id,
         deletedAuditLogs: deletedAudit,
-        deletedPerformanceRows: deletedPerf,
       }, tenant.id);
     }
 
@@ -45,7 +40,6 @@ export async function GET(req: NextRequest) {
       ok: true,
       tenantsProcessed: tenants.length,
       deletedAuditLogs: totalDeletedAudit,
-      deletedPerformanceRows: totalDeletedPerf,
     });
   } catch (err: any) {
     console.error('[cron/purge-old-data] error:', err);

@@ -31,11 +31,13 @@ export async function GET(req: NextRequest) {
     // ignore — use default
   }
 
+  const appBaseUrl = process.env.NEXTAUTH_URL ?? `https://${req.headers.get('host')}`;
+
   const errorRedirect = (message: string) =>
     NextResponse.redirect(
       new URL(
         `${returnTo}?gsc=error&message=${encodeURIComponent(message)}`,
-        req.url
+        appBaseUrl
       )
     );
 
@@ -51,7 +53,6 @@ export async function GET(req: NextRequest) {
     return errorRedirect('No authorization code returned from Google.');
   }
 
-  const appBaseUrl = process.env.NEXTAUTH_URL ?? `https://${req.headers.get('host')}`;
   const redirectUri = `${appBaseUrl}/api/auth/google/gsc/callback`;
 
   try {
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(
-      new URL(`${returnTo}?gsc=connected&email=${encodeURIComponent(email)}`, req.url)
+      new URL(`${returnTo}?gsc=connected&email=${encodeURIComponent(email)}`, appBaseUrl)
     );
   } catch (err: any) {
     console.error('[GSC OAuth Callback] Error:', err);
