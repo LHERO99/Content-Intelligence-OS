@@ -30,13 +30,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck } from "lucide-react";
 import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
 import { IntegrationsManagement } from "./integrations-management";
 import { AgentSettingsTab } from "@/features/admin/components/agent-settings-tab";
 import { SyncManagement } from "./sync-management";
+import { AlertRulesTab } from "@/features/admin/components/alert-rules-tab";
 import { useI18n } from "@/i18n/use-i18n";
 
 interface User {
@@ -56,7 +57,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
   const [inviteData, setInviteData] = useState({ name: "", email: "", role: "Editor" });
-  const [inviteResult, setInviteResult] = useState<{ inviteLink: string; tempPassword: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ inviteLink: string; tempPassword: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -209,10 +210,14 @@ export default function AdminPage() {
             {tr("Agent", "Agent")}
           </TabsTrigger>
           <TabsTrigger value="sync" className="flex items-center gap-2">
-            <RefreshCcw className="h-4 w-4" />
-            {tr("Sync", "Sync")}
-          </TabsTrigger>
-        </TabsList>
+              <RefreshCcw className="h-4 w-4" />
+              {tr("Sync", "Sync")}
+            </TabsTrigger>
+            <TabsTrigger value="alert-rules" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              {tr("Alert-Regeln", "Alert Rules")}
+            </TabsTrigger>
+          </TabsList>
 
         <TabsContent value="users" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -273,6 +278,27 @@ export default function AdminPage() {
 
                 {inviteResult && (
                   <div className="mt-6 space-y-4 rounded-lg border bg-muted p-4">
+                    {/* E-Mail-Status Badge */}
+                    <div className="flex items-center gap-2">
+                      {inviteResult.emailSent ? (
+                        <>
+                          <MailCheck className="h-4 w-4 text-green-600 shrink-0" />
+                          <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                            {tr("Einladungsmail wurde gesendet.", "Invitation email sent.")}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                            {tr(
+                              "SMTP nicht konfiguriert – Link bitte manuell teilen.",
+                              "SMTP not configured – please share link manually."
+                            )}
+                          </span>
+                        </>
+                      )}
+                    </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{tr("Temporäres Passwort:", "Temporary password:")}</p>
                       <code className="block rounded bg-background p-2 text-xs font-mono">
@@ -282,14 +308,14 @@ export default function AdminPage() {
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{tr("Einladungslink:", "Invitation link:")}</p>
                       <div className="flex gap-2">
-                        <Input 
-                          readOnly 
-                          value={inviteResult.inviteLink} 
+                        <Input
+                          readOnly
+                          value={inviteResult.inviteLink}
                           className="text-xs font-mono"
                         />
-                        <Button 
-                          size="icon" 
-                          variant="outline" 
+                        <Button
+                          size="icon"
+                          variant="outline"
                           onClick={() => copyToClipboard(inviteResult.inviteLink)}
                         >
                           {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
@@ -297,7 +323,15 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      {tr("Teilen Sie diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.", "Share this link and password with the user. They should change their password after first login.")}
+                      {inviteResult.emailSent
+                        ? tr(
+                            "Die Zugangsdaten wurden direkt an die E-Mail-Adresse des Benutzers gesendet. Der Link ist als Fallback hinterlegt.",
+                            "Credentials were sent directly to the user's email address. The link is available as a fallback."
+                          )
+                        : tr(
+                            "Teilen Sie diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.",
+                            "Share this link and password with the user. They should change their password after first login."
+                          )}
                     </p>
                   </div>
                 )}
@@ -442,9 +476,12 @@ export default function AdminPage() {
           <AgentSettingsTab />
         </TabsContent>
         <TabsContent value="sync">
-          <SyncManagement />
-        </TabsContent>
-      </Tabs>
+            <SyncManagement />
+          </TabsContent>
+          <TabsContent value="alert-rules">
+            <AlertRulesTab />
+          </TabsContent>
+        </Tabs>
     </div>
   );
 }

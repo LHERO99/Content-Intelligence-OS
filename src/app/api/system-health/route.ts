@@ -5,6 +5,7 @@ import { getConfig, getAuditLogs, getKeywordMap } from '@/lib/postgres';
 import { PROVIDERS, getIntegrationsState, getProviderConfigValues } from '@/lib/admin-integrations';
 import { testProviderConnection, testAgentWebhook } from '@/lib/integration-tests';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
+import { testSmtpConnection, isSmtpConfigured } from '@/lib/email/smtp-client';
 
 export type HealthStatus = 'ok' | 'warning' | 'error' | 'unknown';
 
@@ -290,6 +291,36 @@ async function checkContentPipeline(tenantId?: string): Promise<HealthCheck> {
   }
 }
 
+async function checkSmtp(): Promise<HealthCheck> {
+  if (!isSmtpConfigured()) {
+    return {
+      id: 'smtp',
+      label: 'SMTP',
+      status: 'warning',
+      detail: 'Not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS',
+      detailKey: 'dashboard.systemHealth.smtp.notConfigured',
+    };
+  }
+  try {
+    await testSmtpConnection();
+    return {
+      id: 'smtp',
+      label: 'SMTP',
+      status: 'ok',
+      detail: 'Connected',
+      detailKey: 'dashboard.systemHealth.smtp.ok',
+    };
+  } catch (err: any) {
+    return {
+      id: 'smtp',
+      label: 'SMTP',
+      status: 'error',
+      detail: err.message ?? 'Connection failed',
+      detailKey: 'dashboard.systemHealth.smtp.error',
+    };
+  }
+}
+
 // ── Route ────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -308,6 +339,7 @@ export async function GET(req: NextRequest) {
       integrationChecks,
       agentRunsCheck,
       contentPipelineCheck,
+      smtpCheck,
     ] = await Promise.all([
       checkDatabase(tenantId),
       checkCronSync('cron:sync-gsc', 'GSC Sync', tenantId),
@@ -316,10 +348,12 @@ export async function GET(req: NextRequest) {
       checkIntegrations(tenantId),
       checkAgentRuns(tenantId),
       checkContentPipeline(tenantId),
+      checkSmtp(),
     ]);
 
     const checks: HealthCheck[] = [
       databaseCheck,
+      smtpCheck,
       cronGscCheck,
       cronSistrixCheck,
       cronDataforseoCheck,
