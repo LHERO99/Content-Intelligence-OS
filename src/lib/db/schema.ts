@@ -295,6 +295,35 @@ export const featureRequests = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// alert_rules
+// ---------------------------------------------------------------------------
+export const alertRules = pgTable(
+  'alert_rules',
+  {
+    id:               text('id').primaryKey(),
+    tenantId:         text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    name:             text('name').notNull(),
+    // Unterstützte Metriken: 'gsc_clicks_drop' | 'keyword_rank_drop'
+    metric:           text('metric').notNull(),
+    // Operatoren: 'lt' (kleiner als), 'gt' (größer als), 'pct_drop' (prozentualer Abfall)
+    operator:         text('operator').notNull(),
+    threshold:        numeric('threshold').notNull(),
+    // Beobachtungszeitraum in Tagen (Vergleich aktuell vs. vor N Tagen)
+    windowDays:       integer('window_days').notNull().default(7),
+    notifyEmails:     text('notify_emails').array().notNull().default([]),
+    enabled:          boolean('enabled').notNull().default(true),
+    // Cooldown-Schutz: kein erneuter Alert innerhalb von 24h
+    lastTriggeredAt:  timestamp('last_triggered_at', { withTimezone: true }),
+    createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:   index('alert_rules_tenant_idx').on(t.tenantId),
+    enabledIdx:  index('alert_rules_enabled_idx').on(t.tenantId, t.enabled),
+  })
+);
+
+// ---------------------------------------------------------------------------
 // audit_logs
 // ---------------------------------------------------------------------------
 export const auditLogs = pgTable(
