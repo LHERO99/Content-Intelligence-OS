@@ -183,14 +183,18 @@ export default function FeedbackPage() {
                   value={form.type}
                   onValueChange={(v) => setForm({ ...form, type: v as "feature" | "bug" })}
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="feature">{t("feedback.typeFeature")}</SelectItem>
-                    <SelectItem value="bug">{t("feedback.typeBug")}</SelectItem>
-                  </SelectContent>
-                </Select>
+                   <SelectTrigger className="mt-1">
+                     <SelectValue>
+                       {form.type === "feature"
+                         ? t("feedback.typeFeature")
+                         : t("feedback.typeBug")}
+                     </SelectValue>
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="feature">{t("feedback.typeFeature")}</SelectItem>
+                     <SelectItem value="bug">{t("feedback.typeBug")}</SelectItem>
+                   </SelectContent>
+                 </Select>
               </div>
               <div>
                 <Label>{t("feedback.priorityLabel")}</Label>
@@ -200,9 +204,15 @@ export default function FeedbackPage() {
                     setForm({ ...form, priority: v as "low" | "medium" | "high" })
                   }
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
+                   <SelectTrigger className="mt-1">
+                     <SelectValue>
+                       {form.priority === "low"
+                         ? t("feedback.priorityLow")
+                         : form.priority === "medium"
+                         ? t("feedback.priorityMedium")
+                         : t("feedback.priorityHigh")}
+                     </SelectValue>
+                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">{t("feedback.priorityLow")}</SelectItem>
                     <SelectItem value="medium">{t("feedback.priorityMedium")}</SelectItem>

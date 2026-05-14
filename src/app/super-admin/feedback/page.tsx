@@ -205,9 +205,15 @@ export default function FeedbackPage() {
               <div className="flex gap-2 flex-wrap items-center">
                 {/* Type filter */}
                 <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "all")}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder={t("superAdmin.feedbackColType")} />
-                  </SelectTrigger>
+                   <SelectTrigger className="w-36">
+                     <SelectValue>
+                       {typeFilter === "all"
+                         ? t("superAdmin.feedbackAllTypes")
+                         : typeFilter === "feature"
+                         ? t("superAdmin.feedbackTypeFeature")
+                         : t("superAdmin.feedbackTypeBug")}
+                     </SelectValue>
+                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("superAdmin.feedbackAllTypes")}</SelectItem>
                     <SelectItem value="feature">{t("superAdmin.feedbackTypeFeature")}</SelectItem>
@@ -217,9 +223,13 @@ export default function FeedbackPage() {
 
                 {/* Status filter */}
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder={t("superAdmin.feedbackColStatus")} />
-                  </SelectTrigger>
+                   <SelectTrigger className="w-44">
+                     <SelectValue>
+                       {statusFilter === "all"
+                         ? t("superAdmin.feedbackAllStatus")
+                         : t(STATUS_CONFIG[statusFilter as FeatureStatus]?.labelKey ?? "superAdmin.feedbackAllStatus")}
+                     </SelectValue>
+                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("superAdmin.feedbackAllStatus")}</SelectItem>
                     {FEATURE_STATUSES.map((s) => (
@@ -230,9 +240,15 @@ export default function FeedbackPage() {
 
                 {/* Quarter filter */}
                 <Select value={quarterFilter} onValueChange={(v) => setQuarterFilter(v ?? "all")}>
-                  <SelectTrigger className="w-36">
-                    <SelectValue placeholder={t("superAdmin.feedbackColQuarter")} />
-                  </SelectTrigger>
+                   <SelectTrigger className="w-36">
+                     <SelectValue>
+                       {quarterFilter === "all"
+                         ? t("superAdmin.feedbackAllQuarters")
+                         : quarterFilter === "none"
+                         ? t("superAdmin.feedbackNoQuarter")
+                         : quarterFilter}
+                     </SelectValue>
+                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("superAdmin.feedbackAllQuarters")}</SelectItem>
                     <SelectItem value="none">{t("superAdmin.feedbackNoQuarter")}</SelectItem>
@@ -317,13 +333,17 @@ export default function FeedbackPage() {
                           }
                           disabled={updatingId === r.id}
                         >
-                          <SelectTrigger className="h-7 w-32 text-xs border-dashed">
-                            <SelectValue placeholder={t("superAdmin.feedbackQuarterPlaceholder")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              <span className="text-muted-foreground">{t("superAdmin.feedbackNoQuarter")}</span>
-                            </SelectItem>
+                         <SelectTrigger className="h-7 w-32 text-xs border-dashed">
+                             <SelectValue>
+                               {(r.plannedQuarter ?? "none") === "none"
+                                 ? t("superAdmin.feedbackNoQuarter")
+                                 : r.plannedQuarter}
+                             </SelectValue>
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="none">
+                               {t("superAdmin.feedbackNoQuarter")}
+                             </SelectItem>
                             {QUARTER_OPTIONS.map((q) => (
                               <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>
                             ))}
@@ -417,12 +437,16 @@ export default function FeedbackPage() {
                   value={fabForm.type}
                   onValueChange={(v) => setFabForm({ ...fabForm, type: (v ?? "feature") as "feature" | "bug" })}
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="feature">{t("superAdmin.feedbackTypeFeature")}</SelectItem>
-                    <SelectItem value="bug">{t("superAdmin.feedbackTypeBug")}</SelectItem>
+                   <SelectTrigger className="mt-1">
+                     <SelectValue>
+                       {fabForm.type === "feature"
+                         ? t("superAdmin.feedbackTypeFeature")
+                         : t("superAdmin.feedbackTypeBug")}
+                     </SelectValue>
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="feature">{t("superAdmin.feedbackTypeFeature")}</SelectItem>
+                     <SelectItem value="bug">{t("superAdmin.feedbackTypeBug")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -432,13 +456,19 @@ export default function FeedbackPage() {
                   value={fabForm.priority}
                   onValueChange={(v) => setFabForm({ ...fabForm, priority: (v ?? "medium") as "low" | "medium" | "high" })}
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">{t("superAdmin.feedbackPriorityLow")}</SelectItem>
-                    <SelectItem value="medium">{t("superAdmin.feedbackPriorityMedium")}</SelectItem>
-                    <SelectItem value="high">{t("superAdmin.feedbackPriorityHigh")}</SelectItem>
+                   <SelectTrigger className="mt-1">
+                     <SelectValue>
+                       {fabForm.priority === "low"
+                         ? t("superAdmin.feedbackPriorityLow")
+                         : fabForm.priority === "medium"
+                         ? t("superAdmin.feedbackPriorityMedium")
+                         : t("superAdmin.feedbackPriorityHigh")}
+                     </SelectValue>
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="low">{t("superAdmin.feedbackPriorityLow")}</SelectItem>
+                     <SelectItem value="medium">{t("superAdmin.feedbackPriorityMedium")}</SelectItem>
+                     <SelectItem value="high">{t("superAdmin.feedbackPriorityHigh")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -474,9 +504,13 @@ export default function FeedbackPage() {
                 value={fabForm.plannedQuarter || "none"}
                 onValueChange={(v) => setFabForm({ ...fabForm, plannedQuarter: v === "none" ? "" : (v ?? "") })}
               >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder={t("superAdmin.feedbackQuarterPlaceholder")} />
-                </SelectTrigger>
+               <SelectTrigger className="mt-1">
+                   <SelectValue>
+                     {!fabForm.plannedQuarter || fabForm.plannedQuarter === "none"
+                       ? t("superAdmin.feedbackNoQuarter")
+                       : fabForm.plannedQuarter}
+                   </SelectValue>
+                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t("superAdmin.feedbackNoQuarter")}</SelectItem>
                   {QUARTER_OPTIONS.map((q) => (

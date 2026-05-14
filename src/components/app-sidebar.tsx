@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
@@ -104,7 +104,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             />
           </div>
           <div className="flex items-center gap-2 font-bold px-1" style={{ color: primaryColor }}>
-            <ShieldCheck className="h-4 w-4" />
               <span className="text-xs">Plexaro</span>
             </div>
           </div>
@@ -208,6 +207,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenu>
             )}
             <LanguageSwitcher />
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<Link href="/legal" />} className="text-muted-foreground hover:text-foreground">
+                  <Scale className="h-4 w-4" />
+                  <span className="text-xs">{t("sidebar.legalLink")}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
             <Link href="/profile" className="flex items-center gap-3 px-2 hover:bg-gray-100 rounded-md p-1 transition-colors">
               <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: primaryColor }}>
                 <User className="h-4 w-4" />
