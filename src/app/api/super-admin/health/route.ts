@@ -5,9 +5,12 @@
  * Liest die letzten Audit-Log-Einträge aller Tenants und berechnet
  * einen zusammengefassten Health-Status pro Tenant und Cron-Job.
  *
- * Pro Job wird der neueste Eintrag aus BEIDEN Quellen herangezogen:
- *   1. Cron-Job-Logs  (z.B. cron:sync-sistrix:error)
- *   2. Integration-Check-Logs  (z.B. integration:check:sistrix:error)
+ * Sistrix wird bewusst in zwei separate Jobs aufgeteilt:
+ *   - integration:check:sistrix  → API-Key-Gültigkeit (authoritative Quelle)
+ *   - cron:sync-sistrix          → Datensync-Status (hat der Sync Daten geholt?)
+ *
+ * Damit kann ein ungültiger API-Key nicht mehr durch einen scheinbar erfolgreichen
+ * (aber leeren) Datensync-Eintrag verdeckt werden.
  *
  * Kein Live-Test – rein audit-log-basiert.
  */
@@ -21,14 +24,24 @@ import { eq, desc, inArray } from 'drizzle-orm';
 
 // Each job definition contains all audit-log prefixes that are relevant for it.
 // The most recent entry across ALL prefixes wins.
+//
+// IMPORTANT: Sistrix is intentionally split into two independent jobs:
+//   1. `integration:check:sistrix` — authoritative for API key validity
+//   2. `cron:sync-sistrix`         — authoritative for data sync health
+// Mixing both into one job would allow a "no-op" sync (0 URLs) to mask
+// an API key error written by the check-integrations cron.
 const JOBS = [
   {
     key: 'cron:sync-gsc',
     prefixes: ['cron:sync-gsc', 'integration:check:google_search_console'],
   },
   {
+    key: 'integration:check:sistrix',
+    prefixes: ['integration:check:sistrix'],
+  },
+  {
     key: 'cron:sync-sistrix',
-    prefixes: ['cron:sync-sistrix', 'integration:check:sistrix'],
+    prefixes: ['cron:sync-sistrix'],
   },
   {
     key: 'cron:sync-dataforseo',

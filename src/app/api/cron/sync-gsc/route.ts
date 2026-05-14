@@ -51,11 +51,18 @@ export async function GET(req: NextRequest) {
             ? `cron:sync-sistrix:skipped`
             : sistrixErrors.length > 0
             ? `cron:sync-sistrix:error`
+            : result.urlsProcessed === 0
+            ? `cron:sync-sistrix:skipped`
             : `cron:sync-sistrix:success`,
           {
             urlsProcessed: result.skippedSistrix ? 0 : result.urlsProcessed,
             sistrixRowsUpserted: result.sistrixRowsUpserted ?? 0,
             skipped: result.skippedSistrix ?? false,
+            skippedReason: result.skippedSistrix
+              ? 'not_configured'
+              : result.urlsProcessed === 0
+              ? 'no_urls'
+              : undefined,
             errors: sistrixErrors,
           },
           tenant.id

@@ -146,6 +146,13 @@
 - [x] Feature: `page.tsx` (Dashboard) — Quick-Start-Banner wenn Keyword-Map leer
 - [x] Fix: `legal/page.tsx` — Copyright-Tab entfernt (nur noch 3 Tabs)
 
+## Alert-Regeln Double-Opt-in & Sistrix Health-Fix (14.05.2026)
+- [x] Feature: `alert-rules-tab.tsx` — `TagInput` durch `RecipientPicker`-Checkbox-Liste ersetzt
+- [x] Feature: `RecipientPicker` — zeigt Tenant-Nutzer mit `Password_Changed`-Status, ausgegraut wenn nicht eingeloggt
+- [x] Fix: `sync-gsc/route.ts` — `cron:sync-sistrix:success` nur noch bei `urlsProcessed > 0`; sonst `:skipped` mit `skippedReason: 'no_urls'`
+- [x] Fix: `health/route.ts` — Sistrix aufgeteilt in zwei separate JOBS: `integration:check:sistrix` + `cron:sync-sistrix`
+- [x] Fix: `health/page.tsx` — `CRON_JOBS` um `{ key: "integration:check:sistrix", label: "Sistrix API-Key" }` erweitert
+
 ## Offen / Ausstehend
 - [ ] DB-Migration ausführen (manuell via psql):
   ```sql

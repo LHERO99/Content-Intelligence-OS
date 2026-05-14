@@ -1,4 +1,27 @@
-# Technische Entscheidungen (Stand: 14.05.2026)
+# Technische Entscheidungen (Stand: 14.05.2026 – aktualisiert)
+
+## SuperAdmin Health: Sistrix in zwei unabhängige Jobs aufgeteilt (14.05.2026)
+- `integration:check:sistrix` und `cron:sync-sistrix` werden in der Health-Route als **separate Jobs** geführt
+- Begründung: Ein leerer Datensync (0 URLs → keine API-Calls → 0 Fehler) schrieb `:success` und überschrieb
+  das korrekte `:error` aus dem Integration-Check, da immer der neueste Eintrag über alle Prefixes gewinnt
+- **Regel**: Connectivity-Checks (`integration:check:*`) und Datensync-Status (`cron:sync-*`) nie in
+  einem Job-Eintrag mit gemischten Prefixes zusammenfassen, wenn der Sync auch ohne tatsächliche API-Calls
+  erfolgreich enden kann
+
+## SuperAdmin Health: `cron:sync-sistrix:success` nur bei tatsächlich verarbeiteten URLs (14.05.2026)
+- `sync-gsc/route.ts` schreibt `cron:sync-sistrix:success` **nur wenn** `result.urlsProcessed > 0`
+- Bei konfiguriertem Sistrix-Key aber leerem URL-Chunk → `cron:sync-sistrix:skipped` mit `skippedReason: 'no_urls'`
+- Bei nicht konfiguriertem Key → `cron:sync-sistrix:skipped` mit `skippedReason: 'not_configured'` (unverändert via `result.skippedSistrix`)
+- **Regel**: Ein `:success`-AuditLog-Eintrag für einen Sync-Job darf nur geschrieben werden, wenn tatsächlich
+  Arbeit verrichtet und API-Calls erfolgreich abgeschlossen wurden
+
+## Alert-Regeln: Empfänger-Auswahl via Double-Opt-in (14.05.2026)
+- Freies E-Mail-Eingabefeld (`TagInput`) ersetzt durch `RecipientPicker`-Checkbox-Liste
+- Nur Nutzer mit `Password_Changed === true` (mind. einmal eingeloggt) sind auswählbar
+- Nicht eingeloggte Nutzer werden ausgegraut mit Hinweis angezeigt (kein Hard-Block)
+- `notifyEmails` im Backend bleibt Array von E-Mail-Strings — kein Schema-Change
+- Bestehende Regeln mit extern eingetragenen E-Mails bleiben gültig (Opt. A: keine serverseitige Filterung)
+- Daten kommen von `GET /api/admin/users` (parallel zu `loadRules()` beim Mount)
 
 ## Planning-Page: Tab-Navigation via URL-Query-Parameter (14.05.2026)
 - `planning/page.tsx` liest `?tab=` via `useSearchParams()` beim Mount aus

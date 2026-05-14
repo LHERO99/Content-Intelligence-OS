@@ -1,4 +1,45 @@
-# Projekt-Status (Stand: 14.05.2026)
+# Projekt-Status (Stand: 14.05.2026 – aktualisiert)
+
+## SuperAdmin Health Dashboard: Sistrix-Bug-Fix & Alert-Regeln Double-Opt-in (14.05.2026)
+
+### Sistrix-Bug: Falsches "OK" im Health-Dashboard
+
+**Problem:** Im SuperAdmin System-Health-Dashboard wurde Sistrix als "OK" angezeigt, obwohl der API-Key
+eines Tenants ungültig war.
+
+**Root Cause:** Die Health-Route fasste `cron:sync-sistrix` und `integration:check:sistrix` in einem einzigen
+Job zusammen und nahm den **neuesten** Eintrag. Der `sync-gsc`-Cron lief nach dem `check-integrations`-Cron
+und schrieb `cron:sync-sistrix:success` — auch wenn keine URLs verarbeitet wurden (leerer Chunk), weil
+in diesem Fall kein einziger API-Call gemacht wurde und damit auch keine Fehler anfallen konnten.
+Das `:success`-Entry überschrieb das korrekte `:error` aus dem Integration-Check.
+
+**Fix A — `sync-gsc/route.ts`:**
+- Wenn Sistrix konfiguriert ist (Key vorhanden) aber `result.urlsProcessed === 0` → schreibt
+  `cron:sync-sistrix:skipped` mit `skippedReason: 'no_urls'` statt `:success`
+- `:success` bedeutet ab jetzt garantiert: "mindestens 1 URL verarbeitet, API-Calls erfolgreich"
+
+**Fix B — `health/route.ts`:**
+- Sistrix wird in **zwei unabhängige Jobs** aufgeteilt:
+  - `integration:check:sistrix` → überwacht nur `integration:check:sistrix`-Logs (API-Key-Gültigkeit)
+  - `cron:sync-sistrix` → überwacht nur `cron:sync-sistrix`-Logs (Datensync-Status)
+- Keine Prefix-Vermischung mehr → ein leerer Sync kann den Key-Check nicht mehr überschreiben
+
+**Fix B UI — `health/page.tsx`:**
+- `CRON_JOBS`-Array um `{ key: "integration:check:sistrix", label: "Sistrix API-Key" }` erweitert
+- Dashboard zeigt jetzt 5 Zeilen pro Tenant: GSC Sync | **Sistrix API-Key** | **Sistrix Datensync** | DataForSEO Sync | Integration Check
+
+### Alert-Regeln Double-Opt-in (`alert-rules-tab.tsx`)
+
+**Umgesetzt:**
+- Freies `TagInput`-Feld für Empfänger-E-Mails ersetzt durch `RecipientPicker`-Checkbox-Liste
+- `RecipientPicker` lädt Tenant-Nutzer via `GET /api/admin/users` beim Mount
+- Nutzer mit `Password_Changed === true` → auswählbar
+- Nutzer mit `Password_Changed === false` → ausgegraut + Label „Noch nicht angemeldet" / „Not yet signed in"
+- `notifyEmails` bleibt Array von E-Mail-Strings — kein Backend-Change nötig
+- Bestehende gespeicherte E-Mails in Regeln bleiben gültig (keine serverseitige Filterung)
+- Nur das Create-Formular ist betroffen (kein Edit-Modus vorhanden)
+
+---
 
 ## UX-Verbesserung: Keyword-Map als Startpunkt (14.05.2026)
 

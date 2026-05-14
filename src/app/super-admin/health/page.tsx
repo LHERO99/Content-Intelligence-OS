@@ -57,7 +57,8 @@ interface HealthSummary {
 
 const CRON_JOBS = [
   { key: "cron:sync-gsc", label: "GSC Sync" },
-  { key: "cron:sync-sistrix", label: "Sistrix Sync" },
+  { key: "integration:check:sistrix", label: "Sistrix API-Key" },
+  { key: "cron:sync-sistrix", label: "Sistrix Datensync" },
   { key: "cron:sync-dataforseo", label: "DataForSEO Sync" },
   { key: "cron:check-integrations", label: "Integration Check" },
 ];
