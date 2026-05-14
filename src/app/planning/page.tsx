@@ -128,7 +128,7 @@ export default function PlanningPage() {
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4">
-          <Blacklist hasKeywords={data.keywords.length > 0} />
+          <Blacklist hasKeywords={data.keywords.length > 0} onGoToKeywordMap={() => { setActiveTab('keyword-map'); localStorage.setItem('planning-active-tab', 'keyword-map'); }} />
         </TabsContent>
       </Tabs>
 

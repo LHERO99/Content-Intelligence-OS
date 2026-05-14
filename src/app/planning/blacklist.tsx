@@ -71,7 +71,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DateFilterOp, DateFilterValue, TextFilterOp, TextFilterValue, dateColumnFilterFn, textColumnFilterFn } from '@/features/planning/components/filter-utils';
 import { useI18n } from "@/i18n/use-i18n";
-import Link from "next/link";
 
 // DND Kit Imports
 import {
@@ -812,7 +811,7 @@ function buildColumns(tr: (de: string, en: string) => string): ColumnDef<Blackli
 
 // --- Main Component ---
 
-export function Blacklist({ hasKeywords = true }: { hasKeywords?: boolean }) {
+export function Blacklist({ hasKeywords = true, onGoToKeywordMap }: { hasKeywords?: boolean; onGoToKeywordMap?: () => void }) {
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [data, setData] = React.useState<BlacklistEntry[]>([]);
@@ -1059,139 +1058,140 @@ export function Blacklist({ hasKeywords = true }: { hasKeywords?: boolean }) {
         </p>
       </div>
 
-      {!hasKeywords && (
-        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-          <Map className="h-4 w-4 shrink-0 text-primary/60" />
-          <span className="text-muted-foreground">
-            {tr("Noch keine Keywords vorhanden. ", "No keywords yet. ")}
-            <Link href="/planning?tab=keyword-map" className="font-medium text-primary underline hover:no-underline">
-              {tr("Starte mit der Keyword-Map.", "Start with the Keyword Map.")}
-            </Link>
-          </span>
-        </div>
-      )}
-
-      <FilterBar 
-        table={table} 
-        columns={columns} 
-        onRestoreClick={() => {
-          const selectedRows = table.getFilteredSelectedRowModel().rows;
-          if (selectedRows.length === 1) {
-            setRestoringEntry(selectedRows[0].original);
-            setIsRestoreModalOpen(true);
-          }
-        }}
-      />
-
-      <Card className="border-primary/10 overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              modifiers={[restrictToHorizontalAxis]}
-              onDragEnd={handleDragEnd}
-            >
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="hover:bg-transparent border-primary/10">
-                      <SortableContext
-                        items={columnOrder}
-                        strategy={horizontalListSortingStrategy}
-                      >
-                        {headerGroup.headers.map((header) => (
-                          <DraggableTableHeader key={header.id} header={header} />
-                        ))}
-                      </SortableContext>
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                      </TableCell>
-                    </TableRow>
-                  ) : table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                        className="hover:bg-muted/50 border-primary/5 cursor-pointer"
-                        onClick={() => {
-                          setEditingEntry(row.original);
-                          setIsEditModalOpen(true);
-                        }}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        {tr("Keine Ergebnisse.", "No results.")}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </DndContext>
+      {!hasKeywords ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 text-center">
+          <Map className="h-12 w-12 text-primary/30" />
+          <div>
+            <p className="text-lg font-semibold text-primary">{tr("Starte mit der Keyword-Map", "Start with the Keyword Map")}</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">{tr("Lege zuerst Keywords in der Keyword-Map an – alle anderen Bereiche bauen darauf auf.", "Add your keywords to the Keyword Map first – all other sections depend on this data.")}</p>
           </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} {tr("von", "of")}{" "}
-          {table.getFilteredRowModel().rows.length} {tr("Zeile(n) ausgewählt.", "row(s) selected.")}
+          <Button onClick={onGoToKeywordMap}>{tr("Zur Keyword-Map", "Go to Keyword Map")}</Button>
         </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="border-primary/20"
-          >
-            {tr("Zurück", "Previous")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="border-primary/20"
-          >
-            {tr("Weiter", "Next")}
-          </Button>
-        </div>
-      </div>
+      ) : (
+        <>
+          <FilterBar 
+            table={table} 
+            columns={columns} 
+            onRestoreClick={() => {
+              const selectedRows = table.getFilteredSelectedRowModel().rows;
+              if (selectedRows.length === 1) {
+                setRestoringEntry(selectedRows[0].original);
+                setIsRestoreModalOpen(true);
+              }
+            }}
+          />
 
-      <EditBlacklistModal 
-        entry={editingEntry}
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-        onSave={updateData}
-      />
+          <Card className="border-primary/10 overflow-hidden">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  modifiers={[restrictToHorizontalAxis]}
+                  onDragEnd={handleDragEnd}
+                >
+                  <Table>
+                    <TableHeader>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id} className="hover:bg-transparent border-primary/10">
+                          <SortableContext
+                            items={columnOrder}
+                            strategy={horizontalListSortingStrategy}
+                          >
+                            {headerGroup.headers.map((header) => (
+                              <DraggableTableHeader key={header.id} header={header} />
+                            ))}
+                          </SortableContext>
+                        </TableRow>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={columns.length} className="h-24 text-center">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                          </TableCell>
+                        </TableRow>
+                      ) : table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            data-state={row.getIsSelected() && "selected"}
+                            className="hover:bg-muted/50 border-primary/5 cursor-pointer"
+                            onClick={() => {
+                              setEditingEntry(row.original);
+                              setIsEditModalOpen(true);
+                            }}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length}
+                            className="h-24 text-center"
+                          >
+                            {tr("Keine Ergebnisse.", "No results.")}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </DndContext>
+              </div>
+            </CardContent>
+          </Card>
 
-      <RestoreEntryModal
-        entry={restoringEntry}
-        open={isRestoreModalOpen}
-        onOpenChange={setIsRestoreModalOpen}
-        onRestore={restoreEntry}
-      />
+          <div className="flex items-center justify-end space-x-2 py-4">
+            <div className="flex-1 text-sm text-muted-foreground">
+              {table.getFilteredSelectedRowModel().rows.length} {tr("von", "of")}{" "}
+              {table.getFilteredRowModel().rows.length} {tr("Zeile(n) ausgewählt.", "row(s) selected.")}
+            </div>
+            <div className="space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="border-primary/20"
+              >
+                {tr("Zurück", "Previous")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="border-primary/20"
+              >
+                {tr("Weiter", "Next")}
+              </Button>
+            </div>
+          </div>
+
+          <EditBlacklistModal 
+            entry={editingEntry}
+            open={isEditModalOpen}
+            onOpenChange={setIsEditModalOpen}
+            onSave={updateData}
+          />
+
+          <RestoreEntryModal
+            entry={restoringEntry}
+            open={isRestoreModalOpen}
+            onOpenChange={setIsRestoreModalOpen}
+            onRestore={restoreEntry}
+          />
+        </>
+      )}
     </div>
   );
 }

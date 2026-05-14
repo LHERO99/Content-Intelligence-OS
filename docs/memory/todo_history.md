@@ -135,6 +135,17 @@
 - [x] Feature: `src/lib/db/migrations/0001_add_row_level_security.sql` — RLS-Policies auf 9 tenant-scoped Tabellen + `current_tenant_id()` Helper
 - [x] Refactor: `postgres.ts` `tid()` — MULTI_TENANT=true schaltet auf Hard-Fail (Exception statt warn+fallback)
 
+## UX-Verbesserung: Keyword-Map als Startpunkt (14.05.2026)
+- [x] i18n: `onboarding`-Namespace in `de.ts` + `en.ts` (6 Keys)
+- [x] Refactor: `planning/page.tsx` — Tab-Reihenfolge, Nummerierung, Default-Tab `keyword-map`, `useSearchParams()` für `?tab=`-Query-Parameter
+- [x] Feature: `suggestions-table.tsx` — Empty State + `onGoToKeywordMap`-Prop
+- [x] Feature: `editorial-planning.tsx` — Empty State + `onGoToKeywordMap`-Prop
+- [x] Feature: `blacklist.tsx` — Zentrierter Empty State (identisches Pattern) + `hasKeywords`-Prop + `onGoToKeywordMap`-Prop
+- [x] Feature: `creation/page.tsx` — Auftrags-Liste: "keine Keywords" vs. "keine Aufträge" unterscheiden
+- [x] Feature: `monitoring/page.tsx` — Leere Tabelle: Keyword-Map-Hinweis statt generischem Text
+- [x] Feature: `page.tsx` (Dashboard) — Quick-Start-Banner wenn Keyword-Map leer
+- [x] Fix: `legal/page.tsx` — Copyright-Tab entfernt (nur noch 3 Tabs)
+
 ## Offen / Ausstehend
 - [ ] DB-Migration ausführen (manuell via psql):
   ```sql

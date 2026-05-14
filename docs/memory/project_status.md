@@ -1,5 +1,41 @@
 # Projekt-Status (Stand: 14.05.2026)
 
+## UX-Verbesserung: Keyword-Map als Startpunkt (14.05.2026)
+
+### Ziel
+Neuen Nutzern klar kommunizieren, dass alles mit der Keyword-Map beginnt und dort zuerst Daten eingetragen werden müssen.
+
+### Umgesetzt
+
+**Content-Planung (`/planning/page.tsx`)**
+- Tab-Reihenfolge geändert: Keyword-Map ist jetzt Tab 1
+- Tabs nummeriert: `1. Keyword-Map`, `2. Vorschläge`, `3. Redaktions-Planung`, `Blacklist`
+- Default-Tab ist `keyword-map` (war `editorial`)
+- URL-Query-Parameter `?tab=` wird via `useSearchParams()` beim Mount ausgewertet + localStorage synchronisiert
+- `onGoToKeywordMap`-Callback wird an alle abhängigen Tabs übergeben
+
+**Empty States in abhängigen Tabs**
+- `suggestions-table.tsx`: Zentrierter Empty State (Map-Icon + Text + Button) wenn `keywords.length === 0`
+- `editorial-planning.tsx`: Identischer Empty State
+- `blacklist.tsx`: Identischer Empty State (via `hasKeywords`-Prop + `onGoToKeywordMap`-Callback)
+
+**Empty States in abhängigen Seiten**
+- `creation/page.tsx`: Auftrags-Liste unterscheidet zwischen "keine Keywords" (→ Keyword-Map-Hinweis) und "keine Aufträge" (→ bisheriger Text)
+- `monitoring/page.tsx`: Leere Performance-Tabelle ohne Suchbegriff zeigt Keyword-Map-Hinweis statt generischem Text
+
+**Dashboard (`/page.tsx`)**
+- Fetcht Keywords beim Mount; solange Keyword-Map leer → prominenter Quick-Start-Banner mit CTA zur Keyword-Map
+- Banner verschwindet automatisch sobald Keywords vorhanden
+
+**i18n**
+- Neuer `onboarding`-Namespace in `de.ts` + `en.ts` mit Keys: `keywordMapRequired`, `keywordMapRequiredDesc`, `goToKeywordMap`, `dashboardBannerTitle`, `dashboardBannerDesc`, `dashboardBannerCta`
+
+**Legal-Seite**
+- Copyright-Tab entfernt — Seite zeigt nur noch Impressum, Datenschutz, AGB
+- `legal.pageSubtitle` in i18n angepasst (Referenz auf Copyright entfernt)
+
+---
+
 ## Tenant-Isolation: Vollständig abgeschlossen (13.05.2026)
 
 ### Ziel

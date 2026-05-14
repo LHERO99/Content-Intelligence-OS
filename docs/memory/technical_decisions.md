@@ -1,5 +1,22 @@
 # Technische Entscheidungen (Stand: 14.05.2026)
 
+## Planning-Page: Tab-Navigation via URL-Query-Parameter (14.05.2026)
+- `planning/page.tsx` liest `?tab=` via `useSearchParams()` beim Mount aus
+- Query-Parameter überschreibt `localStorage`-Wert und wird in localStorage synchronisiert
+- Alle "Zur Keyword-Map"-Links verwenden `href="/planning?tab=keyword-map"` um garantiert den richtigen Tab zu öffnen
+- Ohne Query-Parameter: Fallback auf `localStorage.getItem('planning-active-tab')` → Default `"keyword-map"`
+
+## Onboarding Empty States: Einheitliches Pattern (14.05.2026)
+- Alle Tabs/Seiten die von der Keyword-Map abhängen zeigen denselben zentrierten Empty State wenn keine Keywords vorhanden
+- Pattern: `border-2 border-dashed border-primary/20 bg-primary/5` Container + `Map`-Icon (h-12 w-12 text-primary/30) + Titel + Beschreibung + Button
+- Button ruft `onGoToKeywordMap?: () => void` Callback auf (direkte Tab-Navigation ohne Seitennavigation)
+- Ausnahme: Externe Seiten (Creation, Monitoring) nutzen `<Link href="/planning?tab=keyword-map">` da kein gemeinsamer State vorhanden
+
+## Legal-Page: Copyright-Tab entfernt (14.05.2026)
+- Copyright-Tab aus `/legal` entfernt — nur noch Impressum, Datenschutz, AGB
+- `validTabs`-Array in `legal/page.tsx` auf `["imprint", "privacy", "terms"]` reduziert
+- `Copyright`-Icon und `CardDescription`-Import entfernt
+
 ## Tenant-Isolation: tenantId immer aus DB-Row, nie aus Client-Input (13.05.2026)
 - In `authorize()` (NextAuth) wird `tenantId` ausschließlich aus `user.TenantId` (DB-Row) genommen — nie aus `credentials.tenantId`
 - `credentials.tenantId` dient nur als Filter-Parameter für `getUserByEmail`, hat aber keinen Einfluss auf den JWT-Inhalt
