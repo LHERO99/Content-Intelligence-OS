@@ -30,7 +30,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   // Redirect SuperAdmin away from content routes → super-admin area
   // Exempt: /profile and /auth/* so SuperAdmin can still manage their account
-  const SUPER_ADMIN_EXEMPT_PREFIXES = ["/profile", "/auth/"];
+  const SUPER_ADMIN_EXEMPT_PREFIXES = ["/profile", "/auth/", "/legal"];
 
   useEffect(() => {
     if (status !== "authenticated" || !session || isAuthPage) return;

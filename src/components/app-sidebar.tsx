@@ -251,7 +251,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </DropdownMenu>
 
             {/* ── Copyright ── */}
-            <p className="text-xs text-muted-foreground/60 text-center py-1 select-none">
+            <p className="text-xs text-muted-foreground/60 px-2 py-1 select-none">
               © {new Date().getFullYear()} Plexaro
             </p>
           </div>
