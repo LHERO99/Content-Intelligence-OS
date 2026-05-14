@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -28,7 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Bell, Plus, Trash2, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Bell, Plus, Trash2 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,13 @@ interface AlertRule {
   enabled: boolean;
   lastTriggeredAt: string | null;
   createdAt: string;
+}
+
+interface TenantUser {
+  Id: string;
+  Email: string;
+  Name: string;
+  Password_Changed: boolean;
 }
 
 interface FormState {
@@ -108,77 +116,76 @@ function formatCondition(rule: AlertRule, locale: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tag input subcomponent
+// RecipientPicker subcomponent
 // ---------------------------------------------------------------------------
 
-interface TagInputProps {
-  tags: string[];
-  onChange: (tags: string[]) => void;
-  placeholder?: string;
+interface RecipientPickerProps {
+  users: TenantUser[];
+  loading: boolean;
+  selected: string[];
+  onChange: (emails: string[]) => void;
+  locale: string;
 }
 
-function TagInput({ tags, onChange, placeholder }: TagInputProps) {
-  const [inputValue, setInputValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+function RecipientPicker({ users, loading, selected, onChange, locale }: RecipientPickerProps) {
+  const tr = (de: string, en: string) => (locale === "de" ? de : en);
 
-  const addTag = (raw: string) => {
-    const emails = raw
-      .split(/[,;\s]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.length > 0 && !tags.includes(e));
-    if (emails.length > 0) {
-      onChange([...tags, ...emails]);
-    }
-    setInputValue("");
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (["Enter", ",", " ", "Tab"].includes(e.key)) {
-      e.preventDefault();
-      if (inputValue.trim()) addTag(inputValue);
-    }
-    if (e.key === "Backspace" && !inputValue && tags.length > 0) {
-      onChange(tags.slice(0, -1));
+  const toggle = (email: string) => {
+    if (selected.includes(email)) {
+      onChange(selected.filter((e) => e !== email));
+    } else {
+      onChange([...selected, email]);
     }
   };
 
-  const removeTag = (idx: number) => {
-    onChange(tags.filter((_, i) => i !== idx));
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        {tr("Nutzer werden geladen…", "Loading users…")}
+      </div>
+    );
+  }
+
+  if (users.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-2">
+        {tr("Keine Nutzer vorhanden.", "No users found.")}
+      </p>
+    );
+  }
 
   return (
-    <div
-      className="flex flex-wrap gap-1.5 min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-text focus-within:ring-1 focus-within:ring-ring"
-      onClick={() => inputRef.current?.focus()}
-    >
-      {tags.map((tag, idx) => (
-        <Badge
-          key={idx}
-          variant="secondary"
-          className="flex items-center gap-1 pr-1"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeTag(idx);
-            }}
-            className="ml-0.5 rounded-full outline-none hover:bg-muted-foreground/20"
+    <div className="rounded-md border divide-y">
+      {users.map((user) => {
+        const isEligible = user.Password_Changed === true;
+        const isChecked = selected.includes(user.Email);
+        return (
+          <div
+            key={user.Id}
+            className={`flex items-center gap-3 px-3 py-2.5 ${!isEligible ? "opacity-50" : ""}`}
           >
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      ))}
-      <input
-        ref={inputRef}
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={() => { if (inputValue.trim()) addTag(inputValue); }}
-        placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 min-w-[160px] bg-transparent outline-none placeholder:text-muted-foreground"
-      />
+            <Checkbox
+              id={`recipient-${user.Id}`}
+              checked={isChecked}
+              onCheckedChange={() => isEligible && toggle(user.Email)}
+              disabled={!isEligible}
+            />
+            <label
+              htmlFor={`recipient-${user.Id}`}
+              className={`flex-1 flex flex-col gap-0.5 ${isEligible ? "cursor-pointer" : "cursor-not-allowed"}`}
+            >
+              <span className="text-sm font-medium leading-none">{user.Name}</span>
+              <span className="text-xs text-muted-foreground">{user.Email}</span>
+            </label>
+            {!isEligible && (
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                {tr("Noch nicht angemeldet", "Not yet signed in")}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -199,6 +206,8 @@ export function AlertRulesTab() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const [users, setUsers] = useState<TenantUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -217,8 +226,23 @@ export function AlertRulesTab() {
     }
   };
 
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) throw new Error();
+      const data: TenantUser[] = await res.json();
+      setUsers(data);
+    } catch {
+      // non-critical — picker just stays empty
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadRules();
+    loadUsers();
   }, []);
 
   // ── Form handlers ─────────────────────────────────────────────────────────
@@ -441,20 +465,19 @@ export function AlertRulesTab() {
             {/* Notify Emails */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium">
-                {tr("Empfänger-E-Mails", "Recipient emails")}
+                {tr("Empfänger", "Recipients")}
               </label>
-              <TagInput
-                tags={form.notifyEmails}
-                onChange={(tags) => setForm({ ...form, notifyEmails: tags })}
-                placeholder={tr(
-                  "E-Mail eingeben, Enter oder Komma zum Bestätigen",
-                  "Enter email, press Enter or comma to confirm"
-                )}
+              <RecipientPicker
+                users={users}
+                loading={usersLoading}
+                selected={form.notifyEmails}
+                onChange={(emails) => setForm({ ...form, notifyEmails: emails })}
+                locale={locale}
               />
               <p className="text-xs text-muted-foreground">
                 {tr(
-                  "Enter, Komma oder Leerzeichen zum Hinzufügen. Backspace zum Entfernen.",
-                  "Press Enter, comma or space to add. Backspace to remove."
+                  "Nur Nutzer, die sich mindestens einmal angemeldet haben, können ausgewählt werden.",
+                  "Only users who have signed in at least once can be selected."
                 )}
               </p>
             </div>

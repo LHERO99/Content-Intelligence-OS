@@ -45,6 +45,8 @@ interface User {
   Name: string;
   Email: string;
   Role: string;
+  Password_Changed?: boolean;
+  Is_Active?: boolean;
 }
 
 export default function AdminPage() {
@@ -69,6 +71,8 @@ export default function AdminPage() {
   const [editData, setEditData] = useState<{ name: string; role: string }>({ name: "", role: "" });
   const [updating, setUpdating] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ userId: string; inviteLink: string; emailSent: boolean } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -169,6 +173,22 @@ export default function AdminPage() {
       setError(err.message);
     } finally {
       setDeletingUserId(null);
+    }
+  };
+
+  const handleResendInvite = async (id: string) => {
+    setResendingUserId(id);
+    setResendResult(null);
+    try {
+      const res = await fetch(`/api/admin/users/${id}/resend-invite`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || tr("Fehler beim Senden.", "Error sending invite."));
+      setResendResult({ userId: id, inviteLink: data.inviteLink, emailSent: data.emailSent });
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setResendingUserId(null);
     }
   };
 
@@ -416,10 +436,11 @@ export default function AdminPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>{tr("Name", "Name")}</TableHead>
-                          <TableHead>{tr("E-Mail", "Email")}</TableHead>
-                          <TableHead>{t("admin.role")}</TableHead>
-                          <TableHead className="text-right">{tr("Aktionen", "Actions")}</TableHead>
+                           <TableHead>{tr("Name", "Name")}</TableHead>
+                           <TableHead>{tr("E-Mail", "Email")}</TableHead>
+                           <TableHead>{t("admin.role")}</TableHead>
+                           <TableHead>{tr("Status", "Status")}</TableHead>
+                           <TableHead className="text-right">{tr("Aktionen", "Actions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -437,27 +458,38 @@ export default function AdminPage() {
                               )}
                             </TableCell>
                             <TableCell>{user.Email}</TableCell>
-                            <TableCell>
-                              {editingUserId === user.id ? (
-                              <Select 
-                                  value={editData.role} 
-                                  onValueChange={(v) => setEditData({ ...editData, role: v || "Editor" })}
-                                >
-                                  <SelectTrigger className="h-8">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Admin">Admin</SelectItem>
-                                    <SelectItem value="Editor">Editor</SelectItem>
-                                    <SelectItem value="Viewer">Viewer</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Badge variant={user.Role === "Admin" ? "default" : "secondary"}>
-                                  {user.Role}
-                                </Badge>
-                              )}
-                            </TableCell>
+                             <TableCell>
+                               {editingUserId === user.id ? (
+                                 <Select 
+                                     value={editData.role} 
+                                     onValueChange={(v) => setEditData({ ...editData, role: v || "Editor" })}
+                                   >
+                                     <SelectTrigger className="h-8">
+                                       <SelectValue />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                       <SelectItem value="Admin">Admin</SelectItem>
+                                       <SelectItem value="Editor">Editor</SelectItem>
+                                       <SelectItem value="Viewer">Viewer</SelectItem>
+                                     </SelectContent>
+                                   </Select>
+                               ) : (
+                                 <Badge variant={user.Role === "Admin" ? "default" : "secondary"}>
+                                   {user.Role}
+                                 </Badge>
+                               )}
+                             </TableCell>
+                             <TableCell>
+                               {user.Password_Changed === false ? (
+                                 <Badge variant="outline" className="border-yellow-400 text-yellow-700 bg-yellow-50 whitespace-nowrap">
+                                   {tr("Einladung ausstehend", "Invite pending")}
+                                 </Badge>
+                               ) : (
+                                 <Badge variant="outline" className="border-green-400 text-green-700 bg-green-50">
+                                   {tr("Aktiv", "Active")}
+                                 </Badge>
+                               )}
+                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
                                 {editingUserId === user.id ? (
@@ -479,44 +511,92 @@ export default function AdminPage() {
                                     </Button>
                                   </>
                                 ) : (
-                                  <>
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost" 
-                                      onClick={() => {
-                                        setEditingUserId(user.id);
-                                        setEditData({ name: user.Name, role: user.Role });
-                                      }}
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost" 
-                                      onClick={() => handleDeleteUser(user.id)}
-                                      disabled={deletingUserId === user.id}
-                                    >
-                                      {deletingUserId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-600" />}
-                                    </Button>
-                                  </>
+                                   <>
+                                     <Button 
+                                       size="icon" 
+                                       variant="ghost" 
+                                       onClick={() => {
+                                         setEditingUserId(user.id);
+                                         setEditData({ name: user.Name, role: user.Role });
+                                       }}
+                                     >
+                                       <Edit2 className="h-4 w-4" />
+                                     </Button>
+                                     {user.Password_Changed === false && (
+                                       <Button
+                                         size="icon"
+                                         variant="ghost"
+                                         title={tr("Einladung erneut senden", "Resend invite")}
+                                         onClick={() => handleResendInvite(user.id)}
+                                         disabled={resendingUserId === user.id}
+                                       >
+                                         {resendingUserId === user.id
+                                           ? <Loader2 className="h-4 w-4 animate-spin" />
+                                           : <Mail className="h-4 w-4 text-blue-500" />}
+                                       </Button>
+                                     )}
+                                     <Button 
+                                       size="icon" 
+                                       variant="ghost" 
+                                       onClick={() => handleDeleteUser(user.id)}
+                                       disabled={deletingUserId === user.id}
+                                     >
+                                       {deletingUserId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-red-600" />}
+                                     </Button>
+                                   </>
                                 )}
                               </div>
                             </TableCell>
                           </TableRow>
                         ))}
-                        {users.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">
-                              {tr("Keine Benutzer gefunden.", "No users found.")}
-                            </TableCell>
-                          </TableRow>
-                        )}
+                         {users.length === 0 && (
+                           <TableRow>
+                             <TableCell colSpan={5} className="text-center text-muted-foreground">
+                               {tr("Keine Benutzer gefunden.", "No users found.")}
+                             </TableCell>
+                           </TableRow>
+                         )}
                       </TableBody>
                     </Table>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Resend invite result */}
+            {resendResult && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-blue-800">
+                      {resendResult.emailSent
+                        ? tr("Einladungsmail wurde erneut gesendet.", "Invitation email resent.")
+                        : tr("Neues temporäres Passwort generiert (E-Mail konnte nicht gesendet werden).", "New temporary password generated (email could not be sent).")}
+                    </p>
+                    <Button size="icon" variant="ghost" onClick={() => setResendResult(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-blue-700">{tr("Einladungslink:", "Invite link:")}</p>
+                    <div className="flex items-center gap-2">
+                      <Input value={resendResult.inviteLink} readOnly className="h-8 text-xs bg-white" />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(resendResult.inviteLink);
+                          setLinkCopied(true);
+                          setTimeout(() => setLinkCopied(false), 2000);
+                        }}
+                      >
+                        {linkCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 

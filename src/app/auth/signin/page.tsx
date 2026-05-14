@@ -1,10 +1,10 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Building2, ArrowLeft, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,15 +22,31 @@ type View = "credentials" | "tenant-select";
 
 function SignInForm() {
   const searchParams = useSearchParams();
+  const router       = useRouter();
   const callbackUrl  = searchParams?.get("callbackUrl") || "/";
 
-  const [view, setView]           = useState<View>("credentials");
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
-  const [tenants, setTenants]     = useState<TenantOption[]>([]);
-  const [error, setError]         = useState("");
+  const prefillEmail = searchParams?.get("email") ?? "";
+  const prefillTemp  = searchParams?.get("temp")  ?? "";
+  const isInviteLink = Boolean(prefillEmail && prefillTemp);
+
+  const [view, setView]             = useState<View>("credentials");
+  const [email, setEmail]           = useState(prefillEmail);
+  const [password, setPassword]     = useState(prefillTemp);
+  const [tenants, setTenants]       = useState<TenantOption[]>([]);
+  const [error, setError]           = useState("");
   const [isDisabled, setIsDisabled] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading]   = useState(false);
+
+  // Remove ?email and ?temp from URL so the temp password doesn't sit in browser history
+  useEffect(() => {
+    if (isInviteLink) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("email");
+      url.searchParams.delete("temp");
+      router.replace(url.pathname + (url.search || ""), { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Step 1: look up which tenants this email/password belongs to ──────────
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
@@ -131,6 +147,13 @@ function SignInForm() {
             {view === "credentials" ? "Sign in to your account" : "Projekt auswählen"}
           </p>
         </div>
+
+        {/* Invite hint */}
+        {isInviteLink && !error && !isDisabled && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 text-center">
+            Du wurdest eingeladen – deine Zugangsdaten wurden vorausgefüllt.
+          </div>
+        )}
 
         {/* Error */}
         {error && !isDisabled && (
