@@ -19,7 +19,7 @@ export function renderInvitationEmail(data: InvitationTemplateData): {
   html: string;
   text: string;
 } {
-  const subject = `Einladung zu ${data.tenantName} – SEO Content Tool`;
+  const subject = `Einladung zu ${data.tenantName} – Plexaro`;
 
   const html = `<!DOCTYPE html>
 <html lang="de">
@@ -47,7 +47,7 @@ export function renderInvitationEmail(data: InvitationTemplateData): {
 <body>
   <div class="wrapper">
     <div class="header">
-      <h1>SEO Content Tool</h1>
+      <h1>Plexaro</h1>
     </div>
     <div class="body">
       <h2>Willkommen, ${escapeHtml(data.recipientName)}!</h2>
@@ -76,7 +76,7 @@ export function renderInvitationEmail(data: InvitationTemplateData): {
     </div>
     <div class="footer">
       Diese E-Mail wurde automatisch generiert. Bitte nicht antworten.
-      &copy; ${new Date().getFullYear()} SEO Content Tool
+      &copy; ${new Date().getFullYear()} Plexaro
     </div>
   </div>
 </body>
@@ -84,7 +84,7 @@ export function renderInvitationEmail(data: InvitationTemplateData): {
 
   const text = `Willkommen bei ${data.tenantName}!
 
-${data.invitedByName ? `${data.invitedByName} hat dich` : 'Du wurdest'} zum SEO Content Tool eingeladen.
+${data.invitedByName ? `${data.invitedByName} hat dich` : 'Du wurdest'} zum Plexaro eingeladen.
 
 Deine Zugangsdaten:
   E-Mail:              ${data.recipientEmail}

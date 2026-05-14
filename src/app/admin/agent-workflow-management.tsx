@@ -220,7 +220,7 @@ export function AgentWorkflowManagement() {
         type: "research",
         position: nextPosition,
         config: {
-          instruction: "Beschreiben Sie den Zweck dieses Schritts.",
+          instruction: "Beschreibe den Zweck dieses Schritts.",
           provider: "openrouter",
           model: "openai/gpt-4o-mini",
           timeoutMs: 45000,
@@ -366,7 +366,7 @@ export function AgentWorkflowManagement() {
             Workflow Setup
           </CardTitle>
           <CardDescription>
-            Nutzen Sie den Default-Workflow sofort oder erstellen Sie eigene Multi-Agent Workflows.
+            Nutze den Default-Workflow sofort oder erstelle eigene Multi-Agent Workflows.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -418,7 +418,7 @@ export function AgentWorkflowManagement() {
               Custom Multi-Agent Setup
             </CardTitle>
             <CardDescription>
-              Konfigurieren Sie die Agenten-Schritte, Modelle und Reihenfolge. Verbindungen werden als Basis-DAG gespeichert.
+              Konfiguriere die Agenten-Schritte, Modelle und Reihenfolge. Verbindungen werden als Basis-DAG gespeichert.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

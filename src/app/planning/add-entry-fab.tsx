@@ -177,7 +177,7 @@ export function AddEntryFab({ activeTab }: AddEntryFabProps) {
             </DialogTitle>
             <DialogDescription className="text-base">
               {locale === 'de'
-                ? 'Füllen Sie die erforderlichen Felder aus, um den Eintrag zu speichern.'
+                ? 'Fülle die erforderlichen Felder aus, um den Eintrag zu speichern.'
                 : 'Fill in the required fields to save the entry.'}
             </DialogDescription>
           </DialogHeader>

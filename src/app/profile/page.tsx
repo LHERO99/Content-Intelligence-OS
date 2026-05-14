@@ -68,7 +68,7 @@ export default function ProfilePage() {
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle>Informationen</CardTitle>
-            <CardDescription>Ihre Kontodetails</CardDescription>
+            <CardDescription>Deine Kontodetails</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
@@ -98,7 +98,7 @@ export default function ProfilePage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Passwort ändern</CardTitle>
-            <CardDescription>Aktualisieren Sie Ihr Passwort für mehr Sicherheit</CardDescription>
+            <CardDescription>Aktualisiere dein Passwort für mehr Sicherheit</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordChange} className="space-y-4">

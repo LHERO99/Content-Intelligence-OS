@@ -155,7 +155,7 @@ export function KeywordImport() {
       };
       reader.readAsArrayBuffer(file);
     } else {
-      setError(tr("Nicht unterstütztes Dateiformat. Bitte nutzen Sie CSV oder XLSX.", "Unsupported file format. Please use CSV or XLSX."));
+      setError(tr("Nicht unterstütztes Dateiformat. Bitte nutze CSV oder XLSX.", "Unsupported file format. Please use CSV or XLSX."));
       setStep("error");
     }
   };
@@ -164,7 +164,7 @@ export function KeywordImport() {
     const missingRequired = SYSTEM_COLUMNS.filter(col => col.required && !mapping[col.id]);
     if (missingRequired.length > 0) {
       setError(tr(
-        `Bitte ordnen Sie die Pflichtfelder zu: ${missingRequired.map(c => c.label).join(", ")}`,
+        `Bitte ordne die Pflichtfelder zu: ${missingRequired.map(c => c.label).join(", ")}`,
         `Please map the required fields: ${missingRequired.map(c => c.label).join(", ")}`
       ));
       return;
@@ -244,7 +244,7 @@ export function KeywordImport() {
           <DialogTitle>{tr("Keywords importieren", "Import keywords")}</DialogTitle>
           <DialogDescription>
             {tr(
-              "Importieren Sie Keywords aus CSV- oder Excel-Dateien mit flexiblem Spalten-Mapping.",
+              "Importiere Keywords aus CSV- oder Excel-Dateien mit flexiblem Spalten-Mapping.",
               "Import keywords from CSV or Excel files with flexible column mapping."
             )}
           </DialogDescription>
@@ -299,7 +299,7 @@ export function KeywordImport() {
                   <div className="p-4 space-y-4">
                     <div className="grid grid-cols-2 gap-4 pb-2 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       <div>{tr("System-Spalte", "System column")}</div>
-                      <div>{tr("Ihre Datei-Spalte", "Your file column")}</div>
+                      <div>{tr("Deine Datei-Spalte", "Your file column")}</div>
                     </div>
                     {SYSTEM_COLUMNS.map((col) => (
                       <div key={col.id} className="grid grid-cols-2 gap-4 items-center">
@@ -352,7 +352,7 @@ export function KeywordImport() {
               </div>
               <div className="text-center">
                 <p className="text-lg font-semibold">{tr("Import läuft...", "Import in progress...")}</p>
-                <p className="text-sm text-muted-foreground">{tr("Ihre Daten werden verarbeitet und gespeichert.", "Your data is being processed and saved.")}</p>
+                <p className="text-sm text-muted-foreground">{tr("Deine Daten werden verarbeitet und gespeichert.", "Your data is being processed and saved.")}</p>
               </div>
             </div>
           )}

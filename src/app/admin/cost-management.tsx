@@ -109,7 +109,7 @@ export function CostManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(tr("Möchten Sie diesen Eintrag wirklich löschen?", "Do you really want to delete this entry?"))) return;
+    if (!confirm(tr("Möchtest du diesen Eintrag wirklich löschen?", "Do you really want to delete this entry?"))) return;
     
     setDeletingId(id);
     setError(null);
@@ -177,7 +177,7 @@ export function CostManagement() {
           </CardTitle>
           <CardDescription>
             {tr(
-              "Pflegen Sie hier die Standardkosten für Agenturleistung und internen Overhead pro Seitentyp. Diese Werte werden für die ROI-Berechnung im Monitoring verwendet.",
+              "Pflege hier die Standardkosten für Agenturleistung und internen Overhead pro Seitentyp. Diese Werte werden für die ROI-Berechnung im Monitoring verwendet.",
               "Manage standard costs for agency services and internal overhead per page type. These values are used for ROI calculation in monitoring."
             )}
           </CardDescription>
@@ -285,7 +285,7 @@ export function CostManagement() {
                 {configs.length === 0 && (
                   <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    {tr("Keine Konfigurationen gefunden. Nutzen Sie das \"+\" zum Hinzufügen.", "No configurations found. Use \"+\" to add one.")}
+                    {tr("Keine Konfigurationen gefunden. Nutze das \"+\" zum Hinzufügen.", "No configurations found. Use \"+\" to add one.")}
                   </TableCell>
                   </TableRow>
                 )}
@@ -311,7 +311,7 @@ export function CostManagement() {
             <DialogTitle>{tr("Neue Kostenkonfiguration", "New Cost Configuration")}</DialogTitle>
             <DialogDescription>
               {tr(
-                "Legen Sie Standardkosten für eine bestimmte Kombination aus Seitentyp und Aktion fest.",
+                "Lege Standardkosten für eine bestimmte Kombination aus Seitentyp und Aktion fest.",
                 "Set default costs for a specific combination of page type and action."
               )}
             </DialogDescription>

@@ -126,7 +126,7 @@ export function OptimizationRulesTab() {
         </CardTitle>
         <CardDescription>
           {tr(
-            "Konfigurieren Sie die Schwellwerte, ab wann veröffentlichte Inhalte wieder als Optimierungsvorschlag erscheinen.",
+            "Konfiguriere die Schwellwerte, ab wann veröffentlichte Inhalte wieder als Optimierungsvorschlag erscheinen.",
             "Configure the thresholds for when published content should appear as an optimization suggestion again."
           )}
         </CardDescription>

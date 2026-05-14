@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     // Einladungsmail versenden – Fehler blockieren nicht die User-Anlage
     let emailSent = false;
     try {
-      const tenantName = (session.user as any)?.tenantName ?? "SEO Content Tool";
+      const tenantName = (session.user as any)?.tenantName ?? "Plexaro";
       const invitedByName = session.user?.name ?? undefined;
       const { subject, html, text } = renderInvitationEmail({
         recipientName: name,

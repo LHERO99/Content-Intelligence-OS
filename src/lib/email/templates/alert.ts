@@ -74,7 +74,7 @@ export function renderAlertEmail(data: AlertTemplateData): {
   <div class="wrapper">
     <div class="header">
       <h1>Alert ausgelöst</h1>
-      <p>${escapeHtml(data.tenantName)} · SEO Content Tool</p>
+      <p>${escapeHtml(data.tenantName)} · Plexaro</p>
     </div>
     <div class="body">
       <h2>${escapeHtml(data.ruleName)}</h2>
@@ -112,7 +112,7 @@ export function renderAlertEmail(data: AlertTemplateData): {
     <div class="footer">
       Diese E-Mail wurde automatisch generiert. Du kannst die Alert-Regel im Admin-Bereich
       anpassen oder deaktivieren.
-      &copy; ${new Date().getFullYear()} SEO Content Tool
+      &copy; ${new Date().getFullYear()} Plexaro
     </div>
   </div>
 </body>

@@ -47,7 +47,7 @@ export async function POST(
     // Send invitation email
     let emailSent = false;
     try {
-      const tenantName = (session.user as any)?.tenantName ?? "SEO Content Tool";
+      const tenantName = (session.user as any)?.tenantName ?? "Plexaro";
       const invitedByName = session.user?.name ?? undefined;
       const { subject, html, text } = renderInvitationEmail({
         recipientName: user.name ?? user.email,

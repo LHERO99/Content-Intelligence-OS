@@ -46,7 +46,7 @@ export function BlacklistReasonModal({
   const handleSubmit = async () => {
     setError(null);
     if (!reason.trim()) {
-      setError('Bitte geben Sie einen Grund an.');
+      setError('Bitte gib einen Grund an.');
       return;
     }
 
@@ -54,7 +54,7 @@ export function BlacklistReasonModal({
     if (type === 'Keyword') {
       const hasMainKeyword = keywords.some((k) => k.Main_Keyword === 'Y');
       if (hasMainKeyword) {
-        setError('Ein Main Keyword kann nicht einzeln blacklisted werden. Bitte blacklisten Sie entweder die gesamte URL oder vergeben Sie vorher ein neues Main Keyword für diese URL.');
+        setError('Ein Main Keyword kann nicht einzeln blacklisted werden. Bitte blackliste entweder die gesamte URL oder vergib vorher ein neues Main Keyword für diese URL.');
         return;
       }
     }
@@ -114,7 +114,7 @@ export function BlacklistReasonModal({
         <DialogHeader>
           <DialogTitle>Zur Blacklist hinzufügen</DialogTitle>
           <DialogDescription>
-            Wählen Sie den Typ und geben Sie einen Grund an.
+            Wähle den Typ und gib einen Grund an.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -152,7 +152,7 @@ export function BlacklistReasonModal({
               <AlertCircle className="h-5 w-5 text-red-600" />
               <AlertTitle className="text-red-800 font-bold mb-1">Doppelte Bestätigung erforderlich</AlertTitle>
               <AlertDescription className="text-red-700 text-xs leading-relaxed">
-                <strong>Achtung:</strong> Durch das Blacklisten auf URL-Ebene gehen alle historischen Daten und Verknüpfungen für diese URL unwiderruflich verloren. Möchten Sie wirklich fortfahren?
+                <strong>Achtung:</strong> Durch das Blacklisten auf URL-Ebene gehen alle historischen Daten und Verknüpfungen für diese URL unwiderruflich verloren.                 Möchtest du wirklich fortfahren?
               </AlertDescription>
             </Alert>
           )}

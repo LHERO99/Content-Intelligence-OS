@@ -112,7 +112,7 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
               {tr("Keyword bearbeiten", "Edit Keyword")}
             </DialogTitle>
             <DialogDescription>
-              {tr(`Ändern Sie die Details für "${keyword?.Keyword}".`, `Edit the details for "${keyword?.Keyword}".`)}
+              {tr(`Ändere die Details für "${keyword?.Keyword}".`, `Edit the details for "${keyword?.Keyword}".`)}
             </DialogDescription>
           </DialogHeader>
 

@@ -104,7 +104,7 @@ export function BrandingTab() {
 
   const handleSave = async () => {
     if (!isPrimaryColorValid) {
-      setError(tr("Bitte geben Sie eine gültige Hex-Farbe im Format #RRGGBB ein.", "Please enter a valid hex color in the format #RRGGBB."));
+      setError(tr("Bitte gib eine gültige Hex-Farbe im Format #RRGGBB ein.", "Please enter a valid hex color in the format #RRGGBB."));
       return;
     }
 
@@ -177,7 +177,7 @@ export function BrandingTab() {
               {tr("Farben & Stil", "Colors & Style")}
             </CardTitle>
             <CardDescription>
-              {tr("Passen Sie das Farbschema der Anwendung an.", "Customize the color scheme of the application.")}
+              {tr("Passe das Farbschema der Anwendung an.", "Customize the color scheme of the application.")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -209,7 +209,7 @@ export function BrandingTab() {
                 />
               </div>
               {!isPrimaryColorValid && (
-                <p className="text-xs text-red-600">{tr("Ungültiges Format. Bitte nutzen Sie #RRGGBB.", "Invalid format. Please use #RRGGBB.")}</p>
+                <p className="text-xs text-red-600">{tr("Ungültiges Format. Bitte nutze #RRGGBB.", "Invalid format. Please use #RRGGBB.")}</p>
               )}
               <p className="text-xs text-muted-foreground">
                 {tr("Kontrast (Primärfarbe zu Text):", "Contrast (primary color to text):")} {primaryContrast.toFixed(2)}:1
@@ -241,7 +241,7 @@ export function BrandingTab() {
               {tr("Logos & Icons", "Logos & Icons")}
             </CardTitle>
             <CardDescription>
-              {tr("Laden Sie Ihr Logo und Favicon hoch (maximal 2MB).", "Upload your logo and favicon (max 2MB).")}
+              {tr("Lade dein Logo und Favicon hoch (maximal 2MB).", "Upload your logo and favicon (max 2MB).")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">

@@ -629,7 +629,7 @@ export function IntegrationsManagement() {
                 <Alert>
                   <AlertTitle>{tr("Tipp zur Kostenkontrolle", "Cost control tip")}</AlertTitle>
                   <AlertDescription>
-                    {tr("Hinterlegen Sie nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche Kostensicherheit bei automatisierten Workflows.", "Set a spending limit in your provider account where possible. This adds cost safety for automated workflows.")}
+                    {tr("Hinterlege nach Möglichkeit ein Ausgabenlimit im Provider-Account. Das schafft zusätzliche Kostensicherheit bei automatisierten Workflows.", "Set a spending limit in your provider account where possible. This adds cost safety for automated workflows.")}
                   </AlertDescription>
                 </Alert>
               </section>

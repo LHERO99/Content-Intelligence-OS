@@ -90,7 +90,7 @@ export function renderSuperAdminDigestEmail(data: SuperAdminDigestTemplateData):
     </div>
     <div class="footer">
       Diese E-Mail wurde automatisch generiert und an alle SuperAdmin-Adressen gesendet.
-      &copy; ${new Date().getFullYear()} SEO Content Tool
+      &copy; ${new Date().getFullYear()} Plexaro
     </div>
   </div>
 </body>

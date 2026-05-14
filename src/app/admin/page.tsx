@@ -409,7 +409,7 @@ export default function AdminPage() {
                             "Credentials were sent directly to the user's email address. The link is available as a fallback."
                           )
                         : tr(
-                            "Teilen Sie diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.",
+                            "Teile diesen Link und das Passwort mit dem Benutzer. Er sollte sein Passwort nach dem ersten Login ändern.",
                             "Share this link and password with the user. They should change their password after first login."
                           )}
                     </p>

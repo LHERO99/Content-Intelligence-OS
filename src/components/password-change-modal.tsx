@@ -82,7 +82,7 @@ export function PasswordChangeModal() {
         <DialogHeader>
           <DialogTitle>Passwort ändern</DialogTitle>
           <DialogDescription>
-            Dies ist Ihre erste Anmeldung. Bitte legen Sie ein neues, sicheres Passwort fest, um fortzufahren.
+            Dies ist deine erste Anmeldung. Bitte lege ein neues, sicheres Passwort fest, um fortzufahren.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

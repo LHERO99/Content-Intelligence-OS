@@ -578,7 +578,7 @@ export function AgentWorkflowV2Management() {
         label: `${type} agent ${nodes.length + 1}`, type, status: "idle",
         outputPreview: "Noch kein Run", provider: "openrouter",
         icon: NODE_STYLE_BY_TYPE[type].icon, isParent: false,
-        instruction: "Beschreiben Sie die Aufgabe dieses Agenten.",
+        instruction: "Beschreibe die Aufgabe dieses Agenten.",
         purpose: "Beschreibe klar, wofür dieser Subagent verantwortlich ist.",
         inputContract: "Erhält task objective, runInput, workingMemory und letzte Ergebnisse als Kontext.",
         outputContract: "Liefert strukturiertes JSON mit Ergebnis, Annahmen, offenen Fragen und nextHints.",

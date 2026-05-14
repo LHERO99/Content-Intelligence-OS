@@ -350,7 +350,7 @@ export function AlertRulesTab() {
           </CardTitle>
           <CardDescription>
             {tr(
-              "Definieren Sie eine Regel, die bei Unterschreitung eines Schwellenwerts eine E-Mail versendet.",
+              "Definiere eine Regel, die bei Unterschreitung eines Schwellenwerts eine E-Mail versendet.",
               "Define a rule that sends an email when a metric threshold is breached."
             )}
           </CardDescription>
@@ -519,7 +519,7 @@ export function AlertRulesTab() {
           </CardTitle>
           <CardDescription>
             {tr(
-              "Aktivieren, deaktivieren oder löschen Sie Alert-Regeln.",
+              "Aktiviere, deaktiviere oder lösche Alert-Regeln.",
               "Enable, disable or delete alert rules."
             )}
           </CardDescription>

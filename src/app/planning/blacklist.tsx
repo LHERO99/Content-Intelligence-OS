@@ -198,7 +198,7 @@ function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklist
               {tr("Blacklist-Eintrag bearbeiten", "Edit Blacklist Entry")}
             </DialogTitle>
             <DialogDescription>
-              {tr("Passen Sie den Eintrag, den Typ oder den Grund für den Ausschluss an.", "Adjust the entry, type, or reason for exclusion.")}
+              {tr("Passe den Eintrag, den Typ oder den Grund für den Ausschluss an.", "Adjust the entry, type, or reason for exclusion.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -324,7 +324,7 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
               {tr("Eintrag wiederherstellen", "Restore Entry")}
             </DialogTitle>
             <DialogDescription>
-              {tr("Verschieben Sie diesen Eintrag zurück in die Keyword-Map.", "Move this entry back to the Keyword Map.")}
+              {tr("Verschiebe diesen Eintrag zurück in die Keyword-Map.", "Move this entry back to the Keyword Map.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -638,7 +638,7 @@ function FilterBar({ table, columns, onRestoreClick }: FilterBarProps) {
               </PopoverTrigger>
               <PopoverContent className="w-64 p-4">
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">{tr("Möchten Sie", "Do you want to delete")} {selectedRows.length} {tr("Einträge wirklich löschen?", "entries?")}</p>
+                  <p className="text-sm font-medium">{tr("Möchtest du", "Do you want to delete")} {selectedRows.length} {tr("Einträge wirklich löschen?", "entries?")}</p>
                   <div className="flex gap-2">
                     <Button 
                       variant="destructive" 

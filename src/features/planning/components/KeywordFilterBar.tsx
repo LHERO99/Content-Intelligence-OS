@@ -215,7 +215,7 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
               </PopoverTrigger>
               <PopoverContent className="w-64 p-4">
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">{tr(`Möchten Sie ${selectedRows.length} Einträge wirklich löschen?`, `Do you really want to delete ${selectedRows.length} entries?`)}</p>
+                  <p className="text-sm font-medium">{tr(`Möchtest du ${selectedRows.length} Einträge wirklich löschen?`, `Do you really want to delete ${selectedRows.length} entries?`)}</p>
                   <div className="flex gap-2">
                     <Button
                       variant="destructive"

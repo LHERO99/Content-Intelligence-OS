@@ -149,7 +149,7 @@ return (
           Priorisierungseinstellungen
         </DialogTitle>
         <DialogDescription>
-          Passen Sie die Gewichtung der Metriken für die automatische Themen-Priorisierung an (0-100%).
+          Passe die Gewichtung der Metriken für die automatische Themen-Priorisierung an (0-100%).
         </DialogDescription>
       </DialogHeader>
 
