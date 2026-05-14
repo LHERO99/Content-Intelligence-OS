@@ -1,7 +1,8 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale, Globe, Copyright } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale, Globe } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { useBranding } from "@/components/providers/branding-provider"
@@ -93,6 +94,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   const { logoUrl, primaryColor } = useBranding()
   const { t } = useI18n()
+  const router = useRouter()
 
   const isSuperAdmin = session?.user?.role === "SuperAdmin"
 
@@ -216,11 +218,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             {/* ── User Dropdown ── */}
             <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <button className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left" />
-                }
-              >
+              <DropdownMenuTrigger className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left">
                 <div
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white"
                   style={{ backgroundColor: primaryColor }}
@@ -234,19 +232,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span className="block text-sm font-medium truncate">{session.user?.name}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link href="/profile" />}>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
                   <User className="h-4 w-4" />
                   {t("sidebar.profile")}
                 </DropdownMenuItem>
-                <DropdownMenuItem render={<Link href="/legal" />}>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/legal")}>
                   <Scale className="h-4 w-4" />
                   {t("sidebar.legalLink")}
                 </DropdownMenuItem>
                 <LanguageSwitcherItem />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
+                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                   onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                  className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   {t("sidebar.signOut")}
