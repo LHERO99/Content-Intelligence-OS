@@ -1,21 +1,27 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { KeywordTable } from "./keyword-table";
 import { SuggestionsTable } from "./suggestions-table";
 import { EditorialPlanning } from "./editorial-planning";
 import { Blacklist } from "./blacklist";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Map, Calendar, ShieldAlert, Loader2, Sparkles, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Map, Calendar, ShieldAlert, Loader2, Sparkles } from "lucide-react";
 import { AddEntryFab } from "./add-entry-fab";
 import { KeywordMap, PotentialTrend } from "@/lib/postgres-types";
 import { useI18n } from "@/i18n/use-i18n";
 
 export default function PlanningPage() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
+      const urlTab = searchParams?.get('tab');
+      if (urlTab) {
+        localStorage.setItem('planning-active-tab', urlTab);
+        return urlTab;
+      }
       return localStorage.getItem('planning-active-tab') || "keyword-map";
     }
     return "keyword-map";
@@ -96,31 +102,11 @@ export default function PlanningPage() {
           <TabsTrigger value="suggestions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Sparkles className="mr-2 h-4 w-4" />
             2. {t("planning.suggestions")}
-            {data.keywords.length === 0 && (
-              <Tooltip>
-                <TooltipTrigger className="ml-1.5 flex items-center">
-                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t("onboarding.keywordMapRequiredDesc")}
-                </TooltipContent>
-              </Tooltip>
-            )}
           </TabsTrigger>
 
           <TabsTrigger value="editorial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Calendar className="mr-2 h-4 w-4" />
             3. {t("planning.editorialPlanning")}
-            {data.keywords.length === 0 && (
-              <Tooltip>
-                <TooltipTrigger className="ml-1.5 flex items-center">
-                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t("onboarding.keywordMapRequiredDesc")}
-                </TooltipContent>
-              </Tooltip>
-            )}
           </TabsTrigger>
 
           <TabsTrigger value="blacklist" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
@@ -142,7 +128,7 @@ export default function PlanningPage() {
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4">
-          <Blacklist />
+          <Blacklist hasKeywords={data.keywords.length > 0} />
         </TabsContent>
       </Tabs>
 

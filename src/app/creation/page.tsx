@@ -232,12 +232,12 @@ export default function CreationPage() {
                       ))
                     ) : keywords.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={2} className="py-10 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <Map className="h-8 w-8 text-primary/30" />
-                            <p className="text-sm font-medium text-primary">{t("onboarding.keywordMapRequired")}</p>
-                            <p className="text-xs text-muted-foreground max-w-[180px]">{t("onboarding.keywordMapRequiredDesc")}</p>
-                            <Link href="/planning" className="text-xs text-primary underline hover:no-underline font-medium">
+                        <TableCell colSpan={2} className="py-8">
+                          <div className="flex flex-col items-center gap-2 text-center px-4 w-full">
+                            <Map className="h-7 w-7 text-primary/30 shrink-0" />
+                            <p className="text-xs font-medium text-primary leading-snug">{t("onboarding.keywordMapRequired")}</p>
+                            <p className="text-[11px] text-muted-foreground leading-snug">{t("onboarding.keywordMapRequiredDesc")}</p>
+                            <Link href="/planning?tab=keyword-map" className="text-[11px] text-primary underline hover:no-underline font-medium">
                               {t("onboarding.goToKeywordMap")}
                             </Link>
                           </div>
@@ -297,20 +297,7 @@ export default function CreationPage() {
                       >
                         {retrying === selectedKeyword!.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : keywords.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="py-10 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <Map className="h-8 w-8 text-primary/30" />
-                            <p className="text-sm font-medium text-primary">{t("onboarding.keywordMapRequired")}</p>
-                            <p className="text-xs text-muted-foreground max-w-[180px]">{t("onboarding.keywordMapRequiredDesc")}</p>
-                            <Link href="/planning" className="text-xs text-primary underline hover:no-underline font-medium">
-                              {t("onboarding.goToKeywordMap")}
-                            </Link>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
+                        ) : (
                           <RefreshCw className="h-4 w-4" />
                         )}
                         {tr('Erneut beauftragen', 'Re-commission')}

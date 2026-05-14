@@ -1,18 +1,17 @@
 "use client";
 
-import { Scale, Building2, ShieldCheck, FileText, Copyright } from "lucide-react";
+import { Scale, Building2, ShieldCheck, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n } from "@/i18n/use-i18n";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 function LegalTabs() {
   const { t } = useI18n();
-  const year = new Date().getFullYear();
   const searchParams = useSearchParams();
   const tab = searchParams?.get("tab") ?? "imprint";
-  const validTabs = ["imprint", "privacy", "terms", "copyright"];
+  const validTabs = ["imprint", "privacy", "terms"];
   const defaultTab = validTabs.includes(tab) ? tab : "imprint";
 
   return (
@@ -40,10 +39,6 @@ function LegalTabs() {
           <TabsTrigger value="terms" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             {t("legal.tabTerms")}
-          </TabsTrigger>
-          <TabsTrigger value="copyright" className="flex items-center gap-2">
-            <Copyright className="w-4 h-4" />
-            {t("legal.tabCopyright")}
           </TabsTrigger>
         </TabsList>
 
@@ -93,26 +88,6 @@ function LegalTabs() {
             <CardContent>
               <div className="prose prose-sm max-w-none text-muted-foreground italic">
                 {t("legal.termsPlaceholder")}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Copyright ── */}
-        <TabsContent value="copyright">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Copyright className="w-5 h-5" />
-                {t("legal.copyrightTitle")}
-              </CardTitle>
-              <CardDescription>
-                {t("legal.copyrightText").replace("{year}", String(year))}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none text-muted-foreground italic">
-                {t("legal.copyrightPlaceholder")}
               </div>
             </CardContent>
           </Card>

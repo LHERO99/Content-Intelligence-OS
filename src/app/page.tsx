@@ -188,7 +188,7 @@ export default function DashboardPage() {
             <p className="font-semibold text-primary">{t("onboarding.dashboardBannerTitle")}</p>
             <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.dashboardBannerDesc")}</p>
           </div>
-          <Link href="/planning">
+          <Link href="/planning?tab=keyword-map">
             <Button size="sm" className="shrink-0 gap-1.5">
               {t("onboarding.dashboardBannerCta")}
               <ArrowRight className="h-4 w-4" />

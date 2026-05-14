@@ -584,7 +584,7 @@ export default function MonitoringPage() {
                               <Map className="h-8 w-8 text-primary/30" />
                               <p className="text-sm font-medium text-primary">{t("onboarding.keywordMapRequired")}</p>
                               <p className="text-xs text-muted-foreground max-w-xs">{t("onboarding.keywordMapRequiredDesc")}</p>
-                              <Link href="/planning" className="text-xs text-primary underline hover:no-underline font-medium">
+                              <Link href="/planning?tab=keyword-map" className="text-xs text-primary underline hover:no-underline font-medium">
                                 {t("onboarding.goToKeywordMap")}
                               </Link>
                             </div>

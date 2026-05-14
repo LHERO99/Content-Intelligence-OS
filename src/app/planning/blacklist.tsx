@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
-  Calendar
+  Calendar,
+  Map
 } from 'lucide-react';
 import { BlacklistEntry } from '@/lib/postgres-types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -70,6 +71,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { DateFilterOp, DateFilterValue, TextFilterOp, TextFilterValue, dateColumnFilterFn, textColumnFilterFn } from '@/features/planning/components/filter-utils';
 import { useI18n } from "@/i18n/use-i18n";
+import Link from "next/link";
 
 // DND Kit Imports
 import {
@@ -810,7 +812,7 @@ function buildColumns(tr: (de: string, en: string) => string): ColumnDef<Blackli
 
 // --- Main Component ---
 
-export function Blacklist() {
+export function Blacklist({ hasKeywords = true }: { hasKeywords?: boolean }) {
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [data, setData] = React.useState<BlacklistEntry[]>([]);
@@ -1056,6 +1058,18 @@ export function Blacklist() {
           {tr("Verwaltung von Keywords und URLs, die nicht für die Content-Erstellung berücksichtigt werden sollen.", "Management of keywords and URLs that should not be considered for content creation.")}
         </p>
       </div>
+
+      {!hasKeywords && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+          <Map className="h-4 w-4 shrink-0 text-primary/60" />
+          <span className="text-muted-foreground">
+            {tr("Noch keine Keywords vorhanden. ", "No keywords yet. ")}
+            <Link href="/planning?tab=keyword-map" className="font-medium text-primary underline hover:no-underline">
+              {tr("Starte mit der Keyword-Map.", "Start with the Keyword Map.")}
+            </Link>
+          </span>
+        </div>
+      )}
 
       <FilterBar 
         table={table} 
