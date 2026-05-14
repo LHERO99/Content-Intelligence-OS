@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useSearchParams } from "next/navigation";
 import { Building2, ArrowLeft, Loader2 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,12 +60,10 @@ function SignInForm() {
       }
 
       if (found.length === 1) {
-        // Exactly one tenant — sign in directly without showing the picker
         await doSignIn(found[0].tenantId);
         return;
       }
 
-      // Multiple tenants — show the picker
       setTenants(found);
       setView("tenant-select");
       setIsLoading(false);
@@ -102,7 +101,12 @@ function SignInForm() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen items-center justify-center bg-primary/10">
+    <div className="h-screen overflow-hidden flex flex-col items-center justify-between bg-primary/10 px-4 py-8">
+
+      {/* Spacer oben */}
+      <div />
+
+      {/* ── Login-Card ── */}
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
 
         {/* Logo + Title */}
@@ -204,6 +208,27 @@ function SignInForm() {
         )}
 
       </div>
+
+      {/* ── Footer ── */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex items-center gap-4 text-xs text-gray-400">
+          <Link href="/legal?tab=imprint" className="hover:text-gray-600 transition-colors">
+            Impressum
+          </Link>
+          <span>·</span>
+          <Link href="/legal?tab=privacy" className="hover:text-gray-600 transition-colors">
+            Datenschutz
+          </Link>
+          <span>·</span>
+          <Link href="/legal?tab=terms" className="hover:text-gray-600 transition-colors">
+            AGB
+          </Link>
+        </div>
+        <p className="text-xs text-gray-400">
+          © {new Date().getFullYear()} Plexaro
+        </p>
+      </div>
+
     </div>
   );
 }
@@ -213,7 +238,7 @@ function SignInForm() {
 export default function SignIn() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     }>

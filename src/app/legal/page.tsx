@@ -4,10 +4,16 @@ import { Scale, Building2, ShieldCheck, FileText, Copyright } from "lucide-react
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useI18n } from "@/i18n/use-i18n";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function LegalPage() {
+function LegalTabs() {
   const { t } = useI18n();
   const year = new Date().getFullYear();
+  const searchParams = useSearchParams();
+  const tab = searchParams?.get("tab") ?? "imprint";
+  const validTabs = ["imprint", "privacy", "terms", "copyright"];
+  const defaultTab = validTabs.includes(tab) ? tab : "imprint";
 
   return (
     <div className="space-y-6">
@@ -21,7 +27,7 @@ export default function LegalPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <Tabs defaultValue="imprint" className="space-y-4">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="imprint" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
@@ -113,5 +119,13 @@ export default function LegalPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function LegalPage() {
+  return (
+    <Suspense>
+      <LegalTabs />
+    </Suspense>
   );
 }
