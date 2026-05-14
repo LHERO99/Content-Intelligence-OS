@@ -21,6 +21,7 @@ const en = {
     adminArea: "Admin Area",
     feedbackLink: "Feedback",
     legalLink: "Legal",
+    profile: "Profile & Settings",
     signOut: "Sign out",
     signIn: "Sign in",
   },

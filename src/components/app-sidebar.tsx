@@ -1,12 +1,19 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale, Globe, Copyright } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
 import { useBranding } from "@/components/providers/branding-provider"
 import { useI18n } from "@/i18n/use-i18n"
-import { LanguageSwitcher } from "@/components/language-switcher"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 import {
   Sidebar,
@@ -185,7 +192,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter className="p-3">
         <Separator className="mb-3" />
         {session ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {session?.user?.role === "Admin" && (
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -206,35 +213,51 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               </SidebarMenu>
             )}
-            <LanguageSwitcher />
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<Link href="/legal" />} className="text-muted-foreground hover:text-foreground">
-                  <Scale className="h-4 w-4" />
-                  <span className="text-xs">{t("sidebar.legalLink")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-            <Link href="/profile" className="flex items-center gap-3 px-2 hover:bg-gray-100 rounded-md p-1 transition-colors">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: primaryColor }}>
-                <User className="h-4 w-4" />
-              </div>
-              <div className="flex flex-col overflow-hidden">
-                <span className="truncate text-sm font-medium">{session.user?.name}</span>
-                <span className="truncate text-xs text-gray-500">{session.user?.role}</span>
-              </div>
-            </Link>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+
+            {/* ── User Dropdown ── */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button className="flex items-center gap-3 w-full px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left" />
+                }
+              >
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white"
+                  style={{ backgroundColor: primaryColor }}
                 >
-                  <LogOut />
-                  <span>{t("sidebar.signOut")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
+                  <User className="h-4 w-4" />
+                </div>
+                <span className="truncate text-sm font-medium">{session.user?.name}</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <span className="block text-sm font-medium truncate">{session.user?.name}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href="/profile" />}>
+                  <User className="h-4 w-4" />
+                  {t("sidebar.profile")}
+                </DropdownMenuItem>
+                <DropdownMenuItem render={<Link href="/legal" />}>
+                  <Scale className="h-4 w-4" />
+                  {t("sidebar.legalLink")}
+                </DropdownMenuItem>
+                <LanguageSwitcherItem />
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t("sidebar.signOut")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* ── Copyright ── */}
+            <p className="text-xs text-muted-foreground/60 text-center py-1 select-none">
+              © {new Date().getFullYear()} Plexaro
+            </p>
           </div>
         ) : (
           <SidebarMenu>
@@ -248,5 +271,41 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarFooter>
     </Sidebar>
+  )
+}
+
+// ── Inline Language Switcher as Dropdown Item ─────────────────────────────────
+
+function LanguageSwitcherItem() {
+  const { locale, setLocale, t } = useI18n()
+  return (
+    <div className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-default">
+      <Globe className="h-4 w-4 shrink-0" />
+      <span className="flex-1">{t("common.language")}</span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setLocale("de")}
+          className={`text-xs px-2 py-0.5 rounded font-medium transition-colors ${
+            locale === "de"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          }`}
+        >
+          DE
+        </button>
+        <button
+          type="button"
+          onClick={() => setLocale("en")}
+          className={`text-xs px-2 py-0.5 rounded font-medium transition-colors ${
+            locale === "en"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          }`}
+        >
+          EN
+        </button>
+      </div>
+    </div>
   )
 }

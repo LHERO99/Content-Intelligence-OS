@@ -21,6 +21,7 @@ const de = {
     adminArea: "Admin-Bereich",
     feedbackLink: "Feedback",
     legalLink: "Rechtliches",
+    profile: "Profil & Einstellungen",
     signOut: "Abmelden",
     signIn: "Anmelden",
   },
