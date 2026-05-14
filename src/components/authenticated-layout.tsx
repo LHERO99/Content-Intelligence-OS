@@ -119,10 +119,8 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   return (
     <main className="flex-1 bg-[#f8faf9]">
-      <div className="p-6">
-        <GlobalAlerts />
-        {children}
-      </div>
+      <GlobalAlerts />
+      {children}
     </main>
   );
 }

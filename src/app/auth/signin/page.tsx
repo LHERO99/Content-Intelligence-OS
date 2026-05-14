@@ -101,7 +101,7 @@ function SignInForm() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen overflow-hidden flex flex-col items-center justify-between bg-primary/10 px-4 py-8">
+    <div className="fixed inset-0 flex flex-col items-center justify-between bg-primary/10 px-4 py-8 overflow-hidden">
 
       {/* Spacer oben */}
       <div />

@@ -1,4 +1,4 @@
-# Projekt-Status (Stand: 13.05.2026)
+# Projekt-Status (Stand: 14.05.2026)
 
 ## Tenant-Isolation: Vollständig abgeschlossen (13.05.2026)
 
@@ -94,6 +94,59 @@ Vollständige Multi-Tenant-Datenisolation: Jeder eingeloggte User sieht und bear
 
 ---
 
+## Super-Admin-Bereich & UI-Verbesserungen (14.05.2026)
+
+### Super-Admin Dashboard + i18n
+- Neue API-Route `GET /api/super-admin/dashboard` — aggregiert Tenant-Stats, MRR/ARR (€), Subscription-Verteilung, Feedback-Stats, Recent Tenants
+- Neue Dashboard-Seite `/super-admin/dashboard` — KPI-Cards, Finanzübersicht mit MRR-Balkendiagramm, Subscription-Verteilung, Feedback-Status-Badges, Recent-Tenants
+- `superAdmin`-Namespace in `de.ts` + `en.ts` (~150 Keys für alle 4 Super-Admin-Seiten)
+- Alle Super-Admin-Seiten (Tenants, Pricing, Feedback) vollständig auf `useI18n()` umgestellt
+- Redirect `/super-admin` → `/super-admin/dashboard` (vorher: `/super-admin/tenants`)
+- Sidebar: Dashboard-Link als erster Eintrag in Super-Admin-Nav
+
+### Feedback-Seite für alle Rollen
+- Neue Seite `/feedback/page.tsx` — vollständig i18n-konform, `plannedQuarter`-Spalte mit Kalender-Icon
+- Zugänglich für alle Rollen (Admin, Editor, Viewer)
+- `feedback`-Namespace in `de.ts` + `en.ts`
+- Sidebar-Footer: `MessageSquare`-Icon + `/feedback`-Link für alle Nicht-SuperAdmin-Nutzer
+- Admin-Page: Feedback-Tab entfernt
+
+### Dropdown-Bug Fix (Radix/Base UI SelectValue)
+- **Problem**: `<SelectValue />` zeigte bei komplexen `<SelectItem>`-Kindern (JSX, `t()`-Calls) den rohen `value`-String statt dem Label
+- **Fix**: Explizite Kinder auf `<SelectValue>` — ternäre Ausdrücke die direkt den übersetzten Text liefern
+- **Betroffene Dateien**: `src/app/super-admin/feedback/page.tsx`, `src/app/feedback/page.tsx`
+- Zusätzlich: `<span>`-Wrapper aus `<SelectItem value="none">` in der Inline-Quarter-Edit entfernt
+
+### Sidebar-Umbau: User-Avatar-Dropdown + Copyright
+- **ShieldCheck-Icon** neben "Plexaro" im Sidebar-Header entfernt
+- **Neues Footer-Design**: User-Avatar-Button öffnet `DropdownMenu` nach oben (`side="top"`) mit:
+  - Nutzername (als Label via `div`, nicht `DropdownMenuLabel` — Base UI error #31 Fix)
+  - Profil & Einstellungen (`/profile`)
+  - Rechtliches (`/legal`)
+  - Sprache-Toggle (DE/EN, inline als `LanguageSwitcherItem`-Funktion)
+  - Abmelden (rot)
+- **Copyright-Zeile** `© {year} Plexaro` — linksbündig, `text-muted-foreground/60`, unterhalb des Dropdowns
+- `LanguageSwitcher`-Import aus Sidebar entfernt (jetzt inline als `LanguageSwitcherItem`)
+
+### Legal-Page `/legal`
+- Neue Seite mit 4 Tabs: Impressum, Datenschutz, AGB, Copyright
+- Vollständig i18n-konform (`legal`-Namespace in `de.ts` + `en.ts`)
+- Liest `?tab=`-Query-Parameter → öffnet direkt den richtigen Tab
+- `Suspense`-Wrapper für `useSearchParams()`
+- SuperAdmin-Zugriff: `/legal` in `SUPER_ADMIN_EXEMPT_PREFIXES` in `authenticated-layout.tsx` eingetragen
+
+### Login-Seite Redesign
+- `fixed inset-0 flex flex-col justify-between` — exakt Viewport-groß, kein Scrollen möglich
+- Footer mit `Impressum · Datenschutz · AGB` Links (deep-links auf `/legal?tab=...`) + `© {year} Plexaro`
+- `authenticated-layout.tsx`: Auth-Seiten (`/auth/*`) erhalten keinen `<div class="p-6">`-Wrapper mehr — direkt `{children}`
+
+### Base UI Dropdown-Kompatibilität
+- `DropdownMenuLabel` (= `Menu.Group.Label`) erfordert `Menu.Group`-Parent → durch einfaches `div` ersetzt (error #31)
+- `asChild`-Prop existiert in Base UI nicht → durch `render`-Prop bzw. `onClick + router.push` ersetzt
+- `DropdownMenuTrigger`: `className` direkt setzen (kein `asChild`/`render`)
+
+---
+
 ## Agent Builder UI — Refactoring (01.05.2026)
 
 ### Übersicht
@@ -182,10 +235,6 @@ Der Parent Agent soll am Ende des Runs den fertigen HTML-Artikel zurückgeben. N
 - Rendert via `dangerouslySetInnerHTML={{ __html: log.Content_Body }}`
 - Erwartet HTML-Format; Markdown wird literal angezeigt
 
-### Empfehlung Sub-Agenten-Instructions
-Sub-Agenten (Draft, Review) sollten explizit angewiesen werden, HTML zurückzugeben:
-> "Antworte mit dem fertigen Artikel als sauberes HTML mit `<h1>`, `<h2>`, `<p>`, `<ul>`. Kein Markdown."
-
 ---
 
 ## Optimistisches UI: "Beauftragen"-Button (01.05.2026)
@@ -213,28 +262,6 @@ Sub-Agenten (Draft, Review) sollten explizit angewiesen werden, HTML zurückzuge
 - **Gesamtstatus-Banner**: Grün ("Alle Systeme laufen") / Orange (Warnungen) / Rot (Fehler).
 - **Gruppierte Checks** in 4 Sektionen: Infrastruktur, Daten-Sync (Cron), Integrationen, Workflows & Content.
 
-### Geprüfte Checks:
-| Check | Datenquelle | Logik |
-|---|---|---|
-| Airtable | Live | Users-Tabelle abrufbar |
-| GSC Sync | AuditLog `cron:sync-gsc:*` | Letzter Lauf + Staleness >8 Tage |
-| Sistrix Sync | AuditLog `cron:sync-sistrix:*` | Letzter Lauf (läuft im selben Cron wie GSC) |
-| DataForSEO Sync | AuditLog `cron:sync-dataforseo:*` | Letzter Lauf + Staleness >8 Tage |
-| Integrationen | Live-Test via `testProviderConnection()` | Nur konfigurierte Provider werden angezeigt |
-| Agent Webhook | Live-Test via `testAgentWebhook()` | Nur wenn `AGENT_WEBHOOK_URL` in Config hinterlegt |
-| Agent Runs | Agent Workflow Service | Runs mit `status: running` & `updatedAt` >30 Min → Error |
-| Content Pipeline | Airtable Keyword-Map | Anzahl Keywords in Status `Beauftragt`/`In Arbeit` |
-
-### Neue Dateien:
-- `src/lib/integration-tests.ts` — Shared Connectivity-Test-Funktionen
-- `src/app/api/cron/check-integrations/route.ts` — Täglicher Cron (06:00 UTC)
-- `src/app/api/system-health/route.ts` — Admin-only Endpunkt
-- `src/components/system-health-card.tsx` — Client-Komponente, vollständig i18n-fähig
-
-### AuditLog Action-Konventionen:
-- Crons: `cron:sync-gsc:success|error`, `cron:sync-sistrix:success|error|skipped`, `cron:sync-dataforseo:success|error`
-- Integration-Checks: `integration:check:<provider>:ok|error|skipped`, `integration:check:agent_webhook:ok|error|skipped`
-
 ---
 
 ## KI-Chat Feature (Creation Page) — Status: Funktionsfähig (28.04.2026)
@@ -244,61 +271,13 @@ Sub-Agenten (Draft, Review) sollten explizit angewiesen werden, HTML zurückzuge
 - **Markdown-Stripping**: `stripMarkdownCodeFences()` in `/api/creation/refine/route.ts`.
 - **Modell-Dropdown**: Lädt verfügbare Modelle via `/api/creation/models`. Grouped Select.
 
-## Content-Agent Builder V2 (Orchestrierung, UX, Integrationen)
-- **V2 als Standard**: Builder auf `/content-agent-builder`; V1 entfernt.
-- **Orchestrator-Loop**: Seriell in Runden (`Parent -> 1 Subagent -> Parent`).
-- **Parent-Decision Contract**: `finalize`, `summary`, `finalHtml` (neu), `next.targetNodeId`, `objective`, `memoryPatch`.
-- **Run-Version explizit steuerbar**: `runFrom: 'published'` für Commissioning-Flows.
-- **Pre-Run Validierung im UI**: Genau 1 aktiver Parent, ≥1 aktiver Subagent, Subagent-Purpose gesetzt.
-- **Custom Flow**: `CUSTOM_FLOW_ENABLED` Config-Key steuert Routing atomar. Amber-Banner wenn aktiv. Reaktivieren/Deaktivieren über Settings-Endpoint.
-- **pruneStore**: Steps auf 1500 Zeichen, Messages auf 1000 Zeichen. `persistRuns` in try/catch (non-fatal). `MAX_RETAINED_RUNS = 20`.
-- **`WorkflowRunV2.output`**: Optionales Feld im Domain-Model — wird aber **NICHT** in Airtable persistiert (Overflow-Schutz).
-
-## Integrationen & Modell-Discovery
-- **Model Discovery**: `/api/admin/integrations/[provider]/models` mit Caching + optionalem Refresh.
-- **Unterstützte Discovery-Provider**: `openai`, `openrouter`, `gemini`, `copilot`, `perplexity`.
-- **Shared Test-Lib**: `src/lib/integration-tests.ts`.
-
-## Content-Lifecycle & Logging-Events
-- **Status-Workflow**: `Backlog` → `Planned` → `Beauftragt` → `Angeliefert` → `Review` → `Published`.
-- **Lückenloses Event-Logging**: Alle Kern-Meilensteine in der `Content-Log` Tabelle.
-- **Diff_Summary-Konventionen**:
-  - `"Content beauftragt"` — beim Start (trigger/route.ts)
-  - `"Content angeliefert"` — nach erfolgreichem Run (trigger/route.ts) — **exakter String für HistoryList-Preview**
-  - `"KI-Chat: KI-Optimierung übernommen"` — KI-Chat-Saves
-
-## Datenbank & API-Stabilität
-- **Airtable Service-Härtung**: Computed Field Fix, URL-Historie Persistenz.
-- **Blacklist-Sicherheitsmechanismen**: Main Keyword Schutz, Double Confirmation.
-- **Schema-Cleanup**: `Reasoning_Chain` systemweit entfernt.
-- **`createAuditLog(action, rawPayload?)`**: Non-blocking AuditLog-Writing aus Crons und Services.
-
-## n8n Integration & Performance-Monitoring
-- **Webhook-Optimierung**: n8n-Webhook-Calls laufen asynchron ("Fire & Forget").
-- **Callback-Route**: `/api/n8n/callback` für externe Agents — setzt Status + erstellt Content-Log.
-
-## Optimierte Performance-Speicherung
-- **Tabellen-Split**: `URL_Performance` + `Keyword_Ranking_History` ersetzen `Performance_Data`.
-- **Cron-Jobs** (`vercel.json`):
-  - `GET /api/cron/sync-gsc` — Mo 04:00 UTC
-  - `GET /api/cron/sync-dataforseo` — Mo 04:30 UTC
-  - `GET /api/cron/check-integrations` — täglich 06:00 UTC
-
-## UI & Visualisierung
-- **URL-Detail**: Zwei Charts (URL-Performance + Keyword-Rankings mit log. Y-Achse).
-- **Monitoring-Tabelle**: Klickbare Zeilen, individuelle ROI-Anzeige.
-
-## Dynamic Branding & Asset Management
-- **Konfigurierbares Branding**: Logo, Favicon, Primärfarbe via Admin-Tab.
-- **BrandingProvider**: Injiziert `--primary` CSS-Variable, aktualisiert Favicon dynamisch.
-
-## Vercel Deployment & Auth-Fixes
-- **Cookie-Name-Mismatch behoben**: Custom `cookies`-Config aus `authOptions` entfernt.
-- **`NEXTAUTH_URL` korrekt konfiguriert**: Pro Environment.
-
 ## Internationalisierung / i18n (28.04.2026)
 - **Vollständige DE/EN Sprachumschaltung** via Language Switcher.
 - **useI18n Hook**: Gibt `{ locale, setLocale, t }` zurück.
 - **Inline-Translate Pattern**: `const tr = (de: string, en: string) => (locale === "de" ? de : en);`
 - **Dictionary-Pattern**: `t("dashboard.systemHealth.title")` für strukturierte Keys.
 - **`dashboard.systemHealth.*`** Keys vollständig in `de.ts` + `en.ts` vorhanden.
+- **`superAdmin.*`** Keys vollständig in `de.ts` + `en.ts` vorhanden.
+- **`feedback.*`** Keys vollständig in `de.ts` + `en.ts` vorhanden.
+- **`legal.*`** Keys vollständig in `de.ts` + `en.ts` vorhanden.
+- **`sidebar.feedbackLink`, `sidebar.legalLink`, `sidebar.profile`** Keys vorhanden.

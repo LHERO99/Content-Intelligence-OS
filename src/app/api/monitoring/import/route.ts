@@ -20,6 +20,21 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { targetUrl, performanceData, rankings, keywordId } = body;
 
+    // Tenant resolution: body.tenantId takes priority, then x-tenant-id header.
+    // In a multi-tenant deployment a tenantId MUST be supplied — defaulting to
+    // the env-var would silently write all data to the wrong tenant.
+    const tenantId: string | undefined =
+      (typeof body.tenantId === 'string' && body.tenantId.trim())
+        ? body.tenantId.trim()
+        : (req.headers.get('x-tenant-id') ?? undefined);
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Missing tenantId — provide it in the request body or via the x-tenant-id header' },
+        { status: 400 }
+      );
+    }
+
     if (!targetUrl) {
       return NextResponse.json({ error: 'Missing targetUrl' }, { status: 400 });
     }
@@ -66,10 +81,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Execute Upserts
+    // 4. Execute Upserts — always pass tenantId so no env-var fallback is used
     const [urlResult, rankingResult] = await Promise.all([
-      upsertURLPerformance(urlPerformanceRecords),
-      upsertKeywordRankingHistory(keywordRankingRecords)
+      upsertURLPerformance(urlPerformanceRecords, tenantId),
+      upsertKeywordRankingHistory(keywordRankingRecords, tenantId)
     ]);
     
     results.keywordEntries = keywordsToProcess.length;

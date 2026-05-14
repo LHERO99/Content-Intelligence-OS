@@ -1,4 +1,4 @@
-# Technische Entscheidungen (Stand: 13.05.2026)
+# Technische Entscheidungen (Stand: 14.05.2026)
 
 ## Tenant-Isolation: tenantId immer aus DB-Row, nie aus Client-Input (13.05.2026)
 - In `authorize()` (NextAuth) wird `tenantId` ausschließlich aus `user.TenantId` (DB-Row) genommen — nie aus `credentials.tenantId`
@@ -18,6 +18,33 @@
 ## Tenant-Isolation: Hardcodierte baseUrl in invite/route.ts (13.05.2026)
 - `baseUrl` in `admin/invite/route.ts` wurde von `"https://content-intelligence-os-sigma.vercel.app"` auf `process.env.NEXTAUTH_URL ?? "..."` geändert
 - Begründung: Invite-Links müssen zur jeweiligen Deploy-URL passen, nicht zu einer hardcodierten Production-URL
+
+## SuperAdmin-Route-Exempt-Liste (14.05.2026)
+- `SUPER_ADMIN_EXEMPT_PREFIXES` in `authenticated-layout.tsx` enthält Routen, auf die SuperAdmin zugreifen darf ohne Redirect auf `/super-admin/tenants`
+- Aktuell: `["/profile", "/auth/", "/legal"]`
+- **Regel**: Jede neue Route die für alle Rollen zugänglich sein soll, muss hier eingetragen werden
+
+## Base UI DropdownMenu: kein asChild, kein DropdownMenuLabel ohne Group (14.05.2026)
+- **`asChild`-Prop existiert nicht in Base UI** (nur Radix) → stattdessen `render`-Prop oder direktes `className`/`onClick`
+- **`DropdownMenuTrigger`**: `className` direkt setzen, Children direkt rein — kein Wrapper nötig
+- **`DropdownMenuItem` als Link**: `onClick={() => router.push(...)}` verwenden — kein `render={<Link>}`
+- **`DropdownMenuLabel`** (`Menu.Group.Label`) **benötigt zwingend einen `DropdownMenuGroup`-Parent** → sonst Base UI error #31 (`MenuGroupRootContext is missing`)
+- **Workaround**: Für einfache Menü-Header ein `div` mit gleichem Styling verwenden statt `DropdownMenuLabel`
+
+## Base UI SelectValue: explizite Kinder erforderlich (14.05.2026)
+- `<SelectValue />` in Base UI/Radix extrahiert automatisch Text aus `SelectItem`-Kindern — funktioniert aber nicht zuverlässig wenn Kinder komplexes JSX (`<span>`, `<Badge>`) oder `t()`-Aufrufe sind
+- **Fix-Pattern**: `<SelectValue>{form.type === "feature" ? t("...typeFeature") : t("...typeBug")}</SelectValue>` — ternärer Ausdruck direkt als Kind
+- **Regel**: Bei allen `<SelectValue>` die `t()` im zugehörigen `SelectItem` verwenden: explizite Kinder setzen
+
+## Login-Seite: fixed inset-0 statt h-screen (14.05.2026)
+- `h-screen overflow-hidden` auf einem inneren Div funktioniert nicht zuverlässig wenn äußere Container `min-h-full` haben
+- **Lösung**: `fixed inset-0` auf dem Wurzel-Div der Login-Seite — garantiert exakt Viewport-groß, unabhängig von äußeren Containern
+- Gleichzeitig: `authenticated-layout.tsx` Auth-Seiten-Branch rendert nur `{children}` ohne `<div class="p-6">`-Wrapper
+
+## Legal-Page: URL-gesteuerte Tab-Selektion (14.05.2026)
+- `/legal?tab=imprint|privacy|terms|copyright` öffnet direkt den gewünschten Tab
+- `useSearchParams()` erfordert `Suspense`-Wrapper
+- Login-Seite verlinkt direkt auf `/legal?tab=imprint`, `/legal?tab=privacy`, `/legal?tab=terms`
 
 ## Agent Builder: Execution Panel als Side-Panel (01.05.2026)
 - Das Execution Panel sitzt in der linken Sidebar unterhalb der NodePalette — kein Full-Width-Panel mehr.

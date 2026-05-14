@@ -89,7 +89,7 @@
 - [x] `postgres.ts` `tid()`: console.warn bei fehlendem tenantId
 - [x] `app-sidebar.tsx`: App-Name von "SEO Content Intelligence" auf "Plexaro" geändert
 
-
+## Agent Builder UI Refactoring (01.05.2026)
 - [x] Refactor: Run Controls Card + manueller Run-Button entfernt.
 - [x] Refactor: Auto-Save-Strip in Toolbar-Zeile neben Flow-Tabs verschoben.
 - [x] Refactor: Execution Panel — Tabs (Executions/Timeline/Messages) entfernt, nur Run-Liste.
@@ -104,3 +104,34 @@
 - [x] i18n: `customFlowActiveTitle/Body/Deactivate`, `customFlowDisabledTitle/Body/Agents/Reactivate` ergänzt.
 - [x] i18n: `noCustomFlowTitle/Body/Warning/Action` ergänzt.
 - [x] i18n: Alle hardcodierten deutschen Texte in Empty States und Amber-Banner ausgelagert.
+
+## Super-Admin & UI-Verbesserungen (14.05.2026)
+- [x] Feature: `GET /api/super-admin/dashboard` — aggregiert Tenant-Stats, MRR/ARR, Subscription-Verteilung, Feedback-Stats
+- [x] Feature: `/super-admin/dashboard` Page — KPI-Cards, MRR-Balkendiagramm, Subscription-Verteilung, Recent Tenants
+- [x] i18n: `superAdmin`-Namespace in `de.ts` + `en.ts` (~150 Keys)
+- [x] i18n: `feedback`-Namespace in `de.ts` + `en.ts`
+- [x] i18n: `legal`-Namespace in `de.ts` + `en.ts`
+- [x] i18n: `sidebar.feedbackLink`, `sidebar.legalLink`, `sidebar.profile` Keys ergänzt
+- [x] Refactor: Super-Admin-Seiten (Tenants, Pricing, Feedback) vollständig auf `useI18n()` umgestellt
+- [x] Fix: Redirect `/super-admin` → `/super-admin/dashboard`
+- [x] Feature: `/feedback` Page für alle Rollen (Admin, Editor, Viewer) mit `plannedQuarter`-Spalte
+- [x] Refactor: Feedback-Tab aus Admin-Page entfernt
+- [x] Fix: SelectValue Dropdown-Bug — explizite Kinder in `super-admin/feedback/page.tsx` + `feedback/page.tsx`
+- [x] Fix: `<span>`-Wrapper aus `<SelectItem value="none">` entfernt (Quarter-Inline-Edit)
+- [x] Refactor: Sidebar ShieldCheck-Icon bei "Plexaro" entfernt
+- [x] Feature: Sidebar-Footer Umbau — User-Avatar öffnet DropdownMenu (Profil, Rechtliches, Sprache, Abmelden)
+- [x] Fix: Base UI error #31 — `DropdownMenuLabel` durch `div` ersetzt (kein `Menu.Group`-Parent vorhanden)
+- [x] Fix: Base UI `asChild` nicht verfügbar — `DropdownMenuTrigger` mit `className`, Items mit `onClick + router.push`
+- [x] Feature: Copyright-Zeile `© {year} Plexaro` im Sidebar-Footer (linksbündig, ausgegraut)
+- [x] Feature: `/legal` Page mit 4 Tabs (Impressum, Datenschutz, AGB, Copyright), `?tab=`-Query-Parameter, `Suspense`
+- [x] Fix: SuperAdmin-Zugriff auf `/legal` — in `SUPER_ADMIN_EXEMPT_PREFIXES` eingetragen
+- [x] Fix: Login-Seite scrollbar — `fixed inset-0` statt `h-screen`, Auth-Layout-Branch ohne `p-6`-Wrapper
+- [x] Feature: Login-Seite Footer — Impressum/Datenschutz/AGB Links + Copyright
+
+## Offen / Ausstehend
+- [ ] DB-Migration ausführen:
+  ```sql
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+  ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;
+  ```
+- [ ] Legal-Seite: Tatsächliche Inhalte für Impressum, Datenschutz, AGB, Copyright eintragen (aktuell Platzhalter in `de.ts`/`en.ts`)

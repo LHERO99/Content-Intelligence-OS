@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { purgeOldAuditLogs, purgeOldPerformanceData, createAuditLog } from '@/lib/postgres';
+import { purgeOldAuditLogs, purgeOldPerformanceData, createAuditLog, getAllTenants } from '@/lib/postgres';
 
 /**
  * GET /api/cron/purge-old-data
@@ -21,24 +21,34 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [deletedAudit, deletedPerf] = await Promise.all([
-      purgeOldAuditLogs(180),
-      purgeOldPerformanceData(400),
-    ]);
+    const tenants = await getAllTenants();
 
-    await createAuditLog('cron:purge-old-data:success', {
-      deletedAuditLogs: deletedAudit,
-      deletedPerformanceRows: deletedPerf,
-    });
+    let totalDeletedAudit = 0;
+    let totalDeletedPerf = 0;
+
+    for (const tenant of tenants) {
+      const [deletedAudit, deletedPerf] = await Promise.all([
+        purgeOldAuditLogs(180, tenant.id),
+        purgeOldPerformanceData(400, tenant.id),
+      ]);
+      totalDeletedAudit += deletedAudit;
+      totalDeletedPerf += deletedPerf;
+
+      await createAuditLog('cron:purge-old-data:success', {
+        tenantId: tenant.id,
+        deletedAuditLogs: deletedAudit,
+        deletedPerformanceRows: deletedPerf,
+      }, tenant.id);
+    }
 
     return NextResponse.json({
       ok: true,
-      deletedAuditLogs: deletedAudit,
-      deletedPerformanceRows: deletedPerf,
+      tenantsProcessed: tenants.length,
+      deletedAuditLogs: totalDeletedAudit,
+      deletedPerformanceRows: totalDeletedPerf,
     });
   } catch (err: any) {
     console.error('[cron/purge-old-data] error:', err);
-    await createAuditLog('cron:purge-old-data:error', { error: err.message });
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }

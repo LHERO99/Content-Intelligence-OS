@@ -10,6 +10,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const tenantId: string = (session.user as any).tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Missing tenant context in session' }, { status: 400 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const type = formData.get('type') as string; // 'logo' or 'favicon'
@@ -26,7 +31,8 @@ export async function POST(request: Request) {
     const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin';
     const safeExt = String(ext || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
     const prefix = type === 'favicon' ? 'favicon' : 'logo';
-    const blobPath = `branding/${prefix}-${Date.now()}.${safeExt || 'bin'}`;
+    // Include tenantId in the path to physically isolate blobs per tenant
+    const blobPath = `branding/${tenantId}/${prefix}-${Date.now()}.${safeExt || 'bin'}`;
 
     const uploaded = await put(blobPath, file, {
       access: 'public',

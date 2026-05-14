@@ -75,9 +75,27 @@ export function invalidateConfigCache(tenantId?: string): void {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+/**
+ * Resolves the effective tenantId for a data-access call.
+ *
+ * Behaviour depends on the MULTI_TENANT environment variable:
+ *   - MULTI_TENANT=true  → a missing tenantId throws immediately so missing
+ *                          isolation is caught at call-time rather than
+ *                          silently writing/reading the wrong tenant's data.
+ *   - MULTI_TENANT unset / false → legacy single-tenant mode: falls back to
+ *                          the TENANT_ID env var (or 'default') and logs a
+ *                          warning so the gap is still visible in logs.
+ */
 function tid(tenantId?: string): string {
   if (!tenantId) {
-    console.warn('[postgres] tid() called without tenantId — falling back to default tenant. Check the call stack for missing tenant isolation.');
+    if (process.env.MULTI_TENANT === 'true') {
+      throw new Error(
+        '[postgres] tid() called without tenantId in MULTI_TENANT mode. ' +
+        'Every data-access call must supply an explicit tenantId. ' +
+        'Check the call stack for missing tenant propagation.'
+      );
+    }
+    console.warn('[postgres] tid() called without tenantId — falling back to default tenant. Set MULTI_TENANT=true to turn this into a hard error.');
   }
   return tenantId ?? getDefaultTenantId();
 }
