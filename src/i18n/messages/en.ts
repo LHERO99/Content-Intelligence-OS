@@ -19,6 +19,7 @@ const en = {
     contentHistory: "Content History",
     agentBuilder: "Content-Agent Builder",
     adminArea: "Admin Area",
+    feedbackLink: "Feedback",
     signOut: "Sign out",
     signIn: "Sign in",
   },
@@ -258,6 +259,53 @@ const en = {
     available: "History available",
     showContent: "Show content",
     hideContent: "Hide content",
+  },
+  feedback: {
+    // Page
+    title: "Feedback",
+    subtitle: "Send feature requests and bug reports directly to the development team.",
+    sidebarLabel: "Feedback",
+
+    // Submit form
+    submitCardTitle: "Submit feedback",
+    submitCardDesc: "Send a feature request or bug report to the development team.",
+    submitNew: "New",
+    typeLabel: "Type",
+    typeFeature: "Feature Request",
+    typeBug: "Bug Report",
+    priorityLabel: "Priority",
+    priorityLow: "Low",
+    priorityMedium: "Medium",
+    priorityHigh: "High",
+    titleLabel: "Title",
+    titlePlaceholder: "Short description...",
+    descLabel: "Description",
+    descPlaceholder: "What should happen? What is the expected behavior?",
+    cancel: "Cancel",
+    submit: "Submit",
+    errorNoTitle: "Please enter a title.",
+    errorSubmit: "Submission failed. Please try again.",
+    successMessage: "Successfully submitted!",
+
+    // Submissions list
+    mySubmissionsTitle: "My Submissions",
+    mySubmissionsDesc: "Status overview of your feature requests and bug reports",
+    colType: "Type",
+    colTitle: "Title",
+    colPriority: "Priority",
+    colStatus: "Status",
+    colQuarter: "Planned Quarter",
+    colCreated: "Submitted on",
+    noSubmissions: "No submissions yet.",
+    noQuarterYet: "Not yet planned",
+
+    // Status labels
+    statusOpen: "Open",
+    statusInValidation: "In Review",
+    statusPlanned: "Planned",
+    statusInDevelopment: "In Development",
+    statusReleased: "Released",
+    statusCancelled: "Rejected",
   },
   superAdmin: {
     // Navigation

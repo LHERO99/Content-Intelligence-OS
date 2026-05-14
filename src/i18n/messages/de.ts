@@ -19,6 +19,7 @@ const de = {
     contentHistory: "Content-Historie",
     agentBuilder: "Content-Agent Builder",
     adminArea: "Admin-Bereich",
+    feedbackLink: "Feedback",
     signOut: "Abmelden",
     signIn: "Anmelden",
   },
@@ -258,6 +259,53 @@ const de = {
     available: "Historie verfügbar",
     showContent: "Content anzeigen",
     hideContent: "Content einklappen",
+  },
+  feedback: {
+    // Page
+    title: "Feedback",
+    subtitle: "Sende Feature Requests und Bug Reports direkt an das Entwicklungsteam.",
+    sidebarLabel: "Feedback",
+
+    // Submit form
+    submitCardTitle: "Feedback einreichen",
+    submitCardDesc: "Sende einen Feature Request oder Bug Report an das Entwicklungsteam.",
+    submitNew: "Neu",
+    typeLabel: "Typ",
+    typeFeature: "Feature Request",
+    typeBug: "Bug Report",
+    priorityLabel: "Priorität",
+    priorityLow: "Niedrig",
+    priorityMedium: "Mittel",
+    priorityHigh: "Hoch",
+    titleLabel: "Titel",
+    titlePlaceholder: "Kurze Beschreibung...",
+    descLabel: "Beschreibung",
+    descPlaceholder: "Was soll passieren? Was ist das erwartete Verhalten?",
+    cancel: "Abbrechen",
+    submit: "Einreichen",
+    errorNoTitle: "Bitte gib einen Titel ein.",
+    errorSubmit: "Fehler beim Einreichen. Bitte versuche es erneut.",
+    successMessage: "Erfolgreich eingereicht!",
+
+    // Submissions list
+    mySubmissionsTitle: "Meine Einreichungen",
+    mySubmissionsDesc: "Status-Übersicht deiner Feature Requests und Bug Reports",
+    colType: "Typ",
+    colTitle: "Titel",
+    colPriority: "Priorität",
+    colStatus: "Status",
+    colQuarter: "Geplantes Quartal",
+    colCreated: "Eingereicht am",
+    noSubmissions: "Noch keine Einreichungen vorhanden.",
+    noQuarterYet: "Noch nicht geplant",
+
+    // Status labels
+    statusOpen: "Offen",
+    statusInValidation: "In Prüfung",
+    statusPlanned: "Geplant",
+    statusInDevelopment: "In Entwicklung",
+    statusReleased: "Veröffentlicht",
+    statusCancelled: "Abgelehnt",
   },
   superAdmin: {
     // Navigation
