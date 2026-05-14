@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -228,10 +227,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span className="truncate text-sm font-medium">{session.user?.name}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuLabel className="font-normal">
-                  <span className="block text-sm font-medium truncate">{session.user?.name}</span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-sm font-medium truncate border-b mb-1">
+                  {session.user?.name}
+                </div>
                 <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
                   <User className="h-4 w-4" />
                   {t("sidebar.profile")}
