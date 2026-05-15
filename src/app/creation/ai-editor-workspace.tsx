@@ -232,6 +232,85 @@ export function AIEditorWorkspace({
       <div className="flex-1 min-h-0">
         {activeMode === 'preview' && (
           <div className="rounded-md border bg-white overflow-hidden animate-in fade-in duration-300 h-full flex flex-col">
+            <style jsx global>{`
+              @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+              
+              .preview-content {
+                all: initial;
+                display: block;
+                font-family: 'Poppins', sans-serif !important;
+                color: #334155;
+              }
+              .preview-content h1, .preview-content h2, .preview-content h3 {
+                color: var(--primary) !important;
+                font-family: 'Poppins', sans-serif !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+              }
+              .preview-content h1 {
+                font-size: 2.25rem !important;
+                line-height: 1.2 !important;
+                font-weight: 800 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0.5rem !important;
+              }
+              .preview-content h2 {
+                font-size: 1.875rem !important;
+                line-height: 1.2 !important;
+                font-weight: 700 !important;
+                margin-top: 1.25rem !important;
+                margin-bottom: 0.5rem !important;
+              }
+              .preview-content h3 {
+                font-size: 1.5rem !important;
+                line-height: 1.2 !important;
+                font-weight: 600 !important;
+                margin-top: 1.25rem !important;
+                margin-bottom: 0.5rem !important;
+              }
+              .preview-content p {
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                line-height: 1.2 !important;
+                color: #334155 !important;
+                display: block !important;
+                font-size: 0.875rem !important;
+                font-family: 'Poppins', sans-serif !important;
+              }
+              .preview-content ul {
+                list-style-type: disc !important;
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                padding-left: 1.5rem !important;
+                display: block !important;
+              }
+              .preview-content ol {
+                list-style-type: decimal !important;
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                padding-left: 1.5rem !important;
+                display: block !important;
+              }
+              .preview-content li {
+                margin-top: 0.25rem !important;
+                margin-bottom: 0.25rem !important;
+                line-height: 1.2 !important;
+                display: list-item !important;
+                font-size: 0.875rem !important;
+                font-family: 'Poppins', sans-serif !important;
+              }
+              .preview-content strong {
+                font-weight: 700 !important;
+              }
+              .preview-content em {
+                font-style: italic !important;
+              }
+              .preview-content a {
+                color: var(--primary) !important;
+                text-decoration: underline !important;
+              }
+            `}</style>
             {mode === 'Erstellung' ? (
               <>
                 <div className="border-b bg-primary/10 p-3 text-sm font-bold text-primary flex items-center gap-2 shrink-0">
@@ -239,85 +318,6 @@ export function AIEditorWorkspace({
                   {tr('Neu erstellter Content', 'Newly created content')}
                 </div>
                 <div className="p-3 overflow-auto bg-white flex-1 min-h-0">
-                  <style jsx global>{`
-                    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
-                    
-                    .preview-content {
-                      all: initial;
-                      display: block;
-                      font-family: 'Poppins', sans-serif !important;
-                      color: #334155;
-                    }
-                    .preview-content h1, .preview-content h2, .preview-content h3 {
-                      color: var(--primary) !important;
-                      font-family: 'Poppins', sans-serif !important;
-                      display: block !important;
-                      visibility: visible !important;
-                      opacity: 1 !important;
-                    }
-                    .preview-content h1 {
-                      font-size: 2.25rem !important;
-                      line-height: 1.2 !important;
-                      font-weight: 800 !important;
-                      margin-top: 0 !important;
-                      margin-bottom: 0.5rem !important;
-                    }
-                    .preview-content h2 {
-                      font-size: 1.875rem !important;
-                      line-height: 1.2 !important;
-                      font-weight: 700 !important;
-                      margin-top: 1.25rem !important;
-                      margin-bottom: 0.5rem !important;
-                    }
-                    .preview-content h3 {
-                      font-size: 1.5rem !important;
-                      line-height: 1.2 !important;
-                      font-weight: 600 !important;
-                      margin-top: 1.25rem !important;
-                      margin-bottom: 0.5rem !important;
-                    }
-                    .preview-content p {
-                      margin-top: 0.5rem !important;
-                      margin-bottom: 0.5rem !important;
-                      line-height: 1.2 !important;
-                      color: #334155 !important;
-                      display: block !important;
-                      font-size: 0.875rem !important;
-                      font-family: 'Poppins', sans-serif !important;
-                    }
-                    .preview-content ul {
-                      list-style-type: disc !important;
-                      margin-top: 0.5rem !important;
-                      margin-bottom: 0.5rem !important;
-                      padding-left: 1.5rem !important;
-                      display: block !important;
-                    }
-                    .preview-content ol {
-                      list-style-type: decimal !important;
-                      margin-top: 0.5rem !important;
-                      margin-bottom: 0.5rem !important;
-                      padding-left: 1.5rem !important;
-                      display: block !important;
-                    }
-                    .preview-content li {
-                      margin-top: 0.25rem !important;
-                      margin-bottom: 0.25rem !important;
-                      line-height: 1.2 !important;
-                      display: list-item !important;
-                      font-size: 0.875rem !important;
-                      font-family: 'Poppins', sans-serif !important;
-                    }
-                    .preview-content strong {
-                      font-weight: 700 !important;
-                    }
-                    .preview-content em {
-                      font-style: italic !important;
-                    }
-                    .preview-content a {
-                      color: var(--primary) !important;
-                      text-decoration: underline !important;
-                    }
-                  `}</style>
                   <div 
                     className="preview-content"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingContent) }}
