@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, createAuditLog } from '@/lib/postgres';
 
 /**
  * Endpoint for external agent callbacks to return generated content.
@@ -50,7 +50,17 @@ export async function POST(request: Request) {
     }
 
     if (!isLegacy && !isExternalAgent) {
-      console.warn('[API] Unauthorized callback request');
+      const reason = !apiKey ? 'missing_secret' : 'invalid_secret';
+      console.warn(`[API] Unauthorized callback request — ${reason}`);
+      try {
+        await createAuditLog(
+          'agent_webhook:callback:unauthorized',
+          { reason, hasApiKey: !!apiKey },
+          tenantId ?? 'unknown',
+        );
+      } catch {
+        // Never block the response due to audit log failure
+      }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

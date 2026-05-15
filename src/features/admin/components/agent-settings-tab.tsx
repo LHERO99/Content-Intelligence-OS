@@ -24,6 +24,7 @@ import {
   Radio,
   Zap,
   ShieldCheck,
+  Info,
 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 
@@ -371,6 +372,31 @@ export function AgentSettingsTab() {
                 "Sent as Bearer token in the Authorization header. The external service must return it in the X-API-KEY header for callbacks."
               )}
             </p>
+            {webhookSecret && (
+              <Alert className="mt-2 border-amber-400/60 bg-amber-50 dark:bg-amber-950/30">
+                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <AlertTitle className="text-amber-800 dark:text-amber-300 text-sm font-semibold">
+                  {tr("Secret auch im externen Tool konfigurieren", "Configure secret in your external tool too")}
+                </AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-400 text-xs mt-1 space-y-1">
+                  <p>
+                    {tr(
+                      "Damit Callbacks akzeptiert werden, muss dein externes Tool (z.\u00a0B. n8n) das Secret beim Callback-Request als Header mitsenden:",
+                      "For callbacks to be accepted, your external tool (e.g. n8n) must send the secret as a header in the callback request:"
+                    )}
+                  </p>
+                  <code className="block bg-amber-100 dark:bg-amber-900/40 rounded px-2 py-1 font-mono text-xs">
+                    X-API-KEY: {webhookSecret}
+                  </code>
+                  <p className="text-amber-600 dark:text-amber-500">
+                    {tr("Callback-URL:", "Callback URL:")}{" "}
+                    <span className="font-mono">
+                      {process.env.NEXT_PUBLIC_APP_URL ?? "<APP_BASE_URL>"}/api/agent-webhook/callback
+                    </span>
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Payload info */}

@@ -265,7 +265,47 @@ async function checkAgentRuns(tenantId?: string): Promise<HealthCheck> {
   }
 }
 
-async function checkContentPipeline(tenantId?: string): Promise<HealthCheck> {
+async function checkAgentCallback(tenantId?: string): Promise<HealthCheck | null> {
+  try {
+    const config = await getConfig(tenantId);
+    if (config.EXTERNAL_AGENT_ENABLED !== 'true') return null;
+
+    const logs = await getLatestAuditLogByPrefix('agent_webhook:callback:unauthorized', 50, tenantId);
+
+    // Only count entries from the last 24h
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = logs.filter(l => new Date(l.timestamp).getTime() > cutoff);
+
+    if (recent.length === 0) {
+      return {
+        id: 'agent_webhook:callback',
+        label: 'Agent Callback Auth',
+        status: 'ok',
+        detail: 'No unauthorized callback requests in the last 24h',
+        detailKey: 'dashboard.systemHealth.agentCallback.ok',
+      };
+    }
+
+    const reasons = recent.map(l => {
+      try { return (JSON.parse(l.rawPayload ?? '{}')).reason ?? 'unknown'; } catch { return 'unknown'; }
+    });
+    const missingCount = reasons.filter(r => r === 'missing_secret').length;
+    const invalidCount = reasons.filter(r => r === 'invalid_secret').length;
+
+    return {
+      id: 'agent_webhook:callback',
+      label: 'Agent Callback Auth',
+      status: 'warning',
+      detail: `${recent.length} unauthorized callback request(s) in the last 24h — missing secret: ${missingCount}, invalid secret: ${invalidCount}. Check X-API-KEY configuration in your external tool.`,
+      detailKey: 'dashboard.systemHealth.agentCallback.unauthorized',
+      detailParams: { count: recent.length, missingCount, invalidCount },
+    };
+  } catch {
+    return null;
+  }
+}
+
+
   try {
     const activeStatuses = ['Beauftragt', 'In Arbeit'];
     const allKeywords = await getKeywordMap(tenantId);
@@ -340,6 +380,7 @@ export async function GET(req: NextRequest) {
       integrationChecks,
       agentRunsCheck,
       contentPipelineCheck,
+      agentCallbackCheck,
     ] = await Promise.all([
       checkDatabase(tenantId),
       checkCronSync('cron:sync-gsc', 'GSC Sync', tenantId),
@@ -348,6 +389,7 @@ export async function GET(req: NextRequest) {
       checkIntegrations(tenantId),
       checkAgentRuns(tenantId),
       checkContentPipeline(tenantId),
+      checkAgentCallback(tenantId),
     ]);
 
     const smtpCheck = isSuperAdmin ? await checkSmtp() : null;
@@ -361,6 +403,7 @@ export async function GET(req: NextRequest) {
       ...integrationChecks,
       agentRunsCheck,
       contentPipelineCheck,
+      ...(agentCallbackCheck ? [agentCallbackCheck] : []),
     ];
 
     const overall: HealthStatus =

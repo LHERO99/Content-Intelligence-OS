@@ -52,6 +52,10 @@ const JOBS = [
     key: 'cron:check-integrations',
     prefixes: ['cron:check-integrations'],
   },
+  {
+    key: 'agent_webhook:callback',
+    prefixes: ['agent_webhook:callback:unauthorized'],
+  },
 ] as const;
 
 export interface TenantHealthStatus {
@@ -79,14 +83,18 @@ export interface HealthSummaryResponse {
 
 function deriveStatus(action: string): 'ok' | 'error' | 'skipped' | 'unknown' {
   if (action.endsWith(':success') || action.endsWith(':ok')) return 'ok';
-  if (action.endsWith(':error')) return 'error';
+  if (action.endsWith(':error') || action.endsWith(':unauthorized')) return 'error';
   if (action.endsWith(':skipped')) return 'skipped';
   return 'unknown';
 }
 
-function extractDetail(payload: unknown): string | null {
+function extractDetail(payload: unknown, action?: string): string | null {
   const p = payload as Record<string, unknown> | null;
   if (!p) return null;
+  if (action?.endsWith(':unauthorized')) {
+    const reason = p.reason === 'missing_secret' ? 'Missing X-API-KEY header' : 'Invalid X-API-KEY';
+    return `Unauthorized callback — ${reason}`;
+  }
   if (p.error) return String(p.error);
   if (Array.isArray(p.errors) && p.errors.length > 0) return (p.errors as string[]).join('; ');
   return null;
@@ -152,7 +160,7 @@ export async function GET() {
         jobs[job.key] = {
           status: deriveStatus(mostRecent.action),
           lastRunAt: new Date(mostRecent.timestamp).toISOString(),
-          detail: extractDetail(mostRecent.rawPayload),
+          detail: extractDetail(mostRecent.rawPayload, mostRecent.action),
         };
       }
 
