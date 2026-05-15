@@ -30,7 +30,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link, KeyRound } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link, KeyRound, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
@@ -73,8 +81,12 @@ export default function AdminPage() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [resendingUserId, setResendingUserId] = useState<string | null>(null);
   const [resendResult, setResendResult] = useState<{ userId: string; inviteLink: string; emailSent: boolean } | null>(null);
-  const [resetingUserId, setResetingUserId] = useState<string | null>(null);
-  const [resetResult, setResetResult] = useState<{ userId: string; resetUrl: string; emailSent: boolean } | null>(null);
+
+  // Password-Reset Dialog
+  const [resetConfirmUser, setResetConfirmUser] = useState<User | null>(null);
+  const [resetLoading, setResetLoading]         = useState(false);
+  const [resetDialogResult, setResetDialogResult] = useState<{ resetUrl: string; emailSent: boolean } | null>(null);
+  const [resetDialogError, setResetDialogError]   = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -195,17 +207,18 @@ export default function AdminPage() {
   };
 
   const handleResetPassword = async (id: string) => {
-    setResetingUserId(id);
-    setResetResult(null);
+    setResetLoading(true);
+    setResetDialogResult(null);
+    setResetDialogError(null);
     try {
       const res = await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || tr("Fehler beim Passwort-Reset.", "Error sending password reset."));
-      setResetResult({ userId: id, resetUrl: data.resetUrl, emailSent: data.emailSent });
+      setResetDialogResult({ resetUrl: data.resetUrl, emailSent: data.emailSent });
     } catch (err: any) {
-      setError(err.message);
+      setResetDialogError(err.message);
     } finally {
-      setResetingUserId(null);
+      setResetLoading(false);
     }
   };
 
@@ -557,12 +570,13 @@ export default function AdminPage() {
                                           size="icon"
                                           variant="ghost"
                                           title={tr("Passwort zurücksetzen", "Reset password")}
-                                          onClick={() => handleResetPassword(user.id)}
-                                          disabled={resetingUserId === user.id}
+                                          onClick={() => {
+                                            setResetConfirmUser(user);
+                                            setResetDialogResult(null);
+                                            setResetDialogError(null);
+                                          }}
                                         >
-                                          {resetingUserId === user.id
-                                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                                            : <KeyRound className="h-4 w-4 text-amber-500" />}
+                                          <KeyRound className="h-4 w-4 text-amber-500" />
                                         </Button>
                                       )}
                                      <Button 
@@ -628,42 +642,6 @@ export default function AdminPage() {
               </Card>
             )}
 
-            {/* Password reset result */}
-            {resetResult && (
-              <Card className="border-amber-200 bg-amber-50">
-                <CardContent className="pt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-amber-800">
-                      {resetResult.emailSent
-                        ? tr("Passwort-Reset-Mail wurde gesendet.", "Password reset email sent.")
-                        : tr("Reset-Link generiert (E-Mail konnte nicht gesendet werden).", "Reset link generated (email could not be sent).")}
-                    </p>
-                    <Button size="icon" variant="ghost" onClick={() => setResetResult(null)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {!resetResult.emailSent && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-amber-700">{tr("Reset-Link:", "Reset link:")}</p>
-                      <div className="flex items-center gap-2">
-                        <Input value={resetResult.resetUrl} readOnly className="h-8 text-xs bg-white" />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            navigator.clipboard.writeText(resetResult.resetUrl);
-                            setLinkCopied(true);
-                            setTimeout(() => setLinkCopied(false), 2000);
-                          }}
-                        >
-                          {linkCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
         </TabsContent>
 
@@ -689,6 +667,146 @@ export default function AdminPage() {
             <AlertRulesTab />
           </TabsContent>
         </Tabs>
+
+      {/* ── Password-Reset Confirmation Dialog ─────────────────────────────── */}
+      <Dialog
+        open={!!resetConfirmUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetConfirmUser(null);
+            setResetDialogResult(null);
+            setResetDialogError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-amber-500" />
+              {tr("Passwort zurücksetzen", "Reset Password")}
+            </DialogTitle>
+            <DialogDescription>
+              {!resetDialogResult
+                ? tr(
+                    "Ein Reset-Link wird an den Benutzer gesendet. Der Link ist 60 Minuten gültig und kann nur einmal verwendet werden.",
+                    "A reset link will be sent to the user. The link is valid for 60 minutes and can only be used once."
+                  )
+                : tr("Der Reset-Link wurde erfolgreich erstellt.", "The reset link was successfully created.")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetConfirmUser && !resetDialogResult && (
+            <div className="space-y-4">
+              {/* User-Info */}
+              <div className="rounded-lg border bg-muted/40 px-4 py-3 space-y-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-12 text-xs text-muted-foreground">{tr("Name", "Name")}</span>
+                  <span className="font-medium">{resetConfirmUser.Name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-12 text-xs text-muted-foreground">{tr("E-Mail", "Email")}</span>
+                  <span className="font-medium">{resetConfirmUser.Email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-12 text-xs text-muted-foreground">{tr("Rolle", "Role")}</span>
+                  <Badge variant="secondary">{resetConfirmUser.Role}</Badge>
+                </div>
+              </div>
+
+              {/* Fehler */}
+              {resetDialogError && (
+                <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{resetDialogError}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Ergebnis nach dem Senden */}
+          {resetDialogResult && (
+            <div className="space-y-4">
+              {resetDialogResult.emailSent ? (
+                <div className="flex items-start gap-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5 text-green-600" />
+                  <div>
+                    <p className="font-medium">{tr("Reset-Mail gesendet", "Reset email sent")}</p>
+                    <p className="text-xs mt-0.5 text-green-700">
+                      {tr(
+                        `Die E-Mail wurde an ${resetConfirmUser?.Email} gesendet.`,
+                        `The email was sent to ${resetConfirmUser?.Email}.`
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600" />
+                    <div>
+                      <p className="font-medium">{tr("E-Mail konnte nicht gesendet werden", "Email could not be sent")}</p>
+                      <p className="text-xs mt-0.5 text-amber-700">
+                        {tr(
+                          "SMTP ist nicht konfiguriert. Bitte teile den Link manuell mit dem Benutzer.",
+                          "SMTP is not configured. Please share the link manually with the user."
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">{tr("Reset-Link zum Kopieren:", "Copy reset link:")}</p>
+                    <div className="flex items-center gap-2">
+                      <Input value={resetDialogResult.resetUrl} readOnly className="h-8 text-xs font-mono bg-muted" />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => {
+                          navigator.clipboard.writeText(resetDialogResult.resetUrl);
+                          setLinkCopied(true);
+                          setTimeout(() => setLinkCopied(false), 2000);
+                        }}
+                      >
+                        {linkCopied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            {!resetDialogResult ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setResetConfirmUser(null)}
+                  disabled={resetLoading}
+                >
+                  {tr("Abbrechen", "Cancel")}
+                </Button>
+                <Button
+                  onClick={() => resetConfirmUser && handleResetPassword(resetConfirmUser.id)}
+                  disabled={resetLoading}
+                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  {resetLoading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" />{tr("Wird gesendet…", "Sending…")}</>
+                  ) : (
+                    <><KeyRound className="h-4 w-4 mr-2" />{tr("Reset-Link senden", "Send reset link")}</>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => { setResetConfirmUser(null); setResetDialogResult(null); }}>
+                {tr("Schließen", "Close")}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

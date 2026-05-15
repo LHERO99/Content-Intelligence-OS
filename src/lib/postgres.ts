@@ -11,7 +11,7 @@
  * automatically inside withTenant().
  */
 import 'server-only';
-import { eq, and, desc, asc, inArray, sql as drizzleSql, gte, lte, lt, notExists } from 'drizzle-orm';
+import { eq, and, desc, asc, inArray, sql as drizzleSql, gte, lte, lt, notExists, isNotNull } from 'drizzle-orm';
 import { db, withTenant, getDefaultTenantId } from './db/index';
 import {
   keywordMap as keywordMapTable,
@@ -135,8 +135,10 @@ function mapKeywordRow(row: typeof keywordMapTable.$inferSelect, editorIds: stri
   };
 }
 
-function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: string, body?: { contentBody: string | null; diffSummary: string | null } | null): ContentLog {
+function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: string, body?: { contentBody: string | null; diffSummary: string | null } | null | boolean): ContentLog {
   const kwIds = keywordId ? [keywordId] : (row.keywordId ? [row.keywordId] : []);
+  // `body` may be a full body object (when loaded on-demand) or a boolean hasBody flag (from list queries)
+  const hasContent = typeof body === 'boolean' ? body : !!(body?.contentBody);
   return {
     id: String(row.id),
     ID: row.id,
@@ -145,9 +147,9 @@ function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: 
     Logged_URL: row.loggedUrl ?? undefined,
     Action_Type: row.actionType as any,
     Page_Type: row.pageType as any,
-    Version: body?.contentBody ? 'v2' : 'v1',
-    Content_Body: body?.contentBody ?? undefined,
-    Diff_Summary: body?.diffSummary ?? undefined,
+    Version: hasContent ? 'v2' : 'v1',
+    Content_Body: typeof body === 'object' && body !== null ? (body.contentBody ?? undefined) : undefined,
+    Diff_Summary: typeof body === 'object' && body !== null ? (body.diffSummary ?? undefined) : undefined,
     Created_At: row.timeCreated.toISOString(),
     Updated_At: row.timeChanged.toISOString(),
     Editor: row.editorId ? [row.editorId] : undefined,
@@ -504,14 +506,19 @@ export async function bulkUpdateKeywordRankings(
 export async function getContentLogs(tenantId?: string): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    // Metadata only — content_body lives in content_log_body and is NOT loaded here
+    // LEFT JOIN on content_log_body to determine Version flag (v1 vs v2).
+    // We only select the FK (contentLogId) to keep the join cheap — no large text fields.
     const rows = await tx
-      .select()
+      .select({
+        log: contentLogTable,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+      })
       .from(contentLogTable)
+      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(eq(contentLogTable.tenantId, tenant))
       .orderBy(desc(contentLogTable.timeCreated))
       .limit(200);
-    return rows.map(r => mapContentLogRow(r));
+    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, r.hasBody));
   });
 }
 
@@ -523,11 +530,15 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
     const rows = await tx
-      .select()
+      .select({
+        log: contentLogTable,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+      })
       .from(contentLogTable)
+      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.loggedUrl, targetUrl)))
       .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r));
+    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, r.hasBody));
   });
 }
 
@@ -535,11 +546,15 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
     const rows = await tx
-      .select()
+      .select({
+        log: contentLogTable,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+      })
       .from(contentLogTable)
+      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.keywordId, keywordId)))
       .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r, keywordId));
+    return rows.map(r => mapContentLogRow(r.log, keywordId, r.hasBody));
   });
 }
 

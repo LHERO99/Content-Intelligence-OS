@@ -571,11 +571,15 @@ export function AlertRulesTab() {
                       </TableCell>
                       <TableCell className="max-w-[140px]">
                         <div className="flex flex-wrap gap-1">
-                          {rule.notifyEmails.slice(0, 2).map((email) => (
-                            <Badge key={email} variant="outline" className="text-[10px] truncate max-w-[100px]" title={email}>
-                              {email}
-                            </Badge>
-                          ))}
+                          {rule.notifyEmails.slice(0, 2).map((email) => {
+                            const u = users.find((u) => u.Email === email);
+                            const label = u?.Name ?? email;
+                            return (
+                              <Badge key={email} variant="outline" className="text-[10px] truncate max-w-[100px]" title={email}>
+                                {label}
+                              </Badge>
+                            );
+                          })}
                           {rule.notifyEmails.length > 2 && (
                             <Badge variant="outline" className="text-[10px]">
                               +{rule.notifyEmails.length - 2}
