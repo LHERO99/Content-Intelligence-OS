@@ -48,7 +48,10 @@ function buildJobEntries(
   contentLogs: ContentLog[],
   keywords: KeywordMap[],
 ): JobEntry[] {
-  const kwMap = new Map(keywords.map((k) => [k.id, k]));
+  const kwMap: Record<string, KeywordMap> = {};
+  keywords.forEach((k) => {
+    kwMap[k.id] = k;
+  });
 
   // All commissioning events, newest first (logs are already sorted desc by API)
   const commissioningLogs = contentLogs.filter(
@@ -61,14 +64,15 @@ function buildJobEntries(
   );
 
   return commissioningLogs.map((cl): JobEntry => {
-    const kw = kwMap.get(cl.Keyword_ID[0]);
+    const kwId = cl.Keyword_ID[0];
+    const kw = kwMap[kwId];
     const commissionedAt = cl.Created_At;
 
     // Find the next delivery log for the same keyword that came AFTER this commissioning
     const delivery = deliveryLogs
       .filter(
         (dl) =>
-          dl.Keyword_ID[0] === cl.Keyword_ID[0] &&
+          dl.Keyword_ID[0] === kwId &&
           new Date(dl.Created_At).getTime() > new Date(commissionedAt).getTime(),
       )
       // pick the earliest delivery after this commissioning (not a later cycle)
@@ -79,8 +83,8 @@ function buildJobEntries(
     return {
       commissionLogId: cl.ID,
       commissionedAt,
-      keywordId: cl.Keyword_ID[0],
-      keyword: kw?.Keyword ?? cl.Keyword_ID[0],
+      keywordId: kwId,
+      keyword: kw?.Keyword ?? kwId,
       targetUrl: kw?.Target_URL ?? cl.Target_URL,
       actionType: (cl.Action_Type === 'Optimierung' ? 'Optimierung' : 'Erstellung') as 'Erstellung' | 'Optimierung',
       keywordStatus,
