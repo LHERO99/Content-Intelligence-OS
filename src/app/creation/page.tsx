@@ -1,146 +1,247 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { KeywordMap, ContentLog } from '@/lib/postgres-types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { KeywordMap, ContentLog, KeywordStatus } from '@/lib/postgres-types';
 import { triggerN8nAction } from '@/lib/n8n';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
-import { Loader2, Send, Zap, Clock, FileText, AlertTriangle, RefreshCw, Map } from 'lucide-react';
+import {
+  Loader2, Send, Zap, Clock, FileText, AlertTriangle,
+  RefreshCw, Map, ChevronLeft, ChevronRight,
+} from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useI18n } from '@/i18n/use-i18n';
 import { toLocaleTag } from '@/i18n/locale-utils';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/**
+ * One entry in the Auftrags-Liste = one commissioning event.
+ * Derived from a single "Content wurde beauftragt" log entry.
+ */
+interface JobEntry {
+  /** ID of the "Content wurde beauftragt" content_log row */
+  commissionLogId: number;
+  commissionedAt: string;
+  keywordId: string;
+  keyword: string;
+  targetUrl?: string;
+  actionType: 'Erstellung' | 'Optimierung';
+  keywordStatus: KeywordStatus;
+  /** ID of the next "Content angeliefert" log after this commissioning event */
+  deliveryLogId?: number;
+  /** True when the keyword was reset to Planned after a failed run */
+  isFailedRetry: boolean;
+}
+
+const PAGE_SIZE = 20;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildJobEntries(
+  contentLogs: ContentLog[],
+  keywords: KeywordMap[],
+): JobEntry[] {
+  const kwMap = new Map(keywords.map((k) => [k.id, k]));
+
+  // All commissioning events, newest first (logs are already sorted desc by API)
+  const commissioningLogs = contentLogs.filter(
+    (l) => l.Event_Label === 'Content wurde beauftragt',
+  );
+
+  // All delivery logs indexed by keywordId for fast lookup
+  const deliveryLogs = contentLogs.filter(
+    (l) => l.Event_Label === 'Content angeliefert' && l.Version === 'v2',
+  );
+
+  return commissioningLogs.map((cl): JobEntry => {
+    const kw = kwMap.get(cl.Keyword_ID[0]);
+    const commissionedAt = cl.Created_At;
+
+    // Find the next delivery log for the same keyword that came AFTER this commissioning
+    const delivery = deliveryLogs
+      .filter(
+        (dl) =>
+          dl.Keyword_ID[0] === cl.Keyword_ID[0] &&
+          new Date(dl.Created_At).getTime() > new Date(commissionedAt).getTime(),
+      )
+      // pick the earliest delivery after this commissioning (not a later cycle)
+      .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+
+    const keywordStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+
+    return {
+      commissionLogId: cl.ID,
+      commissionedAt,
+      keywordId: cl.Keyword_ID[0],
+      keyword: kw?.Keyword ?? cl.Keyword_ID[0],
+      targetUrl: kw?.Target_URL ?? cl.Target_URL,
+      actionType: (cl.Action_Type === 'Optimierung' ? 'Optimierung' : 'Erstellung') as 'Erstellung' | 'Optimierung',
+      keywordStatus,
+      deliveryLogId: delivery?.ID,
+      // Failed = keyword reset to Planned with no delivery yet
+      isFailedRetry: keywordStatus === 'Planned' && !delivery,
+    };
+  });
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CreationPage() {
   const { locale, t } = useI18n();
   const localeTag = toLocaleTag(locale);
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
+
   const [keywords, setKeywords] = useState<KeywordMap[]>([]);
-  const [selectedKeywordId, setSelectedKeywordId] = useState<string>('');
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState<string | null>(null);
-  // Body cache: logId → { Content_Body, Event_Label }
-  const [bodyCache, setBodyCache] = useState<Record<string, { Content_Body?: string; Event_Label?: string }>>({});
 
-  const handleRetry = async (kw: KeywordMap) => {
+  // Which job row is selected (commission log id as string key)
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+
+  // Pagination
+  const [jobPage, setJobPage] = useState(0);
+
+  // Body cache: logId → { Content_Body, Event_Label }
+  const [bodyCache, setBodyCache] = useState<
+    Record<string, { Content_Body?: string; Event_Label?: string }>
+  >({});
+
+  // ── Data fetching ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [kwRes, logRes] = await Promise.all([
+          fetch('/api/planning/keywords'),
+          fetch('/api/planning/history'),
+        ]);
+        const kwData = await kwRes.json();
+        const logData = await logRes.json();
+        setKeywords(Array.isArray(kwData) ? kwData : kwData?.sampleRecords ?? []);
+        setContentLogs(Array.isArray(logData) ? logData : []);
+      } catch {
+        toast.error(t('creation.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    const onRefresh = () => fetchData();
+    window.addEventListener('refresh-planning-data', onRefresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refresh-planning-data', onRefresh);
+    };
+  }, []);
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
+  const allJobs = useMemo(
+    () => buildJobEntries(contentLogs, keywords),
+    [contentLogs, keywords],
+  );
+
+  const totalPages = Math.ceil(allJobs.length / PAGE_SIZE);
+  const pagedJobs = allJobs.slice(jobPage * PAGE_SIZE, (jobPage + 1) * PAGE_SIZE);
+
+  const selectedJob = allJobs.find((j) => j.commissionLogId === selectedJobId) ?? null;
+
+  // Keyword record for the selected job (needed by AIEditorWorkspace)
+  const selectedKeyword = selectedJob
+    ? keywords.find((k) => k.id === selectedJob.keywordId)
+    : null;
+
+  // ── Body on-demand loading ───────────────────────────────────────────────────
+  const deliveryLogId = selectedJob?.deliveryLogId
+    ? String(selectedJob.deliveryLogId)
+    : null;
+
+  useEffect(() => {
+    if (!deliveryLogId || bodyCache[deliveryLogId] !== undefined) return;
+    fetch(`/api/planning/history/${deliveryLogId}/body`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setBodyCache((prev) => ({ ...prev, [deliveryLogId]: data }));
+      })
+      .catch(() => {/* non-critical */});
+  }, [deliveryLogId]);
+
+  const deliveredBody = deliveryLogId ? bodyCache[deliveryLogId] : undefined;
+  const v2Content = deliveredBody?.Content_Body ?? '';
+
+  // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)
+  const v1Content = useMemo(() => {
+    if (!selectedJob) return '';
+    return (
+      contentLogs
+        .filter(
+          (l) =>
+            l.Keyword_ID[0] === selectedJob.keywordId && l.Version === 'v1',
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime(),
+        )[0]?.Content_Body ?? ''
+    );
+  }, [selectedJob, contentLogs]);
+
+  // ── Retry handler ────────────────────────────────────────────────────────────
+  const handleRetry = async (job: JobEntry) => {
     try {
-      setRetrying(kw.id);
-      await triggerN8nAction('COMMISSION_CONTENT', {
-        keywordId: kw.id,
-        keyword: kw.Keyword || '',
-        targetUrl: kw.Target_URL || '',
+      setRetrying(String(job.commissionLogId));
+      const actionType =
+        job.actionType === 'Optimierung' ? 'COMMISSION_OPTIMIZATION' : 'COMMISSION_CONTENT';
+      await triggerN8nAction(actionType, {
+        keywordId: job.keywordId,
+        keyword: job.keyword,
+        targetUrl: job.targetUrl ?? '',
       });
       toast.success(tr('Content erneut beauftragt.', 'Content re-commissioned.'));
-    } catch (err) {
+    } catch {
       toast.error(tr('Fehler beim erneuten Beauftragen.', 'Error re-commissioning content.'));
     } finally {
       setRetrying(null);
     }
   };
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [kwRes, logRes] = await Promise.all([
-          fetch('/api/planning/keywords'),
-          fetch('/api/planning/history')
-        ]);
-        
-        const kwData = await kwRes.json();
-        const logData = await logRes.json();
-        
-        const keywordsArray = Array.isArray(kwData) ? kwData : (kwData?.sampleRecords || []);
-        setKeywords(keywordsArray);
-        setContentLogs(Array.isArray(logData) ? logData : []);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-        toast.error(t('creation.loadError'));
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-
-    const interval = setInterval(fetchData, 5000);
-    const handleRefresh = () => fetchData();
-    window.addEventListener("refresh-planning-data", handleRefresh);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("refresh-planning-data", handleRefresh);
-    };
-  }, []);
-
-  const selectedKeyword = keywords.find((k) => k.id === selectedKeywordId);
-  
-  const commissionedKeywords = keywords.filter(kw => {
-    // Only show records that have been commissioned (Beauftragt, In Arbeit, Angeliefert, Review, Optimierung)
-    // EXCLUDE Planned, Backlog from this view.
-    const pipelineStatuses = ['Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung', 'Published'];
-    const hasCorrectStatus = pipelineStatuses.includes(kw.Status);
-    
-    // Explicitly exclude statuses that shouldn't be in the commissioned list
-    // Records that are just 'Planned' stay in the Editorial Plan
-    if (kw.Status === 'Backlog') return false;
-
-    const hasAnyHistory = contentLogs.some(l => 
-      Array.isArray(l.Keyword_ID) && 
-      l.Keyword_ID.includes(kw.id)
-    );
-    // "Planned" keywords with history = previously commissioned but failed → show for retry
-    return hasCorrectStatus || hasAnyHistory;
-  });
-
-  // A keyword is in "failed" state when it was reset to Planned but has prior history
-  const isFailedKeyword = (kw: KeywordMap) =>
-    kw.Status === 'Planned' &&
-    contentLogs.some(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-
-  const relevantLogs = contentLogs.filter((log) => 
-    Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(selectedKeywordId)
-  );
-  
-  const v2Log = relevantLogs.find((log) => log.Version === 'v2');
-  const v2LogId = v2Log?.ID ? String(v2Log.ID) : null;
-
-  // Load body on-demand when a v2 log is detected for the selected keyword.
-  // Results are cached so we don't re-fetch on every 5s polling tick.
-  useEffect(() => {
-    if (!v2LogId || bodyCache[v2LogId] !== undefined) return;
-    fetch(`/api/planning/history/${v2LogId}/body`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          setBodyCache((prev) => ({ ...prev, [v2LogId]: data }));
-        }
-      })
-      .catch(() => {/* non-critical */});
-  }, [v2LogId]);
-
-  const v2Body = v2LogId ? bodyCache[v2LogId] : undefined;
-  const v1Content = relevantLogs.find((log) => log.Version === 'v1')?.Content_Body || '';
-  const v2Content = v2Body?.Content_Body || '';
-  
-  const statusLabelMap: Record<string, string> = {
-    'Beauftragt': tr('Beauftragt', 'Commissioned'),
-    'In Arbeit': tr('In Arbeit', 'In progress'),
-    'Angeliefert': tr('Angeliefert', 'Delivered'),
-    'Review': tr('Review', 'Review'),
-    'Optimierung': tr('Optimierung', 'Optimization'),
-    'Published': tr('Veröffentlicht', 'Published'),
-    'Erstellung': tr('Erstellung', 'Creation'),
+  // ── Status badge styling ─────────────────────────────────────────────────────
+  const statusBadgeClass = (job: JobEntry) => {
+    if (job.isFailedRetry) return 'bg-red-100 text-red-700 border-red-200';
+    const s = job.keywordStatus;
+    if (s === 'Beauftragt' || s === 'In Arbeit')
+      return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (s === 'Angeliefert') return 'bg-primary text-primary-foreground border-primary';
+    if (s === 'Review') return 'bg-purple-100 text-purple-700 border-purple-200';
+    if (s === 'Optimierung') return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+    return 'bg-primary/15 text-primary border-primary/25';
   };
 
-  const latestLogWithAction = [...relevantLogs].sort((a, b) => 
-    new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime()
-  ).find(log => log.Action_Type === 'Erstellung' || log.Action_Type === 'Optimierung');
-  
-  const creationMode = latestLogWithAction?.Action_Type || 'Erstellung';
+  const statusLabel = (job: JobEntry) => {
+    if (job.isFailedRetry) return tr('Fehlgeschlagen', 'Failed');
+    const s = job.keywordStatus;
+    if (s === 'Beauftragt' || s === 'In Arbeit') return t('creation.inProgress');
+    if (s === 'Published') return tr('Veröffentlicht', 'Published');
+    return s;
+  };
 
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return (
+      d.toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+      ', ' +
+      d.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' })
+    );
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 text-primary">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
@@ -156,96 +257,77 @@ export default function CreationPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-          {/* Left Side: Aufträge List */}
+          {/* ── Left: Auftrags-Liste ─────────────────────────────────────────── */}
           <Card className="lg:col-span-4 flex flex-col overflow-hidden border-primary/20 h-full">
             <CardHeader className="bg-primary/10 border-b border-primary/20 py-4 shrink-0">
               <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
                 <Zap className="h-5 w-5 fill-primary text-primary" />
                 {t('creation.jobs')}
+                {allJobs.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto bg-primary/10 text-primary text-xs">
+                    {allJobs.length}
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-hidden">
-              <ScrollArea className="h-full">
+
+            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+              <ScrollArea className="flex-1">
                 <Table>
                   <TableHeader className="bg-primary/5 sticky top-0 z-10">
                     <TableRow>
-                      <TableHead className="text-primary font-bold">{tr('Keyword', 'Keyword')}</TableHead>
+                      <TableHead className="text-primary font-bold">{tr('Auftrag', 'Job')}</TableHead>
                       <TableHead className="text-primary font-bold text-right">{tr('Status', 'Status')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {commissionedKeywords.length > 0 ? (
-                      commissionedKeywords.map((kw) => (
-                        <TableRow 
-                          key={kw.id} 
+                    {pagedJobs.length > 0 ? (
+                      pagedJobs.map((job) => (
+                        <TableRow
+                          key={job.commissionLogId}
                           className={cn(
-                            "cursor-pointer transition-all hover:bg-primary/10 relative",
-                            selectedKeywordId === kw.id 
-                              ? "bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]" 
-                              : "border-l-4 border-l-transparent"
+                            'cursor-pointer transition-all hover:bg-primary/10 relative',
+                            selectedJobId === job.commissionLogId
+                              ? 'bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]'
+                              : 'border-l-4 border-l-transparent',
                           )}
-                          onClick={() => setSelectedKeywordId(kw.id)}
+                          onClick={() => setSelectedJobId(job.commissionLogId)}
                         >
                           <TableCell className="font-medium">
                             <div className="flex flex-col gap-1 py-1">
-                              <span className="text-sm font-bold leading-tight">{kw.Keyword}</span>
-                              {kw.Target_URL && (
+                              <span className="text-sm font-bold leading-tight">{job.keyword}</span>
+                              {job.targetUrl && (
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
                                   <FileText className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">{kw.Target_URL.replace(/^https?:\/\/(www\.)?/, '')}</span>
+                                  <span className="truncate">
+                                    {job.targetUrl.replace(/^https?:\/\/(www\.)?/, '')}
+                                  </span>
                                 </div>
                               )}
                               <div className="flex items-center gap-1.5 mt-1">
-                                {(() => {
-                                  const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                  const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())
-                                    .find(l => l.Action_Type === 'Erstellung' || l.Action_Type === 'Optimierung');
-                                  const type = statusLabelMap[latestLog?.Action_Type || 'Erstellung'] || (latestLog?.Action_Type || 'Erstellung');
-                                  return (
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50">
-                                      {type}
-                                    </Badge>
-                                  );
-                                })()}
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    'text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50',
+                                    job.actionType === 'Optimierung' &&
+                                      'border-indigo-200 text-indigo-600 bg-indigo-50/50',
+                                  )}
+                                >
+                                  {job.actionType}
+                                </Badge>
                                 <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
                                   <Clock className="h-3 w-3 text-slate-400" />
-                                  {t('creation.commissioned')}: {(() => {
-                                    const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                    const firstLog = [...logs].sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
-                                    const timestamp = firstLog?.Created_At;
-                                    if (timestamp) {
-                                      const date = new Date(timestamp);
-                                       return date.toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + date.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
-                                     }
-                                    return new Date().toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' });
-                                  })()}
+                                  {formatDate(job.commissionedAt)}
                                 </span>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Badge 
-                              variant="secondary" 
-                              className={cn(
-                                "whitespace-nowrap",
-                                isFailedKeyword(kw)
-                                  ? 'bg-red-100 text-red-700 border-red-200'
-                                  : (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
-                                  ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                                  : kw.Status === 'Angeliefert'
-                                  ? 'bg-primary text-primary-foreground border-primary'
-                                  : kw.Status === 'Review' 
-                                  ? 'bg-purple-100 text-purple-700 border-purple-200'
-                                  : kw.Status === 'Optimierung'
-                                  ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                                  : 'bg-primary/15 text-primary border-primary/25'
-                              )}
+                            <Badge
+                              variant="secondary"
+                              className={cn('whitespace-nowrap', statusBadgeClass(job))}
                             >
-                              {isFailedKeyword(kw)
-                                ? tr('Fehlgeschlagen', 'Failed')
-                                : (kw.Status === 'Beauftragt' || kw.Status === 'In Arbeit')
-                                ? t('creation.inProgress')
-                                : kw.Status}
+                              {statusLabel(job)}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -255,10 +337,17 @@ export default function CreationPage() {
                         <TableCell colSpan={2} className="py-8">
                           <div className="flex flex-col items-center gap-2 text-center px-4 w-full">
                             <Map className="h-7 w-7 text-primary/30 shrink-0" />
-                            <p className="text-xs font-medium text-primary leading-snug">{t("onboarding.keywordMapRequired")}</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">{t("onboarding.keywordMapRequiredDesc")}</p>
-                            <Link href="/planning?tab=keyword-map" className="text-[11px] text-primary underline hover:no-underline font-medium">
-                              {t("onboarding.goToKeywordMap")}
+                            <p className="text-xs font-medium text-primary leading-snug">
+                              {t('onboarding.keywordMapRequired')}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                              {t('onboarding.keywordMapRequiredDesc')}
+                            </p>
+                            <Link
+                              href="/planning?tab=keyword-map"
+                              className="text-[11px] text-primary underline hover:no-underline font-medium"
+                            >
+                              {t('onboarding.goToKeywordMap')}
                             </Link>
                           </div>
                         </TableCell>
@@ -273,12 +362,45 @@ export default function CreationPage() {
                   </TableBody>
                 </Table>
               </ScrollArea>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="shrink-0 flex items-center justify-between border-t border-primary/10 px-3 py-2 bg-primary/5">
+                  <span className="text-[11px] text-muted-foreground">
+                    {jobPage * PAGE_SIZE + 1}–{Math.min((jobPage + 1) * PAGE_SIZE, allJobs.length)}{' '}
+                    {tr('von', 'of')} {allJobs.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      disabled={jobPage === 0}
+                      onClick={() => setJobPage((p) => p - 1)}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-[11px] font-medium text-primary tabular-nums">
+                      {jobPage + 1} / {totalPages}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      disabled={jobPage >= totalPages - 1}
+                      onClick={() => setJobPage((p) => p + 1)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Right Side: Editor & Preview */}
+          {/* ── Right: Editor & Preview ──────────────────────────────────────── */}
           <div className="lg:col-span-8 flex flex-col gap-4 overflow-hidden h-full">
-            {!selectedKeywordId ? (
+            {!selectedJob ? (
               <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-primary/30 rounded-xl bg-white/50">
                 <Send className="w-12 h-12 text-primary/40 mb-4" />
                 <h2 className="text-xl font-medium text-primary">{t('creation.selectJob')}</h2>
@@ -288,12 +410,23 @@ export default function CreationPage() {
                 <div className="flex items-center justify-between shrink-0">
                   <h3 className="text-lg font-bold text-primary flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    {t('creation.preview')}: {selectedKeyword?.Keyword}
+                    {t('creation.preview')}: {selectedJob.keyword}
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'ml-1 text-xs font-semibold',
+                        selectedJob.actionType === 'Optimierung'
+                          ? 'border-indigo-300 text-indigo-600 bg-indigo-50'
+                          : 'border-slate-200 text-slate-600 bg-slate-50',
+                      )}
+                    >
+                      {selectedJob.actionType}
+                    </Badge>
                   </h3>
                 </div>
-                
+
                 <div className="flex-1 min-h-0">
-                  {isFailedKeyword(selectedKeyword!) ? (
+                  {selectedJob.isFailedRetry ? (
                     <div className="flex flex-col items-center justify-center h-full border border-red-200 rounded-lg bg-red-50/40 gap-4 p-8 text-center">
                       <AlertTriangle className="h-10 w-10 text-red-500" />
                       <div>
@@ -303,19 +436,19 @@ export default function CreationPage() {
                         <p className="text-xs text-red-500 mt-1">
                           {tr(
                             'Der letzte Ausführungsversuch ist fehlgeschlagen. Du kannst den Auftrag erneut anstoßen.',
-                            'The last execution attempt failed. You can re-commission the content.'
+                            'The last execution attempt failed. You can re-commission the content.',
                           )}
                         </p>
                       </div>
                       <button
-                        onClick={() => handleRetry(selectedKeyword!)}
-                        disabled={retrying === selectedKeyword!.id}
+                        onClick={() => handleRetry(selectedJob)}
+                        disabled={retrying === String(selectedJob.commissionLogId)}
                         className={cn(
-                          "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                          "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          'inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                          'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed',
                         )}
                       >
-                        {retrying === selectedKeyword!.id ? (
+                        {retrying === String(selectedJob.commissionLogId) ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <RefreshCw className="h-4 w-4" />
@@ -327,16 +460,18 @@ export default function CreationPage() {
                     <div className="flex flex-col items-center justify-center h-full border rounded-lg bg-muted/10">
                       <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                       <p className="text-sm text-muted-foreground">{t('creation.generating')}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1 italic">{t('creation.generatingHint')}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 italic">
+                        {t('creation.generatingHint')}
+                      </p>
                     </div>
                   ) : (
-                    <AIEditorWorkspace 
-                      v1Content={v1Content} 
-                      v2Content={v2Content} 
-                      mode={creationMode as any}
-                      keywordId={selectedKeywordId}
-                      keyword={selectedKeyword?.Keyword || ''}
-                      currentStatus={selectedKeyword?.Status || 'Beauftragt'}
+                    <AIEditorWorkspace
+                      v1Content={v1Content}
+                      v2Content={v2Content}
+                      mode={selectedJob.actionType}
+                      keywordId={selectedJob.keywordId}
+                      keyword={selectedJob.keyword}
+                      currentStatus={selectedKeyword?.Status ?? 'Beauftragt'}
                     />
                   )}
                 </div>
