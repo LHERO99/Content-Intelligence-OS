@@ -223,6 +223,19 @@ export function KeywordImport() {
     }
   };
 
+  const downloadTemplate = () => {
+    const rows = [
+      { Keyword: "main keyword url 1",      Target_URL: "/beispiel-url", Search_Volume: 1000, Difficulty: 45, Ranking: 12, Main_Keyword: "Y", Article_Count: 1, Avg_Product_Value: 29.99, Page_Type: "Ratgeber" },
+      { Keyword: "secondary keyword url 1", Target_URL: "/beispiel-url", Search_Volume: 500,  Difficulty: 30, Ranking: 25, Main_Keyword: "N", Article_Count: 1, Avg_Product_Value: 29.99, Page_Type: "Ratgeber" },
+      { Keyword: "main keyword url 2",      Target_URL: "/weitere-url",  Search_Volume: 800,  Difficulty: 38, Ranking: 8,  Main_Keyword: "Y", Article_Count: 1, Avg_Product_Value: 0,     Page_Type: "Kategorie" },
+      { Keyword: "main keyword url 3",      Target_URL: "/dritte-url",   Search_Volume: 600,  Difficulty: 22, Ranking: 15, Main_Keyword: "Y", Article_Count: 1, Avg_Product_Value: 0,     Page_Type: "Marke" },
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Keywords");
+    XLSX.writeFile(workbook, tr("plexaro_keyword_vorlage.xlsx", "plexaro_keyword_template.xlsx"));
+  };
+
   const downloadSkipped = () => {
     if (skippedRecords.length === 0) return;
     const worksheet = XLSX.utils.json_to_sheet(skippedRecords);
@@ -270,6 +283,17 @@ export function KeywordImport() {
                 <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                   <FileSpreadsheet className="h-3 w-3" /> XLSX / XLS
                 </div>
+              </div>
+              <div onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-primary gap-1.5 mt-1"
+                  onClick={downloadTemplate}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {tr("Beispieldatei herunterladen", "Download template")}
+                </Button>
               </div>
               <input
                 type="file"
