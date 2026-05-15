@@ -13,6 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Bot,
   CheckCircle2,
   AlertTriangle,
@@ -56,6 +64,7 @@ export function AgentSettingsTab() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
+  const [showExternalDialog, setShowExternalDialog] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -252,7 +261,11 @@ export function AgentSettingsTab() {
           {/* External option */}
           <button
             type="button"
-            onClick={() => setMode("external")}
+            onClick={() => {
+              if (mode !== "external") {
+                setShowExternalDialog(true);
+              }
+            }}
             className={`w-full text-left rounded-lg border-2 p-4 transition-colors ${
               isExternal
                 ? "border-primary bg-primary/5"
@@ -495,6 +508,95 @@ export function AgentSettingsTab() {
           </Button>
         </div>
       </div>
+
+      {/* External Webhook Setup Dialog */}
+      <Dialog open={showExternalDialog} onOpenChange={setShowExternalDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              {tr("Externer Webhook einrichten", "Set up External Webhook")}
+            </DialogTitle>
+            <DialogDescription>
+              {tr(
+                "Damit angelieferter Content vom System korrekt verarbeitet wird, muss dein externer Agent folgende Anforderungen erfüllen.",
+                "For delivered content to be processed correctly, your external agent must meet the following requirements."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            {/* Callback fields */}
+            <div>
+              <p className="font-semibold mb-2">{tr("1. Pflichtfelder im Callback-Body", "1. Required fields in callback body")}</p>
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/60">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">{tr("Feld", "Field")}</th>
+                      <th className="text-left px-3 py-2 font-medium">{tr("Typ", "Type")}</th>
+                      <th className="text-left px-3 py-2 font-medium">{tr("Beschreibung", "Description")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    <tr>
+                      <td className="px-3 py-2 font-mono text-primary">keywordId</td>
+                      <td className="px-3 py-2 text-muted-foreground">string</td>
+                      <td className="px-3 py-2 text-muted-foreground">{tr("Aus dem empfangenen Payload übernehmen", "Pass through from received payload")}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-mono text-primary">content</td>
+                      <td className="px-3 py-2 text-muted-foreground">string</td>
+                      <td className="px-3 py-2 text-muted-foreground">{tr("Fertiger HTML-Content", "Finished HTML content")}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-mono text-primary">tenantId</td>
+                      <td className="px-3 py-2 text-muted-foreground">string</td>
+                      <td className="px-3 py-2 text-muted-foreground">{tr("Aus dem empfangenen Payload übernehmen", "Pass through from received payload")}</td>
+                    </tr>
+                    <tr className="opacity-60">
+                      <td className="px-3 py-2 font-mono">actionType</td>
+                      <td className="px-3 py-2 text-muted-foreground">string?</td>
+                      <td className="px-3 py-2 text-muted-foreground">{tr("\"Erstellung\" oder \"Optimierung\" (optional)", "\"Erstellung\" or \"Optimierung\" (optional)")}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Auth */}
+            <div>
+              <p className="font-semibold mb-2">{tr("2. Authentifizierung", "2. Authentication")}</p>
+              <p className="text-muted-foreground mb-1.5">
+                {tr(
+                  "Jeder Callback-Request muss folgenden Header enthalten:",
+                  "Every callback request must include the following header:"
+                )}
+              </p>
+              <code className="block bg-muted rounded px-3 py-2 font-mono text-xs">
+                X-API-KEY: {webhookSecret || tr("<dein-webhook-secret>", "<your-webhook-secret>")}
+              </code>
+            </div>
+
+            {/* Callback URL */}
+            <div>
+              <p className="font-semibold mb-2">{tr("3. Callback-URL", "3. Callback URL")}</p>
+              <code className="block bg-muted rounded px-3 py-2 font-mono text-xs break-all">
+                POST {process.env.NEXT_PUBLIC_APP_URL ?? "<APP_BASE_URL>"}/api/agent-webhook/callback
+              </code>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setShowExternalDialog(false)}>
+              {tr("Abbrechen", "Cancel")}
+            </Button>
+            <Button onClick={() => { setMode("external"); setShowExternalDialog(false); }}>
+              {tr("Verstanden, weiter", "Got it, continue")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
