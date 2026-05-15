@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
       ok: response.ok,
       status: response.status,
       message: response.ok
-        ? `Webhook reachable (HTTP ${response.status}).`
-        : `Webhook returned HTTP ${response.status}.`,
+        ? `Verbindung erfolgreich (HTTP ${response.status})`
+        : `Webhook nicht erreichbar (HTTP ${response.status})`,
     });
   } catch (err: any) {
     const isTimeout = err?.name === "AbortError";

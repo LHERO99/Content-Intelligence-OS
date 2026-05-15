@@ -163,7 +163,7 @@ export function AgentSettingsTab() {
       });
       const body = await res.json().catch(() => ({}));
       setPingResult({
-        ok: res.ok,
+        ok: body.ok ?? res.ok,
         status: body.status ?? res.status,
         message:
           body.message ??
@@ -386,7 +386,7 @@ export function AgentSettingsTab() {
   "pageType": "Ratgeber",
   "actionType": "Erstellung",
   "tenantId": "default",
-  "callbackUrl": "${process.env.NEXTAUTH_URL ?? process.env.APP_BASE_URL ?? '<APP_BASE_URL>'}/api/agent-webhook/callback"
+  "callbackUrl": "${process.env.NEXT_PUBLIC_APP_URL ?? '<APP_BASE_URL>'}/api/agent-webhook/callback"
 }`}
             </pre>
           </div>
