@@ -198,7 +198,8 @@ export default function CreationPage() {
                               <div className="flex items-center gap-1.5 mt-1">
                                 {(() => {
                                   const logs = contentLogs.filter(l => Array.isArray(l.Keyword_ID) && l.Keyword_ID.includes(kw.id));
-                                  const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())[0];
+                                  const latestLog = [...logs].sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime())
+                                    .find(l => l.Action_Type === 'Erstellung' || l.Action_Type === 'Optimierung');
                                   const type = statusLabelMap[latestLog?.Action_Type || 'Erstellung'] || (latestLog?.Action_Type || 'Erstellung');
                                   return (
                                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50">

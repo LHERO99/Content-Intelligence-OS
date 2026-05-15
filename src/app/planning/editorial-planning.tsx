@@ -110,8 +110,9 @@ export function EditorialPlanning({ keywords, onGoToKeywordMap }: EditorialPlann
       addAlert({ title: "Erfolg", message: "Content beauftragt.", type: "success" });
 
       const keyword = keywords.find(k => k.id === id);
+      const actionType = keyword?.Action_Type === 'Optimierung' ? 'COMMISSION_OPTIMIZATION' : 'COMMISSION_CONTENT';
 
-      await triggerN8nAction('COMMISSION_CONTENT', {
+      await triggerN8nAction(actionType, {
         keywordId: id,
         keyword: keyword?.Keyword || '',
         targetUrl: keyword?.Target_URL || '',

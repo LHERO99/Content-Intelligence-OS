@@ -32,14 +32,20 @@ export async function POST(req: NextRequest) {
 
     // 3. Status update and Logging for Commissioning
     if ((action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") && data.keywordId) {
-      await updateKeyword(data.keywordId, { Status: "Beauftragt" }, tenantId);
+      // Prioritize the requested action type for the log entry
+      const commissioningActionType = action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung";
+      
+      await updateKeyword(data.keywordId, { 
+        Status: "Beauftragt",
+        Action_Type: commissioningActionType 
+      }, tenantId);
       
       // Log event to database
       try {
         await createContentLog({
           Keyword_ID: [data.keywordId],
           Target_URL: data.targetUrl,
-          Action_Type: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
+          Action_Type: commissioningActionType,
           Event_Label: "Content wurde beauftragt",
           Editor: session.user?.id ? [session.user.id] : undefined
         }, tenantId);
