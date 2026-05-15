@@ -525,7 +525,7 @@ export async function getContentLogs(tenantId?: string): Promise<ContentLog[]> {
     const rows = await tx
       .select({
         log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
         eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
@@ -547,7 +547,7 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
     const rows = await tx
       .select({
         log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
         eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
@@ -572,7 +572,7 @@ export async function getContentHistoryByUrlOrKeywords(
     const rows = await tx
       .select({
         log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
         eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
@@ -598,7 +598,7 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
     const rows = await tx
       .select({
         log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
         eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
