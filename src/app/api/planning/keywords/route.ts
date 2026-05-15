@@ -272,12 +272,6 @@ export async function PATCH(request: Request) {
       nextPayload.Priority_Score = enriched.Priority_Score;
     }
 
-    // When a keyword transitions to 'Planned', reset Action_Type to 'Erstellung' so it
-    // leaves the Vorschläge tab and only re-appears when a new optimization is commissioned.
-    if (updates.Status === 'Planned') {
-      nextPayload.Action_Type = 'Erstellung';
-    }
-
     const result = await updateKeywordWithEditorFallback(id, nextPayload, tenantId);
 
     // 3. Status Transition Logging

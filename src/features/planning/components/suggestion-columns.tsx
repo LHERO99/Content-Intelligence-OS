@@ -16,10 +16,14 @@ const AddToEditorialButton = ({ row }: { row: any }) => {
     e.stopPropagation();
     setLoading(true);
     try {
+      // Use the existing Action_Type from the row if available, 
+      // otherwise fallback to logic based on current status
+      const existingActionType = row.original.Action_Type;
       const isPublished = row.original.Status === "Published";
+      
       await PlanningService.updateKeyword(row.original.id, { 
         Status: "Planned",
-        Action_Type: isPublished ? "Optimierung" : "Erstellung"
+        Action_Type: existingActionType || (isPublished ? "Optimierung" : "Erstellung")
       });
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
     } catch (error) {
