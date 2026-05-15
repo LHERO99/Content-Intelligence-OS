@@ -210,15 +210,15 @@ export function AIEditorWorkspace({
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <div className="inline-block">
                   <Button
                     onClick={handlePublish}
                     disabled={isSaving || isPublished || currentStatus !== 'Angeliefert'}
                     className={cn(
                       "gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider transition-all",
-                      isPublished 
-                        ? "bg-green-600 hover:bg-green-700 text-white" 
+                      isPublished
+                        ? "bg-green-600 hover:bg-green-700 text-white"
                         : currentStatus === 'Angeliefert'
                         ? "bg-primary hover:bg-primary/90 text-primary-foreground"
                         : "bg-slate-300 text-slate-500 cursor-not-allowed border-slate-200"
@@ -238,15 +238,15 @@ export function AIEditorWorkspace({
                   </Button>
                 </div>
               </TooltipTrigger>
-              {(isReadOnly || isPublished) ? (
+              {isReadOnly ? ( // If read-only, show published message
                 <TooltipContent>
-                  {tr('Bereits veröffentlicht', 'Already published')}
+                  {tr('Veröffentlichter Content kann nicht mehr bearbeitet werden.', 'Published content cannot be edited anymore.')}
                 </TooltipContent>
-              ) : currentStatus !== 'Angeliefert' && (
+              ) : currentStatus !== 'Angeliefert' ? ( // If not read-only but status is wrong, show that message
                 <TooltipContent>
                   {tr('Status muss "Angeliefert" sein', 'Status must be "Delivered"')} ({tr('Aktuell', 'Current')}: {currentStatus})
                 </TooltipContent>
-              )}
+              ) : null}
             </Tooltip>
           </TooltipProvider>
         </div>
@@ -265,6 +265,207 @@ export function AIEditorWorkspace({
                 font-family: 'Poppins', sans-serif !important;
                 color: #334155;
               }
+              .preview-content h1, .preview-content h2, .preview-content h3 {
+                color: var(--primary) !important;
+                font-family: 'Poppins', sans-serif !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+              }
+              .preview-content h1 {
+                font-size: 2.25rem !important;
+                line-height: 1.2 !important;
+                font-weight: 800 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0.5rem !important;
+              }
+              .preview-content h2 {
+                font-size: 1.875rem !important;
+                line-height: 1.2 !important;
+                font-weight: 700 !important;
+                margin-top: 1.25rem !important;
+                margin-bottom: 0.5rem !important;
+              }
+              .preview-content h3 {
+                font-size: 1.5rem !important;
+                line-height: 1.2 !important;
+                font-weight: 600 !important;
+                margin-top: 1.25rem !important;
+                margin-bottom: 0.5rem !important;
+              }
+              .preview-content p {
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                line-height: 1.2 !important;
+                color: #334155 !important;
+                display: block !important;
+                font-size: 0.875rem !important;
+                font-family: 'Poppins', sans-serif !important;
+              }
+              .preview-content ul {
+                list-style-type: disc !important;
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                padding-left: 1.5rem !important;
+                display: block !important;
+              }
+              .preview-content ol {
+                list-style-type: decimal !important;
+                margin-top: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+                padding-left: 1.5rem !important;
+                display: block !important;
+              }
+              .preview-content li {
+                margin-top: 0.25rem !important;
+                margin-bottom: 0.25rem !important;
+                line-height: 1.2 !important;
+                display: list-item !important;
+                font-size: 0.875rem !important;
+                font-family: 'Poppins', sans-serif !important;
+              }
+              .preview-content strong {
+                font-weight: 700 !important;
+              }
+              .preview-content em {
+                font-style: italic !important;
+              }
+              .preview-content a {
+                color: var(--primary) !important;
+                text-decoration: underline !important;
+              }
+            `}</style>
+            {mode === 'Erstellung' ? (
+              <>
+                <div className="border-b bg-primary/10 p-3 text-sm font-bold text-primary flex items-center gap-2 shrink-0">
+                  <FileText className="h-4 w-4" />
+                  {tr('Neu erstellter Content', 'Newly created content')}
+                </div>
+                <div className="p-3 overflow-auto bg-white flex-1 min-h-0">
+                  <div 
+                    className="preview-content"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingContent) }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="border-b bg-primary/10 p-3 text-sm font-bold text-primary flex items-center gap-2 shrink-0">
+                  <FileText className="h-4 w-4" />
+                  {tr('Vorschau', 'Preview')}
+                </div>
+                <div className="p-3 overflow-auto bg-white flex-1 min-h-0">
+                  <div 
+                    className="preview-content"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingContent) }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeMode === 'edit' && (
+          <div className="animate-in slide-in-from-bottom-2 duration-300 h-full">
+            <RichTextEditor 
+              content={workingContent} 
+              onSave={handleSaveContent} 
+              isSaving={isSaving} 
+            />
+          </div>
+        )}
+
+        {/* AI-Chat panel is always mounted to preserve chat state across tab switches */}
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 h-full ${activeMode === 'ai-chat' ? 'animate-in zoom-in-95 duration-300' : 'hidden'}`}>
+            <div className="lg:col-span-2 rounded-md border bg-slate-50/50 flex flex-col overflow-hidden border-dashed h-full">
+              <div className="p-3 border-b bg-white/50 flex items-center gap-2 font-bold text-slate-500 text-xs uppercase tracking-widest shrink-0">
+                <FileText className="h-3.5 w-3.5" />
+                {previewContent
+                  ? tr('KI-Vorschlag (Vorschau)', 'AI Proposal (Preview)')
+                  : tr('Aktueller Arbeitsstand', 'Current working state')}
+                {previewContent && (
+                  <span className="ml-auto normal-case tracking-normal font-normal text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {tr('Nicht gespeichert', 'Unsaved')}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto p-8 prose max-w-none prose-sm sm:prose-base custom-scrollbar min-h-0">
+                <style jsx global>{`
+                  .ai-chat-preview h1 {
+                    font-size: 2.25rem !important;
+                    line-height: 1.2 !important;
+                    font-weight: 800 !important;
+                    margin-top: 0 !important;
+                    margin-bottom: 0.5rem !important;
+                    color: var(--primary) !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview h2 {
+                    font-size: 1.875rem !important;
+                    line-height: 1.2 !important;
+                    font-weight: 700 !important;
+                    margin-top: 1.25rem !important;
+                    margin-bottom: 0.5rem !important;
+                    color: var(--primary) !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview h3 {
+                    font-size: 1.5rem !important;
+                    line-height: 1.2 !important;
+                    font-weight: 600 !important;
+                    margin-top: 1.25rem !important;
+                    margin-bottom: 0.5rem !important;
+                    color: var(--primary) !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview p {
+                    margin-top: 0.5rem !important;
+                    margin-bottom: 0.5rem !important;
+                    line-height: 1.2 !important;
+                    color: #334155 !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview ul {
+                    list-style-type: disc !important;
+                    margin-top: 0.5rem !important;
+                    margin-bottom: 0.5rem !important;
+                    padding-left: 1.5rem !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview ol {
+                    list-style-type: decimal !important;
+                    margin-top: 0.5rem !important;
+                    margin-bottom: 0.5rem !important;
+                    padding-left: 1.5rem !important;
+                    display: block !important;
+                  }
+                  .ai-chat-preview li {
+                    margin-top: 0.25rem !important;
+                    margin-bottom: 0.25rem !important;
+                    line-height: 1.2 !important;
+                    display: list-item !important;
+                  }
+                `}</style>
+                <div 
+                  className="ai-chat-preview font-sans"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewContent ?? workingContent) }}
+                />
+              </div>
+            </div>
+            <div className="lg:col-span-1 h-full overflow-hidden">
+              <AIChatPanel 
+                currentContent={workingContent} 
+                onPreviewChange={(content) => setPreviewContent(content)}
+                onApplyChanges={handleSaveFromAI}
+                keywordId={keywordId}
+                keyword={keyword}
+              />
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+}
               .preview-content h1, .preview-content h2, .preview-content h3 {
                 color: var(--primary) !important;
                 font-family: 'Poppins', sans-serif !important;
