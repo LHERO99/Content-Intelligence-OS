@@ -141,9 +141,10 @@ export default function FeedbackPage() {
       fetch(`/api/super-admin/feature-requests?${params}`),
       fetch("/api/super-admin/tenants"),
     ]);
-    setRequests(await reqRes.json());
+    const reqData = await reqRes.json();
+    setRequests(Array.isArray(reqData) ? reqData : []);
     const tenantData = await tenantRes.json();
-    setTenants(tenantData.map((ten: any) => ({ id: ten.id, name: ten.name })));
+    setTenants(Array.isArray(tenantData) ? tenantData.map((ten: any) => ({ id: ten.id, name: ten.name })) : []);
     setLoading(false);
   }, [typeFilter, statusFilter, quarterFilter]);
 
