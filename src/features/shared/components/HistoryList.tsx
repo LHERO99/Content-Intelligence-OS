@@ -15,8 +15,8 @@ interface HistoryListProps {
 const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { locale, t } = useI18n();
-  const summary = log.Diff_Summary || "";
-  const isDelivery = summary === "Content angeliefert";
+  const summary = log.Diff_Summary || log.Action_Type || "";
+  const isDelivery = summary === "Content angeliefert" || log.Version === 'v2';
   const isCommissioned = summary === "Content beauftragt";
 
   const getIcon = () => {
@@ -128,7 +128,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   const versionMap = new Map<string, string>();
 
   sortedHistoryForVersioning.forEach(log => {
-    if (log.Diff_Summary === "Content angeliefert") {
+    if (log.Diff_Summary === "Content angeliefert" || log.Version === 'v2') {
       deliveryCount++;
       versionMap.set(log.id, `V${deliveryCount}`);
     }
@@ -156,7 +156,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
         <p className="text-xs font-bold text-primary">
           {lastUpdate ? (
             <>
-              {t('historyList.status')}: {lastUpdate.Diff_Summary} {locale === 'de' ? 'am' : 'on'}{" "}
+              {t('historyList.status')}: {lastUpdate.Diff_Summary || lastUpdate.Action_Type} {locale === 'de' ? 'am' : 'on'}{" "}
               {new Date(lastUpdate.Created_At).toLocaleDateString(toLocaleTag(locale), { 
                 day: '2-digit', 
                 month: '2-digit', 

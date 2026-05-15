@@ -24,6 +24,8 @@ export default function CreationPage() {
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState<string | null>(null);
+  // Body cache: logId → { Content_Body, Diff_Summary }
+  const [bodyCache, setBodyCache] = useState<Record<string, { Content_Body?: string; Diff_Summary?: string }>>({});
 
   const handleRetry = async (kw: KeywordMap) => {
     try {
@@ -102,9 +104,26 @@ export default function CreationPage() {
     Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(selectedKeywordId)
   );
   
-  const v1Content = relevantLogs.find((log) => log.Version === 'v1')?.Content_Body || '';
   const v2Log = relevantLogs.find((log) => log.Version === 'v2');
-  const v2Content = v2Log?.Content_Body || '';
+  const v2LogId = v2Log?.ID ? String(v2Log.ID) : null;
+
+  // Load body on-demand when a v2 log is detected for the selected keyword.
+  // Results are cached so we don't re-fetch on every 5s polling tick.
+  useEffect(() => {
+    if (!v2LogId || bodyCache[v2LogId] !== undefined) return;
+    fetch(`/api/planning/history/${v2LogId}/body`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setBodyCache((prev) => ({ ...prev, [v2LogId]: data }));
+        }
+      })
+      .catch(() => {/* non-critical */});
+  }, [v2LogId]);
+
+  const v2Body = v2LogId ? bodyCache[v2LogId] : undefined;
+  const v1Content = relevantLogs.find((log) => log.Version === 'v1')?.Content_Body || '';
+  const v2Content = v2Body?.Content_Body || '';
   
   const statusLabelMap: Record<string, string> = {
     'Beauftragt': tr('Beauftragt', 'Commissioned'),
