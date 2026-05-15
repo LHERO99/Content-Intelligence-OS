@@ -382,14 +382,11 @@ export function AgentSettingsTab() {
   "keywordId": "recXXXX",
   "targetUrl": "https://...",
   "mainKeyword": "...",
-  "secondaryKeywords": [
-    { "id": "...", "keyword": "...", "searchVolume": 1200,
-      "difficulty": 34, "ranking": 18 }
-  ],
+  "secondaryKeywords": ["keyword-a", "keyword-b"],
   "pageType": "Ratgeber",
   "actionType": "Erstellung",
   "tenantId": "default",
-  "callbackUrl": "https://<host>/api/n8n/callback"
+  "callbackUrl": "${process.env.NEXTAUTH_URL ?? process.env.APP_BASE_URL ?? '<APP_BASE_URL>'}/api/agent-webhook/callback"
 }`}
             </pre>
           </div>

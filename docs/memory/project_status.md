@@ -1,4 +1,51 @@
-# Projekt-Status (Stand: 14.05.2026 – aktualisiert)
+# Projekt-Status (Stand: 15.05.2026 – aktualisiert)
+
+## Deployment-Fix: Health-Route Early-Return smtp-Feld (15.05.2026)
+
+**Problem:** Der Early-Return bei `allTenants.length === 0` in `/api/super-admin/health/route.ts` fehlte das `smtp`-Feld im Response-Objekt → TypeScript-Fehler `satisfies HealthSummaryResponse` brach den Deployment-Build.
+
+**Fix:** `smtp: { status: 'not_configured', detail: 'No tenants found' }` im Early-Return ergänzt.
+
+**Datei:** `src/app/api/super-admin/health/route.ts` Zeilen 108–115
+
+---
+
+## Branding & Sprache (15.05.2026)
+
+- Tool heißt **Plexaro** (nicht mehr „SEO Content Tool")
+- Sprache in der UI ist **Deutsch, per Du**
+- 9 E-Mail-Templates + Invite-Routes auf Plexaro-Branding aktualisiert
+- 19 Dateien / ~43 Stellen auf Du-Form umgestellt
+- Invite-Mail: „zum DocMorris Workspace in Plexaro eingeladen"
+
+## SuperAdmin: Feedback Global freischalten (15.05.2026)
+
+- Schema: `is_public boolean DEFAULT false` in `feature_requests`
+- Migration generiert: `src/lib/db/migrations/0002_lowly_medusa.sql` (**noch nicht gegen DB ausgeführt**)
+- API PATCH akzeptiert `isPublic`; GET (Tenant) gibt `{ own, plexaro }` zurück
+- SuperAdmin UI: Toggle-Button (Globe/Lock) pro Zeile
+- Tenant UI: Neue Sektion „Plexaro Updates" (read-only)
+- i18n Keys in `de.ts` + `en.ts`
+
+## Keyword Import: Beispieldatei-Download (15.05.2026)
+
+- Button im Upload-Step generiert XLSX mit 4 Beispielzeilen (ohne Cluster/Status)
+
+## SMTP aus Tenant Health-Report entfernt (15.05.2026)
+
+- SMTP nur noch für SuperAdmin sichtbar
+- SMTP-Check in SuperAdmin Health-Endpunkt ergänzt inkl. UI-Card
+
+## Filter-Dropdowns in Content-Planung (15.05.2026)
+
+- `getColumnLabel()`-Hilfsfunktion in `KeywordFilterBar.tsx` und `EditorialFilterBar.tsx`
+- Trigger zeigt jetzt korrekte Labels statt Rohwerte
+
+## SuperAdmin Feedback: `S.map is not a function` (15.05.2026)
+
+- `load()` mit `Array.isArray()`-Guard abgesichert
+
+---
 
 ## SuperAdmin Health Dashboard: Sistrix-Bug-Fix & Alert-Regeln Double-Opt-in (14.05.2026)
 

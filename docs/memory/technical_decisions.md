@@ -1,4 +1,16 @@
-# Technische Entscheidungen (Stand: 14.05.2026 – aktualisiert)
+# Technische Entscheidungen (Stand: 15.05.2026 – aktualisiert)
+
+## SuperAdmin Health: Early-Return muss alle Pflichtfelder des Response-Interface enthalten (15.05.2026)
+- `HealthSummaryResponse` enthält `smtp` als Pflichtfeld
+- Jeder Early-Return (z.B. bei `allTenants.length === 0`) muss `smtp` explizit mitliefern
+- **Regel**: Bei `satisfies`-Checks → alle Interface-Pflichtfelder in jedem Return-Pfad prüfen, nicht nur im Happy-Path
+
+## SuperAdmin Feedback: `is_public` JSON-Key-Umbenennung (15.05.2026)
+- `public` ist als JSON-Key in JavaScript problematisch (reserviertes Wort in manchen Kontexten)
+- Umbenannt zu `plexaro` im GET-Response-Objekt: `{ own: [...], plexaro: [...] }`
+- API PATCH akzeptiert `isPublic` als camelCase-Feld
+
+
 
 ## SuperAdmin Health: Sistrix in zwei unabhängige Jobs aufgeteilt (14.05.2026)
 - `integration:check:sistrix` und `cron:sync-sistrix` werden in der Health-Route als **separate Jobs** geführt

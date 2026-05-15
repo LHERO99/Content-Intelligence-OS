@@ -55,32 +55,20 @@ export async function POST(req: NextRequest) {
       const externalUrl = config.EXTERNAL_AGENT_WEBHOOK_URL?.trim();
 
       // --- Build enriched payload ---
-      let secondaryKeywords: Array<{
-        id: string;
-        keyword: string;
-        searchVolume: number | null;
-        difficulty: number | null;
-        ranking: number | null;
-      }> = [];
+      let secondaryKeywords: string[] = [];
 
       if (data.targetUrl) {
         try {
           const allKeywords = await getKeywordsByUrl(data.targetUrl, tenantId);
           secondaryKeywords = allKeywords
             .filter((kw) => kw.Main_Keyword === 'N')
-            .map((kw) => ({
-              id: kw.id,
-              keyword: kw.Keyword,
-              searchVolume: kw.Search_Volume ?? null,
-              difficulty: kw.Difficulty ?? null,
-              ranking: kw.Ranking ?? null,
-            }));
+            .map((kw) => kw.Keyword);
         } catch (kwErr) {
           console.error('[Agent] Error fetching secondary keywords:', kwErr);
         }
       }
 
-      const appBaseUrl = process.env.NEXTAUTH_URL ?? '';
+      const appBaseUrl = process.env.NEXTAUTH_URL ?? process.env.APP_BASE_URL ?? '';
       const enrichedPayload = {
         action,
         keywordId: data.keywordId ?? null,
@@ -90,7 +78,7 @@ export async function POST(req: NextRequest) {
         pageType: data.pageType ?? null,
         actionType: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
         tenantId,
-        callbackUrl: `${appBaseUrl}/api/n8n/callback`,
+        callbackUrl: `${appBaseUrl}/api/agent-webhook/callback`,
         userId: session.user?.email ?? 'unknown',
         timestamp: new Date().toISOString(),
       };
@@ -212,7 +200,7 @@ export async function POST(req: NextRequest) {
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Error triggering n8n workflow:', error);
+    console.error('Error triggering agent webhook:', error);
     return NextResponse.json({ 
       message: error.message || 'Internal Server Error' 
     }, { status: 500 });

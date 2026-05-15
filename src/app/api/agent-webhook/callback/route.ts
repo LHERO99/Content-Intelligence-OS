@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { createContentLog, updateKeyword, getConfig } from '@/lib/postgres';
 
 /**
- * Endpoint for n8n or external agent callbacks to return generated content.
- * Auth: X-API-KEY header must match either N8N_API_KEY env var (internal n8n)
+ * Endpoint for external agent callbacks to return generated content.
+ * Auth: X-API-KEY header must match either N8N_API_KEY env var (legacy)
  *       or EXTERNAL_AGENT_WEBHOOK_SECRET config key (external agent webhook).
  * Expected body: {
  *   keywordId: string,
@@ -18,28 +18,28 @@ export async function POST(request: Request) {
     const apiKey = request.headers.get('X-API-KEY');
 
     const rawBody = await request.text();
-    console.log('[API] n8n callback received raw body:', rawBody);
+    console.log('[API] Agent callback received raw body:', rawBody);
     
     let body: any;
     try {
       body = JSON.parse(rawBody);
       if (typeof body === 'string') {
-        console.log('[API] n8n callback body was double-encoded, parsing again...');
+        console.log('[API] Agent callback body was double-encoded, parsing again...');
         body = JSON.parse(body);
       }
     } catch (e) {
-      console.error('[API] Failed to parse n8n callback body as JSON:', e);
+      console.error('[API] Failed to parse agent callback body as JSON:', e);
       return NextResponse.json({ error: 'Invalid JSON body', raw: rawBody.slice(0, 100) }, { status: 400 });
     }
 
     // tenantId is included in the enriched payload sent by the trigger route
     const tenantId: string | undefined = body?.tenantId || undefined;
 
-    // Auth check: accept either the n8n API key or the external agent shared secret
-    const isN8n = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
+    // Auth check: accept either the legacy n8n API key or the external agent shared secret
+    const isLegacy = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
 
     let isExternalAgent = false;
-    if (!isN8n && apiKey) {
+    if (!isLegacy && apiKey) {
       try {
         const config = await getConfig(tenantId);
         const externalSecret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!isN8n && !isExternalAgent) {
+    if (!isLegacy && !isExternalAgent) {
       console.warn('[API] Unauthorized callback request');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const targetUrl = body.Target_URL || body.targetUrl || body.Logged_URL;
 
     if (!keywordId || !content) {
-      console.error('[API] n8n callback missing fields:', { 
+      console.error('[API] Agent callback missing fields:', { 
         keywordId: !!keywordId, 
         content: !!content,
         receivedFields: body && typeof body === 'object' ? Object.keys(body) : typeof body,
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    console.log(`[API] Received content from n8n for Keyword ID: ${keywordId}`);
+    console.log(`[API] Received content from agent for Keyword ID: ${keywordId}`);
 
     // 1. Update Keyword Status to "Angeliefert"
     try {
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('[API] Error in n8n callback:', error);
+    console.error('[API] Error in agent callback:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

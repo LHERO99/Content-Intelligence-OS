@@ -86,7 +86,7 @@ export async function triggerN8nWorkflow(payload: N8nPayload) {
  * Client-side wrapper to call our internal Next.js API proxy.
  */
 export async function triggerN8nAction(action: N8nActionType, data: Record<string, any>) {
-  const response = await fetch('/api/n8n/trigger', {
+  const response = await fetch('/api/agent-webhook/trigger', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

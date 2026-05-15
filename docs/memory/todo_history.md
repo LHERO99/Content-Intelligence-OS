@@ -153,7 +153,20 @@
 - [x] Fix: `health/route.ts` — Sistrix aufgeteilt in zwei separate JOBS: `integration:check:sistrix` + `cron:sync-sistrix`
 - [x] Fix: `health/page.tsx` — `CRON_JOBS` um `{ key: "integration:check:sistrix", label: "Sistrix API-Key" }` erweitert
 
+## Branding, Sprache & Feature-Flags (15.05.2026)
+- [x] Branding: „SEO Content Tool" → „Plexaro" in 9 E-Mail-Templates + Invite-Routes
+- [x] Sprache: Höflichkeitsform → Du in 19 Dateien / ~43 Stellen
+- [x] Invite-Mail: Formulierung „zum DocMorris Workspace in Plexaro eingeladen"
+- [x] Feature: SuperAdmin Feedback `is_public`-Toggle — Schema, Migration, API PATCH/GET, UI, i18n
+- [x] Feature: Keyword Import — Beispieldatei-Download (XLSX mit 4 Beispielzeilen)
+- [x] Fix: SMTP aus Tenant Health-Report entfernt; SMTP-Check in SuperAdmin Health ergänzt
+- [x] Fix: Filter-Dropdown Labels in `KeywordFilterBar.tsx` + `EditorialFilterBar.tsx` (`getColumnLabel()`)
+- [x] Fix: SuperAdmin Feedback `S.map is not a function` — `Array.isArray()`-Guard in `load()`
+- [x] Fix: `health/route.ts` Early-Return `smtp`-Feld ergänzt (TypeScript `satisfies HealthSummaryResponse` Deployment-Fehler)
+
 ## Offen / Ausstehend
+- [ ] DB-Migration `0002_lowly_medusa.sql` ausführen: `ALTER TABLE "feature_requests" ADD COLUMN "is_public" boolean DEFAULT false NOT NULL;`
+
 - [ ] DB-Migration ausführen (manuell via psql):
   ```sql
   ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;

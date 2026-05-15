@@ -35,7 +35,7 @@ export default withAuth(
         if (
           path.startsWith("/auth/signin") || 
           path.startsWith("/api/auth") ||
-          path.startsWith("/api/n8n/callback") ||
+          path.startsWith("/api/agent-webhook/callback") ||
           path.startsWith("/api/monitoring/import") ||
           path.startsWith("/api/auth/google/gsc/callback") ||
           path.startsWith("/api/cron/") ||
