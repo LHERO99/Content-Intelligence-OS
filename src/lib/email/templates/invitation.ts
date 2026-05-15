@@ -53,7 +53,7 @@ export function renderInvitationEmail(data: InvitationTemplateData): {
       <h2>Willkommen, ${escapeHtml(data.recipientName)}!</h2>
       <p>
         ${data.invitedByName ? `<strong>${escapeHtml(data.invitedByName)}</strong> hat dich` : 'Du wurdest'}
-        zum Workspace <strong>${escapeHtml(data.tenantName)}</strong> eingeladen.
+        zum <strong>${escapeHtml(data.tenantName)}</strong> Workspace in Plexaro eingeladen.
         Mit den untenstehenden Zugangsdaten kannst du dich direkt anmelden.
       </p>
 
@@ -84,7 +84,7 @@ export function renderInvitationEmail(data: InvitationTemplateData): {
 
   const text = `Willkommen bei ${data.tenantName}!
 
-${data.invitedByName ? `${data.invitedByName} hat dich` : 'Du wurdest'} zum Plexaro eingeladen.
+${data.invitedByName ? `${data.invitedByName} hat dich` : 'Du wurdest'} zum ${data.tenantName} Workspace in Plexaro eingeladen.
 
 Deine Zugangsdaten:
   E-Mail:              ${data.recipientEmail}

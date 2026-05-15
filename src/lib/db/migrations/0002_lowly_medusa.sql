@@ -1,0 +1,1 @@
+ALTER TABLE "feature_requests" ADD COLUMN "is_public" boolean DEFAULT false NOT NULL;

@@ -17,7 +17,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { status, priority, plannedQuarter } = body;
+    const { status, priority, plannedQuarter, isPublic } = body;
 
     const updateData: Partial<typeof featureRequests.$inferInsert> = {
       updatedAt: new Date(),
@@ -25,6 +25,7 @@ export async function PATCH(
     if (status         !== undefined) updateData.status         = status;
     if (priority       !== undefined) updateData.priority       = priority;
     if (plannedQuarter !== undefined) updateData.plannedQuarter = plannedQuarter === "" ? null : plannedQuarter;
+    if (isPublic       !== undefined) updateData.isPublic       = isPublic;
 
     const [updated] = await db
       .update(featureRequests)

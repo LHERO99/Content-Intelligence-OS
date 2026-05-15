@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/lib/db";
 import { featureRequests } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or, and, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 // POST: submit a new feature request or bug report (tenant-side)
 export async function POST(req: Request) {
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   }
 }
 
-// GET: list own tenant's feature requests
+// GET: list own tenant's feature requests + public entries from other tenants
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -53,13 +53,29 @@ export async function GET() {
 
     const tenantId = (session.user as any)?.tenantId ?? 'default';
 
-    const rows = await db
+    // Own entries
+    const ownRows = await db
       .select()
       .from(featureRequests)
       .where(eq(featureRequests.tenantId, tenantId))
       .orderBy(desc(featureRequests.createdAt));
 
-    return NextResponse.json(rows);
+    // Public entries from other tenants
+    const publicRows = await db
+      .select()
+      .from(featureRequests)
+      .where(
+        and(
+          eq(featureRequests.isPublic, true),
+          ne(featureRequests.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(featureRequests.createdAt));
+
+    return NextResponse.json({
+      own: ownRows,
+      public: publicRows,
+    });
   } catch (error) {
     console.error("[Feedback] Error fetching feedback:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

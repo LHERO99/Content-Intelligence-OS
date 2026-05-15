@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, MessageSquare, Plus, RefreshCw, X } from "lucide-react";
+import { Loader2, MessageSquare, Plus, RefreshCw, X, Globe, Lock } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ interface FeatureRequest {
   status: FeatureStatus;
   priority: "low" | "medium" | "high";
   plannedQuarter: string | null;
+  isPublic: boolean;
   createdAt: string;
   tenantId: string;
   tenantName: string | null;
@@ -158,6 +159,18 @@ export default function FeedbackPage() {
     setRequests((prev) =>
       prev.map((r) => r.id === id ? { ...r, [field]: value || null } : r)
     );
+    setUpdatingId(null);
+  };
+
+  const togglePublic = async (id: string, current: boolean) => {
+    setUpdatingId(id);
+    // Optimistic update
+    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, isPublic: !current } : r));
+    await fetch(`/api/super-admin/feature-requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPublic: !current }),
+    });
     setUpdatingId(null);
   };
 
@@ -291,6 +304,7 @@ export default function FeedbackPage() {
                     <TableHead>{t("superAdmin.feedbackColPriority")}</TableHead>
                     <TableHead>{t("superAdmin.feedbackColQuarter")}</TableHead>
                     <TableHead>{t("superAdmin.feedbackColStatus")}</TableHead>
+                    <TableHead className="w-28">{t("superAdmin.feedbackColGlobal")}</TableHead>
                     <TableHead>{t("superAdmin.feedbackColCreated")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -351,38 +365,57 @@ export default function FeedbackPage() {
                         </Select>
                       </TableCell>
 
-                      {/* Status — inline editable */}
-                      <TableCell>
-                        <Select
-                          value={r.status}
-                          onValueChange={(v) => v && updateField(r.id, "status", v)}
-                          disabled={updatingId === r.id}
-                        >
-                          <SelectTrigger className="h-7 w-40 border-0 p-0 shadow-none focus:ring-0">
-                            {updatingId === r.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <StatusBadge status={r.status} t={t} />
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FEATURE_STATUSES.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                <StatusBadge status={s} t={t} />
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
+                       {/* Status — inline editable */}
+                       <TableCell>
+                         <Select
+                           value={r.status}
+                           onValueChange={(v) => v && updateField(r.id, "status", v)}
+                           disabled={updatingId === r.id}
+                         >
+                           <SelectTrigger className="h-7 w-40 border-0 p-0 shadow-none focus:ring-0">
+                             {updatingId === r.id ? (
+                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                             ) : (
+                               <StatusBadge status={r.status} t={t} />
+                             )}
+                           </SelectTrigger>
+                           <SelectContent>
+                             {FEATURE_STATUSES.map((s) => (
+                               <SelectItem key={s} value={s}>
+                                 <StatusBadge status={s} t={t} />
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </TableCell>
 
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(r.createdAt).toLocaleDateString("de-DE")}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {requests.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                       {/* Global toggle */}
+                       <TableCell>
+                         <button
+                           onClick={() => togglePublic(r.id, r.isPublic)}
+                           disabled={updatingId === r.id}
+                           title={r.isPublic ? t("superAdmin.feedbackGlobalOn") : t("superAdmin.feedbackGlobalOff")}
+                           className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-1 transition-colors ${
+                             r.isPublic
+                               ? "bg-green-100 text-green-700 hover:bg-green-200"
+                               : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                           }`}
+                         >
+                           {r.isPublic
+                             ? <><Globe className="w-3.5 h-3.5" /> {t("superAdmin.feedbackGlobalOn")}</>
+                             : <><Lock className="w-3.5 h-3.5" /> {t("superAdmin.feedbackGlobalOff")}</>
+                           }
+                         </button>
+                       </TableCell>
+
+                       <TableCell className="text-xs text-muted-foreground">
+                         {new Date(r.createdAt).toLocaleDateString("de-DE")}
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                   {requests.length === 0 && (
+                     <TableRow>
+                       <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                         {t("superAdmin.feedbackNoEntries")}
                       </TableCell>
                     </TableRow>

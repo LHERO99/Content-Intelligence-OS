@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   MessageSquare,
   CalendarDays,
+  Globe,
 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 
@@ -96,6 +97,7 @@ export default function FeedbackPage() {
   const { t } = useI18n();
 
   const [items, setItems] = useState<FeedbackItem[]>([]);
+  const [publicItems, setPublicItems] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -112,7 +114,11 @@ export default function FeedbackPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/feedback");
-    if (res.ok) setItems(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      setItems(data.own ?? []);
+      setPublicItems(data.public ?? []);
+    }
     setLoading(false);
   }, []);
 
@@ -364,6 +370,95 @@ export default function FeedbackPage() {
                       className="text-center text-muted-foreground py-8"
                     >
                       {t("feedback.noSubmissions")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Plexaro Updates ── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Globe className="w-5 h-5 text-primary" />
+            <div>
+              <CardTitle>{t("feedback.plexaroUpdatesTitle")}</CardTitle>
+              <CardDescription>{t("feedback.plexaroUpdatesDesc")}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-24">{t("feedback.colType")}</TableHead>
+                  <TableHead>{t("feedback.colTitle")}</TableHead>
+                  <TableHead>{t("feedback.colStatus")}</TableHead>
+                  <TableHead>{t("feedback.colQuarter")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {publicItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          item.type === "bug"
+                            ? "border-red-300 text-red-700"
+                            : "border-blue-300 text-blue-700"
+                        }
+                      >
+                        {item.type === "bug"
+                          ? t("feedback.typeBug")
+                          : t("feedback.typeFeature")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-sm">{item.title}</p>
+                          <Badge className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
+                            {t("feedback.plexaroUpdatesBadge")}
+                          </Badge>
+                        </div>
+                        {item.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.status} t={t} />
+                    </TableCell>
+                    <TableCell>
+                      {item.plannedQuarter ? (
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-purple-700">
+                          <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                          {item.plannedQuarter}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {publicItems.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      {t("feedback.noPlexaroUpdates")}
                     </TableCell>
                   </TableRow>
                 )}

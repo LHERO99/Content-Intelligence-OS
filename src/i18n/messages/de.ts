@@ -326,6 +326,12 @@ const de = {
     noSubmissions: "Noch keine Einreichungen vorhanden.",
     noQuarterYet: "Noch nicht geplant",
 
+    // Plexaro Updates (öffentlich freigeschaltete Einträge)
+    plexaroUpdatesTitle: "Plexaro Updates",
+    plexaroUpdatesDesc: "Vom Plexaro-Team freigegebene Feature Requests und Bug Reports, die für alle Tenants relevant sind.",
+    plexaroUpdatesBadge: "Plexaro",
+    noPlexaroUpdates: "Aktuell keine Updates vorhanden.",
+
     // Status labels
     statusOpen: "Offen",
     statusInValidation: "In Prüfung",
@@ -543,6 +549,9 @@ const de = {
     feedbackCancel: "Abbrechen",
     feedbackCreateButton: "Erstellen",
     feedbackTenantLabel: "Tenant",
+    feedbackColGlobal: "Global",
+    feedbackGlobalOn: "Für alle sichtbar",
+    feedbackGlobalOff: "Nur intern",
   },
   agentBuilder: {
     runControls: "Run Controls",
