@@ -210,33 +210,29 @@ export function AIEditorWorkspace({
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="inline-block">
-                  <Button
-                    onClick={handlePublish}
-                    disabled={isSaving || isPublished || currentStatus !== 'Angeliefert'}
-                    className={cn(
-                      "gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider transition-all",
-                      isPublished
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : currentStatus === 'Angeliefert'
-                        ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                        : "bg-slate-300 text-slate-500 cursor-not-allowed border-slate-200"
-                    )}
-                  >
-                    {isPublished ? (
-                      <>
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        {tr('Veröffentlicht', 'Published')}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-3.5 w-3.5" />
-                        {tr('Als veröffentlicht markieren', 'Mark as published')}
-                      </>
-                    )}
-                  </Button>
-                </div>
+              <TooltipTrigger
+                onClick={handlePublish}
+                disabled={isSaving || isPublished || currentStatus !== 'Angeliefert'}
+                className={cn(
+                  "gap-2 h-9 px-4 font-bold text-xs uppercase tracking-wider transition-all inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                  isPublished
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : currentStatus === 'Angeliefert'
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                    : "bg-slate-300 text-slate-500 cursor-not-allowed border-slate-200"
+                )}
+              >
+                {isPublished ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {tr('Veröffentlicht', 'Published')}
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    {tr('Als veröffentlicht markieren', 'Mark as published')}
+                  </>
+                )}
               </TooltipTrigger>
               {isReadOnly ? ( // If read-only, show published message
                 <TooltipContent>
