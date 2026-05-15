@@ -74,7 +74,9 @@ export async function POST(request: Request) {
       eventLabel, 
       Event_Label, 
       editor, 
-      Editor 
+      Editor,
+      commissionLogId,
+      Commission_Log_Id,
     } = body;
 
     const finalKeywordId = keywordId || Keyword_ID;
@@ -84,6 +86,7 @@ export async function POST(request: Request) {
     const finalContentBody = contentBody || Content_Body || content;
     const finalEventLabel = eventLabel || Event_Label;
     const finalEditor = editor || Editor;
+    const finalCommissionLogId: number | undefined = commissionLogId ?? Commission_Log_Id ?? undefined;
 
     if (!finalKeywordId) {
       console.error('[API] Missing required fields:', { finalKeywordId });
@@ -101,6 +104,7 @@ export async function POST(request: Request) {
       Content_Body: finalContentBody,
       Event_Label: finalEventLabel,
       Editor: finalEditor || (session?.user?.id ? [session.user.id] : undefined),
+      Commission_Log_Id: finalCommissionLogId,
     }, tenantId);
 
     if (!newLog) {

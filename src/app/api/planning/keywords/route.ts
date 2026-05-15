@@ -295,7 +295,8 @@ export async function PATCH(request: Request) {
             Action_Type: result.Action_Type,
             Page_Type: result.Page_Type,
             Event_Label: 'Content veröffentlicht',
-            Editor: editor
+            Editor: editor,
+            Commission_Log_Id: updates.commissionLogId ?? undefined,
           }, tenantId);
         }
       } catch (logErr) {

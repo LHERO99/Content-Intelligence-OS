@@ -53,6 +53,8 @@ export interface ContentLog {
   Created_At: string;
   Updated_At?: string;
   Editor?: string[]; // user IDs
+  /** FK back to the "Content wurde beauftragt" log row that originated this entry */
+  Commission_Log_Id?: number;
 }
 
 export interface PerformanceData {

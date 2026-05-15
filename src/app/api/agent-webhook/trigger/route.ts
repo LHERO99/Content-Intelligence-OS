@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Status update and Logging for Commissioning
+    // Hoisted to function scope so the enrichedPayload block below can reference it.
+    let commissionLogId: number | null = null;
     if ((action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") && data.keywordId) {
       // Prioritize the requested action type for the log entry
       const commissioningActionType = action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung";
@@ -40,15 +42,16 @@ export async function POST(req: NextRequest) {
         Action_Type: commissioningActionType 
       }, tenantId);
       
-      // Log event to database
+      // Log event to database — capture ID so delivery/callback can reference it
       try {
-        await createContentLog({
+        const commissionLog = await createContentLog({
           Keyword_ID: [data.keywordId],
           Target_URL: data.targetUrl,
           Action_Type: commissioningActionType,
           Event_Label: "Content wurde beauftragt",
           Editor: session.user?.id ? [session.user.id] : undefined
         }, tenantId);
+        commissionLogId = commissionLog?.ID ?? null;
       } catch (logErr) {
         console.error('Error creating commissioning log:', logErr);
       }
@@ -87,6 +90,7 @@ export async function POST(req: NextRequest) {
         callbackUrl: `${appBaseUrl}/api/agent-webhook/callback`,
         userId: session.user?.email ?? 'unknown',
         timestamp: new Date().toISOString(),
+        commissionLogId,  // FK for delivery/callback log entries
       };
 
       // --- Path A: External Agent Webhook ---
@@ -176,6 +180,7 @@ export async function POST(req: NextRequest) {
               Event_Label: 'Content angeliefert',
               Content_Body: finalHtml,
               Editor: session.user?.id ? [session.user.id] : undefined,
+              Commission_Log_Id: commissionLogId ?? undefined,
             }, tenantId);
           } catch (logErr) {
             console.error('[InternalAgent] Failed to create content log:', logErr);

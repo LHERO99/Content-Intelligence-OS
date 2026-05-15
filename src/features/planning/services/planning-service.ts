@@ -20,7 +20,7 @@ export const PlanningService = {
   /**
    * Updates a specific keyword.
    */
-  async updateKeyword(id: string, updates: Partial<KeywordMap>): Promise<KeywordMap> {
+  async updateKeyword(id: string, updates: Partial<KeywordMap> & Record<string, unknown>): Promise<KeywordMap> {
     const response = await fetch(`/api/planning/keywords`, {
       method: "PATCH",
       body: JSON.stringify({ id, ...updates }),

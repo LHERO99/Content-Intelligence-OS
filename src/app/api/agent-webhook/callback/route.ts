@@ -100,6 +100,7 @@ export async function POST(request: Request) {
     const content = body.content || body.contentBody || body.Content_Body;
     const status = body.status || body.Status;
     const targetUrl = body.Target_URL || body.targetUrl || body.Logged_URL;
+    const commissionLogId: number | null = body.commissionLogId ?? null;
 
     if (!keywordId || !content) {
       console.error('[API] Agent callback missing fields:', { 
@@ -139,6 +140,7 @@ export async function POST(request: Request) {
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: sanitizedContent,
       Event_Label: 'Content angeliefert',
+      Commission_Log_Id: commissionLogId ?? undefined,
     }, tenantId);
 
     return NextResponse.json({

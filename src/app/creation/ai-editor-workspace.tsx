@@ -32,6 +32,8 @@ interface AIEditorWorkspaceProps {
   keywordId: string;
   keyword: string;
   currentStatus: KeywordStatus;
+  /** ID of the "Content wurde beauftragt" log row — anchors saves/publish to this cycle */
+  commissionLogId: number;
 }
 
 type WorkspaceMode = 'preview' | 'edit' | 'ai-chat';
@@ -42,7 +44,8 @@ export function AIEditorWorkspace({
   mode = 'Optimierung',
   keywordId,
   keyword,
-  currentStatus
+  currentStatus,
+  commissionLogId,
 }: AIEditorWorkspaceProps) {
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
   const [workingContent, setWorkingContent] = useState(v2Content);
@@ -72,6 +75,7 @@ export function AIEditorWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keywordId,
+          commissionLogId,
           actionType: 'Optimierung',
           contentBody: html,
           Event_Label: 'Manuelle Textanpassung im Editor',
@@ -103,6 +107,7 @@ export function AIEditorWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keywordId,
+          commissionLogId,
           contentBody: content,
           Event_Label: 'KI-Chat: KI-Optimierung übernommen',
           version: 'v2',
@@ -129,7 +134,8 @@ export function AIEditorWorkspace({
     try {
       await PlanningService.updateKeyword(keywordId, {
         Status: "Published",
-        Last_Published: new Date().toISOString().split('T')[0]
+        Last_Published: new Date().toISOString().split('T')[0],
+        commissionLogId,
       });
 
       setIsPublished(true);

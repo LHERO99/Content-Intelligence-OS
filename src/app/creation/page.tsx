@@ -7,7 +7,7 @@ import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
 import {
   Loader2, Send, Zap, Clock, FileText, AlertTriangle,
-  RefreshCw, Map, ChevronLeft, ChevronRight,
+  RefreshCw, Map as MapIcon, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -58,27 +58,71 @@ function buildJobEntries(
     (l) => l.Event_Label === 'Content wurde beauftragt',
   );
 
-  // All delivery logs indexed by keywordId for fast lookup
+  // All delivery logs (v2 = has actual content body)
   const deliveryLogs = contentLogs.filter(
     (l) => l.Event_Label === 'Content angeliefert' && l.Version === 'v2',
   );
+
+  // All publish logs — used to determine per-cycle published status
+  const publishLogs = contentLogs.filter(
+    (l) => l.Event_Label === 'Content veröffentlicht',
+  );
+
+  // Identify the "active" (newest) commissioning log ID per keyword.
+  // commissioningLogs are already sorted newest-first from the API.
+  const activeCommissionIdByKeyword = new Map<string, number>();
+  for (const cl of commissioningLogs) {
+    const kwId = cl.Keyword_ID[0];
+    if (!activeCommissionIdByKeyword.has(kwId)) {
+      activeCommissionIdByKeyword.set(kwId, cl.ID);
+    }
+  }
 
   return commissioningLogs.map((cl): JobEntry => {
     const kwId = cl.Keyword_ID[0];
     const kw = kwMap[kwId];
     const commissionedAt = cl.Created_At;
 
-    // Find the next delivery log for the same keyword that came AFTER this commissioning
-    const delivery = deliveryLogs
-      .filter(
-        (dl) =>
-          dl.Keyword_ID[0] === kwId &&
-          new Date(dl.Created_At).getTime() > new Date(commissionedAt).getTime(),
-      )
-      // pick the earliest delivery after this commissioning (not a later cycle)
-      .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+    // --- Delivery lookup ---
+    // Prefer FK-based lookup (Commission_Log_Id set on new data).
+    // Fall back to temporal proximity for rows that pre-date this migration.
+    let delivery = deliveryLogs.find(
+      (dl) => dl.Commission_Log_Id != null && dl.Commission_Log_Id === cl.ID,
+    );
+    if (!delivery) {
+      // Temporal fallback: earliest delivery for the same keyword AFTER this commissioning
+      delivery = deliveryLogs
+        .filter(
+          (dl) =>
+            dl.Commission_Log_Id == null &&
+            dl.Keyword_ID[0] === kwId &&
+            new Date(dl.Created_At).getTime() > new Date(commissionedAt).getTime(),
+        )
+        .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+    }
 
-    const keywordStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+    // --- Per-cycle publish status ---
+    // A cycle is "Published" when it has its own "Content veröffentlicht" log entry
+    // linked via Commission_Log_Id FK. For legacy data (no FK) we fall back to kw.Status
+    // only for the active (newest) cycle.
+    const publishLog = publishLogs.find(
+      (pl) => pl.Commission_Log_Id != null && pl.Commission_Log_Id === cl.ID,
+    );
+
+    const isActiveCycle = activeCommissionIdByKeyword.get(kwId) === cl.ID;
+    let keywordStatus: KeywordStatus;
+    if (publishLog) {
+      keywordStatus = 'Published';
+    } else if (isActiveCycle) {
+      // Active cycle: use the live kw.Status (tracks Beauftragt → In Arbeit → Angeliefert etc.)
+      keywordStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+    } else {
+      // Older cycle without a FK-linked publish log — legacy data.
+      // Show Published only if kw.Status is Published AND this cycle has a delivery log.
+      keywordStatus = (kw?.Status === 'Published' && !!delivery)
+        ? 'Published'
+        : ('Backlog' as KeywordStatus);
+    }
 
     return {
       commissionLogId: cl.ID,
@@ -89,8 +133,8 @@ function buildJobEntries(
       actionType: (cl.Action_Type === 'Optimierung' ? 'Optimierung' : 'Erstellung') as 'Erstellung' | 'Optimierung',
       keywordStatus,
       deliveryLogId: delivery?.ID,
-      // Failed = keyword reset to Planned with no delivery yet
-      isFailedRetry: keywordStatus === 'Planned' && !delivery,
+      // Failed = active cycle keyword was reset to Planned with no delivery yet
+      isFailedRetry: isActiveCycle && keywordStatus === 'Planned' && !delivery,
     };
   });
 }
@@ -311,11 +355,7 @@ export default function CreationPage() {
                               <div className="flex items-center gap-1.5 mt-1">
                                 <Badge
                                   variant="outline"
-                                  className={cn(
-                                    'text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50',
-                                    job.actionType === 'Optimierung' &&
-                                      'border-indigo-200 text-indigo-600 bg-indigo-50/50',
-                                  )}
+                                  className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50"
                                 >
                                   {job.actionType}
                                 </Badge>
@@ -340,7 +380,7 @@ export default function CreationPage() {
                       <TableRow>
                         <TableCell colSpan={2} className="py-8">
                           <div className="flex flex-col items-center gap-2 text-center px-4 w-full">
-                            <Map className="h-7 w-7 text-primary/30 shrink-0" />
+                            <MapIcon className="h-7 w-7 text-primary/30 shrink-0" />
                             <p className="text-xs font-medium text-primary leading-snug">
                               {t('onboarding.keywordMapRequired')}
                             </p>
@@ -417,12 +457,7 @@ export default function CreationPage() {
                     {t('creation.preview')}: {selectedJob.keyword}
                     <Badge
                       variant="outline"
-                      className={cn(
-                        'ml-1 text-xs font-semibold',
-                        selectedJob.actionType === 'Optimierung'
-                          ? 'border-indigo-300 text-indigo-600 bg-indigo-50'
-                          : 'border-slate-200 text-slate-600 bg-slate-50',
-                      )}
+                      className="ml-1 text-xs font-semibold border-slate-200 text-slate-600 bg-slate-50"
                     >
                       {selectedJob.actionType}
                     </Badge>
@@ -476,6 +511,7 @@ export default function CreationPage() {
                       keywordId={selectedJob.keywordId}
                       keyword={selectedJob.keyword}
                       currentStatus={selectedKeyword?.Status ?? 'Beauftragt'}
+                      commissionLogId={selectedJob.commissionLogId}
                     />
                   )}
                 </div>

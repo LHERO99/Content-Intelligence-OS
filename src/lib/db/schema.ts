@@ -12,6 +12,7 @@ import {
   index,
   primaryKey,
 } from 'drizzle-orm/pg-core';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
 // tenants
@@ -103,15 +104,18 @@ export const keywordMapEditors = pgTable(
 export const contentLog = pgTable(
   'content_log',
   {
-    id:          serial('id').primaryKey(),
-    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    keywordId:   text('keyword_id').references(() => keywordMap.id, { onDelete: 'set null' }),
-    loggedUrl:   text('logged_url'),
-    actionType:  text('action_type').$type<'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat'>(),
-    pageType:    text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>(),
-    editorId:    text('editor_id').references(() => users.id, { onDelete: 'set null' }),
-    timeCreated: timestamp('time_created', { withTimezone: true }).defaultNow().notNull(),
-    timeChanged: timestamp('time_changed', { withTimezone: true }).defaultNow().notNull(),
+    id:               serial('id').primaryKey(),
+    tenantId:         text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    keywordId:        text('keyword_id').references(() => keywordMap.id, { onDelete: 'set null' }),
+    loggedUrl:        text('logged_url'),
+    actionType:       text('action_type').$type<'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat'>(),
+    pageType:         text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>(),
+    editorId:         text('editor_id').references(() => users.id, { onDelete: 'set null' }),
+    timeCreated:      timestamp('time_created', { withTimezone: true }).defaultNow().notNull(),
+    timeChanged:      timestamp('time_changed', { withTimezone: true }).defaultNow().notNull(),
+    // Self-referencing FK: links delivery/save/publish rows to their commissioning event.
+    // Requires lazy callback with AnyPgColumn to avoid circular reference at module init.
+    commissionLogId:  integer('commission_log_id').references((): AnyPgColumn => contentLog.id, { onDelete: 'set null' }),
   },
   (t) => ({
     tenantIdx:   index('content_log_tenant_idx').on(t.tenantId),

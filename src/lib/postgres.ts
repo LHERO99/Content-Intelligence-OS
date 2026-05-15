@@ -167,6 +167,7 @@ function mapContentLogRow(
     Created_At: row.timeCreated.toISOString(),
     Updated_At: row.timeChanged.toISOString(),
     Editor: row.editorId ? [row.editorId] : undefined,
+    Commission_Log_Id: row.commissionLogId ?? undefined,
   };
 }
 
@@ -659,6 +660,7 @@ export async function createContentLog(log: Partial<ContentLog>, tenantId?: stri
         actionType: log.Action_Type,
         pageType: log.Page_Type,
         editorId: log.Editor?.[0] ?? null,
+        commissionLogId: log.Commission_Log_Id ?? null,
       })
       .returning();
 
