@@ -115,13 +115,15 @@ export function AgentSettingsTab() {
     setSaving(true);
 
     try {
-      const patches = [
+      const patches: { key: string; value: string }[] = [
         {
           key: "EXTERNAL_AGENT_ENABLED",
           value: mode === "external" ? "true" : "false",
         },
         { key: "EXTERNAL_AGENT_WEBHOOK_URL", value: webhookUrl },
-        { key: "EXTERNAL_AGENT_WEBHOOK_SECRET", value: webhookSecret },
+        // Only persist the secret when a value is present to avoid overwriting
+        // an existing secret with an empty string on subsequent saves
+        ...(webhookSecret ? [{ key: "EXTERNAL_AGENT_WEBHOOK_SECRET", value: webhookSecret }] : []),
       ];
 
       for (const patch of patches) {

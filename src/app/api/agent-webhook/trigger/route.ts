@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
           Target_URL: data.targetUrl,
           Action_Type: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
           Diff_Summary: "Content wurde beauftragt",
-          Editor: session.user?.email ? [session.user.email] : undefined
+          Editor: session.user?.id ? [session.user.id] : undefined
         }, tenantId);
       } catch (logErr) {
         console.error('Error creating commissioning log:', logErr);
@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
       if (externalEnabled && externalUrl) {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         const secret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
+        console.log('[ExternalAgent] Secret present:', !!secret, '| URL:', externalUrl);
         if (secret) {
           headers['Authorization'] = `Bearer ${secret}`;
         }
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
               Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
               Diff_Summary: 'Content angeliefert',
               Content_Body: finalHtml,
-              Editor: session.user?.email ? [session.user.email] : undefined,
+              Editor: session.user?.id ? [session.user.id] : undefined,
             }, tenantId);
           } catch (logErr) {
             console.error('[InternalAgent] Failed to create content log:', logErr);
