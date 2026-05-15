@@ -35,8 +35,19 @@ export async function GET() {
       console.warn('[API Monitoring] No keywords found. Dashboard will be empty.');
     }
 
+    // Build a lookup map: keywordId → Target_URL so that logs stored without
+    // loggedUrl (only keywordId) can still be resolved to their URL.
+    const keywordUrlMap = new Map(keywords.map(k => [k.id, k.Target_URL]));
+
+    // Enrich every log: if Target_URL is missing, resolve it via keywordId.
+    const resolvedLogs = logs.map(l => {
+      if (l.Target_URL) return l;
+      const resolvedUrl = l.Keyword_ID?.[0] ? keywordUrlMap.get(l.Keyword_ID[0]) : undefined;
+      return resolvedUrl ? { ...l, Target_URL: resolvedUrl } : l;
+    });
+
     // Aggregate Global Metrics
-    const publishedLogs = logs.filter(l => {
+    const publishedLogs = resolvedLogs.filter(l => {
       const type = l.Action_Type;
       const summary = l.Event_Label?.toLowerCase() || '';
       return type === 'Erstellung' || 
@@ -170,7 +181,7 @@ export async function GET() {
     // Unified list of URLs that should appear in monitoring:
     // Every URL that has data in URL_Performance OR has content logs
     const perfUrls = new Set(performance.map(p => p.Target_URL).filter(Boolean));
-    const allLogUrls = new Set(logs.map(l => l.Target_URL).filter(Boolean));
+    const allLogUrls = new Set(resolvedLogs.map(l => l.Target_URL).filter(Boolean));
     const allUniqueUrls = Array.from(new Set([...perfUrls, ...allLogUrls]));
 
     const urlList = allUniqueUrls.map(url => {
@@ -180,7 +191,7 @@ export async function GET() {
       
       const latest = urlPerf[0];
       const previous = urlPerf[1];
-      const urlLogs = logs.filter(l => l.Target_URL === url).sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
+      const urlLogs = resolvedLogs.filter(l => l.Target_URL === url).sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
 
       const openOptimizationStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung']);
       const hasOpenOptimizationRequest = keywords.some((keyword) =>
