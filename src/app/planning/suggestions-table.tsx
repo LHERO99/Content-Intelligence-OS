@@ -72,11 +72,19 @@ export function SuggestionsTable({ keywords, onGoToKeywordMap }: SuggestionsTabl
     loadOptimizationSuggestions();
   }, []);
 
-  // Filter for Main Keywords that are in Backlog
+  // Keywords appear in Vorschläge if they are:
+  // - Main keywords not currently in an active planning workflow
+  // - AND either: in Backlog, returned by the rule engine, or manually/auto commissioned (Action_Type = 'Optimierung')
+  const activeWorkflowStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review']);
   const suggestionData = React.useMemo(() => {
-    return keywords.filter(kw => 
-      kw.Main_Keyword === 'Y' && 
-      (kw.Status === 'Backlog' || !!optimizationSuggestions[kw.id])
+    return keywords.filter(kw =>
+      kw.Main_Keyword === 'Y' &&
+      !activeWorkflowStatuses.has(kw.Status ?? '') &&
+      (
+        kw.Status === 'Backlog' ||
+        !!optimizationSuggestions[kw.id] ||
+        kw.Action_Type === 'Optimierung'
+      )
     );
   }, [keywords, optimizationSuggestions]);
 

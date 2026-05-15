@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { createContentLog, getAllContentHistory } from '@/lib/postgres';
+import { createContentLog, getAllContentHistory, updateKeyword } from '@/lib/postgres';
 import { evaluateOptimizationSuggestions, getOptimizationRuleSettings } from '@/lib/optimization-rules';
 
 function toDateOnly(value: string): string {
@@ -34,18 +34,25 @@ async function logAutomaticSuggestionEvents(
       return (sameKeyword || sameUrl) && sameSummary && toDateOnly(String(log.Created_At || '')) === today;
     });
 
-    if (alreadyLoggedToday) continue;
+    if (!alreadyLoggedToday) {
+      try {
+        await createContentLog({
+          Keyword_ID: [suggestion.keywordId],
+          Target_URL: suggestion.targetUrl,
+          Logged_URL: suggestion.targetUrl,
+          Action_Type: 'Optimierung',
+          Event_Label: summary,
+        }, tenantId);
+      } catch (error) {
+        console.error('[API Optimization Suggestions] Failed to create auto-suggestion log:', error);
+      }
+    }
 
+    // Always ensure Action_Type is set to 'Optimierung' on the keyword — idempotent.
     try {
-      await createContentLog({
-        Keyword_ID: [suggestion.keywordId],
-        Target_URL: suggestion.targetUrl,
-        Logged_URL: suggestion.targetUrl,
-        Action_Type: 'Optimierung',
-        Event_Label: summary,
-      }, tenantId);
+      await updateKeyword(suggestion.keywordId, { Action_Type: 'Optimierung' }, tenantId);
     } catch (error) {
-      console.error('[API Optimization Suggestions] Failed to create auto-suggestion log:', error);
+      console.error('[API Optimization Suggestions] Failed to update keyword Action_Type:', error);
     }
   }
 }

@@ -60,7 +60,7 @@ function latestPublishedDateForKeyword(keywordId: string, targetUrl: string, log
   const relevant = logs.filter((log) => {
     const url = String(log.Target_URL || log.Logged_URL || '');
     const hasKeyword = Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(keywordId);
-    return (hasKeyword || (targetUrl && url === targetUrl)) && log.Event_Label === 'Content veroffentlicht';
+    return (hasKeyword || (targetUrl && url === targetUrl)) && log.Event_Label === 'Content veröffentlicht';
   });
   if (!relevant.length) return undefined;
   return relevant
