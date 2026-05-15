@@ -511,7 +511,7 @@ export function AgentSettingsTab() {
 
       {/* External Webhook Setup Dialog */}
       <Dialog open={showExternalDialog} onOpenChange={setShowExternalDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-amber-500" />
@@ -549,12 +549,7 @@ export function AgentSettingsTab() {
                       <td className="px-3 py-2 text-muted-foreground">string</td>
                       <td className="px-3 py-2 text-muted-foreground">{tr("Fertiger HTML-Content (siehe Anforderungen unten)", "Finished HTML content (see requirements below)")}</td>
                     </tr>
-                    <tr>
-                      <td className="px-3 py-2 font-mono text-primary">tenantId</td>
-                      <td className="px-3 py-2 text-muted-foreground">string</td>
-                      <td className="px-3 py-2 text-muted-foreground">{tr("Aus dem empfangenen Payload übernehmen", "Pass through from received payload")}</td>
-                    </tr>
-                    <tr className="opacity-60">
+                     <tr className="opacity-60">
                       <td className="px-3 py-2 font-mono">actionType</td>
                       <td className="px-3 py-2 text-muted-foreground">string?</td>
                       <td className="px-3 py-2 text-muted-foreground">{tr("\"Erstellung\" oder \"Optimierung\" (optional)", "\"Erstellung\" or \"Optimierung\" (optional)")}</td>
@@ -570,19 +565,18 @@ export function AgentSettingsTab() {
               <ul className="space-y-1.5 text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr("Valides HTML — der Content wird direkt per ", "Valid HTML — content is rendered directly via ")}<code className="text-xs bg-muted px-1 rounded">dangerouslySetInnerHTML</code>{tr(" gerendert", "")}
+                  {tr("Kein vollständiges HTML-Dokument — nur der eigentliche Seiteninhalt, ohne ", "No full HTML document — only the page content itself, without ")}<code className="text-xs bg-muted px-1 rounded">&lt;html&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;head&gt;</code>{tr(" oder ", " or ")}<code className="text-xs bg-muted px-1 rounded">&lt;body&gt;</code>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr("Kein vollständiges HTML-Dokument — nur Body-Inhalt (kein ", "No full HTML document — body content only (no ")}<code className="text-xs bg-muted px-1 rounded">&lt;html&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;head&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;body&gt;</code>{tr(" Tags)", " tags)")}
+                  {tr("Erlaubte Tags: ", "Allowed tags: ")}<code className="text-xs bg-muted px-1 rounded">&lt;h1&gt;</code>{" – "}<code className="text-xs bg-muted px-1 rounded">&lt;h6&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;p&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ul&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ol&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;li&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;a&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;strong&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;em&gt;</code>{tr(" u.v.m.", " and more")}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr("Semantische Struktur empfohlen: ", "Semantic structure recommended: ")}<code className="text-xs bg-muted px-1 rounded">&lt;h1&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;h2&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;p&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ul&gt;</code>{tr(" etc.", " etc.")}
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr("Kein eingebettetes ", "No inline ")}<code className="text-xs bg-muted px-1 rounded">&lt;script&gt;</code>{tr(" oder ", " or ")}<code className="text-xs bg-muted px-1 rounded">&lt;style&gt;</code>{tr(" — wird nicht gefiltert, aber empfohlen zu vermeiden", " — not filtered, but recommended to avoid")}
+                  {tr(
+                    "Gefährliche Tags wie ",
+                    "Dangerous tags like "
+                  )}<code className="text-xs bg-muted px-1 rounded">&lt;script&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;style&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;iframe&gt;</code>{tr(" und ", " and ")}<code className="text-xs bg-muted px-1 rounded">&lt;form&gt;</code>{tr(" werden automatisch herausgefiltert", " are automatically stripped")}
                 </li>
               </ul>
             </div>
