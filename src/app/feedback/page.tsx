@@ -117,7 +117,7 @@ export default function FeedbackPage() {
     if (res.ok) {
       const data = await res.json();
       setItems(data.own ?? []);
-      setPublicItems(data.public ?? []);
+      setPublicItems(data.plexaro ?? []);
     }
     setLoading(false);
   }, []);

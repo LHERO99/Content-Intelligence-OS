@@ -74,7 +74,7 @@ export async function GET() {
 
     return NextResponse.json({
       own: ownRows,
-      public: publicRows,
+      plexaro: publicRows,
     });
   } catch (error) {
     console.error("[Feedback] Error fetching feedback:", error);
