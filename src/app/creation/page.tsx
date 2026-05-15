@@ -36,6 +36,13 @@ interface JobEntry {
   keywordStatus: KeywordStatus;
   /** ID of the next "Content angeliefert" log after this commissioning event */
   deliveryLogId?: number;
+  /**
+   * ID of the newest v2 log for this cycle (used to load the displayed body).
+   * After a manual save a new log is created; displayLogId points to that newer log
+   * so the editor always shows the latest saved version, not the original delivery.
+   * Falls back to deliveryLogId for cycles without a Commission_Log_Id (pre-migration).
+   */
+  displayLogId?: number;
   /** True when the keyword was reset to Planned after a failed run */
   isFailedRetry: boolean;
 }
@@ -67,6 +74,18 @@ function buildJobEntries(
   const publishLogs = contentLogs.filter(
     (l) => l.Event_Label === 'Content veröffentlicht',
   );
+
+  // Newest v2 log per commission cycle — tracks the latest saved version for display.
+  // After a manual save the new log has Commission_Log_Id set; this map always points
+  // to the most recent v2 entry so bodyCache always fetches the latest content.
+  const latestV2LogByCommission = new Map<number, ContentLog>();
+  for (const log of contentLogs) {
+    if (log.Version !== 'v2' || log.Commission_Log_Id == null) continue;
+    const existing = latestV2LogByCommission.get(log.Commission_Log_Id);
+    if (!existing || new Date(log.Created_At) > new Date(existing.Created_At)) {
+      latestV2LogByCommission.set(log.Commission_Log_Id, log);
+    }
+  }
 
   // Identify the "active" (newest) commissioning log ID per keyword.
   // commissioningLogs are already sorted newest-first from the API.
@@ -124,6 +143,11 @@ function buildJobEntries(
         : ('Backlog' as KeywordStatus);
     }
 
+    // displayLogId: prefer the newest FK-linked v2 log; fall back to deliveryLogId
+    // for pre-migration cycles that have no Commission_Log_Id on any content log.
+    const latestV2Log = latestV2LogByCommission.get(cl.ID);
+    const displayLogId = latestV2Log?.ID ?? delivery?.ID;
+
     return {
       commissionLogId: cl.ID,
       commissionedAt,
@@ -133,6 +157,7 @@ function buildJobEntries(
       actionType: (cl.Action_Type === 'Optimierung' ? 'Optimierung' : 'Erstellung') as 'Erstellung' | 'Optimierung',
       keywordStatus,
       deliveryLogId: delivery?.ID,
+      displayLogId,
       // Failed = active cycle keyword was reset to Planned with no delivery yet
       isFailedRetry: isActiveCycle && keywordStatus === 'Planned' && !delivery,
     };
@@ -208,22 +233,25 @@ export default function CreationPage() {
     : null;
 
   // ── Body on-demand loading ───────────────────────────────────────────────────
-  const deliveryLogId = selectedJob?.deliveryLogId
-    ? String(selectedJob.deliveryLogId)
+  // Use displayLogId (newest v2 log for the cycle) so that after a manual save
+  // the editor reloads the latest saved body rather than the original delivery.
+  // Falls back to deliveryLogId for pre-migration cycles (no Commission_Log_Id).
+  const displayLogId = selectedJob?.displayLogId
+    ? String(selectedJob.displayLogId)
     : null;
 
   useEffect(() => {
-    if (!deliveryLogId || bodyCache[deliveryLogId] !== undefined) return;
-    fetch(`/api/planning/history/${deliveryLogId}/body`)
+    if (!displayLogId || bodyCache[displayLogId] !== undefined) return;
+    fetch(`/api/planning/history/${displayLogId}/body`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) setBodyCache((prev) => ({ ...prev, [deliveryLogId]: data }));
+        if (data) setBodyCache((prev) => ({ ...prev, [displayLogId]: data }));
       })
       .catch(() => {/* non-critical */});
-  }, [deliveryLogId]);
+  }, [displayLogId]);
 
-  const deliveredBody = deliveryLogId ? bodyCache[deliveryLogId] : undefined;
-  const v2Content = deliveredBody?.Content_Body ?? '';
+  const displayedBody = displayLogId ? bodyCache[displayLogId] : undefined;
+  const v2Content = displayedBody?.Content_Body ?? '';
 
   // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)
   const v1Content = useMemo(() => {
@@ -510,7 +538,7 @@ export default function CreationPage() {
                       mode={selectedJob.actionType}
                       keywordId={selectedJob.keywordId}
                       keyword={selectedJob.keyword}
-                      currentStatus={selectedKeyword?.Status ?? 'Beauftragt'}
+                      currentStatus={selectedJob.keywordStatus}
                       commissionLogId={selectedJob.commissionLogId}
                     />
                   )}

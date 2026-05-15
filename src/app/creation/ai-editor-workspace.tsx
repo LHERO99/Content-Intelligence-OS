@@ -56,6 +56,10 @@ export function AIEditorWorkspace({
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
 
+  // Derived: cycle is read-only once it has been published (prop-driven, server-authoritative).
+  // This also handles page reloads correctly — no reliance on local isPublished state alone.
+  const isReadOnly = currentStatus === 'Published';
+
   // Sync workingContent when the server delivers new content (polling / refresh).
   // Only blocked during active editing so Tiptap changes aren't lost.
   // activeMode is intentionally NOT a dependency — tab switches must not reset content
@@ -66,6 +70,12 @@ export function AIEditorWorkspace({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v2Content]);
+
+  // When a cycle becomes read-only (published), force the user back to preview so
+  // they never see a locked editor or AI-chat tab with stale/disabled state.
+  useEffect(() => {
+    if (isReadOnly) setActiveMode('preview');
+  }, [isReadOnly]);
 
   const handleSaveContent = async (html: string) => {
     setIsSaving(true);
@@ -170,10 +180,12 @@ export function AIEditorWorkspace({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setActiveMode('edit')}
+            onClick={() => !isReadOnly && setActiveMode('edit')}
+            disabled={isReadOnly}
             className={cn(
               "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'edit' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+              activeMode === 'edit' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700",
+              isReadOnly && "opacity-40 cursor-not-allowed pointer-events-none"
             )}
           >
             <Edit3 className="h-3.5 w-3.5" />
@@ -182,10 +194,12 @@ export function AIEditorWorkspace({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setActiveMode('ai-chat')}
+            onClick={() => !isReadOnly && setActiveMode('ai-chat')}
+            disabled={isReadOnly}
             className={cn(
               "h-8 gap-2 text-xs font-bold px-3",
-              activeMode === 'ai-chat' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+              activeMode === 'ai-chat' ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700",
+              isReadOnly && "opacity-40 cursor-not-allowed pointer-events-none"
             )}
           >
             <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -224,7 +238,11 @@ export function AIEditorWorkspace({
                   </Button>
                 </div>
               </TooltipTrigger>
-              {currentStatus !== 'Angeliefert' && !isPublished && (
+              {(isReadOnly || isPublished) ? (
+                <TooltipContent>
+                  {tr('Bereits veröffentlicht', 'Already published')}
+                </TooltipContent>
+              ) : currentStatus !== 'Angeliefert' && (
                 <TooltipContent>
                   {tr('Status muss "Angeliefert" sein', 'Status must be "Delivered"')} ({tr('Aktuell', 'Current')}: {currentStatus})
                 </TooltipContent>
