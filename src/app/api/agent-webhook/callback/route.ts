@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createContentLog, updateKeyword, getConfig, createAuditLog } from '@/lib/postgres';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 /**
  * Endpoint for external agent callbacks to return generated content.
@@ -86,6 +87,9 @@ export async function POST(request: Request) {
 
     console.log(`[API] Received content from agent for Keyword ID: ${keywordId}`);
 
+    // Sanitize HTML content before persisting — removes script, iframe, form etc.
+    const sanitizedContent = sanitizeHtml(content);
+
     // 1. Update Keyword Status to "Angeliefert"
     try {
       await updateKeyword(keywordId, { Status: 'Angeliefert' }, tenantId);
@@ -103,7 +107,7 @@ export async function POST(request: Request) {
       Keyword_ID: [keywordId],
       Logged_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
-      Content_Body: content,
+      Content_Body: sanitizedContent,
       Diff_Summary: 'Content angeliefert',
     }, tenantId);
 

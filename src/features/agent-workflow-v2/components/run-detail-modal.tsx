@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, CheckCircle2, XCircle, Circle, Clock } from "lucide-react";
 import { LiveDuration } from "./run-card";
 import { RunMessage, RunRecord, RunStep } from "../types";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ export function RunDetailModal({
                                             </p>
                                             <div
                                               className="prose prose-invert prose-sm max-w-none text-slate-200 bg-black/20 rounded-lg p-3 border border-white/5 max-h-80 overflow-y-auto"
-                                              dangerouslySetInnerHTML={{ __html: (step.output as any).finalHtml }}
+                                              dangerouslySetInnerHTML={{ __html: sanitizeHtml((step.output as any).finalHtml) }}
                                             />
                                           </div>
                                           <details className="group">

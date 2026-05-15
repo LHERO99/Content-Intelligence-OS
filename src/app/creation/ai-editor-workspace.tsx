@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { 
   Tooltip,
   TooltipContent,
@@ -322,7 +323,7 @@ export function AIEditorWorkspace({
                   `}</style>
                   <div 
                     className="preview-content"
-                    dangerouslySetInnerHTML={{ __html: workingContent }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingContent) }}
                   />
                 </div>
               </>
@@ -445,7 +446,7 @@ export function AIEditorWorkspace({
                 `}</style>
                 <div 
                   className="ai-chat-preview font-sans"
-                  dangerouslySetInnerHTML={{ __html: previewContent ?? workingContent }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewContent ?? workingContent) }}
                 />
               </div>
             </div>

@@ -511,7 +511,7 @@ export function AgentSettingsTab() {
 
       {/* External Webhook Setup Dialog */}
       <Dialog open={showExternalDialog} onOpenChange={setShowExternalDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-amber-500" />
@@ -525,7 +525,7 @@ export function AgentSettingsTab() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 text-sm">
+          <div className="space-y-5 text-sm">
             {/* Callback fields */}
             <div>
               <p className="font-semibold mb-2">{tr("1. Pflichtfelder im Callback-Body", "1. Required fields in callback body")}</p>
@@ -547,7 +547,7 @@ export function AgentSettingsTab() {
                     <tr>
                       <td className="px-3 py-2 font-mono text-primary">content</td>
                       <td className="px-3 py-2 text-muted-foreground">string</td>
-                      <td className="px-3 py-2 text-muted-foreground">{tr("Fertiger HTML-Content", "Finished HTML content")}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{tr("Fertiger HTML-Content (siehe Anforderungen unten)", "Finished HTML content (see requirements below)")}</td>
                     </tr>
                     <tr>
                       <td className="px-3 py-2 font-mono text-primary">tenantId</td>
@@ -564,9 +564,32 @@ export function AgentSettingsTab() {
               </div>
             </div>
 
+            {/* HTML content requirements */}
+            <div>
+              <p className="font-semibold mb-2">{tr("2. Anforderungen an den HTML-Content", "2. HTML content requirements")}</p>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
+                  {tr("Valides HTML — der Content wird direkt per ", "Valid HTML — content is rendered directly via ")}<code className="text-xs bg-muted px-1 rounded">dangerouslySetInnerHTML</code>{tr(" gerendert", "")}
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
+                  {tr("Kein vollständiges HTML-Dokument — nur Body-Inhalt (kein ", "No full HTML document — body content only (no ")}<code className="text-xs bg-muted px-1 rounded">&lt;html&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;head&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;body&gt;</code>{tr(" Tags)", " tags)")}
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
+                  {tr("Semantische Struktur empfohlen: ", "Semantic structure recommended: ")}<code className="text-xs bg-muted px-1 rounded">&lt;h1&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;h2&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;p&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ul&gt;</code>{tr(" etc.", " etc.")}
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
+                  {tr("Kein eingebettetes ", "No inline ")}<code className="text-xs bg-muted px-1 rounded">&lt;script&gt;</code>{tr(" oder ", " or ")}<code className="text-xs bg-muted px-1 rounded">&lt;style&gt;</code>{tr(" — wird nicht gefiltert, aber empfohlen zu vermeiden", " — not filtered, but recommended to avoid")}
+                </li>
+              </ul>
+            </div>
+
             {/* Auth */}
             <div>
-              <p className="font-semibold mb-2">{tr("2. Authentifizierung", "2. Authentication")}</p>
+              <p className="font-semibold mb-2">{tr("3. Authentifizierung", "3. Authentication")}</p>
               <p className="text-muted-foreground mb-1.5">
                 {tr(
                   "Jeder Callback-Request muss folgenden Header enthalten:",
@@ -580,10 +603,26 @@ export function AgentSettingsTab() {
 
             {/* Callback URL */}
             <div>
-              <p className="font-semibold mb-2">{tr("3. Callback-URL", "3. Callback URL")}</p>
+              <p className="font-semibold mb-2">{tr("4. Callback-URL", "4. Callback URL")}</p>
               <code className="block bg-muted rounded px-3 py-2 font-mono text-xs break-all">
                 POST {process.env.NEXT_PUBLIC_APP_URL ?? "<APP_BASE_URL>"}/api/agent-webhook/callback
               </code>
+            </div>
+
+            {/* Docs link */}
+            <div className="pt-1 border-t">
+              <a
+                href="/docs/external-agent-webhook"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <Info className="h-3.5 w-3.5" />
+                {tr("Vollständige Dokumentation öffnen", "Open full documentation")}
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
             </div>
           </div>
 

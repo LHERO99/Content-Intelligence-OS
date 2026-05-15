@@ -3,6 +3,7 @@ import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, Refre
 import { ContentLog } from "@/lib/postgres-types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useI18n } from "@/i18n/use-i18n";
 import { toLocaleTag } from "@/i18n/locale-utils";
 
@@ -83,7 +84,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
             {isExpanded && (
               <div 
                 className="p-3 rounded-lg bg-muted/30 border border-border text-xs leading-relaxed max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-top-1 html-content"
-                dangerouslySetInnerHTML={{ __html: log.Content_Body }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(log.Content_Body) }}
               />
             )}
           </div>
