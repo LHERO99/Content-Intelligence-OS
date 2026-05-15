@@ -202,6 +202,15 @@ function SignInForm() {
                 ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Wird geprüft…</>
                 : "Weiter"}
             </Button>
+
+            <div className="text-center">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Passwort vergessen?
+              </Link>
+            </div>
           </form>
         )}
 

@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link, KeyRound } from "lucide-react";
 import { CostManagement } from "./cost-management";
 import { BrandingTab } from "@/features/admin/components/branding-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
@@ -73,6 +73,8 @@ export default function AdminPage() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [resendingUserId, setResendingUserId] = useState<string | null>(null);
   const [resendResult, setResendResult] = useState<{ userId: string; inviteLink: string; emailSent: boolean } | null>(null);
+  const [resetingUserId, setResetingUserId] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<{ userId: string; resetUrl: string; emailSent: boolean } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -189,6 +191,21 @@ export default function AdminPage() {
       setError(err.message);
     } finally {
       setResendingUserId(null);
+    }
+  };
+
+  const handleResetPassword = async (id: string) => {
+    setResetingUserId(id);
+    setResetResult(null);
+    try {
+      const res = await fetch(`/api/admin/users/${id}/reset-password`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || tr("Fehler beim Passwort-Reset.", "Error sending password reset."));
+      setResetResult({ userId: id, resetUrl: data.resetUrl, emailSent: data.emailSent });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setResetingUserId(null);
     }
   };
 
@@ -523,18 +540,31 @@ export default function AdminPage() {
                                        <Edit2 className="h-4 w-4" />
                                      </Button>
                                      {user.Password_Changed === false && (
-                                       <Button
-                                         size="icon"
-                                         variant="ghost"
-                                         title={tr("Einladung erneut senden", "Resend invite")}
-                                         onClick={() => handleResendInvite(user.id)}
-                                         disabled={resendingUserId === user.id}
-                                       >
-                                         {resendingUserId === user.id
-                                           ? <Loader2 className="h-4 w-4 animate-spin" />
-                                           : <Mail className="h-4 w-4 text-blue-500" />}
-                                       </Button>
-                                     )}
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          title={tr("Einladung erneut senden", "Resend invite")}
+                                          onClick={() => handleResendInvite(user.id)}
+                                          disabled={resendingUserId === user.id}
+                                        >
+                                          {resendingUserId === user.id
+                                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                                            : <Mail className="h-4 w-4 text-blue-500" />}
+                                        </Button>
+                                      )}
+                                      {user.Password_Changed === true && (
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          title={tr("Passwort zurücksetzen", "Reset password")}
+                                          onClick={() => handleResetPassword(user.id)}
+                                          disabled={resetingUserId === user.id}
+                                        >
+                                          {resetingUserId === user.id
+                                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                                            : <KeyRound className="h-4 w-4 text-amber-500" />}
+                                        </Button>
+                                      )}
                                      <Button 
                                        size="icon" 
                                        variant="ghost" 
@@ -594,6 +624,43 @@ export default function AdminPage() {
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Password reset result */}
+            {resetResult && (
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-amber-800">
+                      {resetResult.emailSent
+                        ? tr("Passwort-Reset-Mail wurde gesendet.", "Password reset email sent.")
+                        : tr("Reset-Link generiert (E-Mail konnte nicht gesendet werden).", "Reset link generated (email could not be sent).")}
+                    </p>
+                    <Button size="icon" variant="ghost" onClick={() => setResetResult(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {!resetResult.emailSent && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-amber-700">{tr("Reset-Link:", "Reset link:")}</p>
+                      <div className="flex items-center gap-2">
+                        <Input value={resetResult.resetUrl} readOnly className="h-8 text-xs bg-white" />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(resetResult.resetUrl);
+                            setLinkCopied(true);
+                            setTimeout(() => setLinkCopied(false), 2000);
+                          }}
+                        >
+                          {linkCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

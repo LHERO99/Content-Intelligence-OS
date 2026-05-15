@@ -22,6 +22,13 @@
       "when": 1778792106938,
       "tag": "0002_lowly_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778853858670,
+      "tag": "0003_lazy_cerise",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,49 @@
-# Technische Entscheidungen (Stand: 15.05.2026 – aktualisiert)
+# Technische Entscheidungen (Stand: 15.05.2026 – aktualisiert 2)
+
+## Shadcn/Base UI Dialog: `sm:max-w-sm` aus Basiskomponente entfernt (15.05.2026)
+- Die `DialogContent`-Basiskomponente in `src/components/ui/dialog.tsx` hatte `sm:max-w-sm` als Standard-Klasse
+- Diese übersteuerte alle `max-w-*`-Klassen vom Aufrufer, da beide auf der `sm:`-Breakpoint-Ebene lagen
+- **Fix**: `sm:max-w-sm` aus der Basisklasse entfernt — Breite wird vollständig vom Aufrufer kontrolliert
+- **Regel**: Keine Größen-Defaults in der Basiskomponente setzen; Aufrufer bestimmt die Breite via `className`
+
+## Dialog-Overflow: Flex-Children mit inline Code-Tags (15.05.2026)
+- Mehrere inline `<code>`-Tags als direkte Flex-Children eines `<li className="flex">` verursachen horizontalen Overflow
+- **Fix**: Textinhalt (alles nach dem Bullet-`<span>`) in `<span className="min-w-0">` wrappen → ein einziger Flex-Child der intern normal umbricht
+- **Regel**: In Flex-Containern mit gemischtem Text+Inline-Elementen immer einen wrappenden `<span className="min-w-0">` als Flex-Child verwenden
+
+## Agent-Webhook Callback: `tenantId` aus API-Key-Auth, nie aus Request-Body (15.05.2026)
+- **Problem**: `tenantId` aus dem Request-Body akzeptieren erlaubt Angreifern, beliebige Tenants zu adressieren
+- **Fix**: `resolveTenantFromApiKey(apiKey)` scannt alle Tenants nach passendem `EXTERNAL_AGENT_WEBHOOK_SECRET`
+- Rückgabe: `{ tenantId: string | undefined, isLegacy: boolean }` oder `null` (kein Match)
+- Legacy N8N_API_KEY ist global (kein Tenant-Scope) → gibt `tenantId: undefined` zurück
+- **Regel**: Sicherheitskritische Parameter (tenantId, userId) dürfen nie aus dem Request-Body kommen wenn sie per Auth ableitbar sind
+
+## Cron-Endpoints: Immer Auth erzwingen (15.05.2026)
+- **Vorher**: `if (cronSecret) { check }` — fehlendes `CRON_SECRET` erlaubte unauthentic Zugriff
+- **Nachher**: Fehlendes `CRON_SECRET` → HTTP 503 "Cron endpoint not configured"; falsches Secret → HTTP 401
+- **Regel**: Security-Checks nie hinter Feature-Flags verstecken die einen vollständigen Bypass ermöglichen
+
+## Invite-Routen: kein plaintext Passwort in API-Response (15.05.2026)
+- `tempPassword` wurde in `/api/admin/invite` und `/api/admin/users/[id]/resend-invite` im Response zurückgegeben
+- **Fix**: `tempPassword` aus beiden Responses entfernt — Passwort wird nur per E-Mail zugestellt
+- `inviteLink` enthält weiterhin `?temp=...` (für direkten Login), wird aber nur als URL zurückgegeben (kein separates Klartext-Feld)
+
+## Bootstrap: Produktions-Schutz via BOOTSTRAP_ENABLED (15.05.2026)
+- **Problem**: Jeder konnte sich als erster Admin registrieren wenn die Datenbank durch Race-Condition leer erschien
+- **Fix**: Bootstrap-Pfad erfordert `BOOTSTRAP_ENABLED=true` ENV-Flag
+- **Regel**: `BOOTSTRAP_ENABLED=true` nur für initiales Setup setzen, danach entfernen
+
+## HTML-Sanitizing: `sanitize-html` statt `isomorphic-dompurify` (15.05.2026)
+- `isomorphic-dompurify` v3 ist ESM-only (via `jsdom` v29 → `@exodus/bytes`) → nicht kompatibel mit Next.js/Turbopack
+- **Ersatz**: `sanitize-html` (CJS-kompatibel, kein DOM benötigt, serverseitig nutzbar)
+- Konfiguration in `src/lib/sanitize.ts`: Allowlist-basiert, `script`/`style`/`iframe`/`form` explizit geblockt
+
+## Agent-Webhook Popup: Keine Implementierungsdetails für Agenten (15.05.2026)
+- Hinweis auf `dangerouslySetInnerHTML` entfernt — technisches Implementierungsdetail, nicht relevant für Agent-Entwickler
+- Hinweis "Gefährliche Tags werden gefiltert" entfernt — gibt Angreifern unnötige Informationen
+- Stattdessen: Positive Allowlist ("Diese Tags sind erlaubt") statt Negativliste ("Diese Tags werden geblockt")
+
+
 
 ## SuperAdmin Health: Early-Return muss alle Pflichtfelder des Response-Interface enthalten (15.05.2026)
 - `HealthSummaryResponse` enthält `smtp` als Pflichtfeld

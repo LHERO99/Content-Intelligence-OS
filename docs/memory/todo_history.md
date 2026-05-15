@@ -164,7 +164,28 @@
 - [x] Fix: SuperAdmin Feedback `S.map is not a function` — `Array.isArray()`-Guard in `load()`
 - [x] Fix: `health/route.ts` Early-Return `smtp`-Feld ergänzt (TypeScript `satisfies HealthSummaryResponse` Deployment-Fehler)
 
+## Security-Audit Fixes (15.05.2026)
+- [x] Security-Fix 1: `/api/debug/*` — alle Debug-Routen erfordern SuperAdmin-Session
+- [x] Security-Fix 3: `PATCH /api/admin/users/:id` — Field Allowlist `['Name', 'Email']`; Role + Password_Changed nicht extern setzbar
+- [x] Security-Fix 4: `callback/route.ts` — `tenantId` aus API-Key-Auth via `resolveTenantFromApiKey()`, nie aus Request-Body
+- [x] Security-Fix 6: Alle 5 Cron-Routes — Auth immer erzwungen; fehlt `CRON_SECRET` → HTTP 503
+- [x] Security-Fix 8: `invite/route.ts` + `resend-invite/route.ts` — hardcodierte URL durch `NEXTAUTH_URL ?? APP_BASE_URL ?? ''` ersetzt
+- [x] Security-Fix 9: `invite/route.ts` + `resend-invite/route.ts` — `tempPassword` aus API-Response entfernt
+- [x] Security-Fix 10: `alert-rules/route.ts` — `notifyEmails` Regex-Validierung + max. 10 Adressen
+- [x] Security-Fix 11: `agent-webhook/test/route.ts` — SSRF-Schutz: interne IP-Ranges geblockt
+- [x] Security-Fix 12: `[...nextauth]/route.ts` — Bootstrap-Pfad erfordert `BOOTSTRAP_ENABLED=true`
+- [x] Security-Fix 13: `feedback/route.ts` — `priority` gegen Enum `['low', 'medium', 'high']` validiert
+
+## Agent-Webhook Popup-Dialog (15.05.2026)
+- [x] `tenantId` aus Pflichtfelder-Tabelle entfernt (wird serverseitig aus API-Key abgeleitet)
+- [x] Hinweis "Gefährliche Tags werden herausgefiltert" entfernt
+- [x] `dangerouslySetInnerHTML`-Referenz aus Popup entfernt
+- [x] Erlaubte HTML-Tags positiv aufgelistet
+- [x] `dialog.tsx`: `sm:max-w-sm` aus Basiskomponente entfernt
+- [x] `<li>`-Overflow-Fix: Textinhalt in `<span className="min-w-0">` gewrappt
+
 ## Offen / Ausstehend
+
 - [ ] DB-Migration `0002_lowly_medusa.sql` ausführen: `ALTER TABLE "feature_requests" ADD COLUMN "is_public" boolean DEFAULT false NOT NULL;`
 
 - [ ] DB-Migration ausführen (manuell via psql):

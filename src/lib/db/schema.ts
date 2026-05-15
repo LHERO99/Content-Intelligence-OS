@@ -325,6 +325,25 @@ export const alertRules = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// password_reset_tokens
+// ---------------------------------------------------------------------------
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    token:     text('token').primaryKey(),
+    userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    tenantId:  text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    used:      boolean('used').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx:   index('prt_user_idx').on(t.userId),
+    tenantIdx: index('prt_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
 // audit_logs
 // ---------------------------------------------------------------------------
 export const auditLogs = pgTable(

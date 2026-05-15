@@ -34,6 +34,8 @@ export default withAuth(
         // Public paths
         if (
           path.startsWith("/auth/signin") || 
+          path.startsWith("/auth/forgot-password") ||
+          path.startsWith("/auth/reset-password") ||
           path.startsWith("/api/auth") ||
           path.startsWith("/api/agent-webhook/callback") ||
           path.startsWith("/api/monitoring/import") ||

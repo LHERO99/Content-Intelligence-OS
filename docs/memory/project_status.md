@@ -1,4 +1,62 @@
-# Projekt-Status (Stand: 15.05.2026 – aktualisiert)
+# Projekt-Status (Stand: 15.05.2026 – aktualisiert 2)
+
+## Security-Audit: Alle Fixes abgeschlossen (15.05.2026)
+
+### Abgeschlossene Fixes (Audit-Report)
+
+**Fix 1 — Debug-Routen: SuperAdmin-Auth**
+- Alle `/api/debug/*` Routen erfordern SuperAdmin-Session (war: kein Auth)
+
+**Fix 3 — `PATCH /api/admin/users/:id`: Field Allowlist**
+- Nur `['Name', 'Email']` erlaubt; `Role` + `Password_Changed` können nicht mehr extern gesetzt werden
+
+**Fix 4 — Callback `tenantId` aus API-Key-Auth**
+- `tenantId` wird nicht mehr aus dem Request-Body gelesen
+- Neue `resolveTenantFromApiKey()`-Funktion scannt alle Tenants nach passendem `EXTERNAL_AGENT_WEBHOOK_SECRET`
+- Angreifer kann keine fremde `tenantId` im Body fälschen
+
+**Fix 6 — Cron-Endpoints: Auth immer erzwungen (5 Routen)**
+- Alle 5 Cron-Routes (`sync-gsc`, `sync-dataforseo`, `check-alerts`, `check-integrations`, `purge-old-data`)
+- `if (cronSecret) { check }` → immer prüfen; fehlt `CRON_SECRET` → HTTP 503
+
+**Fix 8+9 — Invite-Routen: Hardcoded URL + plaintext Passwort**
+- `"https://content-intelligence-os-sigma.vercel.app"` → `process.env.NEXTAUTH_URL ?? process.env.APP_BASE_URL ?? ''`
+- `tempPassword` aus beiden API-Responses entfernt (`invite/route.ts` + `resend-invite/route.ts`)
+
+**Fix 10 — `notifyEmails` Validierung**
+- Jede E-Mail-Adresse wird per Regex validiert
+- Maximum 10 Adressen
+
+**Fix 11 — SSRF-Schutz in `agent-webhook/test/route.ts`**
+- Blockiert Requests an `127.x`, `10.x`, `192.168.x`, `172.16-31.x`, `169.254.x`, `::1`, IPv6 ULA/link-local
+
+**Fix 12 — Bootstrap Race-Condition**
+- Bootstrap-Pfad in `[...nextauth]/route.ts` erfordert `BOOTSTRAP_ENABLED=true` ENV-Flag
+- In Production standardmäßig deaktiviert
+
+**Fix 13 — `priority`-Enum in `/api/feedback`**
+- Validiert gegen `['low', 'medium', 'high']`; unbekannte Werte → silent fallback auf `'medium'`
+
+### HTML-Sanitizing (parallel zu Audit)
+- `sanitize-html` installiert (ersetzt `isomorphic-dompurify`, ESM-Inkompatibilität mit Turbopack)
+- `src/lib/sanitize.ts` erstellt
+- Alle `dangerouslySetInnerHTML`-Stellen sanitiert + Server-seitige Sanitierung in `callback/route.ts`
+
+### External Agent Webhook (parallel zu Audit)
+- Routes umbenannt: `/api/n8n/*` → `/api/agent-webhook/*`
+- `secondaryKeywords` im Payload: String-Array statt Objekt-Array mit Metriken
+- `callbackUrl` aus `NEXTAUTH_URL` / `APP_BASE_URL` ENV
+- Admin-UI: Secret-Hinweis-Box, Popup-Dialog "Externer Webhook einrichten"
+
+### Agent-Webhook Popup-Dialog (15.05.2026)
+- `tenantId` aus Pflichtfelder-Tabelle entfernt (wird serverseitig aus API-Key abgeleitet)
+- Hinweis "Gefährliche Tags werden herausgefiltert" entfernt
+- `dangerouslySetInnerHTML`-Referenz entfernt (technisches Implementierungsdetail)
+- Erlaubte HTML-Tags klar aufgelistet (`h1–h6`, `p`, `ul`, `ol`, `li`, `a`, `strong`, `em`)
+- `dialog.tsx`: `sm:max-w-sm` aus Basiskomponente entfernt (verhinderte `max-w-4xl` vom Aufrufer)
+- `<li>`-Textinhalt in `<span className="min-w-0">` gewrappt (Overflow-Fix)
+
+---
 
 ## Deployment-Fix: Health-Route Early-Return smtp-Feld (15.05.2026)
 
