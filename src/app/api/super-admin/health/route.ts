@@ -111,6 +111,7 @@ export async function GET() {
         totalTenants: 0,
         tenantsWithErrors: 0,
         generatedAt: new Date().toISOString(),
+        smtp: { status: 'not_configured' as const, detail: 'No tenants found' },
       } satisfies HealthSummaryResponse);
     }
 
