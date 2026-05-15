@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import ReactDiffViewer from 'react-diff-viewer-continued';
 import { RichTextEditor } from './rich-text-editor';
 import { AIChatPanel } from './ai-chat-panel';
 import { 
@@ -9,8 +8,6 @@ import {
   Edit3, 
   Sparkles, 
   Send, 
-  Layout, 
-  ArrowLeftRight,
   FileText,
   CheckCircle2
 } from 'lucide-react';
@@ -329,33 +326,14 @@ export function AIEditorWorkspace({
               </>
             ) : (
               <>
-                <div className="grid grid-cols-2 border-b bg-muted/50 text-sm font-bold text-slate-600 shrink-0">
-                  <div className="p-3 border-r flex items-center gap-2">
-                    <Layout className="h-4 w-4" />
-                    {tr('v1 (Aktuell)', 'v1 (Current)')}
-                  </div>
-                  <div className="p-3 flex items-center gap-2 text-primary">
-                    <ArrowLeftRight className="h-4 w-4" />
-                    {tr('v2 (KI Vorschlag / Edit)', 'v2 (AI Suggestion / Edit)')}
-                  </div>
+                <div className="border-b bg-primary/10 p-3 text-sm font-bold text-primary flex items-center gap-2 shrink-0">
+                  <FileText className="h-4 w-4" />
+                  {tr('Vorschau', 'Preview')}
                 </div>
-                <div className="overflow-auto flex-1 min-h-0">
-                  <ReactDiffViewer
-                    oldValue={v1Content}
-                    newValue={workingContent}
-                    splitView={true}
-                    useDarkTheme={false}
-                    styles={{
-                      variables: {
-                        light: {
-                          diffViewerBackground: '#fff',
-                          diffViewerColor: '#212529',
-                          addedBackground: '#e6ffed',
-                          wordAddedBackground: '#acf2bd',
-                          addedGutterBackground: '#cdffd8',
-                        },
-                      },
-                    }}
+                <div className="p-3 overflow-auto bg-white flex-1 min-h-0">
+                  <div 
+                    className="preview-content"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingContent) }}
                   />
                 </div>
               </>

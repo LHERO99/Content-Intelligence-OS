@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   getPerformanceDataByUrl, 
-  getContentHistoryByUrl, 
+  getContentHistoryByUrlOrKeywords, 
   getCostConfigs, 
   getURLPerformanceHistory, 
   getKeywordRankingHistory,
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       keywordRankingHistory
     ] = await Promise.all([
       getPerformanceDataByUrl(targetUrl, tenantId),
-      getContentHistoryByUrl(targetUrl, tenantId),
+      getContentHistoryByUrlOrKeywords(targetUrl, keywordIds, tenantId),
       getCostConfigs(tenantId),
       getURLPerformanceHistory(targetUrl, tenantId),
       getKeywordRankingHistory(keywordIds, tenantId)

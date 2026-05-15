@@ -11,7 +11,7 @@
  * automatically inside withTenant().
  */
 import 'server-only';
-import { eq, and, desc, asc, inArray, sql as drizzleSql, gte, lte, lt, notExists, isNotNull } from 'drizzle-orm';
+import { eq, and, or, desc, asc, inArray, sql as drizzleSql, gte, lte, lt, notExists, isNotNull } from 'drizzle-orm';
 import { db, withTenant, getDefaultTenantId } from './db/index';
 import {
   keywordMap as keywordMapTable,
@@ -555,6 +555,40 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.loggedUrl, targetUrl)))
       .orderBy(desc(contentLogTable.timeCreated));
     return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
+  });
+}
+
+export async function getContentHistoryByUrlOrKeywords(
+  targetUrl: string,
+  keywordIds: string[],
+  tenantId?: string
+): Promise<ContentLog[]> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const conditions = [eq(contentLogTable.loggedUrl, targetUrl)];
+    if (keywordIds.length > 0) {
+      conditions.push(inArray(contentLogTable.keywordId, keywordIds));
+    }
+    const rows = await tx
+      .select({
+        log: contentLogTable,
+        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        eventLabel: contentLogBodyTable.eventLabel,
+      })
+      .from(contentLogTable)
+      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
+      .where(and(eq(contentLogTable.tenantId, tenant), or(...conditions)))
+      .orderBy(desc(contentLogTable.timeCreated));
+
+    // Deduplicate by log ID (a log could match both URL and keywordId)
+    const seen = new Set<number>();
+    return rows
+      .filter(r => {
+        if (seen.has(r.log.id)) return false;
+        seen.add(r.log.id);
+        return true;
+      })
+      .map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
   });
 }
 

@@ -20,7 +20,7 @@
 - [x] API: `/api/planning/history` POST macht `actionType` optional.
 - [x] Agent Builder V2 als Standard etabliert, V1 entfernt.
 - [x] OpenAI als ausführbarer Provider im Agent-Runner integriert.
-- [x] Integrationen: Model Discovery Endpoint eingeführt (OpenAI, OpenRouter, Gemini, Copilot, Perplexity).
+- [x] Integrationen: Model Discovery Endpoint eingeführt.
 - [x] Admin Integrationen-Tab auf Master-Detail UX umgestellt.
 - [x] Agent Runtime: Orchestrator Round-Loop implementiert.
 - [x] Agent Runtime: Strukturierte Parent-Decision Auswertung implementiert.
@@ -46,154 +46,127 @@
 - [x] Refactor: Branding-Upload nutzt nun native Airtable Attachments.
 - [x] i18n: LanguageProvider + useI18n Hook + LanguageSwitcher implementiert (DE/EN).
 - [x] i18n: Alle UI-Komponenten vollständig lokalisiert.
-- [x] i18n: `dashboard.systemHealth.*` Keys in `de.ts` + `en.ts` ergänzt.
 
 ## System Health Dashboard (30.04.2026)
 - [x] Refactor: Provider-Test-Funktionen in `src/lib/integration-tests.ts` extrahiert.
 - [x] Feature: `createAuditLog(action, rawPayload?)` Hilfsfunktion in `airtable.ts` ergänzt.
-- [x] Feature: `src/app/api/cron/sync-gsc/route.ts` — schreibt AuditLog-Einträge für `cron:sync-gsc` und `cron:sync-sistrix`.
-- [x] Feature: Neuer Cron `GET /api/cron/check-integrations` (täglich 06:00 UTC).
-- [x] Feature: Neuer Endpunkt `GET /api/system-health` — Admin-only, aggregiert alle Health-Checks.
-- [x] Feature: Neue Komponente `src/components/system-health-card.tsx` — Admin-only, i18n-fähig.
-- [x] Refactor: Dashboard `src/app/page.tsx` — Alerts Feed entfernt, `SystemHealthCard` eingebunden.
-- [x] Config: `vercel.json` — Neuer Cron `check-integrations` täglich 06:00 UTC.
-- [x] Fix: Content-Pipeline-Check — `fields: ['Last Modified']` entfernt.
+- [x] Feature: Neue Cron-Routes mit AuditLog-Einträgen.
+- [x] Feature: `GET /api/system-health` — Admin-only, aggregiert alle Health-Checks.
+- [x] Feature: `SystemHealthCard`-Komponente.
 
 ## Agent Flow: finalHtml & Content-Delivery-Pipeline (01.05.2026)
-- [x] Feature: Run Detail Modal Sheet-Breite auf `sm:max-w-3xl` erhöht.
-- [x] Feature: Run Detail Modal — `finalHtml`-Preview im Step-Output (grüne HTML-Vorschau, Rohdaten collapsible).
-- [x] Feature: `OrchestratorDecision` um `finalHtml?: string` erweitert (Service + `createOrchestratorNode`).
-- [x] Feature: `extractDecisionFromOutput` extrahiert `finalHtml` aus Orchestrator-Output.
-- [x] Feature: 3-stufige `capturedFinalHtml`-Fallback-Kette in `service.ts` implementiert (Orchestrator-JSON → bekannte Felder → längster String).
-- [x] Feature: `finalOutput` wird in-memory in Rückgabewert injiziert (`return { ...finalRun, output: finalOutput }`), nicht in Airtable geschrieben.
-- [x] Feature: `WorkflowRunV2.output?: Record<string, unknown>` in Domain-Model ergänzt.
-- [x] Feature: `trigger/route.ts` — Nach erfolgreichem Run `Status: 'Angeliefert'` setzen + `createContentLog` mit `finalHtml`.
-- [x] Fix: `Diff_Summary: 'Content angeliefert'` (exakter String für `HistoryList`-Preview-Gate).
-- [x] Fix: Step-basierten Fallback aus `trigger/route.ts` entfernt (durch `pruneStore`-Truncation unzuverlässig).
+- [x] Feature: `OrchestratorDecision` um `finalHtml?: string` erweitert.
+- [x] Feature: 3-stufige `capturedFinalHtml`-Fallback-Kette implementiert.
+- [x] Feature: `finalOutput` wird in-memory injiziert, nicht in Airtable geschrieben.
+- [x] Feature: `trigger/route.ts` — Nach erfolgreichem Run Status + Content-Log schreiben.
+- [x] Fix: `Event_Label: 'Content angeliefert'` (exakter String für HistoryList-Preview-Gate).
 
 ## Optimistisches UI: Commissioning-Button (01.05.2026)
-- [x] Fix: `setCommissionedIds` + `addAlert` vor `await triggerN8nAction(...)` verschoben (sofortiges UI-Feedback).
-- [x] Fix: Bei API-Fehler `commissionedIds.delete(id)` (optimistisches Update rückgängig machen).
+- [x] Fix: `setCommissionedIds` + `addAlert` vor `await triggerN8nAction(...)` verschoben.
+- [x] Fix: Bei API-Fehler optimistisches Update rückgängig machen.
 
 ## Tenant-Isolation (13.05.2026)
-- [x] Alle API-Routes unter `planning/`, `admin/`, `agent-workflows-v2/`, `cron/`, `n8n/`, `monitoring/`, `creation/`, `system-health/`, `branding/`, `feedback/` auf `session.user.tenantId` umgestellt
-- [x] `DEFAULT_TENANT_ID` aus allen agent-workflows-v2 Sub-Routes entfernt
-- [x] `postgres.ts`: `getAllTenants()`, `getPotentialTrends(_tenantId?)`, `createTrend(_tenantId?)`, `invalidateConfigCache(tenantId)` gefixt
-- [x] `admin-integrations.ts`, `optimization-rules.ts`, `sync-performance.ts`: alle Funktionen mit tenantId
-- [x] `admin/costs/route.ts` + `admin/costs/[id]/route.ts`: tenantId an alle Cost-DB-Calls
-- [x] `admin/users/[id]/route.ts`: tenantId an updateUser + deleteUser
-- [x] `admin/invite/route.ts`: tenantId an getUserByEmail + createUser; hardcodierte baseUrl durch NEXTAUTH_URL ersetzt
-- [x] `feedback/route.ts`: getDefaultTenantId() durch session.user.tenantId ersetzt
-- [x] Security-Fix: `lookup-tenants/route.ts` — Passwort wird pro Tenant einzeln geprüft (first-password-wins Bug behoben)
-- [x] Security-Fix: `[...nextauth]/route.ts` — tenantId im JWT kommt nur noch aus DB-Row, nicht aus credentials
-- [x] `postgres.ts` `tid()`: console.warn bei fehlendem tenantId
-- [x] `app-sidebar.tsx`: App-Name von "SEO Content Intelligence" auf "Plexaro" geändert
+- [x] Alle API-Routes auf `session.user.tenantId` umgestellt.
+- [x] Security-Fix: `lookup-tenants/route.ts` — Passwort pro Tenant geprüft.
+- [x] Security-Fix: `[...nextauth]/route.ts` — tenantId im JWT nur aus DB-Row.
+- [x] `postgres.ts` `tid()`: console.warn bei fehlendem tenantId.
 
 ## Agent Builder UI Refactoring (01.05.2026)
 - [x] Refactor: Run Controls Card + manueller Run-Button entfernt.
-- [x] Refactor: Auto-Save-Strip in Toolbar-Zeile neben Flow-Tabs verschoben.
-- [x] Refactor: Execution Panel — Tabs (Executions/Timeline/Messages) entfernt, nur Run-Liste.
-- [x] Refactor: Status-Filter in Card-Header, Actions in `...`-DropdownMenu.
-- [x] Refactor: Execution Panel in linke Sidebar integriert (Option B: festes Side-Panel).
+- [x] Refactor: Execution Panel in linke Sidebar integriert.
 - [x] Refactor: Resize-Mechanismus vollständig entfernt.
-- [x] Fix: Canvas-Höhe auf `h-[calc(100vh-220px)]` für bündiges Alignment.
-- [x] Style: NodePalette + ExecutionPanel + RunCard auf App-Standard-Styling (weiße Cards, `border border-border`).
-- [x] Style: Header-Vereinheitlichung — identische Icon+Titel+Subline-Struktur für beide Karten.
-- [x] Fix: Empty States + Amber-Banner — Alpha-Transparenz entfernt (`/60` → voll opak), Kontrast auf `text-white`/`text-slate-200` erhöht.
-- [x] i18n: `toolboxTitle`, `toolboxDescription`, `executionPanel`, `executionPanelDescription` ergänzt.
-- [x] i18n: `customFlowActiveTitle/Body/Deactivate`, `customFlowDisabledTitle/Body/Agents/Reactivate` ergänzt.
-- [x] i18n: `noCustomFlowTitle/Body/Warning/Action` ergänzt.
-- [x] i18n: Alle hardcodierten deutschen Texte in Empty States und Amber-Banner ausgelagert.
 
 ## Super-Admin & UI-Verbesserungen (14.05.2026)
-- [x] Feature: `GET /api/super-admin/dashboard` — aggregiert Tenant-Stats, MRR/ARR, Subscription-Verteilung, Feedback-Stats
-- [x] Feature: `/super-admin/dashboard` Page — KPI-Cards, MRR-Balkendiagramm, Subscription-Verteilung, Recent Tenants
-- [x] i18n: `superAdmin`-Namespace in `de.ts` + `en.ts` (~150 Keys)
-- [x] i18n: `feedback`-Namespace in `de.ts` + `en.ts`
-- [x] i18n: `legal`-Namespace in `de.ts` + `en.ts`
-- [x] i18n: `sidebar.feedbackLink`, `sidebar.legalLink`, `sidebar.profile` Keys ergänzt
-- [x] Refactor: Super-Admin-Seiten (Tenants, Pricing, Feedback) vollständig auf `useI18n()` umgestellt
-- [x] Fix: Redirect `/super-admin` → `/super-admin/dashboard`
-- [x] Feature: `/feedback` Page für alle Rollen (Admin, Editor, Viewer) mit `plannedQuarter`-Spalte
-- [x] Refactor: Feedback-Tab aus Admin-Page entfernt
-- [x] Fix: SelectValue Dropdown-Bug — explizite Kinder in `super-admin/feedback/page.tsx` + `feedback/page.tsx`
-- [x] Fix: `<span>`-Wrapper aus `<SelectItem value="none">` entfernt (Quarter-Inline-Edit)
-- [x] Refactor: Sidebar ShieldCheck-Icon bei "Plexaro" entfernt
-- [x] Feature: Sidebar-Footer Umbau — User-Avatar öffnet DropdownMenu (Profil, Rechtliches, Sprache, Abmelden)
-- [x] Fix: Base UI error #31 — `DropdownMenuLabel` durch `div` ersetzt (kein `Menu.Group`-Parent vorhanden)
-- [x] Fix: Base UI `asChild` nicht verfügbar — `DropdownMenuTrigger` mit `className`, Items mit `onClick + router.push`
-- [x] Feature: Copyright-Zeile `© {year} Plexaro` im Sidebar-Footer (linksbündig, ausgegraut)
-- [x] Feature: `/legal` Page mit 4 Tabs (Impressum, Datenschutz, AGB, Copyright), `?tab=`-Query-Parameter, `Suspense`
-- [x] Fix: SuperAdmin-Zugriff auf `/legal` — in `SUPER_ADMIN_EXEMPT_PREFIXES` eingetragen
-- [x] Fix: Login-Seite scrollbar — `fixed inset-0` statt `h-screen`, Auth-Layout-Branch ohne `p-6`-Wrapper
-- [x] Feature: Login-Seite Footer — Impressum/Datenschutz/AGB Links + Copyright
+- [x] Feature: `GET /api/super-admin/dashboard`.
+- [x] Feature: `/super-admin/dashboard` Page.
+- [x] Feature: Sidebar-Footer Umbau — User-Avatar-Dropdown.
+- [x] Feature: `/legal` Page mit Impressum, Datenschutz, AGB.
+- [x] Fix: Login-Seite `fixed inset-0`.
 
 ## Multi-Tenant Sicherheitslücken (14.05.2026)
-- [x] Security-Fix: `monitoring/import/route.ts` — tenantId aus body/Header, Hard 400 wenn fehlend, explizit an upsert-Funktionen übergeben
-- [x] Security-Fix: `cron/purge-old-data/route.ts` — loopt über alle Tenants via getAllTenants(), Purge + AuditLog pro Tenant
-- [x] Security-Fix: `admin/upload/route.ts` — Blob-Pfad enthält jetzt `tenantId` (`branding/{tenantId}/...`)
-- [x] Feature: `src/lib/db/migrations/0001_add_row_level_security.sql` — RLS-Policies auf 9 tenant-scoped Tabellen + `current_tenant_id()` Helper
-- [x] Refactor: `postgres.ts` `tid()` — MULTI_TENANT=true schaltet auf Hard-Fail (Exception statt warn+fallback)
+- [x] Security-Fix: `monitoring/import/route.ts` — tenantId erzwungen.
+- [x] Security-Fix: `cron/purge-old-data/route.ts` — alle Tenants.
+- [x] Security-Fix: `admin/upload/route.ts` — Blob-Pfad mit tenantId.
+- [x] Feature: RLS-Migration `0001_add_row_level_security.sql`.
+- [x] Refactor: `tid()` — MULTI_TENANT=true Hard-Fail.
 
 ## UX-Verbesserung: Keyword-Map als Startpunkt (14.05.2026)
-- [x] i18n: `onboarding`-Namespace in `de.ts` + `en.ts` (6 Keys)
-- [x] Refactor: `planning/page.tsx` — Tab-Reihenfolge, Nummerierung, Default-Tab `keyword-map`, `useSearchParams()` für `?tab=`-Query-Parameter
-- [x] Feature: `suggestions-table.tsx` — Empty State + `onGoToKeywordMap`-Prop
-- [x] Feature: `editorial-planning.tsx` — Empty State + `onGoToKeywordMap`-Prop
-- [x] Feature: `blacklist.tsx` — Zentrierter Empty State (identisches Pattern) + `hasKeywords`-Prop + `onGoToKeywordMap`-Prop
-- [x] Feature: `creation/page.tsx` — Auftrags-Liste: "keine Keywords" vs. "keine Aufträge" unterscheiden
-- [x] Feature: `monitoring/page.tsx` — Leere Tabelle: Keyword-Map-Hinweis statt generischem Text
-- [x] Feature: `page.tsx` (Dashboard) — Quick-Start-Banner wenn Keyword-Map leer
-- [x] Fix: `legal/page.tsx` — Copyright-Tab entfernt (nur noch 3 Tabs)
+- [x] Refactor: `planning/page.tsx` — Keyword-Map als Default-Tab, `?tab=`-Query-Parameter.
+- [x] Feature: Empty States in Vorschläge, Redaktionsplanung, Blacklist, Creation, Monitoring, Dashboard.
 
-## Alert-Regeln Double-Opt-in & Sistrix Health-Fix (14.05.2026)
-- [x] Feature: `alert-rules-tab.tsx` — `TagInput` durch `RecipientPicker`-Checkbox-Liste ersetzt
-- [x] Feature: `RecipientPicker` — zeigt Tenant-Nutzer mit `Password_Changed`-Status, ausgegraut wenn nicht eingeloggt
-- [x] Fix: `sync-gsc/route.ts` — `cron:sync-sistrix:success` nur noch bei `urlsProcessed > 0`; sonst `:skipped` mit `skippedReason: 'no_urls'`
-- [x] Fix: `health/route.ts` — Sistrix aufgeteilt in zwei separate JOBS: `integration:check:sistrix` + `cron:sync-sistrix`
-- [x] Fix: `health/page.tsx` — `CRON_JOBS` um `{ key: "integration:check:sistrix", label: "Sistrix API-Key" }` erweitert
+## Alert-Regeln & Sistrix Health-Fix (14.05.2026)
+- [x] Feature: `alert-rules-tab.tsx` — `RecipientPicker`-Checkbox-Liste.
+- [x] Fix: `sync-gsc/route.ts` — `cron:sync-sistrix:success` nur bei `urlsProcessed > 0`.
+- [x] Fix: `health/route.ts` — Sistrix in zwei separate Jobs.
 
 ## Branding, Sprache & Feature-Flags (15.05.2026)
-- [x] Branding: „SEO Content Tool" → „Plexaro" in 9 E-Mail-Templates + Invite-Routes
-- [x] Sprache: Höflichkeitsform → Du in 19 Dateien / ~43 Stellen
-- [x] Invite-Mail: Formulierung „zum DocMorris Workspace in Plexaro eingeladen"
-- [x] Feature: SuperAdmin Feedback `is_public`-Toggle — Schema, Migration, API PATCH/GET, UI, i18n
-- [x] Feature: Keyword Import — Beispieldatei-Download (XLSX mit 4 Beispielzeilen)
-- [x] Fix: SMTP aus Tenant Health-Report entfernt; SMTP-Check in SuperAdmin Health ergänzt
-- [x] Fix: Filter-Dropdown Labels in `KeywordFilterBar.tsx` + `EditorialFilterBar.tsx` (`getColumnLabel()`)
-- [x] Fix: SuperAdmin Feedback `S.map is not a function` — `Array.isArray()`-Guard in `load()`
-- [x] Fix: `health/route.ts` Early-Return `smtp`-Feld ergänzt (TypeScript `satisfies HealthSummaryResponse` Deployment-Fehler)
+- [x] Branding: „Plexaro" in 9 E-Mail-Templates.
+- [x] Sprache: Du-Form in ~43 Stellen.
+- [x] Feature: SuperAdmin Feedback `is_public`-Toggle.
+- [x] Feature: Keyword Import — Beispieldatei-Download.
+- [x] Fix: SMTP aus Tenant Health entfernt; in SuperAdmin ergänzt.
+- [x] Fix: Filter-Dropdown Labels (`getColumnLabel()`).
 
 ## Security-Audit Fixes (15.05.2026)
-- [x] Security-Fix 1: `/api/debug/*` — alle Debug-Routen erfordern SuperAdmin-Session
-- [x] Security-Fix 3: `PATCH /api/admin/users/:id` — Field Allowlist `['Name', 'Email']`; Role + Password_Changed nicht extern setzbar
-- [x] Security-Fix 4: `callback/route.ts` — `tenantId` aus API-Key-Auth via `resolveTenantFromApiKey()`, nie aus Request-Body
-- [x] Security-Fix 6: Alle 5 Cron-Routes — Auth immer erzwungen; fehlt `CRON_SECRET` → HTTP 503
-- [x] Security-Fix 8: `invite/route.ts` + `resend-invite/route.ts` — hardcodierte URL durch `NEXTAUTH_URL ?? APP_BASE_URL ?? ''` ersetzt
-- [x] Security-Fix 9: `invite/route.ts` + `resend-invite/route.ts` — `tempPassword` aus API-Response entfernt
-- [x] Security-Fix 10: `alert-rules/route.ts` — `notifyEmails` Regex-Validierung + max. 10 Adressen
-- [x] Security-Fix 11: `agent-webhook/test/route.ts` — SSRF-Schutz: interne IP-Ranges geblockt
-- [x] Security-Fix 12: `[...nextauth]/route.ts` — Bootstrap-Pfad erfordert `BOOTSTRAP_ENABLED=true`
-- [x] Security-Fix 13: `feedback/route.ts` — `priority` gegen Enum `['low', 'medium', 'high']` validiert
+- [x] Security-Fix 1: `/api/debug/*` — SuperAdmin-Auth erzwungen.
+- [x] Security-Fix 3: `PATCH /api/admin/users/:id` — Field Allowlist.
+- [x] Security-Fix 4: `callback/route.ts` — tenantId aus API-Key-Auth.
+- [x] Security-Fix 6: Alle 5 Cron-Routes — Auth immer erzwungen.
+- [x] Security-Fix 8+9: Invite-Routen — hardcodierte URL + tempPassword entfernt.
+- [x] Security-Fix 10: `notifyEmails` Regex-Validierung + max. 10 Adressen.
+- [x] Security-Fix 11: SSRF-Schutz in `agent-webhook/test/route.ts`.
+- [x] Security-Fix 12: Bootstrap-Pfad erfordert `BOOTSTRAP_ENABLED=true`.
+- [x] Security-Fix 13: `priority`-Enum in `/api/feedback` validiert.
 
-## Agent-Webhook Popup-Dialog (15.05.2026)
-- [x] `tenantId` aus Pflichtfelder-Tabelle entfernt (wird serverseitig aus API-Key abgeleitet)
-- [x] Hinweis "Gefährliche Tags werden herausgefiltert" entfernt
-- [x] `dangerouslySetInnerHTML`-Referenz aus Popup entfernt
-- [x] Erlaubte HTML-Tags positiv aufgelistet
-- [x] `dialog.tsx`: `sm:max-w-sm` aus Basiskomponente entfernt
-- [x] `<li>`-Overflow-Fix: Textinhalt in `<span className="min-w-0">` gewrappt
+## Password Reset Feature (15.05.2026)
+- [x] DB-Tabelle `password_reset_tokens` + Migration `0003_lazy_cerise.sql` (ausgeführt).
+- [x] `POST /api/auth/forgot-password`.
+- [x] `GET + POST /api/auth/reset-password`.
+- [x] `POST /api/admin/users/[id]/reset-password`.
+- [x] UI: Forgot/Reset-Passwort-Seiten + Admin-Dialog.
+
+## DB-Refactoring: diff_summary → event_label (15.05.2026)
+- [x] Schema: `content_log_body.diff_summary` → `event_label`.
+- [x] Migration `0004_rename_diff_summary_to_event_label.sql` erstellt und ausgeführt.
+- [x] `postgres-types.ts` + `airtable-types.ts`: `Diff_Summary` → `Event_Label` auf `ContentLog`.
+- [x] `postgres.ts`: alle internen Referenzen umbenannt.
+- [x] 10 API-Routes + 5 Frontend-Dateien umbenannt.
+- [x] `airtable.ts` + `optimization-rules.ts` umbenannt.
+
+## HistoryList Bugs (15.05.2026)
+- [x] Fix: Icon-Bug `"vorschlägen hinzugefügt"` → `"vorschläge"`.
+- [x] Fix: `isDelivery` nur noch `summary === "Content angeliefert"` (kein `|| log.Version === 'v2'`).
+- [x] Fix: `versionMap` zählt nur noch `Event_Label === "Content angeliefert"`.
+
+## Bug-Fix: Editor-ID war E-Mail statt UUID (15.05.2026)
+- [x] Fix: Alle 8 API-Routes auf `session.user.id` statt `session.user.email` für `Editor`-Feld umgestellt.
+  - `api/creation/refine/route.ts`
+  - `api/planning/history/route.ts`
+  - `api/planning/keywords/route.ts` (2 Stellen)
+  - `api/planning/blacklist/route.ts` (2 Stellen)
+  - `api/planning/trends/route.ts`
+  - `api/monitoring/suggest/route.ts`
 
 ## Offen / Ausstehend
 
-- [ ] DB-Migration `0002_lowly_medusa.sql` ausführen: `ALTER TABLE "feature_requests" ADD COLUMN "is_public" boolean DEFAULT false NOT NULL;`
+- [ ] DB-Migration `0002_lowly_medusa.sql` ausführen:
+  ```sql
+  ALTER TABLE "feature_requests" ADD COLUMN "is_public" boolean DEFAULT false NOT NULL;
+  ```
 
-- [ ] DB-Migration ausführen (manuell via psql):
+- [ ] DB-Migrationen ausführen (manuell via psql):
   ```sql
   ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
   ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;
   ```
-- [ ] RLS-Migration auf DB einspielen: `psql $DATABASE_URL < src/lib/db/migrations/0001_add_row_level_security.sql`
+
+- [ ] RLS-Migration auf DB einspielen:
+  ```bash
+  psql $DATABASE_URL < src/lib/db/migrations/0001_add_row_level_security.sql
+  ```
+
 - [ ] Env-Variable `MULTI_TENANT=true` in Production setzen (nach n8n-Webhook-Anpassung)
+
 - [ ] n8n-Workflows: `tenantId` im Payload oder `x-tenant-id`-Header beim `/api/monitoring/import`-Webhook ergänzen
-- [ ] Legal-Seite: Tatsächliche Inhalte für Impressum, Datenschutz, AGB, Copyright eintragen (aktuell Platzhalter in `de.ts`/`en.ts`)
+
+- [ ] Legal-Seite: Tatsächliche Inhalte für Impressum, Datenschutz, AGB eintragen (aktuell Platzhalter in `de.ts`/`en.ts`)
