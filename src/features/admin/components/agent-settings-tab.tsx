@@ -565,18 +565,11 @@ export function AgentSettingsTab() {
               <ul className="space-y-1.5 text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr("Kein vollständiges HTML-Dokument — nur der eigentliche Seiteninhalt, ohne ", "No full HTML document — only the page content itself, without ")}<code className="text-xs bg-muted px-1 rounded">&lt;html&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;head&gt;</code>{tr(" oder ", " or ")}<code className="text-xs bg-muted px-1 rounded">&lt;body&gt;</code>
+                  <span className="min-w-0">{tr("Kein vollständiges HTML-Dokument — nur der eigentliche Seiteninhalt, ohne ", "No full HTML document — only the page content itself, without ")}<code className="text-xs bg-muted px-1 rounded">&lt;html&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;head&gt;</code>{tr(" oder ", " or ")}<code className="text-xs bg-muted px-1 rounded">&lt;body&gt;</code></span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr("Erlaubte Tags: ", "Allowed tags: ")}<code className="text-xs bg-muted px-1 rounded">&lt;h1&gt;</code>{" – "}<code className="text-xs bg-muted px-1 rounded">&lt;h6&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;p&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ul&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ol&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;li&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;a&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;strong&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;em&gt;</code>{tr(" u.v.m.", " and more")}
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-0.5 text-primary font-bold shrink-0">·</span>
-                  {tr(
-                    "Gefährliche Tags wie ",
-                    "Dangerous tags like "
-                  )}<code className="text-xs bg-muted px-1 rounded">&lt;script&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;style&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;iframe&gt;</code>{tr(" und ", " and ")}<code className="text-xs bg-muted px-1 rounded">&lt;form&gt;</code>{tr(" werden automatisch herausgefiltert", " are automatically stripped")}
+                  <span className="min-w-0">{tr("Erlaubte Tags: ", "Allowed tags: ")}<code className="text-xs bg-muted px-1 rounded">&lt;h1&gt;</code>{" – "}<code className="text-xs bg-muted px-1 rounded">&lt;h6&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;p&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ul&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;ol&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;li&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;a&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;strong&gt;</code>{tr(", ", ", ")}<code className="text-xs bg-muted px-1 rounded">&lt;em&gt;</code>{tr(" u.v.m.", " and more")}</span>
                 </li>
               </ul>
             </div>
