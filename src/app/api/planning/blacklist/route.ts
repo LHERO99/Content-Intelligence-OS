@@ -62,7 +62,7 @@ export async function POST(request: Request) {
               Logged_URL: kw.Target_URL,
               Action_Type: kw.Action_Type || 'Optimierung',
               Event_Label: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
-              Editor: session?.user?.email ? [session.user.email] : undefined
+              Editor: session?.user?.id ? [session.user.id] : undefined
             }, tenantId);
           } catch (logErr) {
             console.error('[API Blacklist] Error creating bulk log:', logErr);
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             Logged_URL: targetUrl,
             Action_Type: body.Action_Type || 'Optimierung',
             Event_Label: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
-            Editor: session?.user?.email ? [session.user.email] : undefined
+            Editor: session?.user?.id ? [session.user.id] : undefined
           }, tenantId);
         } catch (logErr) {
           console.error('[API Blacklist] Error creating single log:', logErr);

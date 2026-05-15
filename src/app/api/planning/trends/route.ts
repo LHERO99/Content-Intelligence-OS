@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const editor = session?.user?.email ? [session.user.email] : undefined;
+      const editor = session?.user?.id ? [session.user.id] : undefined;
       const isUrl = Trend_Topic.startsWith('http');
       
       await createContentLog({

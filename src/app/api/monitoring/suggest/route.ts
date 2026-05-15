@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const keywords = await getKeywordMap(tenantId);
-    const editor = session?.user?.email ? [session.user.email] : undefined;
+    const editor = session?.user?.id ? [session.user.id] : undefined;
 
     const results = await Promise.all(
       urls.map(async (url) => {

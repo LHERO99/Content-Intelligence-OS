@@ -147,7 +147,7 @@ export async function POST(request: Request) {
 
     // --- Add Logging for Creation ---
     try {
-      const editor = session?.user?.email ? [session.user.email] : undefined;
+      const editor = session?.user?.id ? [session.user.id] : undefined;
       
       // 1. Base Log: Added to tool
       await createContentLog({
@@ -277,7 +277,7 @@ export async function PATCH(request: Request) {
     // 3. Status Transition Logging
     if (result && updates.Status && updates.Status !== currentKeyword.Status) {
       try {
-        const editor = session?.user?.email ? [session.user.email] : undefined;
+        const editor = session?.user?.id ? [session.user.id] : undefined;
 
         if (updates.Status === 'Planned') {
           await createContentLog({

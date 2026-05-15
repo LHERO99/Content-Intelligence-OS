@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       Action_Type: finalActionType,
       Content_Body: finalContentBody,
       Event_Label: finalEventLabel,
-      Editor: finalEditor || (session?.user?.email ? [session.user.email] : undefined),
+      Editor: finalEditor || (session?.user?.id ? [session.user.id] : undefined),
     }, tenantId);
 
     if (!newLog) {
