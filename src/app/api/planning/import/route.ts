@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
                 Keyword_ID: [kw.id],
                 Target_URL: kw.Target_URL,
                 Action_Type: kw.Action_Type || 'Erstellung',
-                Diff_Summary: 'URL wurde dem Tool hinzugefügt',
+                Event_Label: 'URL wurde dem Tool hinzugefügt',
               }, tenantId);
 
               if (kw.Status === 'Backlog' && kw.Main_Keyword === 'Y') {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
                   Keyword_ID: [kw.id],
                   Target_URL: kw.Target_URL,
                   Action_Type: kw.Action_Type || 'Erstellung',
-                  Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+                  Event_Label: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
                 }, tenantId);
               }
             }

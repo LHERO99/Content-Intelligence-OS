@@ -38,7 +38,7 @@ export async function GET() {
     // Aggregate Global Metrics
     const publishedLogs = logs.filter(l => {
       const type = l.Action_Type;
-      const summary = l.Diff_Summary?.toLowerCase() || '';
+      const summary = l.Event_Label?.toLowerCase() || '';
       return type === 'Erstellung' || 
              type === 'Optimierung' ||
              summary.includes('content angeliefert') ||
@@ -103,7 +103,7 @@ export async function GET() {
     urlLogMap.forEach((urlLogs, url) => {
       // Rule: Only count savings if content was actually delivered/published
       const deliveryLogs = urlLogs.filter(l => {
-        const summary = String(l.Diff_Summary || '').toLowerCase();
+        const summary = String(l.Event_Label || '').toLowerCase();
         return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
                !summary.includes('url wurde dem tool hinzugefügt') &&
                !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&
@@ -193,7 +193,7 @@ export async function GET() {
       // Calculate individual URL savings
       let urlSavings = 0;
       const deliveryLogs = urlLogs.filter(l => {
-        const summary = String(l.Diff_Summary || '').toLowerCase();
+        const summary = String(l.Event_Label || '').toLowerCase();
         return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
                !summary.includes('url wurde dem tool hinzugefügt') &&
                !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&
@@ -230,7 +230,7 @@ export async function GET() {
       });
       
       const isPublished = urlLogs.some(l => {
-        const summary = String(l.Diff_Summary || '').toLowerCase();
+        const summary = String(l.Event_Label || '').toLowerCase();
         return summary.includes('content angeliefert') || summary.includes('content veröffentlicht');
       });
 

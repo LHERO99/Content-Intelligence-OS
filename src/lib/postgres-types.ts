@@ -49,7 +49,7 @@ export interface ContentLog {
   Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Version: 'v1' | 'v2';
   Content_Body?: string;
-  Diff_Summary?: string;
+  Event_Label?: string;
   Created_At: string;
   Updated_At?: string;
   Editor?: string[]; // user IDs

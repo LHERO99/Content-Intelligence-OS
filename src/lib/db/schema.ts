@@ -131,7 +131,7 @@ export const contentLogBody = pgTable(
   {
     contentLogId: integer('content_log_id').primaryKey().references(() => contentLog.id, { onDelete: 'cascade' }),
     contentBody:  text('content_body'),
-    diffSummary:  text('diff_summary'),
+    eventLabel:   text('event_label'),
   }
 );
 

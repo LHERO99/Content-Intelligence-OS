@@ -138,7 +138,7 @@ export async function POST(request: Request) {
       Logged_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: sanitizedContent,
-      Diff_Summary: 'Content angeliefert',
+      Event_Label: 'Content angeliefert',
     }, tenantId);
 
     return NextResponse.json({

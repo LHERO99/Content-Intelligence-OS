@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       await createContentLog({
         Logged_URL: isUrl ? Trend_Topic : undefined,
         Action_Type: 'Erstellung',
-        Diff_Summary: `Manueller Trend-Vorschlag: ${Trend_Topic}`,
+        Event_Label: `Manueller Trend-Vorschlag: ${Trend_Topic}`,
         Editor: editor,
       }, tenantId);
     } catch (logErr) {

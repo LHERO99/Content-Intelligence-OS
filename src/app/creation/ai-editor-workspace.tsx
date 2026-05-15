@@ -77,7 +77,7 @@ export function AIEditorWorkspace({
           keywordId,
           actionType: 'Optimierung',
           contentBody: html,
-          Diff_Summary: 'Manuelle Textanpassung im Editor',
+          Event_Label: 'Manuelle Textanpassung im Editor',
           version: 'v2' // We keep it as v2 for the workspace or could increment
         })
       });
@@ -107,7 +107,7 @@ export function AIEditorWorkspace({
         body: JSON.stringify({
           keywordId,
           contentBody: content,
-          Diff_Summary: 'KI-Chat: KI-Optimierung übernommen',
+          Event_Label: 'KI-Chat: KI-Optimierung übernommen',
           version: 'v2',
         }),
       });

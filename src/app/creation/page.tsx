@@ -24,8 +24,8 @@ export default function CreationPage() {
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState<string | null>(null);
-  // Body cache: logId → { Content_Body, Diff_Summary }
-  const [bodyCache, setBodyCache] = useState<Record<string, { Content_Body?: string; Diff_Summary?: string }>>({});
+  // Body cache: logId → { Content_Body, Event_Label }
+  const [bodyCache, setBodyCache] = useState<Record<string, { Content_Body?: string; Event_Label?: string }>>({});
 
   const handleRetry = async (kw: KeywordMap) => {
     try {

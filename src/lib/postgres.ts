@@ -138,19 +138,19 @@ function mapKeywordRow(row: typeof keywordMapTable.$inferSelect, editorIds: stri
 function mapContentLogRow(
   row: typeof contentLogTable.$inferSelect,
   keywordId?: string,
-  body?: { contentBody: string | null; diffSummary: string | null } | null | { hasBody: boolean; diffSummary: string | null }
+  body?: { contentBody: string | null; eventLabel: string | null } | null | { hasBody: boolean; eventLabel: string | null }
 ): ContentLog {
   const kwIds = keywordId ? [keywordId] : (row.keywordId ? [row.keywordId] : []);
 
   // body can be:
-  //   - null/undefined                              → no body info (legacy / no join)
-  //   - { hasBody, diffSummary }                    → list-query partial (no contentBody text)
-  //   - { contentBody, diffSummary }                → full body (on-demand load)
+  //   - null/undefined                             → no body info (legacy / no join)
+  //   - { hasBody, eventLabel }                    → list-query partial (no contentBody text)
+  //   - { contentBody, eventLabel }                → full body (on-demand load)
   const isPartial = body !== null && body !== undefined && 'hasBody' in body;
   const isFull    = body !== null && body !== undefined && 'contentBody' in body;
 
-  const hasContent  = isPartial ? (body as any).hasBody : isFull ? !!(body as any).contentBody : false;
-  const diffSummary = isPartial ? (body as any).diffSummary : isFull ? (body as any).diffSummary : null;
+  const hasContent = isPartial ? (body as any).hasBody : isFull ? !!(body as any).contentBody : false;
+  const eventLabel = isPartial ? (body as any).eventLabel : isFull ? (body as any).eventLabel : null;
   const contentBody = isFull ? (body as any).contentBody : null;
 
   return {
@@ -163,7 +163,7 @@ function mapContentLogRow(
     Page_Type: row.pageType as any,
     Version: hasContent ? 'v2' : 'v1',
     Content_Body: contentBody ?? undefined,
-    Diff_Summary: diffSummary ?? undefined,
+    Event_Label: eventLabel ?? undefined,
     Created_At: row.timeCreated.toISOString(),
     Updated_At: row.timeChanged.toISOString(),
     Editor: row.editorId ? [row.editorId] : undefined,
@@ -520,20 +520,20 @@ export async function bulkUpdateKeywordRankings(
 export async function getContentLogs(tenantId?: string): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    // LEFT JOIN on content_log_body to get Version flag + Diff_Summary.
+    // LEFT JOIN on content_log_body to get Version flag + Event_Label.
     // contentBody text is intentionally NOT selected here (too large for list queries).
     const rows = await tx
       .select({
         log: contentLogTable,
         hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
-        diffSummary: contentLogBodyTable.diffSummary,
+        eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
       .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(eq(contentLogTable.tenantId, tenant))
       .orderBy(desc(contentLogTable.timeCreated))
       .limit(200);
-    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, diffSummary: r.diffSummary ?? null }));
+    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
   });
 }
 
@@ -548,13 +548,13 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
       .select({
         log: contentLogTable,
         hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
-        diffSummary: contentLogBodyTable.diffSummary,
+        eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
       .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.loggedUrl, targetUrl)))
       .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, diffSummary: r.diffSummary ?? null }));
+    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
   });
 }
 
@@ -565,13 +565,13 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
       .select({
         log: contentLogTable,
         hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
-        diffSummary: contentLogBodyTable.diffSummary,
+        eventLabel: contentLogBodyTable.eventLabel,
       })
       .from(contentLogTable)
       .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.keywordId, keywordId)))
       .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r.log, keywordId, { hasBody: r.hasBody, diffSummary: r.diffSummary ?? null }));
+    return rows.map(r => mapContentLogRow(r.log, keywordId, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
   });
 }
 
@@ -582,7 +582,7 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
 export async function getContentLogBody(
   contentLogId: number,
   tenantId?: string
-): Promise<{ Content_Body?: string; Diff_Summary?: string } | null> {
+): Promise<{ Content_Body?: string; Event_Label?: string } | null> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
     // Verify the log belongs to this tenant first
@@ -600,7 +600,7 @@ export async function getContentLogBody(
       .limit(1);
     return {
       Content_Body: body?.contentBody ?? undefined,
-      Diff_Summary: body?.diffSummary ?? undefined,
+      Event_Label: body?.eventLabel ?? undefined,
     };
   });
 }
@@ -629,17 +629,17 @@ export async function createContentLog(log: Partial<ContentLog>, tenantId?: stri
       .returning();
 
     // 2. Insert body separately only when content exists
-    let body: { contentBody: string | null; diffSummary: string | null } | null = null;
-    if (log.Content_Body || log.Diff_Summary) {
+    let body: { contentBody: string | null; eventLabel: string | null } | null = null;
+    if (log.Content_Body || log.Event_Label) {
       const [bodyRow] = await tx
         .insert(contentLogBodyTable)
         .values({
           contentLogId: row.id,
           contentBody: log.Content_Body ?? null,
-          diffSummary: log.Diff_Summary ?? null,
+          eventLabel: log.Event_Label ?? null,
         })
         .returning();
-      body = { contentBody: bodyRow.contentBody, diffSummary: bodyRow.diffSummary };
+      body = { contentBody: bodyRow.contentBody, eventLabel: bodyRow.eventLabel };
     }
 
     return mapContentLogRow(row, keywordId, body);

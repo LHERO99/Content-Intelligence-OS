@@ -71,8 +71,8 @@ export async function POST(request: Request) {
       contentBody, 
       Content_Body, 
       content,
-      diffSummary, 
-      Diff_Summary, 
+      eventLabel, 
+      Event_Label, 
       editor, 
       Editor 
     } = body;
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     const finalLoggedUrl = Logged_URL || finalUrl;
     const finalActionType = actionType || Action_Type || status;
     const finalContentBody = contentBody || Content_Body || content;
-    const finalDiffSummary = diffSummary || Diff_Summary;
+    const finalEventLabel = eventLabel || Event_Label;
     const finalEditor = editor || Editor;
 
     if (!finalKeywordId) {
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       Logged_URL: finalLoggedUrl,
       Action_Type: finalActionType,
       Content_Body: finalContentBody,
-      Diff_Summary: finalDiffSummary,
+      Event_Label: finalEventLabel,
       Editor: finalEditor || (session?.user?.email ? [session.user.email] : undefined),
     }, tenantId);
 

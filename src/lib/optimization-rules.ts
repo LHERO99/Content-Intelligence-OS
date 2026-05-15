@@ -60,7 +60,7 @@ function latestPublishedDateForKeyword(keywordId: string, targetUrl: string, log
   const relevant = logs.filter((log) => {
     const url = String(log.Target_URL || log.Logged_URL || '');
     const hasKeyword = Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(keywordId);
-    return (hasKeyword || (targetUrl && url === targetUrl)) && log.Diff_Summary === 'Content veroffentlicht';
+    return (hasKeyword || (targetUrl && url === targetUrl)) && log.Event_Label === 'Content veroffentlicht';
   });
   if (!relevant.length) return undefined;
   return relevant
@@ -78,7 +78,7 @@ function hasOpenManualMonitoringRequest(keywordId: string, targetUrl: string, lo
 
   const manualLogs = relevantLogs
     .filter((log) => {
-      const summary = String(log.Diff_Summary || '');
+      const summary = String(log.Event_Label || '');
       return (
         summary === 'Manuell beauftragt (Monitoring)' ||
         summary === "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)"
@@ -92,7 +92,7 @@ function hasOpenManualMonitoringRequest(keywordId: string, targetUrl: string, lo
   const latestManual = Math.max(...manualLogs);
 
   const planningLogs = relevantLogs
-    .filter((log) => String(log.Diff_Summary || '') === 'URL wurde der Redaktionsplanung hinzugefügt')
+    .filter((log) => String(log.Event_Label || '') === 'URL wurde der Redaktionsplanung hinzugefügt')
     .map((log) => new Date(String(log.Created_At || '')).getTime())
     .filter((value) => Number.isFinite(value));
 

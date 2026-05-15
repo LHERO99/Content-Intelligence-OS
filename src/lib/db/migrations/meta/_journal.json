@@ -29,6 +29,13 @@
       "when": 1778853858670,
       "tag": "0003_lazy_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1747353600000,
+      "tag": "0004_rename_diff_summary_to_event_label",
+      "breakpoints": true
     }
   ]
 }

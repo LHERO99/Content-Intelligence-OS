@@ -107,8 +107,8 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
         console.log(`  Keyword_ID: ${log.Keyword_ID}`);
       }
 
-      const isBlacklistedAdded = log.Diff_Summary?.includes('URL der Blacklist hinzugefügt');
-      const isBlacklistedRemoved = log.Diff_Summary?.includes('URL von der Blacklist entfernt');
+      const isBlacklistedAdded = log.Event_Label?.includes('URL der Blacklist hinzugefügt');
+      const isBlacklistedRemoved = log.Event_Label?.includes('URL von der Blacklist entfernt');
 
       if (!groups[finalUrl]) {
         groups[finalUrl] = {
@@ -138,13 +138,13 @@ export function ContentHistoryTable({ logs, loading, initialUrl }: ContentHistor
 
       // Blacklist status depends on the MOST RECENT relevant event
       const blacklistEvents = group.logs.filter(l => 
-        l.Diff_Summary?.startsWith('URL der Blacklist hinzugefügt') || 
-        l.Diff_Summary?.includes('URL von der Blacklist entfernt')
+        l.Event_Label?.startsWith('URL der Blacklist hinzugefügt') || 
+        l.Event_Label?.includes('URL von der Blacklist entfernt')
       );
 
       if (blacklistEvents.length > 0) {
         // The newest log (index 0) determines current state
-        group.isBlacklisted = blacklistEvents[0].Diff_Summary?.startsWith('URL der Blacklist hinzugefügt') ?? false;
+        group.isBlacklisted = blacklistEvents[0].Event_Label?.startsWith('URL der Blacklist hinzugefügt') ?? false;
       }
     });
 

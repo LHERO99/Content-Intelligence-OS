@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     
     // Rule: Only display savings if content was actually delivered/published
     const deliveryLogs = history.filter(l => {
-      const summary = l.Diff_Summary?.toLowerCase() || '';
+      const summary = l.Event_Label?.toLowerCase() || '';
       return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
              !summary.includes('url wurde dem tool hinzugefügt') &&
              !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&

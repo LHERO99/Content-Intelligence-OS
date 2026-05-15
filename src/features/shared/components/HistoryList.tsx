@@ -17,8 +17,8 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
   const [bodyContent, setBodyContent] = React.useState<string | null>(null);
   const [bodyLoading, setBodyLoading] = React.useState(false);
   const { locale, t } = useI18n();
-  const summary = log.Diff_Summary || "";
-  const isDelivery = summary === "Content angeliefert" || log.Version === 'v2';
+  const summary = log.Event_Label || "";
+  const isDelivery = summary === "Content angeliefert";
   const isCommissioned = summary === "Content beauftragt";
 
   const handleToggleExpand = async () => {
@@ -43,7 +43,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
     const s = summary.toLowerCase();
     if (s.includes("keyword-map")) return <PlusCircle className="h-3 w-3 text-primary" />;
     if (s.includes("tool hinzugefügt")) return <PlusCircle className="h-3 w-3 text-primary" />;
-    if (s.includes("vorschlägen hinzugefügt")) return <Lightbulb className="h-3 w-3 text-primary" />;
+    if (s.includes("vorschläge")) return <Lightbulb className="h-3 w-3 text-primary" />;
     if (s.includes("vorschlagsliste")) return <Lightbulb className="h-3 w-3 text-primary" />;
     if (s.includes("redaktionsplanung")) return <Calendar className="h-3 w-3 text-primary" />;
     if (s.includes("beauftragt")) return <Send className="h-3 w-3 text-primary" />;
@@ -155,7 +155,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
   const versionMap = new Map<string, string>();
 
   sortedHistoryForVersioning.forEach(log => {
-    if (log.Diff_Summary === "Content angeliefert" || log.Version === 'v2') {
+    if (log.Event_Label === "Content angeliefert") {
       deliveryCount++;
       versionMap.set(log.id, `V${deliveryCount}`);
     }
@@ -183,7 +183,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
         <p className="text-xs font-bold text-primary">
           {lastUpdate ? (
             <>
-              {t('historyList.status')}: {lastUpdate.Diff_Summary} {locale === 'de' ? 'am' : 'on'}{" "}
+              {t('historyList.status')}: {lastUpdate.Event_Label} {locale === 'de' ? 'am' : 'on'}{" "}
               {new Date(lastUpdate.Created_At).toLocaleDateString(toLocaleTag(locale), { 
                 day: '2-digit', 
                 month: '2-digit', 

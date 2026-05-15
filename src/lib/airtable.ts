@@ -214,7 +214,7 @@ export async function getContentLogs(): Promise<ContentLog[]> {
         Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
-        Diff_Summary: record.get('Diff_Summary') as string,
+        Event_Label: record.get('Event_Label') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -246,7 +246,7 @@ export async function getContentHistoryByUrl(targetUrl: string): Promise<Content
         Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
-        Diff_Summary: record.get('Diff_Summary') as string,
+        Event_Label: record.get('Event_Label') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -278,7 +278,7 @@ export async function getContentHistoryByKeyword(keywordId: string): Promise<Con
         Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
-        Diff_Summary: record.get('Diff_Summary') as string,
+        Event_Label: record.get('Event_Label') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -305,7 +305,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
       Keyword_ID: validKeywordIds,
       Logged_URL: log.Logged_URL,
       Content_Body: log.Content_Body,
-      Diff_Summary: log.Diff_Summary,
+      Event_Label: log.Event_Label,
       Action_Type: log.Action_Type, 
       Page_Type: log.Page_Type,
     };
@@ -332,7 +332,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
         Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
-        Diff_Summary: record.get('Diff_Summary') as string,
+        Event_Label: record.get('Event_Label') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],
       };
@@ -361,7 +361,7 @@ export async function createContentLog(log: Partial<ContentLog>): Promise<Conten
           Action_Type: retryRecord.get('Action_Type') as any,
           Version: retryRecord.get('Content_Body') ? 'v2' : 'v1',
           Content_Body: retryRecord.get('Content_Body') as string,
-          Diff_Summary: retryRecord.get('Diff_Summary') as string,
+          Event_Label: retryRecord.get('Event_Label') as string,
           Created_At: (retryRecord.get('Time_Created') || new Date().toISOString()) as string,
           Editor: retryRecord.get('Editor') as string[],
         };
@@ -396,7 +396,7 @@ export async function getAllContentHistory(): Promise<ContentLog[]> {
         Page_Type: record.get('Page_Type') as any,
         Version: record.get('Content_Body') ? 'v2' : 'v1',
         Content_Body: record.get('Content_Body') as string,
-        Diff_Summary: record.get('Diff_Summary') as string,
+        Event_Label: record.get('Event_Label') as string,
         Created_At: (record.get('Time_Created') || new Date().toISOString()) as string,
         Updated_At: (record.get('Time_Changed') || record.get('Time_Created') || new Date().toISOString()) as string,
         Editor: record.get('Editor') as string[],

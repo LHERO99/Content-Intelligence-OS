@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
           Logged_URL: keyword.Target_URL || url,
           Action_Type: 'Optimierung',
           Page_Type: keyword.Page_Type,
-          Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)",
+          Event_Label: "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)",
           Editor: editor,
         }, tenantId);
 

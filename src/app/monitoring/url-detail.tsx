@@ -124,7 +124,7 @@ export function UrlDetail({ url }: UrlDetailProps) {
   const getStatusInfo = () => {
     // Strictly exclude tool/planning logs from counting
     const deliveryLogs = data.history.filter(log => {
-      const summary = log.Diff_Summary?.toLowerCase() || '';
+      const summary = log.Event_Label?.toLowerCase() || '';
       return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
              !(
                summary.includes('url wurde dem tool hinzugefügt') || 

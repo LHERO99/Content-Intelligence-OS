@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
           Keyword_ID: [data.keywordId],
           Target_URL: data.targetUrl,
           Action_Type: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
-          Diff_Summary: "Content wurde beauftragt",
+          Event_Label: "Content wurde beauftragt",
           Editor: session.user?.id ? [session.user.id] : undefined
         }, tenantId);
       } catch (logErr) {
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
               Keyword_ID: [data.keywordId],
               Target_URL: data.targetUrl,
               Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
-              Diff_Summary: 'Content angeliefert',
+              Event_Label: 'Content angeliefert',
               Content_Body: finalHtml,
               Editor: session.user?.id ? [session.user.id] : undefined,
             }, tenantId);

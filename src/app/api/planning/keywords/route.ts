@@ -156,7 +156,7 @@ export async function POST(request: Request) {
         Logged_URL: result.Target_URL,
         Action_Type: result.Action_Type || 'Erstellung',
         Page_Type: result.Page_Type || 'Kategorie',
-        Diff_Summary: 'URL wurde dem Tool hinzugefügt',
+        Event_Label: 'URL wurde dem Tool hinzugefügt',
         Editor: editor
       }, tenantId);
 
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
             Logged_URL: result.Target_URL,
             Action_Type: result.Action_Type || 'Erstellung',
             Page_Type: result.Page_Type || 'Kategorie',
-            Diff_Summary: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
+            Event_Label: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
             Editor: editor
           }, tenantId);
         }
@@ -285,7 +285,7 @@ export async function PATCH(request: Request) {
             Target_URL: result.Target_URL,
             Action_Type: result.Action_Type,
             Page_Type: result.Page_Type,
-            Diff_Summary: 'URL wurde der Redaktionsplanung hinzugefügt',
+            Event_Label: 'URL wurde der Redaktionsplanung hinzugefügt',
             Editor: editor
           }, tenantId);
         } else if (updates.Status === 'Published') {
@@ -294,7 +294,7 @@ export async function PATCH(request: Request) {
             Target_URL: result.Target_URL,
             Action_Type: result.Action_Type,
             Page_Type: result.Page_Type,
-            Diff_Summary: 'Content veröffentlicht',
+            Event_Label: 'Content veröffentlicht',
             Editor: editor
           }, tenantId);
         }

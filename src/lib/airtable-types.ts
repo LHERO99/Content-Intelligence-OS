@@ -34,7 +34,7 @@ export interface ContentLog {
   Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'; // Cost lookup
   Version: 'v1' | 'v2';
   Content_Body?: string;
-  Diff_Summary?: string;
+  Event_Label?: string;
   Created_At: string;
   Editor?: string[]; // Link to Users
 }

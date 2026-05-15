@@ -61,7 +61,7 @@ export async function POST(request: Request) {
               Keyword_ID: [kw.id],
               Logged_URL: kw.Target_URL,
               Action_Type: kw.Action_Type || 'Optimierung',
-              Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
+              Event_Label: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
               Editor: session?.user?.email ? [session.user.email] : undefined
             }, tenantId);
           } catch (logErr) {
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
             Keyword_ID: [keywordId],
             Logged_URL: targetUrl,
             Action_Type: body.Action_Type || 'Optimierung',
-            Diff_Summary: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
+            Event_Label: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
             Editor: session?.user?.email ? [session.user.email] : undefined
           }, tenantId);
         } catch (logErr) {

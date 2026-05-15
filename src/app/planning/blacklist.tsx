@@ -953,7 +953,7 @@ export function Blacklist({ hasKeywords = true, onGoToKeywordMap }: { hasKeyword
               url: formData.Target_URL,
               Logged_URL: formData.Target_URL,
               Action_Type: restoredKeyword.Action_Type || 'Optimierung',
-              Diff_Summary: `Eintrag wurde aus der Blacklist wiederhergestellt. Ursprünglicher Eintrag: ${entry.Keyword}`,
+              Event_Label: `Eintrag wurde aus der Blacklist wiederhergestellt. Ursprünglicher Eintrag: ${entry.Keyword}`,
             }),
         });
       } catch (logErr) {

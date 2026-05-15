@@ -199,7 +199,7 @@ export async function POST(request: Request) {
       Action_Type: 'KI-Chat',
       Version: 'v2',
       Content_Body: refinedContent,
-      Diff_Summary: `KI-Chat (${providerId}/${modelId}): ${instructions.slice(0, 200)}`,
+      Event_Label: `KI-Chat (${providerId}/${modelId}): ${instructions.slice(0, 200)}`,
       Editor: session.user?.email ? [session.user.email] : undefined,
     }, tenantId).catch((err) => {
       console.error('[/api/creation/refine] ContentLog write failed:', err);

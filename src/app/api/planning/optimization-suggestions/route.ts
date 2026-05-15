@@ -30,7 +30,7 @@ async function logAutomaticSuggestionEvents(
     const alreadyLoggedToday = existingLogs.some((log) => {
       const sameKeyword = Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(suggestion.keywordId);
       const sameUrl = String(log.Target_URL || log.Logged_URL || '') === suggestion.targetUrl;
-      const sameSummary = String(log.Diff_Summary || '') === summary;
+      const sameSummary = String(log.Event_Label || '') === summary;
       return (sameKeyword || sameUrl) && sameSummary && toDateOnly(String(log.Created_At || '')) === today;
     });
 
@@ -42,7 +42,7 @@ async function logAutomaticSuggestionEvents(
         Target_URL: suggestion.targetUrl,
         Logged_URL: suggestion.targetUrl,
         Action_Type: 'Optimierung',
-        Diff_Summary: summary,
+        Event_Label: summary,
       }, tenantId);
     } catch (error) {
       console.error('[API Optimization Suggestions] Failed to create auto-suggestion log:', error);

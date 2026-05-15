@@ -21,7 +21,7 @@ export const LastActionHistory = ({ history, isLoading }: LastActionHistoryProps
   }
 
   // Find the last "Content veröffentlicht" action
-  const lastPublishedLog = history.find(log => log.Diff_Summary === "Content veröffentlicht");
+  const lastPublishedLog = history.find(log => log.Event_Label === "Content veröffentlicht");
 
   if (!lastPublishedLog) {
     return (
