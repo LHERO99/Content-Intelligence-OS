@@ -4,15 +4,13 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 /**
  * GET /api/debug/env-check
- *
- * TEMPORARY debug endpoint — delete after diagnosis.
  * Returns boolean presence of critical env vars (never the actual values).
- * Requires Admin session.
+ * Requires SuperAdmin session.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== 'Admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session || (session.user as any).role !== 'SuperAdmin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   return NextResponse.json({

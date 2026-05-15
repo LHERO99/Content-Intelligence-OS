@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate https
+  let parsed: URL;
   try {
-    const parsed = new URL(url);
+    parsed = new URL(url);
     if (parsed.protocol !== "https:") {
       return NextResponse.json(
         { ok: false, message: "URL must use https://" },
@@ -35,6 +36,26 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json(
       { ok: false, message: "Invalid URL" },
+      { status: 200 }
+    );
+  }
+
+  // SSRF protection: block requests to internal/private IP ranges and localhost
+  const hostname = parsed.hostname;
+  const privateHostnamePatterns = [
+    /^localhost$/i,
+    /^127\.\d+\.\d+\.\d+$/,
+    /^10\.\d+\.\d+\.\d+$/,
+    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+    /^192\.168\.\d+\.\d+$/,
+    /^169\.254\.\d+\.\d+$/, // link-local
+    /^::1$/,                 // IPv6 loopback
+    /^fc[0-9a-f]{2}:/i,     // IPv6 ULA
+    /^fe80:/i,               // IPv6 link-local
+  ];
+  if (privateHostnamePatterns.some((re) => re.test(hostname))) {
+    return NextResponse.json(
+      { ok: false, message: "Requests to internal/private addresses are not allowed." },
       { status: 200 }
     );
   }

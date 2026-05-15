@@ -9,11 +9,12 @@ export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'Cron endpoint not configured' }, { status: 503 });
+  }
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   console.log('[Cron] check-integrations started at', new Date().toISOString());

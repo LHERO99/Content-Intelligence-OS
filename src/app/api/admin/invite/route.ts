@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? "https://content-intelligence-os-sigma.vercel.app";
+    const baseUrl = process.env.NEXTAUTH_URL ?? process.env.APP_BASE_URL ?? '';
     const inviteLink = `${baseUrl}/auth/signin?email=${encodeURIComponent(email)}&temp=${tempPassword}`;
 
     // Einladungsmail versenden – Fehler blockieren nicht die User-Anlage
@@ -72,7 +72,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       message: "User invited successfully", 
       inviteLink,
-      tempPassword,
       emailSent,
     });
   } catch (error) {

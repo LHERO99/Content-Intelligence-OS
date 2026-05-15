@@ -18,7 +18,21 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const updatedUser = await updateUser(id, body, tenantId);
+    // Allowlist: only permit safe fields — Role and Password_Changed are blocked
+    // to prevent privilege escalation and auth bypass.
+    const ALLOWED_FIELDS = ['Name', 'Email'] as const;
+    type AllowedField = typeof ALLOWED_FIELDS[number];
+    const sanitizedBody: Partial<Record<AllowedField, string>> = {};
+    for (const field of ALLOWED_FIELDS) {
+      if (field in body && typeof body[field] === 'string') {
+        sanitizedBody[field] = body[field];
+      }
+    }
+    if (Object.keys(sanitizedBody).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
+    const updatedUser = await updateUser(id, sanitizedBody, tenantId);
 
     if (!updatedUser) {
       return NextResponse.json({ error: "Failed to update user" }, { status: 500 });

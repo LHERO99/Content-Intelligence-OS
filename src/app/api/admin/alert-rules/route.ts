@@ -73,6 +73,14 @@ export async function POST(request: Request) {
     if (!Array.isArray(notifyEmails) || notifyEmails.length === 0) {
       return NextResponse.json({ error: 'notifyEmails muss mindestens eine Adresse enthalten' }, { status: 400 });
     }
+    if (notifyEmails.length > 10) {
+      return NextResponse.json({ error: 'notifyEmails darf maximal 10 Adressen enthalten' }, { status: 400 });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmail = notifyEmails.find((e: unknown) => typeof e !== 'string' || !emailRegex.test(e));
+    if (invalidEmail !== undefined) {
+      return NextResponse.json({ error: `Ungültige E-Mail-Adresse: ${invalidEmail}` }, { status: 400 });
+    }
 
     const rule = await createAlertRule(
       {

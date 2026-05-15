@@ -41,7 +41,7 @@ export async function POST(
     // Persist new password + reset passwordChanged flag
     await updateUser(id, { Password: hashedPassword, Password_Changed: false }, tenantId);
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? "https://content-intelligence-os-sigma.vercel.app";
+    const baseUrl = process.env.NEXTAUTH_URL ?? process.env.APP_BASE_URL ?? '';
     const inviteLink = `${baseUrl}/auth/signin?email=${encodeURIComponent(user.email)}&temp=${tempPassword}`;
 
     // Send invitation email
@@ -66,7 +66,7 @@ export async function POST(
       console.error("[API] Unexpected error sending resend invite:", emailErr);
     }
 
-    return NextResponse.json({ inviteLink, tempPassword, emailSent });
+    return NextResponse.json({ inviteLink, emailSent });
   } catch (error) {
     console.error("[API] Error resending invite:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

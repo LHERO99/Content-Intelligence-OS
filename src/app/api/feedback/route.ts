@@ -21,6 +21,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "type and title are required" }, { status: 400 });
     }
 
+    const VALID_PRIORITIES = ['low', 'medium', 'high'] as const;
+    type Priority = typeof VALID_PRIORITIES[number];
+    const resolvedPriority: Priority =
+      VALID_PRIORITIES.includes(priority) ? priority : 'medium';
+
     const [created] = await db
       .insert(featureRequests)
       .values({
@@ -30,7 +35,7 @@ export async function POST(req: Request) {
         type:        type as "feature" | "bug",
         title,
         description: description ?? null,
-        priority:    priority ?? "medium",
+        priority:    resolvedPriority,
         status:      "Open",
         updatedAt:   new Date(),
       })

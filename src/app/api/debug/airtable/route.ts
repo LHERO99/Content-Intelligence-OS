@@ -1,4 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getKeywordMap, getAllUsers, getAuditLogs, getBlacklist, getCostConfigs, getConfig } from '@/lib/postgres';
 
 const TABLE_MAP: Record<string, () => Promise<any[]>> = {
@@ -10,6 +12,11 @@ const TABLE_MAP: Record<string, () => Promise<any[]>> = {
 };
 
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any).role !== 'SuperAdmin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const requestedTable = (searchParams.get('table') ?? 'users').toLowerCase().replace(/[-\s]/g, '_');
 

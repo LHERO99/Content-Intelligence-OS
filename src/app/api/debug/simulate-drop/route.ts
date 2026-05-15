@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { createAuditLog } from '@/lib/postgres';
 
 export async function POST() {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any).role !== 'SuperAdmin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     await createAuditLog('DIAGNOSTIC_ALERT: Ranking Drop Detected', {
       keyword: 'SEO Strategy 2024',

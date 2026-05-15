@@ -1,19 +1,60 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig, createAuditLog } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants } from '@/lib/postgres';
 import { sanitizeHtml } from '@/lib/sanitize';
 
 /**
  * Endpoint for external agent callbacks to return generated content.
  * Auth: X-API-KEY header must match either N8N_API_KEY env var (legacy)
- *       or EXTERNAL_AGENT_WEBHOOK_SECRET config key (external agent webhook).
+ *       or EXTERNAL_AGENT_WEBHOOK_SECRET config key for some tenant.
+ *
+ * Security: tenantId is NEVER trusted from the request body.
+ * It is derived authoritatively from the API key by scanning all tenants.
+ *
  * Expected body: {
  *   keywordId: string,
  *   content: string,
  *   reasoning?: string,
  *   status?: string,
- *   tenantId?: string   ← included in the enriched payload from the trigger route
  * }
  */
+
+/**
+ * Resolve which tenant owns the given API key.
+ * For the legacy N8N_API_KEY (env-var), returns undefined (default tenant).
+ * For external agent secrets, scans all tenants and returns the matching one.
+ */
+async function resolveTenantFromApiKey(
+  apiKey: string
+): Promise<{ tenantId: string | undefined; isLegacy: boolean } | null> {
+  // Legacy n8n key is a global env var — not tenant-scoped
+  if (process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY) {
+    return { tenantId: undefined, isLegacy: true };
+  }
+
+  // Scan all tenants for a matching EXTERNAL_AGENT_WEBHOOK_SECRET
+  let tenants: { id: string; name: string }[] = [];
+  try {
+    tenants = await getAllTenants();
+  } catch {
+    console.error('[API] Failed to load tenants for callback auth');
+    return null;
+  }
+
+  for (const tenant of tenants) {
+    try {
+      const config = await getConfig(tenant.id);
+      const externalSecret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
+      if (externalSecret && apiKey === externalSecret) {
+        return { tenantId: tenant.id, isLegacy: false };
+      }
+    } catch {
+      // Skip tenants where config cannot be loaded
+    }
+  }
+
+  return null; // No matching tenant found
+}
+
 export async function POST(request: Request) {
   try {
     const apiKey = request.headers.get('X-API-KEY');
@@ -33,37 +74,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid JSON body', raw: rawBody.slice(0, 100) }, { status: 400 });
     }
 
-    // tenantId is included in the enriched payload sent by the trigger route
-    const tenantId: string | undefined = body?.tenantId || undefined;
-
-    // Auth check: accept either the legacy n8n API key or the external agent shared secret
-    const isLegacy = apiKey && process.env.N8N_API_KEY && apiKey === process.env.N8N_API_KEY;
-
-    let isExternalAgent = false;
-    if (!isLegacy && apiKey) {
+    // Auth check: resolve tenant authoritatively from the API key — never trust body.tenantId
+    if (!apiKey) {
+      console.warn('[API] Unauthorized callback request — missing_secret');
       try {
-        const config = await getConfig(tenantId);
-        const externalSecret = config.EXTERNAL_AGENT_WEBHOOK_SECRET?.trim();
-        isExternalAgent = !!(externalSecret && apiKey === externalSecret);
-      } catch {
-        console.error('[API] Failed to load config for callback auth');
-      }
-    }
-
-    if (!isLegacy && !isExternalAgent) {
-      const reason = !apiKey ? 'missing_secret' : 'invalid_secret';
-      console.warn(`[API] Unauthorized callback request — ${reason}`);
-      try {
-        await createAuditLog(
-          'agent_webhook:callback:unauthorized',
-          { reason, hasApiKey: !!apiKey },
-          tenantId ?? 'unknown',
-        );
-      } catch {
-        // Never block the response due to audit log failure
-      }
+        await createAuditLog('agent_webhook:callback:unauthorized', { reason: 'missing_secret' }, 'unknown');
+      } catch { /* never block */ }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const resolved = await resolveTenantFromApiKey(apiKey);
+
+    if (!resolved) {
+      console.warn('[API] Unauthorized callback request — invalid_secret');
+      try {
+        await createAuditLog('agent_webhook:callback:unauthorized', { reason: 'invalid_secret', hasApiKey: true }, 'unknown');
+      } catch { /* never block */ }
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { tenantId } = resolved;
 
     // Extract with fallbacks to handle different naming conventions
     const keywordId = body.keywordId || body.Keyword_ID;

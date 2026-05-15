@@ -81,8 +81,15 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          // If no user found, check if the users table is completely empty
-          // (first-time bootstrap: create the initial admin).
+          // If no user found, check if bootstrap is explicitly enabled and
+          // the users table is completely empty (first-time setup only).
+          // Guard with BOOTSTRAP_ENABLED=true to prevent race-condition attacks
+          // in production environments.
+          if (process.env.BOOTSTRAP_ENABLED !== 'true') {
+            console.log("[Auth] User not found and bootstrap is disabled");
+            return null;
+          }
+
           const userCount = await countUsers();
           console.log("[Auth] User count in DB:", userCount);
 
