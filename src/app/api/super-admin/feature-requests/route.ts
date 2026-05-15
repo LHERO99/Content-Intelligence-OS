@@ -28,6 +28,7 @@ export async function GET(req: Request) {
         status:         featureRequests.status,
         priority:       featureRequests.priority,
         plannedQuarter: featureRequests.plannedQuarter,
+        isPublic:       featureRequests.isPublic,
         createdAt:      featureRequests.createdAt,
         updatedAt:      featureRequests.updatedAt,
         tenantId:       featureRequests.tenantId,
