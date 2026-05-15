@@ -135,10 +135,24 @@ function mapKeywordRow(row: typeof keywordMapTable.$inferSelect, editorIds: stri
   };
 }
 
-function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: string, body?: { contentBody: string | null; diffSummary: string | null } | null | boolean): ContentLog {
+function mapContentLogRow(
+  row: typeof contentLogTable.$inferSelect,
+  keywordId?: string,
+  body?: { contentBody: string | null; diffSummary: string | null } | null | { hasBody: boolean; diffSummary: string | null }
+): ContentLog {
   const kwIds = keywordId ? [keywordId] : (row.keywordId ? [row.keywordId] : []);
-  // `body` may be a full body object (when loaded on-demand) or a boolean hasBody flag (from list queries)
-  const hasContent = typeof body === 'boolean' ? body : !!(body?.contentBody);
+
+  // body can be:
+  //   - null/undefined                              → no body info (legacy / no join)
+  //   - { hasBody, diffSummary }                    → list-query partial (no contentBody text)
+  //   - { contentBody, diffSummary }                → full body (on-demand load)
+  const isPartial = body !== null && body !== undefined && 'hasBody' in body;
+  const isFull    = body !== null && body !== undefined && 'contentBody' in body;
+
+  const hasContent  = isPartial ? (body as any).hasBody : isFull ? !!(body as any).contentBody : false;
+  const diffSummary = isPartial ? (body as any).diffSummary : isFull ? (body as any).diffSummary : null;
+  const contentBody = isFull ? (body as any).contentBody : null;
+
   return {
     id: String(row.id),
     ID: row.id,
@@ -148,8 +162,8 @@ function mapContentLogRow(row: typeof contentLogTable.$inferSelect, keywordId?: 
     Action_Type: row.actionType as any,
     Page_Type: row.pageType as any,
     Version: hasContent ? 'v2' : 'v1',
-    Content_Body: typeof body === 'object' && body !== null ? (body.contentBody ?? undefined) : undefined,
-    Diff_Summary: typeof body === 'object' && body !== null ? (body.diffSummary ?? undefined) : undefined,
+    Content_Body: contentBody ?? undefined,
+    Diff_Summary: diffSummary ?? undefined,
     Created_At: row.timeCreated.toISOString(),
     Updated_At: row.timeChanged.toISOString(),
     Editor: row.editorId ? [row.editorId] : undefined,
@@ -506,19 +520,20 @@ export async function bulkUpdateKeywordRankings(
 export async function getContentLogs(tenantId?: string): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    // LEFT JOIN on content_log_body to determine Version flag (v1 vs v2).
-    // We only select the FK (contentLogId) to keep the join cheap — no large text fields.
+    // LEFT JOIN on content_log_body to get Version flag + Diff_Summary.
+    // contentBody text is intentionally NOT selected here (too large for list queries).
     const rows = await tx
       .select({
         log: contentLogTable,
         hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        diffSummary: contentLogBodyTable.diffSummary,
       })
       .from(contentLogTable)
       .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(eq(contentLogTable.tenantId, tenant))
       .orderBy(desc(contentLogTable.timeCreated))
       .limit(200);
-    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, r.hasBody));
+    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, diffSummary: r.diffSummary ?? null }));
   });
 }
 
@@ -533,12 +548,13 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
       .select({
         log: contentLogTable,
         hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        diffSummary: contentLogBodyTable.diffSummary,
       })
       .from(contentLogTable)
       .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.loggedUrl, targetUrl)))
       .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, r.hasBody));
+    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, diffSummary: r.diffSummary ?? null }));
   });
 }
 
@@ -549,12 +565,13 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
       .select({
         log: contentLogTable,
         hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentLogId} IS NOT NULL)`,
+        diffSummary: contentLogBodyTable.diffSummary,
       })
       .from(contentLogTable)
       .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
       .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.keywordId, keywordId)))
       .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r.log, keywordId, r.hasBody));
+    return rows.map(r => mapContentLogRow(r.log, keywordId, { hasBody: r.hasBody, diffSummary: r.diffSummary ?? null }));
   });
 }
 

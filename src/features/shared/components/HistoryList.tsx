@@ -14,10 +14,30 @@ interface HistoryListProps {
 
 const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolean; version?: string }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const [bodyContent, setBodyContent] = React.useState<string | null>(null);
+  const [bodyLoading, setBodyLoading] = React.useState(false);
   const { locale, t } = useI18n();
-  const summary = log.Diff_Summary || log.Action_Type || "";
+  const summary = log.Diff_Summary || "";
   const isDelivery = summary === "Content angeliefert" || log.Version === 'v2';
   const isCommissioned = summary === "Content beauftragt";
+
+  const handleToggleExpand = async () => {
+    if (!isExpanded && bodyContent === null) {
+      setBodyLoading(true);
+      try {
+        const res = await fetch(`/api/planning/history/${log.ID}/body`);
+        if (res.ok) {
+          const data = await res.json();
+          setBodyContent(data.Content_Body ?? null);
+        }
+      } catch {
+        // non-critical
+      } finally {
+        setBodyLoading(false);
+      }
+    }
+    setIsExpanded((v) => !v);
+  };
 
   const getIcon = () => {
     const s = summary.toLowerCase();
@@ -67,25 +87,32 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
           </span>
         </div>
 
-        {isDelivery && log.Content_Body && (
+        {isDelivery && (
           <div className="space-y-2">
             <button 
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={handleToggleExpand}
               className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
             >
-              {isExpanded ? (
+              {bodyLoading ? (
+                <><Loader2 className="h-3 w-3 animate-spin" />{t('historyList.showContent')}</>
+              ) : isExpanded ? (
                 <>{t('historyList.hideContent')} <ChevronUp className="h-3 w-3" /></>
               ) : (
                 <>{t('historyList.showContent')} <ChevronDown className="h-3 w-3" /></>
               )}
             </button>
             
-            {isExpanded && (
+            {isExpanded && bodyContent && (
               <div 
                 className="p-3 rounded-lg bg-muted/30 border border-border text-xs leading-relaxed max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-top-1 html-content"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(log.Content_Body) }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(bodyContent) }}
               />
+            )}
+            {isExpanded && !bodyContent && !bodyLoading && (
+              <p className="text-xs text-muted-foreground italic">
+                {t('historyList.noContent') || 'Kein Inhalt verfügbar.'}
+              </p>
             )}
           </div>
         )}
@@ -156,7 +183,7 @@ export const HistoryList = ({ history, isLoading }: HistoryListProps) => {
         <p className="text-xs font-bold text-primary">
           {lastUpdate ? (
             <>
-              {t('historyList.status')}: {lastUpdate.Diff_Summary || lastUpdate.Action_Type} {locale === 'de' ? 'am' : 'on'}{" "}
+              {t('historyList.status')}: {lastUpdate.Diff_Summary} {locale === 'de' ? 'am' : 'on'}{" "}
               {new Date(lastUpdate.Created_At).toLocaleDateString(toLocaleTag(locale), { 
                 day: '2-digit', 
                 month: '2-digit', 
