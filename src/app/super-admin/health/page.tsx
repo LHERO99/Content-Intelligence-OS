@@ -51,6 +51,10 @@ interface HealthSummary {
   totalTenants: number;
   tenantsWithErrors: number;
   generatedAt: string;
+  smtp?: {
+    status: 'ok' | 'error' | 'not_configured';
+    detail: string;
+  };
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -242,6 +246,36 @@ export default function SuperAdminHealthPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* SMTP Status */}
+      {data?.smtp && (
+        <Card className={
+          data.smtp.status === 'ok' ? "border-green-200 bg-green-50" :
+          data.smtp.status === 'error' ? "border-red-200 bg-red-50" :
+          "border-yellow-200 bg-yellow-50"
+        }>
+          <CardContent className="pt-4 pb-4 flex items-center gap-3">
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+              data.smtp.status === 'ok' ? 'bg-green-500' :
+              data.smtp.status === 'error' ? 'bg-red-500' :
+              'bg-yellow-500'
+            }`} />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">SMTP</p>
+              <p className={`text-sm font-medium ${
+                data.smtp.status === 'ok' ? 'text-green-700' :
+                data.smtp.status === 'error' ? 'text-red-700' :
+                'text-yellow-700'
+              }`}>
+                {data.smtp.status === 'ok' ? 'Verbunden' :
+                 data.smtp.status === 'error' ? 'Fehler' :
+                 'Nicht konfiguriert'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{data.smtp.detail}</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Tenant grid */}

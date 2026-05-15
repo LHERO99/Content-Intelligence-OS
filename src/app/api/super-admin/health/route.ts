@@ -21,6 +21,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/db';
 import { tenants, auditLogs } from '@/lib/db/schema';
 import { eq, desc, inArray } from 'drizzle-orm';
+import { testSmtpConnection, isSmtpConfigured } from '@/lib/email/smtp-client';
 
 // Each job definition contains all audit-log prefixes that are relevant for it.
 // The most recent entry across ALL prefixes wins.
@@ -70,6 +71,10 @@ export interface HealthSummaryResponse {
   totalTenants: number;
   tenantsWithErrors: number;
   generatedAt: string;
+  smtp: {
+    status: 'ok' | 'error' | 'not_configured';
+    detail: string;
+  };
 }
 
 function deriveStatus(action: string): 'ok' | 'error' | 'skipped' | 'unknown' {
@@ -166,11 +171,25 @@ export async function GET() {
 
     const tenantsWithErrors = tenantHealth.filter(t => t.hasErrors).length;
 
+    // SMTP live check — only relevant for SuperAdmin
+    let smtp: HealthSummaryResponse['smtp'];
+    if (!isSmtpConfigured()) {
+      smtp = { status: 'not_configured', detail: 'SMTP not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS' };
+    } else {
+      try {
+        await testSmtpConnection();
+        smtp = { status: 'ok', detail: 'SMTP connection successful' };
+      } catch (err: any) {
+        smtp = { status: 'error', detail: err?.message ?? 'SMTP connection failed' };
+      }
+    }
+
     return NextResponse.json({
       tenants: tenantHealth,
       totalTenants: allTenants.length,
       tenantsWithErrors,
       generatedAt: new Date().toISOString(),
+      smtp,
     } satisfies HealthSummaryResponse);
   } catch (err: any) {
     console.error('[SuperAdmin] /health API error:', err);

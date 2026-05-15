@@ -114,6 +114,13 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
     (col) => col.id !== "select" && col.id !== "actions" && col.id !== "Content-Plan" && (col as any).accessorKey
   );
 
+  const getColumnLabel = (col: any): string => {
+    if (!col) return "";
+    if (typeof col.header === "string") return col.header;
+    const key = col.accessorKey || col.id || "";
+    return key.replace(/_/g, " ");
+  };
+
   const suggestions = React.useMemo(() => {
     if (!selectedColumn) return [];
     const accessorKey = getAccessorKey(selectedColumn);
@@ -135,12 +142,16 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
           }}>
             <SelectTrigger className="w-[160px] h-9 border-none bg-transparent focus:ring-0">
               <Filter className="h-4 w-4 mr-2 text-primary" />
-              <SelectValue placeholder={tr("Spalte", "Column")} />
+              <span className="truncate">
+                {selectedColumn
+                  ? getColumnLabel(filterableColumns.find((c) => (c.id || (c as any).accessorKey) === selectedColumn))
+                  : <span className="text-muted-foreground">{tr("Spalte", "Column")}</span>}
+              </span>
             </SelectTrigger>
             <SelectContent>
               {filterableColumns.map((col) => (
                 <SelectItem key={col.id || (col as any).accessorKey} value={col.id || (col as any).accessorKey}>
-                  {typeof col.header === "string" ? col.header : (col.id || (col as any).accessorKey)}
+                  {getColumnLabel(col)}
                 </SelectItem>
               ))}
             </SelectContent>

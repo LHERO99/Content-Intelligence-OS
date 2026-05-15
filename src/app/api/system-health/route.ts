@@ -330,6 +330,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const tenantId = session.user?.tenantId;
+    const isSuperAdmin = (session.user as any).role === 'SuperAdmin';
 
     const [
       databaseCheck,
@@ -339,7 +340,6 @@ export async function GET(req: NextRequest) {
       integrationChecks,
       agentRunsCheck,
       contentPipelineCheck,
-      smtpCheck,
     ] = await Promise.all([
       checkDatabase(tenantId),
       checkCronSync('cron:sync-gsc', 'GSC Sync', tenantId),
@@ -348,12 +348,13 @@ export async function GET(req: NextRequest) {
       checkIntegrations(tenantId),
       checkAgentRuns(tenantId),
       checkContentPipeline(tenantId),
-      checkSmtp(),
     ]);
+
+    const smtpCheck = isSuperAdmin ? await checkSmtp() : null;
 
     const checks: HealthCheck[] = [
       databaseCheck,
-      smtpCheck,
+      ...(smtpCheck ? [smtpCheck] : []),
       cronGscCheck,
       cronSistrixCheck,
       cronDataforseoCheck,
