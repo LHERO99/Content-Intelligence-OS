@@ -306,6 +306,7 @@ async function checkAgentCallback(tenantId?: string): Promise<HealthCheck | null
 }
 
 
+async function checkContentPipeline(tenantId?: string): Promise<HealthCheck> {
   try {
     const activeStatuses = ['Beauftragt', 'In Arbeit'];
     const allKeywords = await getKeywordMap(tenantId);
