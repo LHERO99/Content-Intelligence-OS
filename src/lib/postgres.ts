@@ -770,7 +770,7 @@ export async function getContentLogs(tenantId?: string, limit?: number): Promise
       Created_At: event.eventTimestamp.toISOString(),
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
-      Commission_Log_Id: cycle?.id,
+      Commission_Log_Id: (event.eventData as any)?.commission_log_id ?? cycle?.id,
     }));
   });
 }
@@ -809,7 +809,8 @@ export async function createContentLog(
     Content_Body?: string;
     Event_Label?: string;
     Editor?: string[];
-    Commission_Log_Id?: number;
+    Commission_Log_Id?: number;  // Legacy: ID of commission event (for display mapping)
+    Cycle_Id?: number;            // ID of execution cycle (for FK)
     Version_Id?: number;
   },
   tenantId?: string
@@ -838,13 +839,14 @@ export async function createContentLog(
         eventType,
         urlId,
         keywordId: data.Keyword_ID?.[0],
-        cycleId: data.Commission_Log_Id,
+        cycleId: data.Cycle_Id,  // Use Cycle_Id for FK constraint
         versionId: data.Version_Id,
         userId: data.Editor?.[0],
         eventData: {
           original_event_label: data.Event_Label,
           action_type: data.Action_Type,
           page_type: data.Page_Type,
+          commission_log_id: data.Commission_Log_Id,  // Store commission event ID in eventData for mapping
         },
       })
       .returning();

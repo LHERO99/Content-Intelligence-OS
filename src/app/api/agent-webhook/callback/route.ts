@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword, createExecutionVersion } from '@/lib/postgres';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { db } from '@/lib/db';
-import { executionCycles } from '@/lib/db/schema';
+import { executionCycles, processEvents } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 /**
@@ -127,6 +127,7 @@ export async function POST(request: Request) {
     // 1. Update execution cycle status to "delivered" and create version
     let cycleId: number | null = null;
     let versionId: number | null = null;
+    let resolvedCommissionLogId: number | null = commissionLogId;
 
     try {
       // Get urlId for keyword
@@ -139,6 +140,20 @@ export async function POST(request: Request) {
         const effectiveTenantId = tenantId ?? getDefaultTenantId();
         
         console.log(`[API] Callback: effectiveTenantId=${effectiveTenantId}`);
+        
+        // Debug: Check all cycles for this URL
+        const allCycles = await db
+          .select({ id: executionCycles.id, status: executionCycles.status, cycleNumber: executionCycles.cycleNumber })
+          .from(executionCycles)
+          .where(
+            and(
+              eq(executionCycles.urlId, urlId),
+              eq(executionCycles.tenantId, effectiveTenantId)
+            )
+          )
+          .orderBy(desc(executionCycles.cycleNumber));
+        
+        console.log(`[API] Callback: all cycles for URL=${JSON.stringify(allCycles)}`);
         
         // Find the most recent commissioned cycle
         const [activeCycle] = await db
@@ -158,6 +173,25 @@ export async function POST(request: Request) {
         
         if (activeCycle) {
           cycleId = activeCycle.id;
+          
+          // If commissionLogId was not provided in callback, look it up from process_events
+          if (!resolvedCommissionLogId) {
+            const [commissionEvent] = await db
+              .select({ id: processEvents.id })
+              .from(processEvents)
+              .where(
+                and(
+                  eq(processEvents.cycleId, activeCycle.id),
+                  eq(processEvents.eventType, 'cycle_commissioned')
+                )
+              )
+              .limit(1);
+            
+            if (commissionEvent) {
+              resolvedCommissionLogId = commissionEvent.id;
+              console.log(`[API] Callback: resolved commissionLogId=${resolvedCommissionLogId} from cycle ${activeCycle.id}`);
+            }
+          }
           
           // Update cycle status to delivered
           await db
@@ -198,18 +232,19 @@ export async function POST(request: Request) {
                           (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert')) ||
                           (body.actionType && body.actionType === 'Optimierung');
     
-    console.log(`[API] Callback: Creating content log with versionId=${versionId}, commissionLogId=${commissionLogId}`);
+    console.log(`[API] Callback: Creating content log with versionId=${versionId}, cycleId=${cycleId}, commissionLogId=${resolvedCommissionLogId}`);
     
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
       Target_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Event_Label: 'Content angeliefert',
-      Commission_Log_Id: commissionLogId ?? undefined,
+      Cycle_Id: cycleId ?? undefined,
+      Commission_Log_Id: resolvedCommissionLogId ?? undefined,
       Version_Id: versionId ?? undefined,
     }, tenantId);
 
-    console.log(`[API] Callback: Created content log with ID=${newLog?.ID}, version_id=${versionId}`);
+    console.log(`[API] Callback: Created content log with ID=${newLog?.ID}, version_id=${versionId}, commission_log_id=${resolvedCommissionLogId}`);
 
     return NextResponse.json({
       success: true,

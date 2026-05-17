@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
           Target_URL: data.targetUrl,
           Action_Type: commissioningActionType,
           Event_Label: "Content wurde beauftragt",
+          Cycle_Id: executionCycleId,
           Editor: session.user?.id ? [session.user.id] : undefined
         }, tenantId);
         commissionLogId = commissionLog?.ID ?? null;
@@ -233,9 +234,10 @@ export async function POST(req: NextRequest) {
               Target_URL: data.targetUrl,
               Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
               Event_Label: 'Content angeliefert',
-              Editor: session.user?.id ? [session.user.id] : undefined,
+              Cycle_Id: executionCycleId,
               Commission_Log_Id: commissionLogId ?? undefined,
               Version_Id: versionId,
+              Editor: session.user?.id ? [session.user.id] : undefined,
             }, tenantId);
           } catch (logErr) {
             console.error('[InternalAgent] Failed to create content version/log:', logErr);
