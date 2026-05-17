@@ -1104,7 +1104,7 @@ export async function getExistingRankingDates(keywordIds: string[], weekDate: st
         eq(keywordRankings.tenantId, tenant)
       ));
     
-    return new Set(rows.map(r => `${r.keywordId}|${r.date}`));
+    return new Set(rows.map(r => r.keywordId));
   });
 }
 export async function upsertKeywordRankingHistory(rankings: any[], tenantId?: string): Promise<{ errors: any[] }> { 
@@ -1245,6 +1245,7 @@ export async function getUserByEmail(email: string, tenantId?: string): Promise<
       Password: user.password ?? undefined,
       Password_Changed: user.passwordChanged ?? false,
       Is_Active: user.isActive,
+      TenantId: user.tenantId,
     };
   });
 }

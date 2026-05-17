@@ -2,6 +2,14 @@
 
 ## Abgeschlossen (chronologisch)
 
+- [x] **DB-Schema-Refactoring: URL-zentrische Architektur (17.05.2026)**
+  - Neue Tabellen: urls, url_keywords, planning_status, execution_cycles, execution_versions, publishing_status, process_events
+  - Vollständige Daten-Migration via COMPLETE_MIGRATION.sql
+  - postgres.ts auf neue Architektur migriert
+  - 50+ API-Routen und UI-Komponenten angepasst
+  - TypeScript-Build erfolgreich
+  - Alte Tabellen bleiben als Fallback
+
 - [x] Fix: Build-Fehler `ai-editor-workspace.tsx` (Orphaned CSS + TooltipTrigger TypeScript-Fix).
 
 - [x] Fix: `/api/branding` in Middleware als public path freigeschaltet.
@@ -151,18 +159,27 @@
 
 ## Offen / Ausstehend
 
-- [ ] DB-Migration `0002_lowly_medusa.sql` ausführen:
+- [ ] **WICHTIG:** DB-Migration für neue URL-zentrische Architektur ausführen:
+  ```bash
+  psql -d your_database < COMPLETE_MIGRATION.sql
+  ```
+  - Erstellt alle neuen Tabellen
+  - Migriert alle Daten
+  - Validiert Migration automatisch
+  - Ist idempotent (kann mehrfach ausgeführt werden)
+
+- [ ] Nach erfolgreicher Migration und Testing: Alte Tabellen optional löschen:
   ```sql
-  ALTER TABLE "feature_requests" ADD COLUMN "is_public" boolean DEFAULT false NOT NULL;
+  -- Erst nach Verifikation dass alles funktioniert!
+  DROP TABLE IF EXISTS keyword_map_editors CASCADE;
+  DROP TABLE IF EXISTS keyword_map CASCADE;
+  DROP TABLE IF EXISTS content_log_body CASCADE;
+  DROP TABLE IF EXISTS content_log CASCADE;
+  DROP TABLE IF EXISTS blacklist CASCADE;
+  DROP TABLE IF EXISTS keyword_ranking_history CASCADE;
   ```
 
-- [ ] DB-Migrationen ausführen (manuell via psql):
-  ```sql
-  ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
-  ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS planned_quarter TEXT;
-  ```
-
-- [ ] RLS-Migration auf DB einspielen:
+- [ ] RLS-Migration auf DB einspielen (falls noch nicht geschehen):
   ```bash
   psql $DATABASE_URL < src/lib/db/migrations/0001_add_row_level_security.sql
   ```

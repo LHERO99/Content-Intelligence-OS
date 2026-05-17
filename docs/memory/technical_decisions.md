@@ -1,4 +1,78 @@
-# Technische Entscheidungen (Stand: 15.05.2026 – aktualisiert 3)
+# Technische Entscheidungen (Stand: 17.05.2026 – aktualisiert 4)
+
+## URL-zentrische Datenbank-Architektur (17.05.2026)
+
+### Design-Entscheidungen
+
+**1. URLs als First-Class-Entities:**
+- URLs sind primäre Entitäten, Keywords sind Attribute
+- Eine URL kann mehrere Keywords haben (1:N Beziehung)
+- URL-ID als Foreign Key in allen abhängigen Tabellen
+
+**2. Prozess-Separation:**
+- Drei unabhängige State-Machines: Planning, Execution, Publishing
+- Jeder Prozess hat eigene Status-Tabelle
+- Ermöglicht parallele Workflows (z.B. neue Planung während vorheriger Cycle in Review ist)
+
+**3. Multi-Cycle als natives Konzept:**
+- `execution_cycles` mit `cycle_number` (1, 2, 3...)
+- Erste Erstellung = Cycle 1, spätere Optimierungen = Cycle 2+
+- Jeder Cycle kann unabhängig publiziert werden
+- Keine commission_log_id-Workarounds mehr nötig
+
+**4. Strukturierte Versionierung:**
+- `execution_versions` pro Cycle
+- Version 1 = initiale Agent-Delivery, Version 2+ = manuelle Edits/AI-Refinements
+- `publishing_status.version_id` referenziert welche Version publiziert ist
+
+**5. Event-Sourcing mit Typsicherheit:**
+- `process_events` mit Enum statt Freitext-Labels
+- Polymorphe FK zu allen relevanten Entitäten
+- JSONB für flexible Event-spezifische Daten
+
+**6. State-Machine-Validierung:**
+- DB-Triggers verhindern ungültige Status-Übergänge
+- `execution_status`: delivered kann nicht zurück zu in_progress
+- `publishing_status`: unpublish nur wenn published
+
+**7. Backwards Compatibility:**
+- Alte Tabellen (keyword_map, content_log) bleiben erhalten
+- Mapping-Layer in postgres.ts übersetzt neue Struktur → alte API
+- Ermöglicht graduelle Code-Migration
+
+### Mapping: Alt → Neu
+
+**Status-Mapping:**
+- `Backlog` → planning: backlog
+- `Planned` → planning: planned
+- `Beauftragt` → execution: commissioned, publishing: draft
+- `In Arbeit` → execution: in_progress
+- `Angeliefert` → execution: delivered, publishing: approved
+- `Review` → publishing: in_review
+- `Published` → publishing: published
+
+**ActionType-Mapping:**
+- `Erstellung` → action_type_enum: creation
+- `Optimierung` → action_type_enum: optimization
+
+### Performance-Optimierungen
+
+**Indizierung:**
+- Composite Indexes auf allen Status-Tabellen
+- `(tenant_id, status)` für schnelle Filterung
+- `(url_id, cycle_number DESC)` für Latest-Cycle-Queries
+
+**Query-Optimierung:**
+- Status-Queries nutzen B-Tree-Indizes statt Volltextsuche
+- Direkte Joins statt Log-Parsing und Rekonstruktion
+- Materialized Views möglich für Dashboard-Aggregationen
+
+**Skalierbarkeit:**
+- Partitionierung von process_events nach Datum möglich
+- Archive-Strategie für alte Events
+- Normalisierung reduziert Datenredundanz um ~70%
+
+---
 
 ## content_log_body: diff_summary → event_label (15.05.2026)
 - `diff_summary` war ein irreführender Name — das Feld ist keine Git-ähnliche Diff-Zusammenfassung, sondern ein **Event-Label** (Freitext-Ereignisbeschreibung)

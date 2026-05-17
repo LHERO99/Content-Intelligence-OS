@@ -109,7 +109,8 @@ export async function syncGscForUrls(
   urls: string[],
   accessToken: string,
   gscSiteUrl: string,
-  isFirstSync: boolean
+  isFirstSync: boolean,
+  tenantId?: string
 ): Promise<Pick<SyncResult, 'gscRowsUpserted' | 'errors'>> {
   const errors: string[] = [];
   const { startDate, endDate } = getSyncDateRange(isFirstSync);
@@ -140,7 +141,7 @@ export async function syncGscForUrls(
 
   let gscRowsUpserted = 0;
   if (allRows.length > 0) {
-    const upsertResult = await upsertURLPerformance(allRows);
+    const upsertResult = await upsertURLPerformance(allRows, tenantId);
     gscRowsUpserted = allRows.length - upsertResult.errors.length;
     if (upsertResult.errors.length > 0) {
       errors.push(`GSC upsert errors: ${upsertResult.errors.slice(0, 3).map(e => e.error).join(', ')}`);
@@ -165,7 +166,8 @@ export async function syncGscForUrls(
 export async function syncSistrixForUrls(
   urls: string[],
   apiKey: string,
-  isFirstSync: boolean
+  isFirstSync: boolean,
+  tenantId?: string
 ): Promise<Pick<SyncResult, 'sistrixRowsUpserted' | 'errors'>> {
   const errors: string[] = [];
   const weeksBack = isFirstSync ? 26 : 1; // 26 weeks ≈ 6 months
@@ -187,7 +189,7 @@ export async function syncSistrixForUrls(
 
   let sistrixRowsUpserted = 0;
   if (allRows.length > 0) {
-    const upsertResult = await upsertURLPerformance(allRows);
+    const upsertResult = await upsertURLPerformance(allRows, tenantId);
     sistrixRowsUpserted = allRows.length - upsertResult.errors.length;
     if (upsertResult.errors.length > 0) {
       errors.push(`Sistrix upsert errors: ${upsertResult.errors.slice(0, 3).map(e => e.error).join(', ')}`);
@@ -208,7 +210,8 @@ export async function syncDataForSeoForKeywords(
   keywords: Awaited<ReturnType<typeof getKeywordMap>>,
   dfsUsername: string,
   dfsPassword: string,
-  force: boolean = false
+  force: boolean = false,
+  tenantId?: string
 ): Promise<Pick<SyncResult, 'keywordsProcessed' | 'rankingRowsUpserted' | 'rankingsSkipped' | 'errors'>> {
   const errors: string[] = [];
   const weekDate = getCurrentWeekMonday();
@@ -216,7 +219,7 @@ export async function syncDataForSeoForKeywords(
   // Pre-flight: which keywords already have a ranking for this week?
   // Skipped when force=true (manual re-sync overwrites existing data).
   const allIds = keywords.map(kw => kw.id);
-  const alreadyRanked = force ? new Set<string>() : await getExistingRankingDates(allIds, weekDate);
+  const alreadyRanked = force ? new Set<string>() : await getExistingRankingDates(allIds, weekDate, tenantId);
   const toFetch = keywords.filter(kw => !alreadyRanked.has(kw.id));
   const rankingsSkipped = keywords.length - toFetch.length;
 
@@ -257,7 +260,7 @@ export async function syncDataForSeoForKeywords(
 
   let rankingRowsUpserted = 0;
   if (allRankingRecords.length > 0) {
-    const upsertResult = await upsertKeywordRankingHistory(allRankingRecords);
+    const upsertResult = await upsertKeywordRankingHistory(allRankingRecords, tenantId);
     rankingRowsUpserted = allRankingRecords.length - upsertResult.errors.length;
     if (upsertResult.errors.length > 0) {
       errors.push(`DFS upsert errors: ${upsertResult.errors.slice(0, 3).map((e: any) => e.error).join(', ')}`);
@@ -314,14 +317,14 @@ export async function syncGscChunk(tenantId?: string): Promise<ChunkSyncResult> 
     return { ...baseResult, skippedGsc: true, errors: [`GSC token refresh failed: ${err.message}`], hasMore: false, nextCursor: cursor, totalItems };
   }
 
-  const { gscRowsUpserted, errors } = await syncGscForUrls(chunk, accessToken, gscSiteUrl, false);
+  const { gscRowsUpserted, errors } = await syncGscForUrls(chunk, accessToken, gscSiteUrl, false, tenantId);
   const allErrors = [...errors];
 
   // ── Sistrix: run in same cron slot (no extra cron needed) ─────────────────
   let sistrixRowsUpserted = 0;
   const sistrixApiKey = config.SISTRIX_API_KEY?.trim();
   if (sistrixApiKey) {
-    const { sistrixRowsUpserted: sRows, errors: sErrors } = await syncSistrixForUrls(chunk, sistrixApiKey, false);
+    const { sistrixRowsUpserted: sRows, errors: sErrors } = await syncSistrixForUrls(chunk, sistrixApiKey, false, tenantId);
     sistrixRowsUpserted = sRows;
     allErrors.push(...sErrors);
   }
@@ -381,7 +384,7 @@ export async function syncDataForSeoChunk(tenantId?: string): Promise<ChunkSyncR
   }
 
   const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-    await syncDataForSeoForKeywords(chunk, dfsUsername, dfsPassword);
+    await syncDataForSeoForKeywords(chunk, dfsUsername, dfsPassword, false, tenantId);
 
   const nextCursor = cursor + chunk.length;
   const hasMore = nextCursor < totalItems;
@@ -446,7 +449,7 @@ export async function syncPerformanceForUrls(targetUrls: string[], tenantId?: st
   if (hasGsc) {
     try {
       const accessToken = await getAccessToken(gscRefreshToken!);
-      const { gscRowsUpserted, errors } = await syncGscForUrls(targetUrls, accessToken, gscSiteUrl!, true);
+      const { gscRowsUpserted, errors } = await syncGscForUrls(targetUrls, accessToken, gscSiteUrl!, true, tenantId);
       result.gscRowsUpserted = gscRowsUpserted;
       result.errors.push(...errors);
     } catch (err: any) {
@@ -457,7 +460,7 @@ export async function syncPerformanceForUrls(targetUrls: string[], tenantId?: st
   // ── Sistrix: 26-week page-level VI for these URLs ─────────────────────────
   if (hasSistrix) {
     try {
-      const { sistrixRowsUpserted, errors } = await syncSistrixForUrls(targetUrls, sistrixApiKey!, true);
+      const { sistrixRowsUpserted, errors } = await syncSistrixForUrls(targetUrls, sistrixApiKey!, true, tenantId);
       result.sistrixRowsUpserted = sistrixRowsUpserted;
       result.errors.push(...errors);
     } catch (err: any) {
@@ -474,7 +477,7 @@ export async function syncPerformanceForUrls(targetUrls: string[], tenantId?: st
       );
       if (urlKeywords.length > 0) {
         const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-          await syncDataForSeoForKeywords(urlKeywords, dfsUsername!, dfsPassword!);
+          await syncDataForSeoForKeywords(urlKeywords, dfsUsername!, dfsPassword!, false, tenantId);
         result.keywordsProcessed = keywordsProcessed;
         result.rankingRowsUpserted = rankingRowsUpserted;
         result.rankingsSkipped = rankingsSkipped;
