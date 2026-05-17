@@ -131,7 +131,15 @@ export async function POST(request: Request) {
     try {
       // Get urlId for keyword
       const urlId = await getUrlIdForKeyword(keywordId, tenantId);
-      if (urlId && tenantId) {
+      console.log(`[API] Callback: urlId=${urlId}, tenantId=${tenantId}, keywordId=${keywordId}`);
+      
+      if (urlId) {
+        // Use getDefaultTenantId() if tenantId is undefined (legacy mode)
+        const { getDefaultTenantId } = await import('@/lib/db');
+        const effectiveTenantId = tenantId ?? getDefaultTenantId();
+        
+        console.log(`[API] Callback: effectiveTenantId=${effectiveTenantId}`);
+        
         // Find the most recent commissioned cycle
         const [activeCycle] = await db
           .select({ id: executionCycles.id })
@@ -139,12 +147,14 @@ export async function POST(request: Request) {
           .where(
             and(
               eq(executionCycles.urlId, urlId),
-              eq(executionCycles.tenantId, tenantId),
+              eq(executionCycles.tenantId, effectiveTenantId),
               eq(executionCycles.status, 'commissioned')
             )
           )
           .orderBy(desc(executionCycles.cycleNumber))
           .limit(1);
+        
+        console.log(`[API] Callback: found activeCycle=${activeCycle?.id}`);
         
         if (activeCycle) {
           cycleId = activeCycle.id;
@@ -158,6 +168,8 @@ export async function POST(request: Request) {
             })
             .where(eq(executionCycles.id, activeCycle.id));
           
+          console.log(`[API] Callback: cycle ${activeCycle.id} updated to delivered`);
+          
           // Create execution version with the content
           versionId = await createExecutionVersion(
             activeCycle.id,
@@ -168,7 +180,13 @@ export async function POST(request: Request) {
             },
             tenantId
           );
+          
+          console.log(`[API] Callback: created version ${versionId}`);
+        } else {
+          console.warn(`[API] Callback: No commissioned cycle found for urlId=${urlId}, tenantId=${effectiveTenantId}`);
         }
+      } else {
+        console.error(`[API] Callback: Could not find urlId for keywordId=${keywordId}`);
       }
     } catch (err) {
       console.error('[API] Error updating cycle status to delivered:', err);
