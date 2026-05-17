@@ -96,22 +96,9 @@ function toIsoDate(d: string | Date | null | undefined): string | undefined {
 function mapToOldStatus(
   planning: typeof planningStatus.$inferSelect | null,
   execution: typeof executionCycles.$inferSelect | null,
-  publishing: typeof publishingStatus.$inferSelect | null,
-  isMainKeyword?: boolean
+  publishing: typeof publishingStatus.$inferSelect | null
 ): KeywordStatus {
-  // For non-main keywords, only inherit status if URL is in execution/publishing phase
-  // This prevents all keywords from appearing as "Planned" when only the main keyword should be
-  if (isMainKeyword === false) {
-    if (publishing?.status === 'published') return 'Published';
-    if (publishing?.status === 'in_review') return 'Review';
-    if (execution?.status === 'delivered') return 'Angeliefert';
-    if (execution?.status === 'in_progress') return 'In Arbeit';
-    if (execution?.status === 'commissioned') return 'Beauftragt';
-    // Non-main keywords stay in Backlog during planning phase
-    return 'Backlog';
-  }
-  
-  // Main keywords follow the full status chain
+  // All keywords inherit URL-level status
   if (publishing?.status === 'published') return 'Published';
   if (publishing?.status === 'in_review') return 'Review';
   if (execution?.status === 'delivered') return 'Angeliefert';
@@ -282,7 +269,7 @@ export async function getKeyword(keywordId: string, tenantId?: string): Promise<
       Target_URL: url.url,
       Search_Volume: kw.searchVolume ?? undefined,
       Difficulty: kw.difficulty ?? undefined,
-      Status: mapToOldStatus(planning, cycle, publishing, kw.isMainKeyword),
+      Status: mapToOldStatus(planning, cycle, publishing),
       Editorial_Deadline: toIsoDate(planning?.editorialDeadline),
       Assigned_Editor: editorRows.length ? editorRows.map(e => e.userId) : undefined,
       Main_Keyword: kw.isMainKeyword ? 'Y' : 'N',

@@ -71,9 +71,12 @@ export function EditorialPlanning({ keywords, onGoToKeywordMap }: EditorialPlann
   const [editorOptions, setEditorOptions] = React.useState<EditorOption[]>([]);
 
   const plannedKeywords = React.useMemo(() => {
-    // Only show keywords that are in the planning stage (not yet commissioned).
-    // Once commissioned (Beauftragt) the entry belongs to the Content-Erstellung view.
-    return keywords.filter(k => k.Status === 'Planned');
+    // Only show main keywords in editorial planning view
+    // All keywords of a URL share status, but planning workflow is per main keyword
+    return keywords.filter(k => 
+      k.Status === 'Planned' && 
+      k.Main_Keyword === 'Y'
+    );
   }, [keywords]);
 
   const updateData = async (id: string, updates: any) => {
