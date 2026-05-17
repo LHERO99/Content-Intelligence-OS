@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
-import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
+import { db } from '@/lib/db';
+import { executionCycles } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * API Route to trigger agent workflows or an external agent webhook.
@@ -33,12 +36,34 @@ export async function POST(req: NextRequest) {
     // 3. Status update and Logging for Commissioning
     // Hoisted to function scope so the enrichedPayload block below can reference it.
     let commissionLogId: number | null = null;
+    let executionCycleId: number | null = null;
     if ((action === "COMMISSION_CONTENT" || action === "COMMISSION_OPTIMIZATION") && data.keywordId) {
       // Prioritize the requested action type for the log entry
       const commissioningActionType = action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung";
       
+      // Get urlId for keyword to create execution cycle
+      const urlId = await getUrlIdForKeyword(data.keywordId, tenantId);
+      if (!urlId) {
+        return NextResponse.json({ message: 'URL not found for keyword' }, { status: 404 });
+      }
+      
+      // Create execution cycle FIRST (this sets the status to "Beauftragt")
+      try {
+        executionCycleId = await createExecutionCycle(
+          urlId,
+          commissioningActionType,
+          session.user?.id,
+          tenantId
+        );
+      } catch (cycleErr) {
+        console.error('Error creating execution cycle:', cycleErr);
+        return NextResponse.json({ 
+          message: 'Failed to create execution cycle' 
+        }, { status: 500 });
+      }
+      
+      // Update Action_Type in planning_status (NOT Status - that comes from execution cycle)
       await updateKeyword(data.keywordId, { 
-        Status: "Beauftragt",
         Action_Type: commissioningActionType 
       }, tenantId);
       
@@ -138,12 +163,16 @@ export async function POST(req: NextRequest) {
         runFrom: 'published',
       });
 
-      // On failure: reset keyword status to "Planned"
+      // On failure: delete the execution cycle to reset to "Planned" status
       if (run.status === 'failed' && data.keywordId) {
-        try {
-          await updateKeyword(data.keywordId, { Status: 'Planned' }, tenantId);
-        } catch (resetErr) {
-          console.error('[InternalAgent] Failed to reset keyword status:', resetErr);
+        if (executionCycleId) {
+          try {
+            await db
+              .delete(executionCycles)
+              .where(eq(executionCycles.id, executionCycleId));
+          } catch (resetErr) {
+            console.error('[InternalAgent] Failed to delete failed cycle:', resetErr);
+          }
         }
 
         const failedStep = run.steps?.find((s) => s.status === 'failed' && s.error);
@@ -166,11 +195,22 @@ export async function POST(req: NextRequest) {
           typeof run.output?.finalHtml === 'string' && run.output.finalHtml
             ? run.output.finalHtml
             : undefined;
-        try {
-          await updateKeyword(data.keywordId, { Status: 'Angeliefert' }, tenantId);
-        } catch (statusErr) {
-          console.error('[InternalAgent] Failed to set keyword status to Angeliefert:', statusErr);
+        
+        // Update execution cycle status to 'delivered'
+        if (executionCycleId) {
+          try {
+            await db
+              .update(executionCycles)
+              .set({ 
+                status: 'delivered',
+                deliveredAt: new Date()
+              })
+              .where(eq(executionCycles.id, executionCycleId));
+          } catch (statusErr) {
+            console.error('[InternalAgent] Failed to update cycle status to delivered:', statusErr);
+          }
         }
+        
         if (finalHtml) {
           try {
             await createContentLog({

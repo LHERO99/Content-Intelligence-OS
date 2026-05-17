@@ -453,6 +453,31 @@ export async function createKeyword(
   });
 }
 
+/**
+ * Gets the URL ID for a given keyword ID.
+ * Used to find which URL a keyword belongs to for execution cycle operations.
+ */
+export async function getUrlIdForKeyword(
+  keywordId: string, 
+  tenantId?: string
+): Promise<string | null> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const [result] = await tx
+      .select({ urlId: urlKeywords.urlId })
+      .from(urlKeywords)
+      .where(
+        and(
+          eq(urlKeywords.id, keywordId),
+          eq(urlKeywords.tenantId, tenant)
+        )
+      )
+      .limit(1);
+    
+    return result?.urlId ?? null;
+  });
+}
+
 export async function updateKeyword(
   keywordId: string,
   updates: {
@@ -562,10 +587,49 @@ export async function updateKeyword(
   });
 }
 
-export async function deleteKeyword(keywordId: string, tenantId?: string): Promise<void> {
+/**
+ * Creates a new execution cycle for a URL when commissioning content.
+ * Automatically determines the next cycle number.
+ * Returns the ID of the created cycle.
+ */
+export async function createExecutionCycle(
+  urlId: string,
+  actionType: 'Erstellung' | 'Optimierung',
+  userId?: string,
+  tenantId?: string
+): Promise<number> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    await tx.delete(urlKeywords).where(and(eq(urlKeywords.id, keywordId), eq(urlKeywords.tenantId, tenant)));
+    // Get next cycle number for this URL
+    const [result] = await tx
+      .select({ 
+        maxCycle: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` 
+      })
+      .from(executionCycles)
+      .where(
+        and(
+          eq(executionCycles.urlId, urlId),
+          eq(executionCycles.tenantId, tenant)
+        )
+      );
+    
+    const nextCycleNumber = (result?.maxCycle ?? 0) + 1;
+    
+    // Create new execution cycle
+    const [cycle] = await tx
+      .insert(executionCycles)
+      .values({
+        tenantId: tenant,
+        urlId,
+        cycleNumber: nextCycleNumber,
+        actionType: mapFromOldActionType(actionType),
+        status: 'commissioned',
+        commissionedByUserId: userId || null,
+        commissionedAt: new Date(),
+      })
+      .returning({ id: executionCycles.id });
+    
+    return cycle.id;
   });
 }
 
@@ -924,6 +988,14 @@ export async function getUsers(tenantId?: string): Promise<UserRecord[]> {
 // ---------------------------------------------------------------------------
 // Stub implementations for functions not yet fully migrated
 // ---------------------------------------------------------------------------
+export async function deleteKeyword(id: string, tenantId?: string): Promise<boolean> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    await tx.delete(urlKeywords).where(and(eq(urlKeywords.id, id), eq(urlKeywords.tenantId, tenant)));
+    return true;
+  });
+}
+
 export async function bulkDeleteKeywords(ids: string[], tenantId?: string): Promise<boolean> {
   const tenant = tid(tenantId);
   if (!ids.length) return true;

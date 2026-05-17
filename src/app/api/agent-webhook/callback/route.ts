@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword } from '@/lib/postgres';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { db } from '@/lib/db';
+import { executionCycles } from '@/lib/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 
 /**
  * Endpoint for external agent callbacks to return generated content.
@@ -121,11 +124,37 @@ export async function POST(request: Request) {
     // Sanitize HTML content before persisting — removes script, iframe, form etc.
     const sanitizedContent = sanitizeHtml(content);
 
-    // 1. Update Keyword Status to "Angeliefert"
+    // 1. Update execution cycle status to "delivered"
     try {
-      await updateKeyword(keywordId, { Status: 'Angeliefert' }, tenantId);
+      // Get urlId for keyword
+      const urlId = await getUrlIdForKeyword(keywordId, tenantId);
+      if (urlId && tenantId) {
+        // Find the most recent commissioned cycle
+        const [activeCycle] = await db
+          .select({ id: executionCycles.id })
+          .from(executionCycles)
+          .where(
+            and(
+              eq(executionCycles.urlId, urlId),
+              eq(executionCycles.tenantId, tenantId),
+              eq(executionCycles.status, 'commissioned')
+            )
+          )
+          .orderBy(desc(executionCycles.cycleNumber))
+          .limit(1);
+        
+        if (activeCycle) {
+          await db
+            .update(executionCycles)
+            .set({ 
+              status: 'delivered',
+              deliveredAt: new Date()
+            })
+            .where(eq(executionCycles.id, activeCycle.id));
+        }
+      }
     } catch (err) {
-      console.error('[API] Error updating keyword status to Angeliefert:', err);
+      console.error('[API] Error updating cycle status to delivered:', err);
     }
 
     // 2. Create Content-Log entry
