@@ -100,12 +100,20 @@ function buildJobEntries(
   // to the most recent v2 entry so bodyCache always fetches the latest content.
   const latestV2LogByCommission = new Map<number, ContentLog>();
   for (const log of contentLogs) {
+    console.log('[buildJobEntries] log:', {
+      id: log.ID,
+      version: log.Version,
+      commissionLogId: log.Commission_Log_Id,
+      eventLabel: log.Event_Label,
+      keywordId: log.Keyword_ID?.[0]
+    });
     if (log.Version !== 'v2' || log.Commission_Log_Id == null) continue;
     const existing = latestV2LogByCommission.get(log.Commission_Log_Id);
     if (!existing || new Date(log.Created_At) > new Date(existing.Created_At)) {
       latestV2LogByCommission.set(log.Commission_Log_Id, log);
     }
   }
+  console.log('[buildJobEntries] latestV2LogByCommission:', Array.from(latestV2LogByCommission.entries()));
 
   // Identify the "active" (newest) commissioning log ID per keyword.
   // commissioningLogs are already sorted newest-first from the API.
@@ -128,6 +136,7 @@ function buildJobEntries(
     let delivery = deliveryLogs.find(
       (dl) => dl.Commission_Log_Id != null && dl.Commission_Log_Id === cl.ID,
     );
+    console.log(`[buildJobEntries] commission ${cl.ID}: looking for delivery with Commission_Log_Id=${cl.ID}, found=${!!delivery}`);
     if (!delivery) {
       // Temporal fallback: earliest delivery for the same keyword AFTER this commissioning
       delivery = deliveryLogs
@@ -138,6 +147,7 @@ function buildJobEntries(
             new Date(dl.Created_At!).getTime() > new Date(commissionedAt).getTime(),
         )
         .sort((a, b) => new Date(a.Created_At!).getTime() - new Date(b.Created_At!).getTime())[0];
+      console.log(`[buildJobEntries] commission ${cl.ID}: temporal fallback delivery=${delivery?.ID}`);
     }
 
     // --- Per-cycle publish status ---
@@ -167,6 +177,7 @@ function buildJobEntries(
     // for pre-migration cycles that have no Commission_Log_Id on any content log.
     const latestV2Log = latestV2LogByCommission.get(cl.ID);
     const displayLogId = latestV2Log?.ID ?? delivery?.ID;
+    console.log(`[buildJobEntries] commission ${cl.ID}: latestV2Log=${latestV2Log?.ID}, delivery=${delivery?.ID}, displayLogId=${displayLogId}`);
 
     return {
       commissionLogId: cl.ID,
