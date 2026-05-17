@@ -159,33 +159,7 @@
 
 ## Offen / Ausstehend
 
-- [ ] **WICHTIG:** DB-Migration für neue URL-zentrische Architektur ausführen:
-  ```bash
-  psql -d your_database < COMPLETE_MIGRATION.sql
-  ```
-  - Erstellt alle neuen Tabellen
-  - Migriert alle Daten
-  - Validiert Migration automatisch
-  - Ist idempotent (kann mehrfach ausgeführt werden)
-
-- [ ] Nach erfolgreicher Migration und Testing: Alte Tabellen optional löschen:
-  ```sql
-  -- Erst nach Verifikation dass alles funktioniert!
-  DROP TABLE IF EXISTS keyword_map_editors CASCADE;
-  DROP TABLE IF EXISTS keyword_map CASCADE;
-  DROP TABLE IF EXISTS content_log_body CASCADE;
-  DROP TABLE IF EXISTS content_log CASCADE;
-  DROP TABLE IF EXISTS blacklist CASCADE;
-  DROP TABLE IF EXISTS keyword_ranking_history CASCADE;
-  ```
-
-- [ ] RLS-Migration auf DB einspielen (falls noch nicht geschehen):
-  ```bash
-  psql $DATABASE_URL < src/lib/db/migrations/0001_add_row_level_security.sql
-  ```
-
-- [ ] Env-Variable `MULTI_TENANT=true` in Production setzen (nach n8n-Webhook-Anpassung)
-
-- [ ] n8n-Workflows: `tenantId` im Payload oder `x-tenant-id`-Header beim `/api/monitoring/import`-Webhook ergänzen
-
-- [ ] Legal-Seite: Tatsächliche Inhalte für Impressum, Datenschutz, AGB eintragen (aktuell Platzhalter in `de.ts`/`en.ts`)
+- [x] Fix: Keyword-Import Fehler (Tenant-Id Weitergabe) (17.05.2026)
+- [x] Fix: Admin Panel Config-Speicher-Fehler (Tenant-Id Rückgabe bei Login) (17.05.2026)
+- [x] Cleanup: Migration 0008 für alte Tabellen entfernt (17.05.2026)
+- [x] Cleanup: Nicht mehr verwendete Airtable-Dateien dokumentiert (17.05.2026)

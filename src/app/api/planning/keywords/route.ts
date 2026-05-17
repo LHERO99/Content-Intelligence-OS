@@ -341,6 +341,35 @@ export async function DELETE(request: Request) {
 
     if (idsParam) {
       const ids = idsParam.split(',');
+      
+      // Validate: Check if any Main Keywords are being deleted (only for hard delete)
+      if (!softDelete) {
+        try {
+          const keywordsToCheck = await Promise.all(
+            ids.map(id => getKeyword(id, tenantId))
+          );
+          
+          const hasMainKeyword = keywordsToCheck.some(
+            kw => kw && kw.Main_Keyword === 'Y'
+          );
+          
+          if (hasMainKeyword) {
+            return NextResponse.json(
+              { 
+                error: 'Ein Main Keyword kann nicht einzeln gelöscht werden. Bitte vergib vorher ein neues Main Keyword für diese URL.' 
+              },
+              { status: 400 }
+            );
+          }
+        } catch (error: any) {
+          console.error('[API] Error validating Main Keywords:', error);
+          return NextResponse.json(
+            { error: 'Fehler beim Validieren der Keywords', details: error.message },
+            { status: 500 }
+          );
+        }
+      }
+      
       if (softDelete) {
         // Soft delete: Reset planning fields instead of deleting the record
         try {
@@ -372,6 +401,28 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Validate: Check if deleting a Main Keyword (only for hard delete)
+    if (!softDelete) {
+      try {
+        const keyword = await getKeyword(id, tenantId);
+        
+        if (keyword && keyword.Main_Keyword === 'Y') {
+          return NextResponse.json(
+            { 
+              error: 'Ein Main Keyword kann nicht einzeln gelöscht werden. Bitte vergib vorher ein neues Main Keyword für diese URL.' 
+            },
+            { status: 400 }
+          );
+        }
+      } catch (error: any) {
+        console.error('[API] Error validating Main Keyword:', error);
+        return NextResponse.json(
+          { error: 'Fehler beim Validieren des Keywords', details: error.message },
+          { status: 500 }
+        );
+      }
+    }
+    
     if (softDelete) {
       // Soft delete: Reset planning fields
       try {

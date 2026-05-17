@@ -92,6 +92,24 @@ export function KeywordFilterBar({ table, columns, hideImport = false }: Keyword
   const bulkDelete = async (ids: string[]) => {
     try {
       setIsBulkDeleting(true);
+      
+      // Validate: Check if any Main Keywords are being deleted
+      const rowsToDelete = selectedRows.map((r: any) => r.original);
+      const hasMainKeyword = rowsToDelete.some((row: any) => row.Main_Keyword === 'Y');
+      
+      if (hasMainKeyword) {
+        addAlert({
+          title: tr("Main Keyword kann nicht gelöscht werden", "Cannot delete Main Keyword"),
+          message: tr(
+            "Ein Main Keyword kann nicht einzeln gelöscht werden. Bitte vergib vorher ein neues Main Keyword für diese URL.",
+            "A Main Keyword cannot be deleted individually. Please assign a new Main Keyword for this URL first."
+          ),
+          type: "error",
+        });
+        setIsBulkDeleting(false);
+        return;
+      }
+      
       await PlanningService.deleteKeywords(ids, false);
 
       addAlert({

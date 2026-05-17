@@ -229,11 +229,15 @@
 
 ---
 
-## Deployment-Fix: Health-Route Early-Return smtp-Feld (15.05.2026)
+## Fehlerbehebungen: Tenant-Isolation & Import (17.05.2026)
 
-**Problem:** Der Early-Return bei `allTenants.length === 0` in `/api/super-admin/health/route.ts` fehlte das `smtp`-Feld im Response-Objekt → TypeScript-Fehler `satisfies HealthSummaryResponse` brach den Deployment-Build.
+### Was geändert wurde
+1. **Keyword-Import Fehler**: `tenantId` wurde an Performance-Sync-Funktionen (`syncGscForUrls`, `syncSistrixForUrls`, `syncDataForSeoForKeywords`) weitergegeben.
+2. **Admin Panel Config-Fehler**: `getUserByEmail()` gibt jetzt `TenantId` zurück, was korrekte Session-Daten sicherstellt.
+3. **Bug-Fix**: `getExistingRankingDates()` korrigiert (gibt jetzt `keywordId` statt `keywordId|date` zurück).
+4. **Datenbank-Cleanup**: Migration `0008_cleanup_old_tables.sql` erstellt, um alte, migrierte Tabellen (`keyword_map`, `content_log` etc.) sicher zu entfernen.
 
-**Fix:** `smtp: { status: 'not_configured', detail: 'No tenants found' }` im Early-Return ergänzt.
+### Status: ✅ Fehler behoben, Cleanup vorbereitet.
 
 ---
 
