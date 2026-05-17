@@ -789,6 +789,8 @@ export async function getContentLogBody(logId: number, tenantId?: string): Promi
       .where(and(eq(processEvents.id, logId), eq(processEvents.tenantId, tenant)))
       .limit(1);
 
+    console.log(`[getContentLogBody] logId=${logId}, found=${!!event}, versionId=${event?.event?.versionId}, hasContent=${!!event?.version?.contentHtml}, contentLength=${event?.version?.contentHtml?.length || 0}`);
+
     if (!event) return null;
 
     return {

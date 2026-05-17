@@ -198,6 +198,8 @@ export async function POST(request: Request) {
                           (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert')) ||
                           (body.actionType && body.actionType === 'Optimierung');
     
+    console.log(`[API] Callback: Creating content log with versionId=${versionId}, commissionLogId=${commissionLogId}`);
+    
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
       Target_URL: targetUrl,
@@ -207,9 +209,13 @@ export async function POST(request: Request) {
       Version_Id: versionId ?? undefined,
     }, tenantId);
 
+    console.log(`[API] Callback: Created content log with ID=${newLog?.ID}, version_id=${versionId}`);
+
     return NextResponse.json({
       success: true,
-      logId: newLog?.id
+      logId: newLog?.id,
+      versionId: versionId,
+      cycleId: cycleId
     });
 
   } catch (error: any) {
