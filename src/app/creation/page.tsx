@@ -73,6 +73,10 @@ function buildJobEntries(
     const keyword = kwMap[keywordId];
     if (!keyword) return false;
     
+    // Only show main keywords in commission list
+    // (All keywords of a URL share the same execution cycle)
+    if (keyword.Main_Keyword !== 'Y') return false;
+    
     // Only show if keyword is in the commissioned workflow (not just "Planned")
     return keyword.Status === 'Beauftragt' || 
            keyword.Status === 'In Arbeit' || 

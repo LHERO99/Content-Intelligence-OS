@@ -681,6 +681,61 @@ function mapEventTypeToLabel(eventType: string): string {
   return mapping[eventType] || eventType;
 }
 
+/**
+ * Creates a content version in the execution_versions table.
+ * Returns the version ID.
+ */
+export async function createExecutionVersion(
+  cycleId: number,
+  contentHtml: string,
+  options?: {
+    diffSummary?: string;
+    createdByUserId?: string;
+    createdByAi?: boolean;
+    aiProvider?: string;
+    aiModel?: string;
+    aiInstructions?: string;
+  },
+  tenantId?: string
+): Promise<number> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    // Get next version number for this cycle
+    const [result] = await tx
+      .select({ 
+        maxVersion: sql<number>`COALESCE(MAX(${executionVersions.versionNumber}), 0)` 
+      })
+      .from(executionVersions)
+      .where(
+        and(
+          eq(executionVersions.cycleId, cycleId),
+          eq(executionVersions.tenantId, tenant)
+        )
+      );
+    
+    const nextVersionNumber = (result?.maxVersion ?? 0) + 1;
+    
+    // Create new version
+    const [version] = await tx
+      .insert(executionVersions)
+      .values({
+        tenantId: tenant,
+        cycleId,
+        versionNumber: nextVersionNumber,
+        contentHtml,
+        diffSummary: options?.diffSummary,
+        createdByUserId: options?.createdByUserId || null,
+        createdByAi: options?.createdByAi ?? true,
+        aiProvider: options?.aiProvider,
+        aiModel: options?.aiModel,
+        aiInstructions: options?.aiInstructions,
+      })
+      .returning({ id: executionVersions.id });
+    
+    return version.id;
+  });
+}
+
 export async function getContentLogs(tenantId?: string, limit?: number): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   const maxRows = limit ?? 200;
@@ -753,6 +808,7 @@ export async function createContentLog(
     Event_Label?: string;
     Editor?: string[];
     Commission_Log_Id?: number;
+    Version_Id?: number;
   },
   tenantId?: string
 ): Promise<ContentLog | null> {
@@ -781,6 +837,7 @@ export async function createContentLog(
         urlId,
         keywordId: data.Keyword_ID?.[0],
         cycleId: data.Commission_Log_Id,
+        versionId: data.Version_Id,
         userId: data.Editor?.[0],
         eventData: {
           original_event_label: data.Event_Label,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword, createExecutionVersion } from '@/lib/postgres';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { db } from '@/lib/db';
 import { executionCycles } from '@/lib/db/schema';
@@ -124,7 +124,10 @@ export async function POST(request: Request) {
     // Sanitize HTML content before persisting — removes script, iframe, form etc.
     const sanitizedContent = sanitizeHtml(content);
 
-    // 1. Update execution cycle status to "delivered"
+    // 1. Update execution cycle status to "delivered" and create version
+    let cycleId: number | null = null;
+    let versionId: number | null = null;
+
     try {
       // Get urlId for keyword
       const urlId = await getUrlIdForKeyword(keywordId, tenantId);
@@ -144,6 +147,9 @@ export async function POST(request: Request) {
           .limit(1);
         
         if (activeCycle) {
+          cycleId = activeCycle.id;
+          
+          // Update cycle status to delivered
           await db
             .update(executionCycles)
             .set({ 
@@ -151,13 +157,24 @@ export async function POST(request: Request) {
               deliveredAt: new Date()
             })
             .where(eq(executionCycles.id, activeCycle.id));
+          
+          // Create execution version with the content
+          versionId = await createExecutionVersion(
+            activeCycle.id,
+            sanitizedContent,
+            {
+              createdByAi: true,
+              // Could extract AI provider/model from callback body if available
+            },
+            tenantId
+          );
         }
       }
     } catch (err) {
       console.error('[API] Error updating cycle status to delivered:', err);
     }
 
-    // 2. Create Content-Log entry
+    // 2. Create Content-Log entry with version reference
     const isOptimization = status === 'Optimierung' || 
                           status === 'Optimization' ||
                           (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert')) ||
@@ -167,9 +184,9 @@ export async function POST(request: Request) {
       Keyword_ID: [keywordId],
       Target_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
-      Content_Body: sanitizedContent,
       Event_Label: 'Content angeliefert',
       Commission_Log_Id: commissionLogId ?? undefined,
+      Version_Id: versionId ?? undefined,
     }, tenantId);
 
     return NextResponse.json({

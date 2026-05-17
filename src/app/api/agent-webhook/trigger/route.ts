@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
-import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle, createExecutionVersion } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 import { db } from '@/lib/db';
 import { executionCycles } from '@/lib/db/schema';
@@ -211,19 +211,34 @@ export async function POST(req: NextRequest) {
           }
         }
         
-        if (finalHtml) {
+        // Create version and log entry if content was generated
+        if (finalHtml && executionCycleId) {
           try {
+            // First create the execution version
+            const versionId = await createExecutionVersion(
+              executionCycleId,
+              finalHtml,
+              {
+                createdByUserId: session.user?.id,
+                createdByAi: true,
+                aiProvider: typeof run.output?.aiProvider === 'string' ? run.output.aiProvider : undefined,
+                aiModel: typeof run.output?.aiModel === 'string' ? run.output.aiModel : undefined,
+              },
+              tenantId
+            );
+            
+            // Then create the delivery event log with version reference
             await createContentLog({
               Keyword_ID: [data.keywordId],
               Target_URL: data.targetUrl,
               Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
               Event_Label: 'Content angeliefert',
-              Content_Body: finalHtml,
               Editor: session.user?.id ? [session.user.id] : undefined,
               Commission_Log_Id: commissionLogId ?? undefined,
+              Version_Id: versionId,
             }, tenantId);
           } catch (logErr) {
-            console.error('[InternalAgent] Failed to create content log:', logErr);
+            console.error('[InternalAgent] Failed to create content version/log:', logErr);
           }
         }
       }
