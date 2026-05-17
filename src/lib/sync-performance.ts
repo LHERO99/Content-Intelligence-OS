@@ -188,7 +188,7 @@ export async function syncSistrixForUrls(
   let sistrixRowsUpserted = 0;
   if (allRows.length > 0) {
     const upsertResult = await upsertURLPerformance(allRows);
-    sistrixRowsUpserted = upsertResult.created + upsertResult.updated;
+    sistrixRowsUpserted = allRows.length - upsertResult.errors.length;
     if (upsertResult.errors.length > 0) {
       errors.push(`Sistrix upsert errors: ${upsertResult.errors.slice(0, 3).map(e => e.error).join(', ')}`);
     }
@@ -258,7 +258,7 @@ export async function syncDataForSeoForKeywords(
   let rankingRowsUpserted = 0;
   if (allRankingRecords.length > 0) {
     const upsertResult = await upsertKeywordRankingHistory(allRankingRecords);
-    rankingRowsUpserted = upsertResult.created + upsertResult.updated;
+    rankingRowsUpserted = allRankingRecords.length - upsertResult.errors.length;
     if (upsertResult.errors.length > 0) {
       errors.push(`DFS upsert errors: ${upsertResult.errors.slice(0, 3).map((e: any) => e.error).join(', ')}`);
     }
