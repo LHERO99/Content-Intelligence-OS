@@ -99,7 +99,7 @@ export async function POST(request: Request) {
 
     const newLog = await createContentLog({
       Keyword_ID: keywordIds,
-      Logged_URL: finalLoggedUrl,
+      Target_URL: finalLoggedUrl,
       Action_Type: finalActionType,
       Content_Body: finalContentBody,
       Event_Label: finalEventLabel,

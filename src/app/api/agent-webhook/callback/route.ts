@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
-      Logged_URL: targetUrl,
+      Target_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: sanitizedContent,
       Event_Label: 'Content angeliefert',

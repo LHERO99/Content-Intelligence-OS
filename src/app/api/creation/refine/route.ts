@@ -197,7 +197,6 @@ export async function POST(request: Request) {
     createContentLog({
       Keyword_ID: [keywordId],
       Action_Type: 'KI-Chat',
-      Version: 'v2',
       Content_Body: refinedContent,
       Event_Label: `KI-Chat (${providerId}/${modelId}): ${instructions.slice(0, 200)}`,
       Editor: session.user?.id ? [session.user.id] : undefined,

@@ -39,7 +39,6 @@ async function logAutomaticSuggestionEvents(
         await createContentLog({
           Keyword_ID: [suggestion.keywordId],
           Target_URL: suggestion.targetUrl,
-          Logged_URL: suggestion.targetUrl,
           Action_Type: 'Optimierung',
           Event_Label: summary,
         }, tenantId);

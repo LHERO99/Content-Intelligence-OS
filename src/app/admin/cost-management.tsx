@@ -47,8 +47,8 @@ export function CostManagement() {
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [configs, setConfigs] = useState<CostConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
@@ -80,7 +80,7 @@ export function CostManagement() {
     }
   };
 
-  const handleUpdate = async (id: string, pageType: string, actionType: string, agency: number, overhead: number) => {
+  const handleUpdate = async (id: number, pageType: string, actionType: string, agency: number, overhead: number) => {
     setSavingId(id);
     setError(null);
     setSuccess(false);
@@ -108,7 +108,7 @@ export function CostManagement() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!confirm(tr("Möchtest du diesen Eintrag wirklich löschen?", "Do you really want to delete this entry?"))) return;
     
     setDeletingId(id);
@@ -155,7 +155,7 @@ export function CostManagement() {
     }
   };
 
-  const updateLocalValue = (id: string, field: keyof CostConfig, value: any) => {
+  const updateLocalValue = (id: number, field: keyof CostConfig, value: any) => {
     setConfigs(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 

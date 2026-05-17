@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       const isUrl = Trend_Topic.startsWith('http');
       
       await createContentLog({
-        Logged_URL: isUrl ? Trend_Topic : undefined,
+        Target_URL: isUrl ? Trend_Topic : undefined,
         Action_Type: 'Erstellung',
         Event_Label: `Manueller Trend-Vorschlag: ${Trend_Topic}`,
         Editor: editor,

@@ -141,7 +141,7 @@ export async function syncGscForUrls(
   let gscRowsUpserted = 0;
   if (allRows.length > 0) {
     const upsertResult = await upsertURLPerformance(allRows);
-    gscRowsUpserted = upsertResult.created + upsertResult.updated;
+    gscRowsUpserted = allRows.length - upsertResult.errors.length;
     if (upsertResult.errors.length > 0) {
       errors.push(`GSC upsert errors: ${upsertResult.errors.slice(0, 3).map(e => e.error).join(', ')}`);
     }

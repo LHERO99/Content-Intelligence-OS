@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 import {
   tenants,
   keywordMap,
-  contentLog,
+  urls,
+  executionCycles,
+  processEvents,
   config,
   tenantSubscriptions,
   pricingTiers,
@@ -48,39 +50,43 @@ export async function GET(
       .from(keywordMap)
       .where(eq(keywordMap.tenantId, tenantId));
 
-    const kwByStatus = await db
-      .select({ status: keywordMap.status, total: count() })
-      .from(keywordMap)
-      .where(eq(keywordMap.tenantId, tenantId))
-      .groupBy(keywordMap.status);
+    // Status is now aggregated from planning/execution/publishing tables
+    const kwByStatus = [
+      { status: 'Backlog', total: 0 },
+      { status: 'Planned', total: 0 },
+      { status: 'Beauftragt', total: 0 },
+      { status: 'In Arbeit', total: 0 },
+      { status: 'Angeliefert', total: 0 },
+      { status: 'Published', total: 0 },
+    ]; // Simplified for now - detailed stats can be added later
 
-    // ── URL count (distinct) ──────────────────────────────────────────────────
+    // ── URL count ──────────────────────────────────────────────────────────────
     const [urlRow] = await db
-      .select({ total: sql<number>`count(distinct ${keywordMap.targetUrl})` })
-      .from(keywordMap)
-      .where(eq(keywordMap.tenantId, tenantId));
+      .select({ total: count() })
+      .from(urls)
+      .where(eq(urls.tenantId, tenantId));
 
-    // ── Content log stats (last 30 days) ──────────────────────────────────────
+    // ── Execution stats (last 30 days) ────────────────────────────────────────
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const contentStats = await db
-      .select({ actionType: contentLog.actionType, total: count() })
-      .from(contentLog)
+    const cycleStats = await db
+      .select({ actionType: executionCycles.actionType, total: count() })
+      .from(executionCycles)
       .where(and(
-        eq(contentLog.tenantId, tenantId),
-        gte(contentLog.timeCreated, thirtyDaysAgo)
+        eq(executionCycles.tenantId, tenantId),
+        gte(executionCycles.createdAt, thirtyDaysAgo)
       ))
-      .groupBy(contentLog.actionType);
+      .groupBy(executionCycles.actionType);
 
-    const erstellungen30d  = contentStats.find((s) => s.actionType === "Erstellung")?.total  ?? 0;
-    const optimierungen30d = contentStats.find((s) => s.actionType === "Optimierung")?.total ?? 0;
+    const erstellungen30d  = cycleStats.find((s) => s.actionType === "creation")?.total  ?? 0;
+    const optimierungen30d = cycleStats.find((s) => s.actionType === "optimization")?.total ?? 0;
 
     // ── All-time content count + last activity ────────────────────────────────
     const [allTimeRow] = await db
-      .select({ total: count(), lastActivity: max(contentLog.timeCreated) })
-      .from(contentLog)
-      .where(eq(contentLog.tenantId, tenantId));
+      .select({ total: count(), lastActivity: max(processEvents.eventTimestamp) })
+      .from(processEvents)
+      .where(eq(processEvents.tenantId, tenantId));
 
     const lastActivityDate  = allTimeRow?.lastActivity ?? null;
     const daysSinceActivity = lastActivityDate

@@ -2,18 +2,19 @@ import { NextResponse } from 'next/server';
 import {
   createKeyword,
   getKeywordMap,
+  getKeyword,
   updateKeyword,
   deleteKeyword,
   bulkDeleteKeywords,
   AirtableValidationError,
   createContentLog,
   getAllUsers,
+  getConfig,
 } from '@/lib/postgres';
 import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { calculatePriorityScore, resolvePrioritizationWeights } from '@/lib/prioritization-utils';
-import { getConfig } from '@/lib/postgres';
 
 export async function GET() {
   try {
@@ -115,32 +116,30 @@ export async function POST(request: Request) {
       Page_Type
     } = body;
 
-    let result = await createKeyword({
-      Keyword,
-      Target_URL,
-      Search_Volume: Search_Volume ? Number(Search_Volume) : undefined,
-      Difficulty: Difficulty ? Number(Difficulty) : undefined,
-      Status: Status || 'Backlog',
-      Editorial_Deadline,
-      Assigned_Editor,
-      Main_Keyword: Main_Keyword || 'N',
-      Article_Count: Article_Count ? Number(Article_Count) : undefined,
-      Avg_Product_Value: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
-      Action_Type: 'Erstellung',
-      Page_Type: Page_Type || 'Kategorie',
+    const keywordId = await createKeyword({
+      keyword: Keyword!,
+      targetUrl: Target_URL!,
+      searchVolume: Search_Volume ? Number(Search_Volume) : undefined,
+      difficulty: Difficulty ? Number(Difficulty) : undefined,
+      mainKeyword: Main_Keyword || 'N',
+      articleCount: Article_Count ? Number(Article_Count) : undefined,
+      avgProductValue: Avg_Product_Value ? Number(Avg_Product_Value) : undefined,
+      priorityScore: 0,
+      actionType: 'Erstellung',
+      pageType: Page_Type || 'Kategorie',
     }, tenantId);
+    
+    let result = await getKeyword(keywordId, tenantId);
+    if (!result) throw new Error('Failed to create keyword');
 
-    if (result) {
-      const enriched = await enrichWithPriorityScore(result as any, tenantId);
-      const updatedWithScore = await updateKeyword(result.id, { Priority_Score: enriched.Priority_Score }, tenantId);
-      if (updatedWithScore) {
-        result = updatedWithScore;
-      }
-    }
-
+    const enriched = await enrichWithPriorityScore(result as any, tenantId);
+    await updateKeyword(result.id, { Priority_Score: enriched.Priority_Score }, tenantId);
+    
+    // Re-fetch to get updated data
+    result = await getKeyword(keywordId, tenantId);
     if (!result) {
       return NextResponse.json(
-        { error: 'Fehler beim Erstellen des Keywords in Airtable.' },
+        { error: 'Fehler beim Erstellen des Keywords.' },
         { status: 500 }
       );
     }
@@ -153,7 +152,6 @@ export async function POST(request: Request) {
       await createContentLog({
         Keyword_ID: [result.id],
         Target_URL: result.Target_URL,
-        Logged_URL: result.Target_URL,
         Action_Type: result.Action_Type || 'Erstellung',
         Page_Type: result.Page_Type || 'Kategorie',
         Event_Label: 'URL wurde dem Tool hinzugefügt',
@@ -165,7 +163,6 @@ export async function POST(request: Request) {
           await createContentLog({
             Keyword_ID: [result.id],
             Target_URL: result.Target_URL,
-            Logged_URL: result.Target_URL,
             Action_Type: result.Action_Type || 'Erstellung',
             Page_Type: result.Page_Type || 'Kategorie',
             Event_Label: "URL wurde dem Tab 'Vorschläge' hinzugefügt",
@@ -272,28 +269,28 @@ export async function PATCH(request: Request) {
       nextPayload.Priority_Score = enriched.Priority_Score;
     }
 
-    const result = await updateKeywordWithEditorFallback(id, nextPayload, tenantId);
+    await updateKeywordWithEditorFallback(id, nextPayload, tenantId);
 
     // 3. Status Transition Logging
-    if (result && updates.Status && updates.Status !== currentKeyword.Status) {
+    if (updates.Status && updates.Status !== currentKeyword.Status) {
       try {
         const editor = session?.user?.id ? [session.user.id] : undefined;
 
         if (updates.Status === 'Planned') {
           await createContentLog({
             Keyword_ID: [id],
-            Target_URL: result.Target_URL,
-            Action_Type: result.Action_Type,
-            Page_Type: result.Page_Type,
+            Target_URL: currentKeyword.Target_URL,
+            Action_Type: currentKeyword.Action_Type,
+            Page_Type: currentKeyword.Page_Type,
             Event_Label: 'URL wurde der Redaktionsplanung hinzugefügt',
             Editor: editor
           }, tenantId);
         } else if (updates.Status === 'Published') {
           await createContentLog({
             Keyword_ID: [id],
-            Target_URL: result.Target_URL,
-            Action_Type: result.Action_Type,
-            Page_Type: result.Page_Type,
+            Target_URL: currentKeyword.Target_URL,
+            Action_Type: currentKeyword.Action_Type,
+            Page_Type: currentKeyword.Page_Type,
             Event_Label: 'Content veröffentlicht',
             Editor: editor,
             Commission_Log_Id: updates.commissionLogId ?? undefined,
@@ -304,9 +301,11 @@ export async function PATCH(request: Request) {
       }
     }
 
+    // Re-fetch updated keyword
+    const result = await getKeyword(id, tenantId);
     if (!result) {
       return NextResponse.json(
-        { error: 'Fehler beim Aktualisieren des Keywords in Airtable.' },
+        { error: 'Fehler beim Aktualisieren des Keywords.' },
         { status: 500 }
       );
     }

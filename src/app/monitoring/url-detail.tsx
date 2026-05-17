@@ -238,8 +238,9 @@ export function UrlDetail({ url }: UrlDetailProps) {
     );
   };
 
-  const eventMarkers = data.history.map(log => ({    date: log.Created_At.split('T')[0],
-    type: log.Action_Type,
+  const eventMarkers = data.history.filter(log => log.Created_At && log.Action_Type).map(log => ({
+    date: log.Created_At!.split('T')[0],
+    type: log.Action_Type!,
     label: log.Action_Type === 'Erstellung' ? 'E' : 'O'
   }));
 

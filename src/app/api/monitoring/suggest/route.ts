@@ -36,8 +36,7 @@ export async function POST(request: NextRequest) {
 
         await createContentLog({
           Keyword_ID: [keyword.id],
-          Target_URL: keyword.Target_URL,
-          Logged_URL: keyword.Target_URL || url,
+          Target_URL: keyword.Target_URL || url,
           Action_Type: 'Optimierung',
           Page_Type: keyword.Page_Type,
           Event_Label: "URL wurde dem Tab 'Vorschläge' hinzugefügt (manuell)",

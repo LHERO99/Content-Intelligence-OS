@@ -48,18 +48,14 @@ export async function POST(request: Request) {
       }
 
       for (const kw of keywords) {
-        const blacklistEntry = await addToBlacklist({
-          Keyword: Type === 'URL' ? kw.Target_URL : kw.Keyword,
-          Target_URL: Type === 'URL' ? kw.Target_URL : undefined,
-          Type: Type || 'Keyword',
-          Reason,
-        }, tenantId);
+        const value = Type === 'URL' ? kw.Target_URL! : kw.Keyword!;
+        await addToBlacklist(Type || 'Keyword', value, Reason, tenantId);
 
-        if (blacklistEntry && kw.Target_URL) {
+        if (kw.Target_URL) {
           try {
             await createContentLog({
               Keyword_ID: [kw.id],
-              Logged_URL: kw.Target_URL,
+              Target_URL: kw.Target_URL,
               Action_Type: kw.Action_Type || 'Optimierung',
               Event_Label: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
               Editor: session?.user?.id ? [session.user.id] : undefined
@@ -79,25 +75,14 @@ export async function POST(request: Request) {
     // Case 2: Single move from Keyword-Map to Blacklist
     if (keywordId && Keyword && Reason) {
       const targetUrl = body.Target_URL;
-      const result = await addToBlacklist({
-        Keyword: Type === 'URL' ? targetUrl : Keyword,
-        Target_URL: Type === 'URL' ? targetUrl : undefined,
-        Type: Type || 'Keyword',
-        Reason,
-      }, tenantId);
-
-      if (!result) {
-        return NextResponse.json(
-          { error: 'Fehler beim Hinzufügen zur Blacklist in Airtable.' },
-          { status: 500 }
-        );
-      }
+      const value = Type === 'URL' ? targetUrl! : Keyword;
+      await addToBlacklist(Type || 'Keyword', value, Reason, tenantId);
 
       if (targetUrl) {
         try {
           await createContentLog({
             Keyword_ID: [keywordId],
-            Logged_URL: targetUrl,
+            Target_URL: targetUrl,
             Action_Type: body.Action_Type || 'Optimierung',
             Event_Label: `${Type === 'URL' ? 'URL' : 'Keyword'} der Blacklist hinzugefügt. Grund: ${Reason}`,
             Editor: session?.user?.id ? [session.user.id] : undefined
@@ -108,7 +93,7 @@ export async function POST(request: Request) {
       }
 
       await deleteKeyword(keywordId, tenantId);
-      return NextResponse.json(result);
+      return NextResponse.json({ success: true });
     }
 
     // Case 3: Direct add to Blacklist
@@ -119,20 +104,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await addToBlacklist({
-      Keyword,
-      Type: Type || 'Keyword',
-      Reason,
-    }, tenantId);
+    await addToBlacklist(Type || 'Keyword', Keyword!, Reason, tenantId);
 
-    if (!result) {
-      return NextResponse.json(
-        { error: 'Fehler beim Hinzufügen zur Blacklist in Airtable.' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(result);
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[API] Error adding to blacklist:', error);
     return NextResponse.json(
@@ -188,7 +162,7 @@ export async function DELETE(request: Request) {
     const idsParam = searchParams.get('ids');
 
     if (idsParam) {
-      const ids = idsParam.split(',');
+      const ids = idsParam.split(',').map(id => parseInt(id, 10));
       await bulkDeleteFromBlacklist(ids, tenantId);
       return NextResponse.json({ success: true });
     }
@@ -200,7 +174,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteFromBlacklist(id, tenantId);
+    await deleteFromBlacklist(parseInt(id, 10), tenantId);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[API] Error deleting from blacklist:', error);

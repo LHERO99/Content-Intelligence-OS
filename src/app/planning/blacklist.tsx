@@ -153,7 +153,7 @@ interface EditBlacklistModalProps {
   entry: BlacklistEntry | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (id: string, updates: any) => Promise<void>;
+  onSave: (id: number, updates: any) => Promise<void>;
 }
 
 function EditBlacklistModal({ entry, open, onOpenChange, onSave }: EditBlacklistModalProps) {
@@ -284,8 +284,8 @@ function RestoreEntryModal({ entry, open, onOpenChange, onRestore }: RestoreEntr
   React.useEffect(() => {
     if (entry && open) {
       setFormData({
-        Keyword: entry.Type === "Keyword" ? entry.Keyword : "",
-        Target_URL: entry.Type === "URL" ? entry.Keyword : "",
+        Keyword: entry.Type === "Keyword" ? (entry.Keyword ?? "") : "",
+        Target_URL: entry.Type === "URL" ? (entry.Keyword ?? "") : "",
         Search_Volume: "",
         Difficulty: "",
         Main_Keyword: "N",
@@ -855,7 +855,7 @@ export function Blacklist({ hasKeywords = true, onGoToKeywordMap }: { hasKeyword
     return () => window.removeEventListener("refresh-blacklist-data", handleRefresh);
   }, []);
 
-  const updateData = async (id: string, updates: any) => {
+  const updateData = async (id: number, updates: any) => {
     try {
       const response = await fetch("/api/planning/blacklist", {
         method: "PATCH",

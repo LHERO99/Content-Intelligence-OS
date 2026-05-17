@@ -17,7 +17,7 @@ export async function PATCH(
   const body = await request.json();
 
   try {
-    const updated = await updateCostConfig(id, body, tenantId);
+    const updated = await updateCostConfig(parseInt(id, 10), body, tenantId);
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -37,7 +37,7 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    await deleteCostConfig(id, tenantId);
+    await deleteCostConfig(parseInt(id, 10), tenantId);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

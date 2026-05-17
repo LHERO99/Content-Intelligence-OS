@@ -42,10 +42,10 @@ export interface SkippedKeyword extends Partial<KeywordMap> {
 export interface ContentLog {
   id: string;
   ID: number;
-  Keyword_ID: string[]; // IDs referencing keyword_map
+  Keyword_ID?: string[]; // IDs referencing keyword_map (optional now)
   Target_URL?: string;
   Logged_URL?: string;
-  Action_Type: 'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat';
+  Action_Type?: 'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat';
   Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Version: 'v1' | 'v2';
   Content_Body?: string;
@@ -82,15 +82,15 @@ export interface URLPerformance {
 }
 
 export interface KeywordRankingHistory {
-  id: string;
-  Keyword_ID: string[];
+  id: number;
+  Keyword_ID: string;
   Date: string;
   Ranking?: number;
   Target_URL?: string;
 }
 
 export interface CostConfig {
-  id: string;
+  id: number;
   Page_Type: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Action_Type: 'Erstellung' | 'Optimierung';
   Agency_Cost: number;
@@ -106,8 +106,8 @@ export interface PotentialTrend {
 }
 
 export interface AuditLog {
-  id: string;
-  ID: number;
+  id: number;
+  ID?: number;
   Action: string;
   Timestamp: string;
   User_ID?: string[];
@@ -115,9 +115,9 @@ export interface AuditLog {
 }
 
 export interface BlacklistEntry {
-  id: string;
-  Keyword: string;
-  Target_URL?: string;
+  id: number;
+  Keyword: string | null;
+  Target_URL?: string | null;
   Type: 'Keyword' | 'URL';
   Reason?: string;
   Added_At: string;
@@ -134,7 +134,7 @@ export interface ConfigRecord {
 
 export interface UserRecord {
   id: string;
-  Name: string;
+  Name?: string;
   Email: string;
   Role: 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer';
   TenantId?: string;

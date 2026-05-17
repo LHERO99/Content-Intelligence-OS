@@ -89,13 +89,13 @@ export async function POST(req: NextRequest) {
     
     results.keywordEntries = keywordsToProcess.length;
     results.urlPerformanceResults = {
-      created: urlResult.created,
-      updated: urlResult.updated,
+      created: urlPerformanceRecords.length - urlResult.errors.length,
+      updated: 0,
       errorCount: urlResult.errors.length
     };
     results.keywordRankingResults = {
-      created: rankingResult.created,
-      updated: rankingResult.updated,
+      created: keywordRankingRecords.length - rankingResult.errors.length,
+      updated: 0,
       errorCount: rankingResult.errors.length
     };
 

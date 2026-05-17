@@ -91,14 +91,14 @@ function buildJobEntries(
   // commissioningLogs are already sorted newest-first from the API.
   const activeCommissionIdByKeyword = new Map<string, number>();
   for (const cl of commissioningLogs) {
-    const kwId = cl.Keyword_ID[0];
-    if (!activeCommissionIdByKeyword.has(kwId)) {
+    const kwId = cl.Keyword_ID?.[0];
+    if (kwId && !activeCommissionIdByKeyword.has(kwId)) {
       activeCommissionIdByKeyword.set(kwId, cl.ID);
     }
   }
 
-  return commissioningLogs.map((cl): JobEntry => {
-    const kwId = cl.Keyword_ID[0];
+  return commissioningLogs.filter(cl => cl.Keyword_ID?.[0]).map((cl): JobEntry => {
+    const kwId = cl.Keyword_ID![0];
     const kw = kwMap[kwId];
     const commissionedAt = cl.Created_At;
 
@@ -114,10 +114,10 @@ function buildJobEntries(
         .filter(
           (dl) =>
             dl.Commission_Log_Id == null &&
-            dl.Keyword_ID[0] === kwId &&
-            new Date(dl.Created_At).getTime() > new Date(commissionedAt).getTime(),
+            dl.Keyword_ID?.[0] === kwId &&
+            new Date(dl.Created_At!).getTime() > new Date(commissionedAt).getTime(),
         )
-        .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())[0];
+        .sort((a, b) => new Date(a.Created_At!).getTime() - new Date(b.Created_At!).getTime())[0];
     }
 
     // --- Per-cycle publish status ---
@@ -260,7 +260,7 @@ export default function CreationPage() {
       contentLogs
         .filter(
           (l) =>
-            l.Keyword_ID[0] === selectedJob.keywordId && l.Version === 'v1',
+            l.Keyword_ID?.[0] === selectedJob.keywordId && l.Version === 'v1',
         )
         .sort(
           (a, b) =>

@@ -2,7 +2,7 @@
 // Auto-generated types from Drizzle schema
 
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import * as schema from './schema-new';
+import * as schema from './schema';
 
 // ============================================================================
 // ENUMS
