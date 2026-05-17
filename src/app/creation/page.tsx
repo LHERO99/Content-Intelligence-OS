@@ -61,9 +61,25 @@ function buildJobEntries(
   });
 
   // All commissioning events, newest first (logs are already sorted desc by API)
-  const commissioningLogs = contentLogs.filter(
-    (l) => l.Event_Label === 'Content wurde beauftragt',
-  );
+  // Extra safeguard: only show commission logs for keywords that are actually commissioned
+  const commissioningLogs = contentLogs.filter((l) => {
+    const keywordId = l.Keyword_ID?.[0];
+    if (!keywordId) return false;
+    
+    // Must have the correct event label
+    if (l.Event_Label !== 'Content wurde beauftragt') return false;
+    
+    // Extra safety: keyword must actually be in commissioned workflow status
+    const keyword = kwMap[keywordId];
+    if (!keyword) return false;
+    
+    // Only show if keyword is in the commissioned workflow (not just "Planned")
+    return keyword.Status === 'Beauftragt' || 
+           keyword.Status === 'In Arbeit' || 
+           keyword.Status === 'Angeliefert' || 
+           keyword.Status === 'Review' ||
+           keyword.Status === 'Published';
+  });
 
   // All delivery logs (v2 = has actual content body)
   const deliveryLogs = contentLogs.filter(

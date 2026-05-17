@@ -571,6 +571,51 @@ export async function deleteKeyword(keywordId: string, tenantId?: string): Promi
 // ---------------------------------------------------------------------------
 // Content Log Operations (mapped from execution_versions + process_events)
 // ---------------------------------------------------------------------------
+
+/**
+ * Maps new schema event types (process_events.event_type) to old schema German event labels.
+ * This ensures backward compatibility with components expecting German event labels.
+ * 
+ * @param eventType - The event type from the new schema (e.g., 'cycle_commissioned', 'url_planned')
+ * @returns The corresponding German event label for the old schema
+ */
+function mapEventTypeToLabel(eventType: string): string {
+  const mapping: Record<string, string> = {
+    // Planning phase
+    'url_suggested': 'URL wurde dem Tab \'Vorschläge\' hinzugefügt',
+    'url_added_to_backlog': 'URL wurde dem Tool hinzugefügt',
+    'url_planned': 'URL wurde der Redaktionsplanung hinzugefügt',
+    'planning_cancelled': 'Planung abgebrochen',
+    
+    // Execution phase
+    'cycle_commissioned': 'Content wurde beauftragt',
+    'cycle_started': 'Content-Erstellung gestartet',
+    'cycle_delivered': 'Content angeliefert',
+    'cycle_failed': 'Content-Erstellung fehlgeschlagen',
+    
+    // Content version phase
+    'version_created': 'Version erstellt',
+    'version_edited': 'Inhalt bearbeitet',
+    
+    // Publishing phase
+    'submitted_for_review': 'Zur Review eingereicht',
+    'review_approved': 'Review genehmigt',
+    'review_rejected': 'Review abgelehnt',
+    'content_published': 'Content veröffentlicht',
+    'content_unpublished': 'Content offline genommen',
+    
+    // Blacklist
+    'url_blacklisted': 'URL auf Blacklist gesetzt',
+    'url_unblacklisted': 'URL von Blacklist entfernt',
+    
+    // Keywords
+    'keyword_added': 'Keyword hinzugefügt',
+    'keyword_removed': 'Keyword entfernt',
+  };
+  
+  return mapping[eventType] || eventType;
+}
+
 export async function getContentLogs(tenantId?: string, limit?: number): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   const maxRows = limit ?? 200;
@@ -601,7 +646,7 @@ export async function getContentLogs(tenantId?: string, limit?: number): Promise
       Page_Type: url?.pageType as any,
       Version: version?.contentHtml ? 'v2' : 'v1',
       Content_Body: undefined, // Not loaded in list view
-      Event_Label: (event.eventData as any)?.original_event_label || event.eventType,
+      Event_Label: (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType),
       Created_At: event.eventTimestamp.toISOString(),
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
@@ -628,7 +673,7 @@ export async function getContentLogBody(logId: number, tenantId?: string): Promi
 
     return {
       contentBody: event.version?.contentHtml ?? null,
-      eventLabel: (event.event.eventData as any)?.original_event_label || event.event.eventType,
+      eventLabel: (event.event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.event.eventType),
     };
   });
 }
@@ -964,7 +1009,7 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
       Action_Type: cycle?.actionType ? mapToOldActionType(cycle.actionType) as any : undefined,
       Page_Type: url?.pageType as any,
       Version: version?.contentHtml ? 'v2' : 'v1',
-      Event_Label: (event.eventData as any)?.original_event_label || event.eventType,
+      Event_Label: (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType),
       Created_At: event.eventTimestamp.toISOString(),
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
