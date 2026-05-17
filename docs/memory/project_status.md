@@ -1,4 +1,19 @@
-# Projekt-Status (Stand: 15.05.2026 – aktualisiert 3)
+# Projekt-Status (Stand: 17.05.2026 – aktualisiert 4)
+
+## Deployment-Fix: Build-Error ai-editor-workspace.tsx (17.05.2026)
+
+### Was geändert wurde
+
+**Build-Fehler behoben:**
+1. **Orphaned CSS gelöscht**: Entfernung von ~200 Zeilen orphaned CSS am Ende von `src/app/creation/ai-editor-workspace.tsx` (Parser-Fehler "Expression expected" behoben).
+2. **TypeScript-Fehler behoben**: `TooltipTrigger` Komponenten-Fix (entfernt `asChild` prop + Wrapper-Element, da `@base-ui/react/tooltip` inkompatibel).
+
+### Aktueller Stand
+- Alle Build-Fehler behoben.
+- TypeScript-Compilation erfolgreich (`tsc --noEmit`).
+- Deployment sollte nun erfolgreich durchlaufen.
+
+---
 
 ## DB-Schema Refactoring: diff_summary → event_label (15.05.2026)
 

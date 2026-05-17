@@ -2,6 +2,8 @@
 
 ## Abgeschlossen (chronologisch)
 
+- [x] Fix: Build-Fehler `ai-editor-workspace.tsx` (Orphaned CSS + TooltipTrigger TypeScript-Fix).
+
 - [x] Fix: `/api/branding` in Middleware als public path freigeschaltet.
 - [x] Fix: Custom `cookies`-Config aus `authOptions` entfernt (Cookie-Name-Mismatch auf Vercel).
 - [x] Fix: `NEXTAUTH_URL` korrekt in Vercel für Production und Preview gesetzt.

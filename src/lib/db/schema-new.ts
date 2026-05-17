@@ -10,45 +10,14 @@ import {
   jsonb,
   uniqueIndex,
   index,
-  primaryKey,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 
-// ---------------------------------------------------------------------------
-// tenants
-// ---------------------------------------------------------------------------
-export const tenants = pgTable('tenants', {
-  id:        text('id').primaryKey(),
-  name:      text('name').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+// Import existing tables that remain unchanged
+export { tenants, users } from './schema';
 
 // ---------------------------------------------------------------------------
-// users
-// ---------------------------------------------------------------------------
-export const users = pgTable(
-  'users',
-  {
-    id:              text('id').primaryKey(),
-    tenantId:        text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    name:            text('name'),
-    email:           text('email').notNull(),
-    role:            text('role').$type<'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer'>().notNull().default('Editor'),
-    password:        text('password'),
-    passwordChanged: boolean('password_changed').default(false),
-    isActive:        boolean('is_active').notNull().default(true),
-  },
-  (t) => ({
-    emailTenantUnique: uniqueIndex('users_email_tenant_idx').on(t.email, t.tenantId),
-  })
-);
-
-// ===========================================================================
-// NEW SCHEMA - URL-CENTRIC ARCHITECTURE
-// ===========================================================================
-
-// ---------------------------------------------------------------------------
-// ENUMS
+// ENUMS for new schema
 // ---------------------------------------------------------------------------
 
 export const planningStatusEnum = pgEnum('planning_status_enum', [
@@ -80,21 +49,28 @@ export const actionTypeEnum = pgEnum('action_type_enum', [
 ]);
 
 export const eventTypeEnum = pgEnum('event_type_enum', [
+  // Planning Events
   'url_suggested',
   'url_added_to_backlog',
   'url_planned',
   'planning_cancelled',
+  
+  // Execution Events
   'cycle_commissioned',
   'cycle_started',
   'cycle_delivered',
   'cycle_failed',
   'version_created',
   'version_edited',
+  
+  // Publishing Events
   'submitted_for_review',
   'review_approved',
   'review_rejected',
   'content_published',
   'content_unpublished',
+  
+  // Admin Events
   'url_blacklisted',
   'url_unblacklisted',
   'keyword_added',
@@ -372,6 +348,33 @@ export const keywordRankings = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// url_performance - Historical URL performance data
+// ---------------------------------------------------------------------------
+export const urlPerformance = pgTable(
+  'url_performance',
+  {
+    id: serial('id').primaryKey(),
+    tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    urlId: text('url_id').notNull().references(() => urls.id, { onDelete: 'cascade' }),
+    date: date('date').notNull(),
+    gscClicks: integer('gsc_clicks'),
+    gscImpressions: integer('gsc_impressions'),
+    position: numeric('position'),
+    sistrixVi: numeric('sistrix_vi'),
+  },
+  (t) => ({
+    urlDateTenantUnique: uniqueIndex('url_performance_url_date_tenant_idx').on(
+      t.urlId,
+      t.date,
+      t.tenantId
+    ),
+    tenantIdx: index('url_performance_tenant_idx').on(t.tenantId),
+    dateIdx: index('url_performance_date_idx').on(t.tenantId, t.date),
+    urlDateIdx: index('url_performance_url_date_combined_idx').on(t.tenantId, t.urlId, t.date),
+  })
+);
+
+// ---------------------------------------------------------------------------
 // blacklisted_keywords
 // ---------------------------------------------------------------------------
 export const blacklistedKeywords = pgTable(
@@ -410,199 +413,3 @@ export const blacklistedUrls = pgTable(
     urlLookupIdx: index('blacklisted_urls_url_lookup_idx').on(t.tenantId, t.urlId),
   })
 );
-
-// ---------------------------------------------------------------------------
-// cost_config
-// ---------------------------------------------------------------------------
-export const costConfig = pgTable(
-  'cost_config',
-  {
-    id:           serial('id').primaryKey(),
-    tenantId:     text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    pageType:     text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>().notNull(),
-    actionType:   text('action_type').$type<'Erstellung' | 'Optimierung'>().notNull(),
-    agencyCost:   numeric('agency_cost').notNull().default('0'),
-    overheadCost: numeric('overhead_cost').notNull().default('0'),
-  },
-  (t) => ({
-    tenantIdx: index('cost_config_tenant_idx').on(t.tenantId),
-  })
-);
-
-// ---------------------------------------------------------------------------
-// config  (Key-Value store)
-// ---------------------------------------------------------------------------
-export const config = pgTable(
-  'config',
-  {
-    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    key:         text('key').notNull(),
-    value:       text('value'),
-    description: text('description'),
-    fileUrl:     text('file_url'),
-    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    pk:        primaryKey({ columns: [t.tenantId, t.key] }),
-    tenantIdx: index('config_tenant_idx').on(t.tenantId),
-  })
-);
-
-// ---------------------------------------------------------------------------
-// pricing_tiers
-// ---------------------------------------------------------------------------
-export const pricingTiers = pgTable('pricing_tiers', {
-  id:           text('id').primaryKey(),
-  name:         text('name').notNull(),
-  monthlyPrice: numeric('monthly_price').notNull().default('0'),
-  yearlyPrice:  numeric('yearly_price').notNull().default('0'),
-  features:     jsonb('features').$type<string[]>().default([]),
-  createdAt:    timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt:    timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-// ---------------------------------------------------------------------------
-// tenant_subscriptions
-// ---------------------------------------------------------------------------
-export const tenantSubscriptions = pgTable('tenant_subscriptions', {
-  tenantId:     text('tenant_id').primaryKey().references(() => tenants.id, { onDelete: 'cascade' }),
-  tierId:       text('tier_id').references(() => pricingTiers.id, { onDelete: 'set null' }),
-  billingCycle: text('billing_cycle').$type<'monthly' | 'yearly'>().notNull().default('monthly'),
-  startDate:    timestamp('start_date', { withTimezone: true }).defaultNow().notNull(),
-  status:       text('status').$type<'active' | 'inactive' | 'trial'>().notNull().default('active'),
-  updatedAt:    timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-// ---------------------------------------------------------------------------
-// feature_requests
-// ---------------------------------------------------------------------------
-export const featureRequests = pgTable(
-  'feature_requests',
-  {
-    id:          text('id').primaryKey(),
-    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    userId:      text('user_id').references(() => users.id, { onDelete: 'set null' }),
-    type:        text('type').$type<'feature' | 'bug'>().notNull().default('feature'),
-    title:       text('title').notNull(),
-    description: text('description'),
-    status:      text('status')
-      .$type<'Open' | 'InValidation' | 'Planned' | 'InDevelopment' | 'Released' | 'Cancelled'>()
-      .notNull()
-      .default('Open'),
-    priority:    text('priority').$type<'low' | 'medium' | 'high'>().notNull().default('medium'),
-    plannedQuarter: text('planned_quarter'), // Format: "Q1 2025", nullable — set by SuperAdmin only
-    isPublic:    boolean('is_public').default(false).notNull(), // SuperAdmin kann Einträge für alle Tenants freischalten
-    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    tenantIdx:   index('feature_requests_tenant_idx').on(t.tenantId),
-    statusIdx:   index('feature_requests_status_idx').on(t.status),
-    typeIdx:     index('feature_requests_type_idx').on(t.type),
-  })
-);
-
-// ---------------------------------------------------------------------------
-// alert_rules
-// ---------------------------------------------------------------------------
-export const alertRules = pgTable(
-  'alert_rules',
-  {
-    id:               text('id').primaryKey(),
-    tenantId:         text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    name:             text('name').notNull(),
-    // Unterstützte Metriken: 'gsc_clicks_drop' | 'keyword_rank_drop'
-    metric:           text('metric').notNull(),
-    // Operatoren: 'lt' (kleiner als), 'gt' (größer als), 'pct_drop' (prozentualer Abfall)
-    operator:         text('operator').notNull(),
-    threshold:        numeric('threshold').notNull(),
-    // Beobachtungszeitraum in Tagen (Vergleich aktuell vs. vor N Tagen)
-    windowDays:       integer('window_days').notNull().default(7),
-    notifyEmails:     text('notify_emails').array().notNull().default([]),
-    enabled:          boolean('enabled').notNull().default(true),
-    // Cooldown-Schutz: kein erneuter Alert innerhalb von 24h
-    lastTriggeredAt:  timestamp('last_triggered_at', { withTimezone: true }),
-    createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    tenantIdx:   index('alert_rules_tenant_idx').on(t.tenantId),
-    enabledIdx:  index('alert_rules_enabled_idx').on(t.tenantId, t.enabled),
-  })
-);
-
-// ---------------------------------------------------------------------------
-// password_reset_tokens
-// ---------------------------------------------------------------------------
-export const passwordResetTokens = pgTable(
-  'password_reset_tokens',
-  {
-    token:     text('token').primaryKey(),
-    userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    tenantId:  text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    used:      boolean('used').notNull().default(false),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    userIdx:   index('prt_user_idx').on(t.userId),
-    tenantIdx: index('prt_tenant_idx').on(t.tenantId),
-  })
-);
-
-// ---------------------------------------------------------------------------
-// audit_logs
-// ---------------------------------------------------------------------------
-export const auditLogs = pgTable(
-  'audit_logs',
-  {
-    id:         serial('id').primaryKey(),
-    tenantId:   text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    action:     text('action').notNull(),
-    timestamp:  timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
-    userId:     text('user_id').references(() => users.id, { onDelete: 'set null' }),
-    rawPayload: jsonb('raw_payload'),
-  },
-  (t) => ({
-    tenantIdx:    index('audit_logs_tenant_idx').on(t.tenantId),
-    // ── Performance: newest-first queries + prefix search (system health)
-    timestampIdx: index('audit_logs_timestamp_idx').on(t.tenantId, t.timestamp),
-    // ── Performance: action prefix search (cron health checks)
-    actionIdx:    index('audit_logs_action_idx').on(t.tenantId, t.action),
-  })
-);
-
-// ===========================================================================
-// LEGACY TABLES (for backwards compatibility during migration)
-// ===========================================================================
-
-// Old url_performance table structure (still in use)
-export const urlPerformance = pgTable(
-  'url_performance',
-  {
-    id:             serial('id').primaryKey(),
-    tenantId:       text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-    targetUrl:      text('target_url').notNull(),
-    date:           date('date').notNull(),
-    gscClicks:      integer('gsc_clicks'),
-    gscImpressions: integer('gsc_impressions'),
-    position:       numeric('position'),
-    sistrixVi:      numeric('sistrix_vi'),
-  },
-  (t) => ({
-    urlDateUnique: uniqueIndex('url_performance_url_date_tenant_idx').on(t.targetUrl, t.date, t.tenantId),
-    tenantIdx:     index('url_performance_tenant_idx').on(t.tenantId),
-    dateIdx:       index('url_performance_date_idx').on(t.tenantId, t.date),
-    urlDateIdx:    index('url_performance_url_date_combined_idx').on(t.tenantId, t.targetUrl, t.date),
-  })
-);
-
-// ===========================================================================
-// BACKWARDS COMPATIBILITY ALIASES
-// ===========================================================================
-export const keywordMap = urlKeywords;
-export const keywordMapEditors = urlKeywordEditors;
-export const contentLog = processEvents;
-export const contentLogBody = executionVersions;
-export const keywordRankingHistory = keywordRankings;
-export const blacklist = blacklistedKeywords;

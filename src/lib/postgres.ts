@@ -1,26 +1,24 @@
 /**
- * postgres.ts
- * -----------
- * Drop-in replacement for airtable.ts.
- * All exported function signatures are identical so that API routes and
- * support libraries can switch with a single import-path change.
- *
- * Multi-tenancy: every function accepts an optional tenantId parameter.
- * When omitted it falls back to TENANT_ID env var → 'default'.
- * Row Level Security on the database enforces the tenant boundary
- * automatically inside withTenant().
+ * postgres-new.ts
+ * ---------------
+ * Refactored data access layer using new URL-centric schema.
+ * This replaces postgres.ts with clean implementations based on the new structure.
  */
 import 'server-only';
-import { eq, and, or, desc, asc, inArray, sql as drizzleSql, gte, lte, lt, notExists, isNotNull } from 'drizzle-orm';
+import { eq, and, or, desc, asc, inArray, sql, gte, lte, lt, notExists, isNotNull, isNull } from 'drizzle-orm';
 import { db, withTenant, getDefaultTenantId } from './db/index';
 import {
-  keywordMap as keywordMapTable,
-  keywordMapEditors,
-  contentLog as contentLogTable,
-  contentLogBody as contentLogBodyTable,
-  urlPerformance as urlPerformanceTable,
-  keywordRankingHistory as keywordRankingHistoryTable,
-  blacklist as blacklistTable,
+  urls,
+  urlKeywords,
+  urlKeywordEditors,
+  planningStatus,
+  executionCycles,
+  executionVersions,
+  publishingStatus,
+  processEvents,
+  keywordRankings,
+  blacklistedKeywords,
+  blacklistedUrls,
   costConfig as costConfigTable,
   config as configTable,
   auditLogs as auditLogsTable,
@@ -46,7 +44,7 @@ import type {
 } from './postgres-types';
 
 // ---------------------------------------------------------------------------
-// Validation Error (replaces AirtableValidationError)
+// Validation Error
 // ---------------------------------------------------------------------------
 export class ValidationError extends Error {
   constructor(public message: string, public status: number = 400) {
@@ -55,11 +53,10 @@ export class ValidationError extends Error {
   }
 }
 
-/** @deprecated Use ValidationError */
 export class AirtableValidationError extends ValidationError {}
 
 // ---------------------------------------------------------------------------
-// Config Cache — keyed per tenant to prevent cross-tenant leakage
+// Config Cache
 // ---------------------------------------------------------------------------
 const CONFIG_CACHE_TTL_MS = 30_000;
 const _configCacheByTenant = new Map<string, { data: Record<string, string>; at: number }>();
@@ -75,29 +72,46 @@ export function invalidateConfigCache(tenantId?: string): void {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-/**
- * Resolves the effective tenantId for a data-access call.
- *
- * Behaviour depends on the MULTI_TENANT environment variable:
- *   - MULTI_TENANT=true  → a missing tenantId throws immediately so missing
- *                          isolation is caught at call-time rather than
- *                          silently writing/reading the wrong tenant's data.
- *   - MULTI_TENANT unset / false → legacy single-tenant mode: falls back to
- *                          the TENANT_ID env var (or 'default') and logs a
- *                          warning so the gap is still visible in logs.
- */
 function tid(tenantId?: string): string {
   if (!tenantId) {
     if (process.env.MULTI_TENANT === 'true') {
       throw new Error(
         '[postgres] tid() called without tenantId in MULTI_TENANT mode. ' +
-        'Every data-access call must supply an explicit tenantId. ' +
-        'Check the call stack for missing tenant propagation.'
+        'Every data-access call must supply an explicit tenantId.'
       );
     }
-    console.warn('[postgres] tid() called without tenantId — falling back to default tenant. Set MULTI_TENANT=true to turn this into a hard error.');
+    console.warn('[postgres] tid() called without tenantId — falling back to default tenant.');
   }
   return tenantId ?? getDefaultTenantId();
+}
+
+function toIsoDate(d: string | Date | null | undefined): string | undefined {
+  if (!d) return undefined;
+  const str = typeof d === 'string' ? d : d.toISOString();
+  return str.split('T')[0];
+}
+
+// Map new schema status to old API format
+function mapToOldStatus(
+  planning: typeof planningStatus.$inferSelect | null,
+  execution: typeof executionCycles.$inferSelect | null,
+  publishing: typeof publishingStatus.$inferSelect | null
+): KeywordStatus {
+  if (publishing?.status === 'published') return 'Published';
+  if (publishing?.status === 'in_review') return 'Review';
+  if (execution?.status === 'delivered') return 'Angeliefert';
+  if (execution?.status === 'in_progress') return 'In Arbeit';
+  if (execution?.status === 'commissioned') return 'Beauftragt';
+  if (planning?.status === 'planned') return 'Planned';
+  return 'Backlog';
+}
+
+function mapToOldActionType(actionType: 'creation' | 'optimization' | null | undefined): 'Erstellung' | 'Optimierung' {
+  return actionType === 'optimization' ? 'Optimierung' : 'Erstellung';
+}
+
+function mapFromOldActionType(actionType: 'Erstellung' | 'Optimierung' | undefined): 'creation' | 'optimization' {
+  return actionType === 'Optimierung' ? 'optimization' : 'creation';
 }
 
 // ---------------------------------------------------------------------------
@@ -108,111 +122,70 @@ export async function getAllTenants(): Promise<{ id: string; name: string }[]> {
   return rows;
 }
 
-function toIsoDate(d: string | null | undefined): string | undefined {
-  if (!d) return undefined;
-  return d.split('T')[0];
-}
-
-function mapKeywordRow(row: typeof keywordMapTable.$inferSelect, editorIds: string[] = []): KeywordMap {
-  return {
-    id: row.id,
-    Keyword: row.keyword,
-    Target_URL: row.targetUrl,
-    Search_Volume: row.searchVolume ?? undefined,
-    Difficulty: row.difficulty ?? undefined,
-    Status: row.status as KeywordStatus,
-    Editorial_Deadline: toIsoDate(row.editorialDeadline),
-    Assigned_Editor: editorIds.length ? editorIds : undefined,
-    Main_Keyword: row.mainKeyword as 'Y' | 'N',
-    Article_Count: row.articleCount ?? undefined,
-    Avg_Product_Value: row.avgProductValue ? Number(row.avgProductValue) : undefined,
-    Policy: row.policy ? Number(row.policy) : undefined,
-    Priority_Score: row.priorityScore ? Number(row.priorityScore) : undefined,
-    Ranking: row.ranking ?? undefined,
-    Action_Type: (row.actionType as 'Erstellung' | 'Optimierung') ?? 'Erstellung',
-    Page_Type: row.pageType as any,
-    Last_Published: toIsoDate(row.lastPublished),
-  };
-}
-
-function mapContentLogRow(
-  row: typeof contentLogTable.$inferSelect,
-  keywordId?: string,
-  body?: { contentBody: string | null; eventLabel: string | null } | null | { hasBody: boolean; eventLabel: string | null }
-): ContentLog {
-  const kwIds = keywordId ? [keywordId] : (row.keywordId ? [row.keywordId] : []);
-
-  // body can be:
-  //   - null/undefined                             → no body info (legacy / no join)
-  //   - { hasBody, eventLabel }                    → list-query partial (no contentBody text)
-  //   - { contentBody, eventLabel }                → full body (on-demand load)
-  const isPartial = body !== null && body !== undefined && 'hasBody' in body;
-  const isFull    = body !== null && body !== undefined && 'contentBody' in body;
-
-  const hasContent = isPartial ? (body as any).hasBody : isFull ? !!(body as any).contentBody : false;
-  const eventLabel = isPartial ? (body as any).eventLabel : isFull ? (body as any).eventLabel : null;
-  const contentBody = isFull ? (body as any).contentBody : null;
-
-  return {
-    id: String(row.id),
-    ID: row.id,
-    Keyword_ID: kwIds,
-    Target_URL: row.loggedUrl ?? undefined,
-    Logged_URL: row.loggedUrl ?? undefined,
-    Action_Type: row.actionType as any,
-    Page_Type: row.pageType as any,
-    Version: hasContent ? 'v2' : 'v1',
-    Content_Body: contentBody ?? undefined,
-    Event_Label: eventLabel ?? undefined,
-    Created_At: row.timeCreated.toISOString(),
-    Updated_At: row.timeChanged.toISOString(),
-    Editor: row.editorId ? [row.editorId] : undefined,
-    Commission_Log_Id: row.commissionLogId ?? undefined,
-  };
-}
-
 // ---------------------------------------------------------------------------
-// Keyword Map
+// Keyword Map (URL-Keywords with aggregated status)
 // ---------------------------------------------------------------------------
 export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    // Filter blacklisted keywords/URLs directly in SQL via NOT EXISTS.
-    // This avoids loading all rows into JS and then filtering client-side.
     const rows = await tx
-      .select()
-      .from(keywordMapTable)
-      .where(
+      .select({
+        keyword: urlKeywords,
+        url: urls,
+        planning: planningStatus,
+        cycle: executionCycles,
+        publishing: publishingStatus,
+      })
+      .from(urlKeywords)
+      .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
+      .leftJoin(planningStatus, eq(planningStatus.urlId, urls.id))
+      .leftJoin(
+        executionCycles,
         and(
-          eq(keywordMapTable.tenantId, tenant),
-          // Not a blacklisted keyword
-          notExists(
-            tx.select({ one: drizzleSql`1` })
-              .from(blacklistTable)
-              .where(and(
-                eq(blacklistTable.tenantId, tenant),
-                eq(blacklistTable.type, 'Keyword'),
-                drizzleSql`lower(${blacklistTable.keyword}) = lower(${keywordMapTable.keyword})`,
-              ))
-          ),
-          // Not a blacklisted URL
-          notExists(
-            tx.select({ one: drizzleSql`1` })
-              .from(blacklistTable)
-              .where(and(
-                eq(blacklistTable.tenantId, tenant),
-                eq(blacklistTable.type, 'URL'),
-                drizzleSql`lower(${blacklistTable.targetUrl}) = lower(${keywordMapTable.targetUrl})`,
-              ))
-          ),
+          eq(executionCycles.urlId, urls.id),
+          eq(
+            executionCycles.cycleNumber,
+            tx
+              .select({ max: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` })
+              .from(executionCycles)
+              .where(eq(executionCycles.urlId, urls.id))
+          )
         )
       )
-      .orderBy(asc(keywordMapTable.keyword));
+      .leftJoin(publishingStatus, eq(publishingStatus.cycleId, executionCycles.id))
+      .where(
+        and(
+          eq(urlKeywords.tenantId, tenant),
+          notExists(
+            tx
+              .select({ one: sql`1` })
+              .from(blacklistedKeywords)
+              .where(
+                and(
+                  eq(blacklistedKeywords.tenantId, tenant),
+                  sql`lower(${blacklistedKeywords.keyword}) = lower(${urlKeywords.keyword})`
+                )
+              )
+          ),
+          notExists(
+            tx
+              .select({ one: sql`1` })
+              .from(blacklistedUrls)
+              .where(
+                and(
+                  eq(blacklistedUrls.tenantId, tenant),
+                  eq(blacklistedUrls.urlId, urls.id)
+                )
+              )
+          )
+        )
+      )
+      .orderBy(asc(urlKeywords.keyword));
 
-    // Bulk-fetch editor assignments in one query instead of N queries
-    const kwIds = rows.map(r => r.id);
+    // Fetch editor assignments
+    const kwIds = rows.map(r => r.keyword.id);
     const editorRows = kwIds.length
-      ? await tx.select().from(keywordMapEditors).where(inArray(keywordMapEditors.keywordId, kwIds))
+      ? await tx.select().from(urlKeywordEditors).where(inArray(urlKeywordEditors.keywordId, kwIds))
       : [];
     const editorMap = new Map<string, string[]>();
     for (const e of editorRows) {
@@ -221,21 +194,74 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       editorMap.set(e.keywordId, arr);
     }
 
-    return rows.map(row => mapKeywordRow(row, editorMap.get(row.id)));
+    return rows.map(({ keyword: kw, url, planning, cycle, publishing }) => ({
+      id: kw.id,
+      Keyword: kw.keyword,
+      Target_URL: url.url,
+      Search_Volume: kw.searchVolume ?? undefined,
+      Difficulty: kw.difficulty ?? undefined,
+      Status: mapToOldStatus(planning, cycle, publishing),
+      Editorial_Deadline: toIsoDate(planning?.editorialDeadline),
+      Assigned_Editor: editorMap.get(kw.id),
+      Main_Keyword: kw.isMainKeyword ? 'Y' : 'N',
+      Article_Count: kw.articleCount ?? undefined,
+      Avg_Product_Value: kw.avgProductValue ? Number(kw.avgProductValue) : undefined,
+      Policy: kw.policy ? Number(kw.policy) : undefined,
+      Priority_Score: kw.priorityScore ? Number(kw.priorityScore) : undefined,
+      Ranking: kw.ranking ?? undefined,
+      Action_Type: mapToOldActionType(planning?.plannedActionType ?? cycle?.actionType),
+      Page_Type: url.pageType as any,
+      Last_Published: toIsoDate(publishing?.publishedAt),
+    }));
   });
 }
 
 export async function getKeywordsByUrl(targetUrl: string, tenantId?: string): Promise<KeywordMap[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
-    const rows = await tx
-      .select()
-      .from(keywordMapTable)
-      .where(and(eq(keywordMapTable.tenantId, tenant), eq(keywordMapTable.targetUrl, targetUrl)));
+    const [urlRecord] = await tx
+      .select({ id: urls.id })
+      .from(urls)
+      .where(and(eq(urls.url, targetUrl), eq(urls.tenantId, tenant)))
+      .limit(1);
 
-    const kwIds = rows.map(r => r.id);
+    if (!urlRecord) return [];
+
+    const rows = await tx
+      .select({
+        keyword: urlKeywords,
+        url: urls,
+        planning: planningStatus,
+        cycle: executionCycles,
+        publishing: publishingStatus,
+      })
+      .from(urlKeywords)
+      .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
+      .leftJoin(planningStatus, eq(planningStatus.urlId, urls.id))
+      .leftJoin(
+        executionCycles,
+        and(
+          eq(executionCycles.urlId, urls.id),
+          eq(
+            executionCycles.cycleNumber,
+            tx
+              .select({ max: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` })
+              .from(executionCycles)
+              .where(eq(executionCycles.urlId, urls.id))
+          )
+        )
+      )
+      .leftJoin(publishingStatus, eq(publishingStatus.cycleId, executionCycles.id))
+      .where(
+        and(
+          eq(urlKeywords.urlId, urlRecord.id),
+          eq(urlKeywords.tenantId, tenant)
+        )
+      );
+
+    const kwIds = rows.map(r => r.keyword.id);
     const editorRows = kwIds.length
-      ? await tx.select().from(keywordMapEditors).where(inArray(keywordMapEditors.keywordId, kwIds))
+      ? await tx.select().from(urlKeywordEditors).where(inArray(urlKeywordEditors.keywordId, kwIds))
       : [];
     const editorMap = new Map<string, string[]>();
     for (const e of editorRows) {
@@ -244,1116 +270,640 @@ export async function getKeywordsByUrl(targetUrl: string, tenantId?: string): Pr
       editorMap.set(e.keywordId, arr);
     }
 
-    return rows.map(row => mapKeywordRow(row, editorMap.get(row.id)));
+    return rows.map(({ keyword: kw, url, planning, cycle, publishing }) => ({
+      id: kw.id,
+      Keyword: kw.keyword,
+      Target_URL: url.url,
+      Search_Volume: kw.searchVolume ?? undefined,
+      Difficulty: kw.difficulty ?? undefined,
+      Status: mapToOldStatus(planning, cycle, publishing),
+      Editorial_Deadline: toIsoDate(planning?.editorialDeadline),
+      Assigned_Editor: editorMap.get(kw.id),
+      Main_Keyword: kw.isMainKeyword ? 'Y' : 'N',
+      Article_Count: kw.articleCount ?? undefined,
+      Avg_Product_Value: kw.avgProductValue ? Number(kw.avgProductValue) : undefined,
+      Policy: kw.policy ? Number(kw.policy) : undefined,
+      Priority_Score: kw.priorityScore ? Number(kw.priorityScore) : undefined,
+      Ranking: kw.ranking ?? undefined,
+      Action_Type: mapToOldActionType(planning?.plannedActionType ?? cycle?.actionType),
+      Page_Type: url.pageType as any,
+      Last_Published: toIsoDate(publishing?.publishedAt),
+    }));
   });
 }
 
-export async function createKeyword(kw: Partial<KeywordMap>, tenantId?: string): Promise<KeywordMap | null> {
+export async function getKeyword(keywordId: string, tenantId?: string): Promise<KeywordMap | null> {
   const tenant = tid(tenantId);
-  if (!kw.Keyword || !kw.Target_URL) throw new ValidationError('Keyword und Target_URL sind Pflichtfelder.');
-
   return withTenant(tenant, async (tx) => {
-    // Uniqueness: keyword + url per tenant
-    const existing = await tx
-      .select({ id: keywordMapTable.id })
-      .from(keywordMapTable)
-      .where(and(
-        eq(keywordMapTable.tenantId, tenant),
-        eq(keywordMapTable.keyword, kw.Keyword!),
-        eq(keywordMapTable.targetUrl, kw.Target_URL!),
-      ))
+    const rows = await tx
+      .select({
+        keyword: urlKeywords,
+        url: urls,
+        planning: planningStatus,
+        cycle: executionCycles,
+        publishing: publishingStatus,
+      })
+      .from(urlKeywords)
+      .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
+      .leftJoin(planningStatus, eq(planningStatus.urlId, urls.id))
+      .leftJoin(
+        executionCycles,
+        and(
+          eq(executionCycles.urlId, urls.id),
+          eq(
+            executionCycles.cycleNumber,
+            tx
+              .select({ max: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` })
+              .from(executionCycles)
+              .where(eq(executionCycles.urlId, urls.id))
+          )
+        )
+      )
+      .leftJoin(publishingStatus, eq(publishingStatus.cycleId, executionCycles.id))
+      .where(
+        and(
+          eq(urlKeywords.id, keywordId),
+          eq(urlKeywords.tenantId, tenant)
+        )
+      )
       .limit(1);
-    if (existing.length > 0) throw new ValidationError(`Die Kombination Keyword "${kw.Keyword}" / URL "${kw.Target_URL}" existiert bereits.`, 409);
 
-    if (kw.Main_Keyword === 'Y') {
-      const mainByUrl = await tx
-        .select({ id: keywordMapTable.id })
-        .from(keywordMapTable)
-        .where(and(eq(keywordMapTable.tenantId, tenant), eq(keywordMapTable.targetUrl, kw.Target_URL!), eq(keywordMapTable.mainKeyword, 'Y')))
-        .limit(1);
-      if (mainByUrl.length > 0) throw new ValidationError(`Die URL ${kw.Target_URL} hat bereits ein Main Keyword.`, 409);
+    if (rows.length === 0) return null;
 
-      const mainGlobal = await tx
-        .select({ id: keywordMapTable.id })
-        .from(keywordMapTable)
-        .where(and(eq(keywordMapTable.tenantId, tenant), eq(keywordMapTable.keyword, kw.Keyword!), eq(keywordMapTable.mainKeyword, 'Y')))
-        .limit(1);
-      if (mainGlobal.length > 0) throw new ValidationError(`Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.`, 409);
-    }
+    const { keyword: kw, url, planning, cycle, publishing } = rows[0];
 
-    const id = crypto.randomUUID();
-    const [row] = await tx.insert(keywordMapTable).values({
-      id,
-      tenantId: tenant,
-      keyword: kw.Keyword!,
-      targetUrl: kw.Target_URL!,
-      searchVolume: kw.Search_Volume,
-      difficulty: kw.Difficulty,
-      status: kw.Status ?? 'Backlog',
-      editorialDeadline: kw.Editorial_Deadline ?? null,
-      mainKeyword: kw.Main_Keyword ?? 'N',
-      articleCount: kw.Article_Count,
-      avgProductValue: kw.Avg_Product_Value?.toString(),
-      policy: kw.Policy?.toString(),
-      priorityScore: kw.Priority_Score?.toString(),
-      actionType: kw.Action_Type ?? 'Erstellung',
-      pageType: kw.Page_Type,
-      lastPublished: kw.Last_Published ?? null,
-    }).returning();
-
-    // Handle editor assignments
-    if (kw.Assigned_Editor?.length) {
-      await tx.insert(keywordMapEditors).values(
-        kw.Assigned_Editor.map(userId => ({ keywordId: id, userId }))
-      );
-    }
-
-    return mapKeywordRow(row, kw.Assigned_Editor ?? []);
-  });
-}
-
-export async function updateKeyword(id: string, kw: Partial<KeywordMap>, tenantId?: string): Promise<KeywordMap | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const [current] = await tx
+    const editorRows = await tx
       .select()
-      .from(keywordMapTable)
-      .where(and(eq(keywordMapTable.id, id), eq(keywordMapTable.tenantId, tenant)))
-      .limit(1);
-    if (!current) return null;
+      .from(urlKeywordEditors)
+      .where(eq(urlKeywordEditors.keywordId, keywordId));
 
-    const nextKeyword = kw.Keyword ?? current.keyword;
-    const nextUrl = kw.Target_URL ?? current.targetUrl;
-    const nextMain = kw.Main_Keyword ?? current.mainKeyword;
-
-    // Uniqueness check if keyword or url changed
-    if (kw.Keyword !== undefined || kw.Target_URL !== undefined) {
-      const dupe = await tx
-        .select({ id: keywordMapTable.id })
-        .from(keywordMapTable)
-        .where(and(
-          eq(keywordMapTable.tenantId, tenant),
-          eq(keywordMapTable.keyword, nextKeyword),
-          eq(keywordMapTable.targetUrl, nextUrl),
-          drizzleSql`${keywordMapTable.id} != ${id}`,
-        ))
-        .limit(1);
-      if (dupe.length > 0) throw new ValidationError(`Die Kombination Keyword "${nextKeyword}" / URL "${nextUrl}" existiert bereits.`, 409);
-    }
-
-    if (nextMain === 'Y' && (kw.Main_Keyword === 'Y' || kw.Target_URL !== undefined)) {
-      const mainByUrl = await tx
-        .select({ id: keywordMapTable.id })
-        .from(keywordMapTable)
-        .where(and(
-          eq(keywordMapTable.tenantId, tenant),
-          eq(keywordMapTable.targetUrl, nextUrl),
-          eq(keywordMapTable.mainKeyword, 'Y'),
-          drizzleSql`${keywordMapTable.id} != ${id}`,
-        ))
-        .limit(1);
-      if (mainByUrl.length > 0) throw new ValidationError(`Die URL ${nextUrl} hat bereits ein Main Keyword.`, 409);
-    }
-
-    const updates: Partial<typeof keywordMapTable.$inferInsert> = {};
-    if (kw.Keyword !== undefined) updates.keyword = kw.Keyword;
-    if (kw.Target_URL !== undefined) updates.targetUrl = kw.Target_URL;
-    if (kw.Search_Volume !== undefined) updates.searchVolume = kw.Search_Volume;
-    if (kw.Difficulty !== undefined) updates.difficulty = kw.Difficulty;
-    if (kw.Status !== undefined) updates.status = kw.Status;
-    if (kw.Editorial_Deadline !== undefined) updates.editorialDeadline = kw.Editorial_Deadline;
-    if (kw.Main_Keyword !== undefined) updates.mainKeyword = kw.Main_Keyword;
-    if (kw.Article_Count !== undefined) updates.articleCount = kw.Article_Count;
-    if (kw.Avg_Product_Value !== undefined) updates.avgProductValue = String(kw.Avg_Product_Value);
-    if (kw.Policy !== undefined) updates.policy = String(kw.Policy);
-    if (kw.Priority_Score !== undefined) updates.priorityScore = String(kw.Priority_Score);
-    if (kw.Action_Type !== undefined) updates.actionType = kw.Action_Type;
-    if (kw.Page_Type !== undefined) updates.pageType = kw.Page_Type;
-    if (kw.Last_Published !== undefined) updates.lastPublished = kw.Last_Published;
-
-    const [updated] = await tx
-      .update(keywordMapTable)
-      .set(updates)
-      .where(and(eq(keywordMapTable.id, id), eq(keywordMapTable.tenantId, tenant)))
-      .returning();
-
-    // Update editor assignments if provided
-    if (kw.Assigned_Editor !== undefined) {
-      await tx.delete(keywordMapEditors).where(eq(keywordMapEditors.keywordId, id));
-      if (kw.Assigned_Editor.length) {
-        await tx.insert(keywordMapEditors).values(kw.Assigned_Editor.map(userId => ({ keywordId: id, userId })));
-      }
-    }
-
-    const editorRows = await tx.select().from(keywordMapEditors).where(eq(keywordMapEditors.keywordId, id));
-    return mapKeywordRow(updated, editorRows.map(e => e.userId));
+    return {
+      id: kw.id,
+      Keyword: kw.keyword,
+      Target_URL: url.url,
+      Search_Volume: kw.searchVolume ?? undefined,
+      Difficulty: kw.difficulty ?? undefined,
+      Status: mapToOldStatus(planning, cycle, publishing),
+      Editorial_Deadline: toIsoDate(planning?.editorialDeadline),
+      Assigned_Editor: editorRows.length ? editorRows.map(e => e.userId) : undefined,
+      Main_Keyword: kw.isMainKeyword ? 'Y' : 'N',
+      Article_Count: kw.articleCount ?? undefined,
+      Avg_Product_Value: kw.avgProductValue ? Number(kw.avgProductValue) : undefined,
+      Policy: kw.policy ? Number(kw.policy) : undefined,
+      Priority_Score: kw.priorityScore ? Number(kw.priorityScore) : undefined,
+      Ranking: kw.ranking ?? undefined,
+      Action_Type: mapToOldActionType(planning?.plannedActionType ?? cycle?.actionType),
+      Page_Type: url.pageType as any,
+      Last_Published: toIsoDate(publishing?.publishedAt),
+    };
   });
 }
 
-export async function deleteKeyword(id: string, tenantId?: string): Promise<boolean> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    await tx.delete(keywordMapTable).where(and(eq(keywordMapTable.id, id), eq(keywordMapTable.tenantId, tenant)));
-    return true;
+// ---------------------------------------------------------------------------
+// Create/Update/Delete Keywords
+// ---------------------------------------------------------------------------
+async function ensureUrl(url: string, pageType: string | undefined, tenant: string, tx: any): Promise<string> {
+  const existing = await tx
+    .select({ id: urls.id })
+    .from(urls)
+    .where(and(eq(urls.url, url), eq(urls.tenantId, tenant)))
+    .limit(1);
+
+  if (existing.length > 0) return existing[0].id;
+
+  const [newUrl] = await tx
+    .insert(urls)
+    .values({
+      tenantId: tenant,
+      url,
+      pageType: pageType as any,
+    })
+    .returning({ id: urls.id });
+
+  // Create default planning status
+  await tx.insert(planningStatus).values({
+    tenantId: tenant,
+    urlId: newUrl.id,
+    status: 'backlog',
   });
+
+  return newUrl.id;
 }
 
-export async function bulkDeleteKeywords(ids: string[], tenantId?: string): Promise<boolean> {
-  if (!ids.length) return true;
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    await tx.delete(keywordMapTable).where(and(inArray(keywordMapTable.id, ids), eq(keywordMapTable.tenantId, tenant)));
-    return true;
-  });
-}
-
-export async function bulkCreateKeywords(
-  keywords: Partial<KeywordMap>[],
+export async function createKeyword(
+  data: {
+    keyword: string;
+    targetUrl: string;
+    searchVolume?: number;
+    difficulty?: number;
+    mainKeyword?: 'Y' | 'N';
+    pageType?: string;
+    priorityScore?: number;
+    articleCount?: number;
+    avgProductValue?: number;
+    policy?: number;
+    ranking?: number;
+    actionType?: 'Erstellung' | 'Optimierung';
+  },
   tenantId?: string
-): Promise<{ created: KeywordMap[]; skipped: SkippedKeyword[] }> {
+): Promise<string> {
   const tenant = tid(tenantId);
-  const created: KeywordMap[] = [];
-  const skipped: SkippedKeyword[] = [];
-
-  if (!keywords.length) return { created, skipped };
-
   return withTenant(tenant, async (tx) => {
-    // Batch-read all existing keyword+url combos for relevant URLs
-    const uniqueUrls = Array.from(new Set(keywords.map(k => k.Target_URL).filter(Boolean))) as string[];
+    const urlId = await ensureUrl(data.targetUrl, data.pageType, tenant, tx);
 
-    const existingRows = uniqueUrls.length
-      ? await tx
-          .select({ keyword: keywordMapTable.keyword, targetUrl: keywordMapTable.targetUrl, mainKeyword: keywordMapTable.mainKeyword })
-          .from(keywordMapTable)
-          .where(and(eq(keywordMapTable.tenantId, tenant), inArray(keywordMapTable.targetUrl, uniqueUrls)))
-      : [];
+    const [newKeyword] = await tx
+      .insert(urlKeywords)
+      .values({
+        tenantId: tenant,
+        urlId,
+        keyword: data.keyword,
+        isMainKeyword: data.mainKeyword === 'Y',
+        searchVolume: data.searchVolume,
+        difficulty: data.difficulty,
+        priorityScore: data.priorityScore ? String(data.priorityScore) : undefined,
+        articleCount: data.articleCount,
+        avgProductValue: data.avgProductValue ? String(data.avgProductValue) : undefined,
+        policy: data.policy ? String(data.policy) : undefined,
+        ranking: data.ranking,
+      })
+      .returning({ id: urlKeywords.id });
 
-    const existingSet = new Set<string>();
-    const mainKeywordByUrl = new Set<string>();
-    const mainKeywordGlobal = new Set<string>();
-    for (const r of existingRows) {
-      existingSet.add(`${r.keyword.toLowerCase()}|${r.targetUrl.toLowerCase()}`);
-      if (r.mainKeyword === 'Y') {
-        mainKeywordByUrl.add(r.targetUrl.toLowerCase());
-        mainKeywordGlobal.add(r.keyword.toLowerCase());
-      }
+    // Update planning status with action type if main keyword
+    if (data.mainKeyword === 'Y' && data.actionType) {
+      await tx
+        .update(planningStatus)
+        .set({
+          plannedActionType: mapFromOldActionType(data.actionType),
+        })
+        .where(and(eq(planningStatus.urlId, urlId), eq(planningStatus.tenantId, tenant)));
     }
 
-    const validKeywords: Partial<KeywordMap>[] = [];
-    for (const kw of keywords) {
-      if (!kw.Keyword || !kw.Target_URL) {
-        skipped.push({ ...kw, reason: 'Keyword und Target_URL sind Pflichtfelder.' });
-        continue;
-      }
-      const kwLower = kw.Keyword.toLowerCase();
-      const urlLower = kw.Target_URL.toLowerCase();
-      if (existingSet.has(`${kwLower}|${urlLower}`)) {
-        skipped.push({ ...kw, reason: `Die Kombination "${kw.Keyword}" / "${kw.Target_URL}" existiert bereits.` });
-        continue;
-      }
-      if (kw.Main_Keyword === 'Y') {
-        if (mainKeywordByUrl.has(urlLower)) {
-          skipped.push({ ...kw, reason: `Die URL ${kw.Target_URL} hat bereits ein Main Keyword.` });
-          continue;
-        }
-        if (mainKeywordGlobal.has(kwLower)) {
-          skipped.push({ ...kw, reason: `Das Keyword "${kw.Keyword}" ist bereits als Main Keyword für eine andere URL registriert.` });
-          continue;
-        }
-        mainKeywordByUrl.add(urlLower);
-        mainKeywordGlobal.add(kwLower);
-      }
-      existingSet.add(`${kwLower}|${urlLower}`);
-      validKeywords.push(kw);
-    }
+    // Log event
+    await tx.insert(processEvents).values({
+      tenantId: tenant,
+      eventType: 'keyword_added',
+      urlId,
+      keywordId: newKeyword.id,
+      eventData: { keyword: data.keyword, url: data.targetUrl },
+    });
 
-    // Batch insert
-    for (let i = 0; i < validKeywords.length; i += 50) {
-      const chunk = validKeywords.slice(i, i + 50);
-      try {
-        const rows = await tx
-          .insert(keywordMapTable)
-          .values(chunk.map(kw => ({
-            id: crypto.randomUUID(),
-            tenantId: tenant,
-            keyword: kw.Keyword!,
-            targetUrl: kw.Target_URL!,
-            searchVolume: kw.Search_Volume,
-            difficulty: kw.Difficulty,
-            status: kw.Status ?? 'Backlog',
-            editorialDeadline: kw.Editorial_Deadline ?? null,
-            mainKeyword: kw.Main_Keyword ?? 'N',
-            articleCount: kw.Article_Count,
-            avgProductValue: kw.Avg_Product_Value?.toString(),
-            actionType: kw.Action_Type ?? 'Erstellung',
-            pageType: kw.Page_Type,
-          })))
-          .returning();
-        rows.forEach(row => created.push(mapKeywordRow(row)));
-      } catch (err: any) {
-        chunk.forEach(kw => skipped.push({ ...kw, reason: err.message ?? 'Unbekannter Fehler' }));
-      }
-    }
-
-    return { created, skipped };
+    return newKeyword.id;
   });
 }
 
-export async function bulkUpdateKeywordRankings(
-  rankings: { keywordId: string; rank: number }[],
+export async function updateKeyword(
+  keywordId: string,
+  updates: {
+    Status?: KeywordStatus;
+    Editorial_Deadline?: string;
+    Priority_Score?: number;
+    Assigned_Editor?: string[];
+    Action_Type?: 'Erstellung' | 'Optimierung';
+    Last_Published?: string;
+  },
   tenantId?: string
 ): Promise<void> {
   const tenant = tid(tenantId);
-  if (!rankings.length) return;
-  await withTenant(tenant, async (tx) => {
-    for (const { keywordId, rank } of rankings) {
+  return withTenant(tenant, async (tx) => {
+    // Get keyword to find URL
+    const [keyword] = await tx
+      .select({ urlId: urlKeywords.urlId, isMainKeyword: urlKeywords.isMainKeyword })
+      .from(urlKeywords)
+      .where(and(eq(urlKeywords.id, keywordId), eq(urlKeywords.tenantId, tenant)))
+      .limit(1);
+
+    if (!keyword) throw new Error('Keyword not found');
+
+    // Update planning status if applicable
+    if (updates.Status || updates.Editorial_Deadline || updates.Priority_Score !== undefined || updates.Action_Type) {
+      const planningUpdates: any = {};
+      
+      if (updates.Status) {
+        if (updates.Status === 'Backlog') planningUpdates.status = 'backlog';
+        else if (updates.Status === 'Planned') planningUpdates.status = 'planned';
+        else if (updates.Status === 'Published') planningUpdates.status = 'planned'; // Keep planned for re-optimization
+      }
+      
+      if (updates.Editorial_Deadline !== undefined) {
+        planningUpdates.editorialDeadline = updates.Editorial_Deadline || null;
+      }
+      
+      if (updates.Priority_Score !== undefined) {
+        planningUpdates.priorityScore = String(updates.Priority_Score);
+      }
+      
+      if (updates.Action_Type) {
+        planningUpdates.plannedActionType = mapFromOldActionType(updates.Action_Type);
+      }
+
+      if (Object.keys(planningUpdates).length > 0) {
+        await tx
+          .update(planningStatus)
+          .set(planningUpdates)
+          .where(and(eq(planningStatus.urlId, keyword.urlId), eq(planningStatus.tenantId, tenant)));
+      }
+    }
+
+    // Update keyword priority score
+    if (updates.Priority_Score !== undefined) {
       await tx
-        .update(keywordMapTable)
-        .set({ ranking: rank })
-        .where(and(eq(keywordMapTable.id, keywordId), eq(keywordMapTable.tenantId, tenant)));
+        .update(urlKeywords)
+        .set({ priorityScore: String(updates.Priority_Score) })
+        .where(and(eq(urlKeywords.id, keywordId), eq(urlKeywords.tenantId, tenant)));
+    }
+
+    // Handle editor assignments
+    if (updates.Assigned_Editor !== undefined) {
+      await tx.delete(urlKeywordEditors).where(eq(urlKeywordEditors.keywordId, keywordId));
+
+      if (updates.Assigned_Editor.length > 0) {
+        await tx.insert(urlKeywordEditors).values(
+          updates.Assigned_Editor.map((userId) => ({
+            keywordId,
+            userId,
+          }))
+        );
+      }
+    }
+
+    // Handle execution status updates
+    if (updates.Status === 'Beauftragt' || updates.Status === 'In Arbeit' || updates.Status === 'Angeliefert') {
+      // These are handled by execution cycles, not directly updatable
+    }
+
+    // Handle publishing
+    if (updates.Status === 'Published' && updates.Last_Published) {
+      // Find active cycle and mark as published
+      const [cycle] = await tx
+        .select({ id: executionCycles.id })
+        .from(executionCycles)
+        .where(
+          and(
+            eq(executionCycles.urlId, keyword.urlId),
+            eq(executionCycles.tenantId, tenant),
+            eq(executionCycles.status, 'delivered')
+          )
+        )
+        .orderBy(desc(executionCycles.cycleNumber))
+        .limit(1);
+
+      if (cycle) {
+        await tx
+          .update(publishingStatus)
+          .set({
+            status: 'published',
+            publishedAt: new Date(updates.Last_Published),
+          })
+          .where(and(eq(publishingStatus.cycleId, cycle.id), eq(publishingStatus.tenantId, tenant)));
+      }
     }
   });
 }
 
+export async function deleteKeyword(keywordId: string, tenantId?: string): Promise<void> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    await tx.delete(urlKeywords).where(and(eq(urlKeywords.id, keywordId), eq(urlKeywords.tenantId, tenant)));
+  });
+}
+
 // ---------------------------------------------------------------------------
-// Content Log
+// Content Log Operations (mapped from execution_versions + process_events)
 // ---------------------------------------------------------------------------
-export async function getContentLogs(tenantId?: string): Promise<ContentLog[]> {
+export async function getContentLogs(tenantId?: string, limit?: number): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
+  const maxRows = limit ?? 200;
+
   return withTenant(tenant, async (tx) => {
-    // LEFT JOIN on content_log_body to get Version flag + Event_Label.
-    // contentBody text is intentionally NOT selected here (too large for list queries).
-    const rows = await tx
+    const events = await tx
       .select({
-        log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
-        eventLabel: contentLogBodyTable.eventLabel,
+        event: processEvents,
+        url: urls,
+        cycle: executionCycles,
+        version: executionVersions,
       })
-      .from(contentLogTable)
-      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
-      .where(eq(contentLogTable.tenantId, tenant))
-      .orderBy(desc(contentLogTable.timeCreated))
-      .limit(200);
-    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
+      .from(processEvents)
+      .leftJoin(urls, eq(urls.id, processEvents.urlId))
+      .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
+      .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .where(eq(processEvents.tenantId, tenant))
+      .orderBy(desc(processEvents.eventTimestamp))
+      .limit(maxRows);
+
+    return events.map(({ event, url, cycle, version }) => ({
+      id: String(event.id),
+      ID: event.id,
+      Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
+      Target_URL: url?.url,
+      Logged_URL: url?.url,
+      Action_Type: cycle?.actionType ? mapToOldActionType(cycle.actionType) as any : undefined,
+      Page_Type: url?.pageType as any,
+      Version: version?.contentHtml ? 'v2' : 'v1',
+      Content_Body: undefined, // Not loaded in list view
+      Event_Label: (event.eventData as any)?.original_event_label || event.eventType,
+      Created_At: event.eventTimestamp.toISOString(),
+      Updated_At: event.eventTimestamp.toISOString(),
+      Editor: event.userId ? [event.userId] : undefined,
+      Commission_Log_Id: cycle?.id,
+    }));
   });
 }
 
-export async function getAllContentHistory(tenantId?: string): Promise<ContentLog[]> {
-  return getContentLogs(tenantId);
-}
-
-export async function getContentHistoryByUrl(targetUrl: string, tenantId?: string): Promise<ContentLog[]> {
+export async function getContentLogBody(logId: number, tenantId?: string): Promise<{ contentBody: string | null; eventLabel: string | null } | null> {
   const tenant = tid(tenantId);
+  
   return withTenant(tenant, async (tx) => {
-    const rows = await tx
+    const [event] = await tx
       .select({
-        log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
-        eventLabel: contentLogBodyTable.eventLabel,
+        version: executionVersions,
+        event: processEvents,
       })
-      .from(contentLogTable)
-      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
-      .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.loggedUrl, targetUrl)))
-      .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
-  });
-}
-
-export async function getContentHistoryByUrlOrKeywords(
-  targetUrl: string,
-  keywordIds: string[],
-  tenantId?: string
-): Promise<ContentLog[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const conditions = [eq(contentLogTable.loggedUrl, targetUrl)];
-    if (keywordIds.length > 0) {
-      conditions.push(inArray(contentLogTable.keywordId, keywordIds));
-    }
-    const rows = await tx
-      .select({
-        log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
-        eventLabel: contentLogBodyTable.eventLabel,
-      })
-      .from(contentLogTable)
-      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
-      .where(and(eq(contentLogTable.tenantId, tenant), or(...conditions)))
-      .orderBy(desc(contentLogTable.timeCreated));
-
-    // Deduplicate by log ID (a log could match both URL and keywordId)
-    const seen = new Set<number>();
-    return rows
-      .filter(r => {
-        if (seen.has(r.log.id)) return false;
-        seen.add(r.log.id);
-        return true;
-      })
-      .map(r => mapContentLogRow(r.log, r.log.keywordId ?? undefined, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
-  });
-}
-
-export async function getContentHistoryByKeyword(keywordId: string, tenantId?: string): Promise<ContentLog[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const rows = await tx
-      .select({
-        log: contentLogTable,
-        hasBody: drizzleSql<boolean>`(${contentLogBodyTable.contentBody} IS NOT NULL)`,
-        eventLabel: contentLogBodyTable.eventLabel,
-      })
-      .from(contentLogTable)
-      .leftJoin(contentLogBodyTable, eq(contentLogBodyTable.contentLogId, contentLogTable.id))
-      .where(and(eq(contentLogTable.tenantId, tenant), eq(contentLogTable.keywordId, keywordId)))
-      .orderBy(desc(contentLogTable.timeCreated));
-    return rows.map(r => mapContentLogRow(r.log, keywordId, { hasBody: r.hasBody, eventLabel: r.eventLabel ?? null }));
-  });
-}
-
-/**
- * Loads the full content body for a single content log entry.
- * Use this only when the full text is actually needed (e.g. detail view, export).
- */
-export async function getContentLogBody(
-  contentLogId: number,
-  tenantId?: string
-): Promise<{ Content_Body?: string; Event_Label?: string } | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    // Verify the log belongs to this tenant first
-    const [meta] = await tx
-      .select({ id: contentLogTable.id })
-      .from(contentLogTable)
-      .where(and(eq(contentLogTable.id, contentLogId), eq(contentLogTable.tenantId, tenant)))
+      .from(processEvents)
+      .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .where(and(eq(processEvents.id, logId), eq(processEvents.tenantId, tenant)))
       .limit(1);
-    if (!meta) return null;
 
-    const [body] = await tx
-      .select()
-      .from(contentLogBodyTable)
-      .where(eq(contentLogBodyTable.contentLogId, contentLogId))
-      .limit(1);
+    if (!event) return null;
+
     return {
-      Content_Body: body?.contentBody ?? undefined,
-      Event_Label: body?.eventLabel ?? undefined,
+      contentBody: event.version?.contentHtml ?? null,
+      eventLabel: (event.event.eventData as any)?.original_event_label || event.event.eventType,
     };
   });
 }
 
-export async function createContentLog(log: Partial<ContentLog>, tenantId?: string): Promise<ContentLog | null> {
+export async function createContentLog(
+  data: {
+    Keyword_ID?: string[];
+    Target_URL?: string;
+    Action_Type?: 'Planung' | 'Erstellung' | 'Optimierung' | 'KI-Chat';
+    Page_Type?: string;
+    Content_Body?: string;
+    Event_Label?: string;
+    Editor?: string[];
+    Commission_Log_Id?: number;
+  },
+  tenantId?: string
+): Promise<ContentLog | null> {
   const tenant = tid(tenantId);
 
-  const keywordId = log.Keyword_ID?.[0] ?? null;
-  if (!keywordId) {
-    console.error('[postgres createContentLog] Validation failed: Keyword_ID missing');
-    return null;
-  }
-
   return withTenant(tenant, async (tx) => {
-    // 1. Insert metadata row (lightweight)
-    const [row] = await tx
-      .insert(contentLogTable)
-      .values({
-        tenantId: tenant,
-        keywordId,
-        loggedUrl: log.Logged_URL ?? log.Target_URL,
-        actionType: log.Action_Type,
-        pageType: log.Page_Type,
-        editorId: log.Editor?.[0] ?? null,
-        commissionLogId: log.Commission_Log_Id ?? null,
-      })
-      .returning();
-
-    // 2. Insert body separately only when content exists
-    let body: { contentBody: string | null; eventLabel: string | null } | null = null;
-    if (log.Content_Body || log.Event_Label) {
-      const [bodyRow] = await tx
-        .insert(contentLogBodyTable)
-        .values({
-          contentLogId: row.id,
-          contentBody: log.Content_Body ?? null,
-          eventLabel: log.Event_Label ?? null,
-        })
-        .returning();
-      body = { contentBody: bodyRow.contentBody, eventLabel: bodyRow.eventLabel };
+    let urlId: string | undefined;
+    
+    if (data.Target_URL) {
+      urlId = await ensureUrl(data.Target_URL, data.Page_Type, tenant, tx);
     }
 
-    return mapContentLogRow(row, keywordId, body);
-  });
-}
+    const eventType: any = data.Event_Label?.includes('beauftragt')
+      ? 'cycle_commissioned'
+      : data.Event_Label?.includes('angeliefert')
+      ? 'cycle_delivered'
+      : data.Event_Label?.includes('veröffentlicht')
+      ? 'content_published'
+      : 'version_created';
 
-// ---------------------------------------------------------------------------
-// URL Performance
-// ---------------------------------------------------------------------------
-
-/** ISO date string for N days ago */
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().split('T')[0];
-}
-
-function mapPerformanceRow(r: typeof urlPerformanceTable.$inferSelect): PerformanceData {
-  return {
-    id: String(r.id),
-    ID: r.id,
-    Keyword_ID: [],
-    Target_URL: r.targetUrl,
-    Date: r.date,
-    Ranking: undefined,
-    GSC_Clicks: r.gscClicks ?? undefined,
-    GSC_Impressions: r.gscImpressions ?? undefined,
-    Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
-    Position: r.position ? Number(r.position) : undefined,
-    Source: 'Combined' as const,
-  };
-}
-
-export async function getPerformanceData(tenantId?: string, dayRange = 90): Promise<PerformanceData[]> {
-  const tenant = tid(tenantId);
-  try {
-    return withTenant(tenant, async (tx) => {
-      const since = daysAgo(dayRange);
-      const rows = await tx
-        .select()
-        .from(urlPerformanceTable)
-        .where(and(
-          eq(urlPerformanceTable.tenantId, tenant),
-          gte(urlPerformanceTable.date, since),
-        ))
-        .orderBy(desc(urlPerformanceTable.date))
-        .limit(10_000);
-      return rows.map(mapPerformanceRow);
-    });
-  } catch (err: any) {
-    console.warn('[postgres] getPerformanceData error:', err.message);
-    return [];
-  }
-}
-
-export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: string, dayRange = 365): Promise<PerformanceData[]> {
-  const tenant = tid(tenantId);
-  try {
-    return withTenant(tenant, async (tx) => {
-      const since = daysAgo(dayRange);
-      const rows = await tx
-        .select()
-        .from(urlPerformanceTable)
-        .where(and(
-          eq(urlPerformanceTable.tenantId, tenant),
-          eq(urlPerformanceTable.targetUrl, targetUrl),
-          gte(urlPerformanceTable.date, since),
-        ))
-        .orderBy(asc(urlPerformanceTable.date));
-      return rows.map(mapPerformanceRow);
-    });
-  } catch (err: any) {
-    console.warn('[postgres] getPerformanceDataByUrl error:', err.message);
-    return [];
-  }
-}
-
-export async function getURLPerformanceHistory(targetUrl: string, tenantId?: string, dayRange = 365): Promise<URLPerformance[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const since = daysAgo(dayRange);
-    const rows = await tx
-      .select()
-      .from(urlPerformanceTable)
-      .where(and(
-        eq(urlPerformanceTable.tenantId, tenant),
-        eq(urlPerformanceTable.targetUrl, targetUrl),
-        gte(urlPerformanceTable.date, since),
-      ))
-      .orderBy(asc(urlPerformanceTable.date));
-    return rows.map(r => ({
-      id: String(r.id),
-      Target_URL: r.targetUrl,
-      Date: r.date,
-      GSC_Clicks: r.gscClicks ?? undefined,
-      GSC_Impressions: r.gscImpressions ?? undefined,
-      Position: r.position ? Number(r.position) : undefined,
-      Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
-    }));
-  });
-}
-
-export async function upsertURLPerformance(
-  data: Partial<URLPerformance>[],
-  tenantId?: string
-): Promise<{ created: number; updated: number; errors: any[] }> {
-  const tenant = tid(tenantId);
-  const errors: any[] = [];
-  let created = 0;
-  let updated = 0;
-
-  const valid = data.filter(d => d.Target_URL && d.Date);
-  if (!valid.length) return { created, updated, errors };
-
-  try {
-    await withTenant(tenant, async (tx) => {
-      for (let i = 0; i < valid.length; i += 50) {
-        const chunk = valid.slice(i, i + 50);
-        try {
-          const result = await tx
-            .insert(urlPerformanceTable)
-            .values(chunk.map(d => ({
-              tenantId: tenant,
-              targetUrl: d.Target_URL!,
-              date: d.Date!,
-              gscClicks: d.GSC_Clicks,
-              gscImpressions: d.GSC_Impressions,
-              position: d.Position?.toString(),
-              sistrixVi: d.Sistrix_VI?.toString(),
-            })))
-            .onConflictDoUpdate({
-              target: [urlPerformanceTable.targetUrl, urlPerformanceTable.date, urlPerformanceTable.tenantId],
-              set: {
-                gscClicks: drizzleSql`excluded.gsc_clicks`,
-                gscImpressions: drizzleSql`excluded.gsc_impressions`,
-                position: drizzleSql`excluded.position`,
-                sistrixVi: drizzleSql`excluded.sistrix_vi`,
-              },
-            })
-            .returning({ id: urlPerformanceTable.id });
-          created += result.length;
-        } catch (err: any) {
-          errors.push({ chunk: i, error: err.message });
-        }
-      }
-    });
-  } catch (err: any) {
-    errors.push({ error: err.message });
-  }
-
-  return { created, updated, errors };
-}
-
-export async function upsertPerformanceData(
-  data: Partial<PerformanceData>[],
-  tenantId?: string
-): Promise<{ created: number; updated: number; errors: any[] }> {
-  // Map PerformanceData → URLPerformance shape and delegate
-  const mapped: Partial<URLPerformance>[] = data.map(d => ({
-    Target_URL: d.Target_URL,
-    Date: d.Date,
-    GSC_Clicks: d.GSC_Clicks,
-    GSC_Impressions: d.GSC_Impressions,
-    Position: d.Position,
-    Sistrix_VI: d.Sistrix_VI,
-  }));
-  return upsertURLPerformance(mapped, tenantId);
-}
-
-// ---------------------------------------------------------------------------
-// Keyword Ranking History
-// ---------------------------------------------------------------------------
-export async function getKeywordRankingHistory(keywordIds: string[], tenantId?: string): Promise<KeywordRankingHistory[]> {
-  if (!keywordIds.length) return [];
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const rows = await tx
-      .select()
-      .from(keywordRankingHistoryTable)
-      .where(and(eq(keywordRankingHistoryTable.tenantId, tenant), inArray(keywordRankingHistoryTable.keywordId, keywordIds)))
-      .orderBy(asc(keywordRankingHistoryTable.date));
-    return rows.map(r => ({
-      id: String(r.id),
-      Keyword_ID: [r.keywordId],
-      Date: r.date,
-      Ranking: r.ranking ?? undefined,
-    }));
-  });
-}
-
-export async function getExistingRankingDates(keywordIds: string[], weekDate: string, tenantId?: string): Promise<Set<string>> {
-  const found = new Set<string>();
-  if (!keywordIds.length) return found;
-  const tenant = tid(tenantId);
-  try {
-    await withTenant(tenant, async (tx) => {
-      const rows = await tx
-        .select({ keywordId: keywordRankingHistoryTable.keywordId })
-        .from(keywordRankingHistoryTable)
-        .where(and(
-          eq(keywordRankingHistoryTable.tenantId, tenant),
-          inArray(keywordRankingHistoryTable.keywordId, keywordIds),
-          eq(keywordRankingHistoryTable.date, weekDate),
-        ));
-      rows.forEach(r => found.add(r.keywordId));
-    });
-  } catch (err: any) {
-    console.error('[postgres] getExistingRankingDates error:', err.message);
-  }
-  return found;
-}
-
-export async function upsertKeywordRankingHistory(
-  data: Partial<KeywordRankingHistory>[],
-  tenantId?: string
-): Promise<{ created: number; updated: number; errors: any[] }> {
-  const tenant = tid(tenantId);
-  const errors: any[] = [];
-  let created = 0;
-
-  const valid = data
-    .map(d => ({ kwId: Array.isArray(d.Keyword_ID) ? d.Keyword_ID[0] : (d.Keyword_ID as unknown as string), date: d.Date, ranking: d.Ranking }))
-    .filter(d => d.kwId && d.date);
-
-  if (!valid.length) return { created, updated: 0, errors };
-
-  try {
-    await withTenant(tenant, async (tx) => {
-      for (let i = 0; i < valid.length; i += 50) {
-        const chunk = valid.slice(i, i + 50);
-        try {
-          const result = await tx
-            .insert(keywordRankingHistoryTable)
-            .values(chunk.map(d => ({ tenantId: tenant, keywordId: d.kwId, date: d.date!, ranking: d.ranking })))
-            .onConflictDoUpdate({
-              target: [keywordRankingHistoryTable.keywordId, keywordRankingHistoryTable.date, keywordRankingHistoryTable.tenantId],
-              set: { ranking: drizzleSql`excluded.ranking` },
-            })
-            .returning({ id: keywordRankingHistoryTable.id });
-          created += result.length;
-        } catch (err: any) {
-          errors.push({ chunk: i, error: err.message });
-        }
-      }
-    });
-  } catch (err: any) {
-    errors.push({ error: err.message });
-  }
-
-  return { created, updated: 0, errors };
-}
-
-// ---------------------------------------------------------------------------
-// Blacklist
-// ---------------------------------------------------------------------------
-export async function getBlacklist(tenantId?: string): Promise<BlacklistEntry[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const rows = await tx.select().from(blacklistTable).where(eq(blacklistTable.tenantId, tenant));
-    return rows.map(r => ({
-      id: String(r.id),
-      Keyword: r.keyword ?? '',
-      Target_URL: r.targetUrl ?? undefined,
-      Type: r.type as 'Keyword' | 'URL',
-      Reason: r.reason ?? undefined,
-      Added_At: r.addedAt.toISOString(),
-    }));
-  });
-}
-
-export async function addToBlacklist(entry: Partial<BlacklistEntry>, tenantId?: string): Promise<BlacklistEntry | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const [row] = await tx
-      .insert(blacklistTable)
+    const [event] = await tx
+      .insert(processEvents)
       .values({
         tenantId: tenant,
-        keyword: entry.Keyword,
-        targetUrl: entry.Target_URL,
-        type: entry.Type ?? 'Keyword',
-        reason: entry.Reason,
-      })
-      .returning();
-    return {
-      id: String(row.id),
-      Keyword: row.keyword ?? '',
-      Target_URL: row.targetUrl ?? undefined,
-      Type: row.type as 'Keyword' | 'URL',
-      Reason: row.reason ?? undefined,
-      Added_At: row.addedAt.toISOString(),
-    };
-  });
-}
-
-export async function updateBlacklist(id: string, entry: Partial<BlacklistEntry>, tenantId?: string): Promise<BlacklistEntry | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const updates: any = {};
-    if (entry.Keyword !== undefined) updates.keyword = entry.Keyword;
-    if (entry.Target_URL !== undefined) updates.targetUrl = entry.Target_URL;
-    if (entry.Type !== undefined) updates.type = entry.Type;
-    if (entry.Reason !== undefined) updates.reason = entry.Reason;
-    const [row] = await tx
-      .update(blacklistTable)
-      .set(updates)
-      .where(and(eq(blacklistTable.id, Number(id)), eq(blacklistTable.tenantId, tenant)))
-      .returning();
-    if (!row) return null;
-    return {
-      id: String(row.id),
-      Keyword: row.keyword ?? '',
-      Target_URL: row.targetUrl ?? undefined,
-      Type: row.type as 'Keyword' | 'URL',
-      Reason: row.reason ?? undefined,
-      Added_At: row.addedAt.toISOString(),
-    };
-  });
-}
-
-export async function deleteFromBlacklist(id: string, tenantId?: string): Promise<boolean> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    await tx.delete(blacklistTable).where(and(eq(blacklistTable.id, Number(id)), eq(blacklistTable.tenantId, tenant)));
-    return true;
-  });
-}
-
-export async function bulkDeleteFromBlacklist(ids: string[], tenantId?: string): Promise<boolean> {
-  if (!ids.length) return true;
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    await tx.delete(blacklistTable).where(and(inArray(blacklistTable.id, ids.map(Number)), eq(blacklistTable.tenantId, tenant)));
-    return true;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Cost Config
-// ---------------------------------------------------------------------------
-export async function getCostConfigs(tenantId?: string): Promise<CostConfig[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const rows = await tx.select().from(costConfigTable).where(eq(costConfigTable.tenantId, tenant));
-    return rows.map(r => ({
-      id: String(r.id),
-      Page_Type: r.pageType as any,
-      Action_Type: r.actionType as any,
-      Agency_Cost: Number(r.agencyCost),
-      Overhead_Cost: Number(r.overheadCost),
-    }));
-  });
-}
-
-export async function createCostConfig(config: Partial<CostConfig>, tenantId?: string): Promise<CostConfig | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const [row] = await tx
-      .insert(costConfigTable)
-      .values({
-        tenantId: tenant,
-        pageType: config.Page_Type!,
-        actionType: config.Action_Type!,
-        agencyCost: String(config.Agency_Cost ?? 0),
-        overheadCost: String(config.Overhead_Cost ?? 0),
-      })
-      .returning();
-    return {
-      id: String(row.id),
-      Page_Type: row.pageType as any,
-      Action_Type: row.actionType as any,
-      Agency_Cost: Number(row.agencyCost),
-      Overhead_Cost: Number(row.overheadCost),
-    };
-  });
-}
-
-export async function updateCostConfig(id: string, config: Partial<CostConfig>, tenantId?: string): Promise<CostConfig | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const updates: any = {};
-    if (config.Page_Type) updates.pageType = config.Page_Type;
-    if (config.Action_Type) updates.actionType = config.Action_Type;
-    if (config.Agency_Cost !== undefined) updates.agencyCost = String(config.Agency_Cost);
-    if (config.Overhead_Cost !== undefined) updates.overheadCost = String(config.Overhead_Cost);
-    const [row] = await tx
-      .update(costConfigTable)
-      .set(updates)
-      .where(and(eq(costConfigTable.id, Number(id)), eq(costConfigTable.tenantId, tenant)))
-      .returning();
-    if (!row) return null;
-    return {
-      id: String(row.id),
-      Page_Type: row.pageType as any,
-      Action_Type: row.actionType as any,
-      Agency_Cost: Number(row.agencyCost),
-      Overhead_Cost: Number(row.overheadCost),
-    };
-  });
-}
-
-export async function deleteCostConfig(id: string, tenantId?: string): Promise<boolean> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    await tx.delete(costConfigTable).where(and(eq(costConfigTable.id, Number(id)), eq(costConfigTable.tenantId, tenant)));
-    return true;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Config (key-value store)
-// ---------------------------------------------------------------------------
-export async function getConfig(tenantId?: string): Promise<Record<string, string>> {
-  const tenant = tid(tenantId);
-  const now = Date.now();
-  const cached = _configCacheByTenant.get(tenant);
-  if (cached && now - cached.at < CONFIG_CACHE_TTL_MS) {
-    return cached.data;
-  }
-  const result = await withTenant(tenant, async (tx) => {
-    const rows = await tx.select().from(configTable).where(eq(configTable.tenantId, tenant));
-    const out: Record<string, string> = {};
-    for (const r of rows) {
-      if (!r.key) continue;
-      if ((r.key === 'BRAND_LOGO_URL' || r.key === 'BRAND_FAVICON_URL') && r.fileUrl) {
-        out[r.key] = r.fileUrl;
-      } else {
-        out[r.key] = r.value ?? '';
-      }
-    }
-    return out;
-  });
-  _configCacheByTenant.set(tenant, { data: result, at: now });
-  return result;
-}
-
-export async function updateConfig(key: string, value: string, fileUrl?: string, tenantId?: string): Promise<ConfigRecord | null> {
-  const tenant = tid(tenantId);
-  const isBrandAsset = key === 'BRAND_LOGO_URL' || key === 'BRAND_FAVICON_URL';
-  const result = await withTenant(tenant, async (tx) => {
-    const [row] = await tx
-      .insert(configTable)
-      .values({
-        tenantId: tenant,
-        key,
-        value: isBrandAsset && fileUrl ? fileUrl : value,
-        fileUrl: isBrandAsset && fileUrl ? fileUrl : null,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [configTable.tenantId, configTable.key],
-        set: {
-          value: isBrandAsset && fileUrl ? fileUrl : value,
-          fileUrl: isBrandAsset && fileUrl ? fileUrl : null,
-          updatedAt: new Date(),
+        eventType,
+        urlId,
+        keywordId: data.Keyword_ID?.[0],
+        cycleId: data.Commission_Log_Id,
+        userId: data.Editor?.[0],
+        eventData: {
+          original_event_label: data.Event_Label,
+          action_type: data.Action_Type,
+          page_type: data.Page_Type,
         },
       })
       .returning();
+
     return {
-      id: `${row.tenantId}:${row.key}`,
-      Key: row.key,
-      Value: row.value ?? '',
-      Description: row.description ?? undefined,
-      Updated_At: row.updatedAt.toISOString(),
-      File: row.fileUrl ? [{ url: row.fileUrl }] : undefined,
-    } as ConfigRecord;
-  });
-  invalidateConfigCache(tenantId);
-  return result;
-}
-
-export async function getSyncCursor(key: string, tenantId?: string): Promise<number> {
-  const config = await getConfig(tenantId);
-  const val = parseInt(config[key] ?? '0', 10);
-  return isNaN(val) ? 0 : val;
-}
-
-export async function setSyncCursor(key: string, value: number, tenantId?: string): Promise<void> {
-  await updateConfig(key, String(value), undefined, tenantId);
-}
-
-// ---------------------------------------------------------------------------
-// Users
-// ---------------------------------------------------------------------------
-export async function getUserByEmail(email: string, tenantId?: string): Promise<UserRecord | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const [row] = await tx
-      .select()
-      .from(usersTable)
-      .where(and(eq(usersTable.tenantId, tenant), eq(usersTable.email, email)))
-      .limit(1);
-    if (!row) return null;
-    return {
-      id:              row.id,
-      Name:            row.name ?? '',
-      Email:           row.email,
-      Role:            row.role as 'SuperAdmin' | 'Admin' | 'Editor' | 'Viewer',
-      TenantId:        row.tenantId,
-      Password:        row.password ?? undefined,
-      Password_Changed: row.passwordChanged ?? false,
-      Is_Active:       row.isActive ?? true,
+      id: String(event.id),
+      ID: event.id,
+      Keyword_ID: data.Keyword_ID,
+      Target_URL: data.Target_URL,
+      Logged_URL: data.Target_URL,
+      Action_Type: data.Action_Type,
+      Page_Type: data.Page_Type as any,
+      Version: data.Content_Body ? 'v2' : 'v1',
+      Content_Body: data.Content_Body,
+      Event_Label: data.Event_Label,
+      Created_At: event.eventTimestamp.toISOString(),
+      Updated_At: event.eventTimestamp.toISOString(),
+      Editor: data.Editor,
+      Commission_Log_Id: data.Commission_Log_Id,
     };
   });
 }
 
-export async function countUsers(tenantId?: string): Promise<number> {
+// ---------------------------------------------------------------------------
+// Blacklist Operations
+// ---------------------------------------------------------------------------
+export async function getBlacklist(tenantId?: string): Promise<BlacklistEntry[]> {
   const tenant = tid(tenantId);
+  
+  return withTenant(tenant, async (tx) => {
+    const keywords = await tx
+      .select()
+      .from(blacklistedKeywords)
+      .where(eq(blacklistedKeywords.tenantId, tenant));
+
+    const urlBlacklist = await tx
+      .select({
+        blacklist: blacklistedUrls,
+        url: urls,
+      })
+      .from(blacklistedUrls)
+      .innerJoin(urls, eq(urls.id, blacklistedUrls.urlId))
+      .where(eq(blacklistedUrls.tenantId, tenant));
+
+    return [
+      ...keywords.map(k => ({
+        id: k.id,
+        Type: 'Keyword' as const,
+        Keyword: k.keyword,
+        Target_URL: null,
+        Reason: k.reason ?? undefined,
+        Added_At: k.addedAt.toISOString(),
+      })),
+      ...urlBlacklist.map(({ blacklist: b, url }) => ({
+        id: b.id,
+        Type: 'URL' as const,
+        Keyword: null,
+        Target_URL: url.url,
+        Reason: b.reason ?? undefined,
+        Added_At: b.addedAt.toISOString(),
+      })),
+    ];
+  });
+}
+
+export async function addToBlacklist(
+  type: 'Keyword' | 'URL',
+  value: string,
+  reason: string | undefined,
+  tenantId?: string
+): Promise<void> {
+  const tenant = tid(tenantId);
+  
+  return withTenant(tenant, async (tx) => {
+    if (type === 'Keyword') {
+      await tx.insert(blacklistedKeywords).values({
+        tenantId: tenant,
+        keyword: value,
+        reason,
+      });
+    } else {
+      const urlId = await ensureUrl(value, undefined, tenant, tx);
+      await tx.insert(blacklistedUrls).values({
+        tenantId: tenant,
+        urlId,
+        reason,
+      });
+    }
+
+    await tx.insert(processEvents).values({
+      tenantId: tenant,
+      eventType: 'url_blacklisted',
+      eventData: { type, value, reason },
+    });
+  });
+}
+
+export async function removeFromBlacklist(id: number, type: 'Keyword' | 'URL', tenantId?: string): Promise<void> {
+  const tenant = tid(tenantId);
+  
+  return withTenant(tenant, async (tx) => {
+    if (type === 'Keyword') {
+      await tx.delete(blacklistedKeywords).where(and(eq(blacklistedKeywords.id, id), eq(blacklistedKeywords.tenantId, tenant)));
+    } else {
+      await tx.delete(blacklistedUrls).where(and(eq(blacklistedUrls.id, id), eq(blacklistedUrls.tenantId, tenant)));
+    }
+
+    await tx.insert(processEvents).values({
+      tenantId: tenant,
+      eventType: 'url_unblacklisted',
+      eventData: { id, type },
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Config Operations (unchanged)
+// ---------------------------------------------------------------------------
+export async function getConfig(key: string, tenantId?: string): Promise<string | null> {
+  const tenant = tid(tenantId);
+  const cached = _configCacheByTenant.get(tenant);
+  const now = Date.now();
+
+  if (cached && now - cached.at < CONFIG_CACHE_TTL_MS) {
+    return cached.data[key] ?? null;
+  }
+
+  return withTenant(tenant, async (tx) => {
+    const rows = await tx.select().from(configTable).where(eq(configTable.tenantId, tenant));
+    const data: Record<string, string> = {};
+    for (const r of rows) {
+      if (r.value) data[r.key] = r.value;
+    }
+    _configCacheByTenant.set(tenant, { data, at: now });
+    return data[key] ?? null;
+  });
+}
+
+export async function setConfig(key: string, value: string, tenantId?: string): Promise<void> {
+  const tenant = tid(tenantId);
+  invalidateConfigCache(tenant);
+
+  return withTenant(tenant, async (tx) => {
+    await tx
+      .insert(configTable)
+      .values({ tenantId: tenant, key, value })
+      .onConflictDoUpdate({
+        target: [configTable.tenantId, configTable.key],
+        set: { value, updatedAt: new Date() },
+      });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Audit Logs (unchanged)
+// ---------------------------------------------------------------------------
+export async function createAuditLog(action: string, userId: string | null, payload: any, tenantId?: string): Promise<void> {
+  const tenant = tid(tenantId);
+  
+  return withTenant(tenant, async (tx) => {
+    await tx.insert(auditLogsTable).values({
+      tenantId: tenant,
+      action,
+      userId,
+      rawPayload: payload,
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Users (unchanged)
+// ---------------------------------------------------------------------------
+export async function getUsers(tenantId?: string): Promise<UserRecord[]> {
+  const tenant = tid(tenantId);
+  
   return withTenant(tenant, async (tx) => {
     const rows = await tx
-      .select({ email: usersTable.email })
+      .select()
       .from(usersTable)
       .where(eq(usersTable.tenantId, tenant));
-    return rows.length;
-  });
-}
 
-export async function getAllUsers(tenantId?: string): Promise<UserRecord[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const rows = await tx.select().from(usersTable).where(eq(usersTable.tenantId, tenant));
     return rows.map(r => ({
       id: r.id,
-      Name: r.name ?? '',
+      Name: r.name ?? undefined,
       Email: r.email,
-      Role: r.role as 'Admin' | 'Editor' | 'Viewer',
+      Role: r.role,
       Password: r.password ?? undefined,
       Password_Changed: r.passwordChanged ?? false,
+      Is_Active: r.isActive,
     }));
   });
 }
 
-export async function createUser(userData: Partial<UserRecord>, tenantId?: string): Promise<UserRecord | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const [row] = await tx
-      .insert(usersTable)
-      .values({
-        id: crypto.randomUUID(),
-        tenantId: tenant,
-        name: userData.Name,
-        email: userData.Email!,
-        role: userData.Role ?? 'Editor',
-        password: userData.Password,
-        passwordChanged: userData.Password_Changed ?? false,
-      })
-      .returning();
-    return {
-      id: row.id,
-      Name: row.name ?? '',
-      Email: row.email,
-      Role: row.role as 'Admin' | 'Editor' | 'Viewer',
-      Password: row.password ?? undefined,
-      Password_Changed: row.passwordChanged ?? false,
-    };
-  });
-}
-
-export async function updateUser(id: string, userData: Partial<UserRecord>, tenantId?: string): Promise<UserRecord | null> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const updates: any = {};
-    if (userData.Name !== undefined) updates.name = userData.Name;
-    if (userData.Email !== undefined) updates.email = userData.Email;
-    if (userData.Role !== undefined) updates.role = userData.Role;
-    if (userData.Password !== undefined) updates.password = userData.Password;
-    if (userData.Password_Changed !== undefined) updates.passwordChanged = userData.Password_Changed;
-    const [row] = await tx
-      .update(usersTable)
-      .set(updates)
-      .where(and(eq(usersTable.id, id), eq(usersTable.tenantId, tenant)))
-      .returning();
-    if (!row) return null;
-    return {
-      id: row.id,
-      Name: row.name ?? '',
-      Email: row.email,
-      Role: row.role as 'Admin' | 'Editor' | 'Viewer',
-      Password: row.password ?? undefined,
-      Password_Changed: row.passwordChanged ?? false,
-    };
-  });
-}
-
-export async function deleteUser(id: string, tenantId?: string): Promise<boolean> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    await tx.delete(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.tenantId, tenant)));
-    return true;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Audit Logs
-// ---------------------------------------------------------------------------
-export async function createAuditLog(action: string, rawPayload?: Record<string, unknown>, tenantId?: string): Promise<void> {
-  const tenant = tid(tenantId);
-  try {
-    await withTenant(tenant, async (tx) => {
-      await tx.insert(auditLogsTable).values({
-        tenantId: tenant,
-        action,
-        rawPayload: rawPayload ?? null,
-      });
-    });
-  } catch (err) {
-    // Audit log writes must never block critical paths
-    console.error('[postgres] createAuditLog failed:', err);
-  }
-}
-
-export async function getAuditLogs(tenantId?: string, limit = 500): Promise<AuditLog[]> {
-  const tenant = tid(tenantId);
-  return withTenant(tenant, async (tx) => {
-    const rows = await tx
-      .select()
-      .from(auditLogsTable)
-      .where(eq(auditLogsTable.tenantId, tenant))
-      .orderBy(desc(auditLogsTable.timestamp))
-      .limit(limit);
-    return rows.map(r => ({
-      id: String(r.id),
-      ID: r.id,
-      Action: r.action,
-      Timestamp: r.timestamp.toISOString(),
-      User_ID: r.userId ? [r.userId] : undefined,
-      Raw_Payload: r.rawPayload ? JSON.stringify(r.rawPayload) : undefined,
-    }));
-  });
-}
-
-/**
- * Deletes audit log entries older than `retainDays` days.
- * Safe to call from a cron job — returns the number of deleted rows.
- */
-export async function purgeOldAuditLogs(retainDays = 180, tenantId?: string): Promise<number> {
-  const tenant = tid(tenantId);
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - retainDays);
-  return withTenant(tenant, async (tx) => {
-    const result = await tx
-      .delete(auditLogsTable)
-      .where(and(
-        eq(auditLogsTable.tenantId, tenant),
-        lt(auditLogsTable.timestamp, cutoff),
-      ))
-      .returning({ id: auditLogsTable.id });
-    return result.length;
-  });
-}
-
-/**
- * Deletes url_performance entries older than `retainDays` days.
- * GSC data older than 1 year is typically not needed for dashboards.
- */
-export async function purgeOldPerformanceData(retainDays = 400, tenantId?: string): Promise<number> {
-  const tenant = tid(tenantId);
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - retainDays);
-  const cutoffDate = cutoff.toISOString().split('T')[0];
-  return withTenant(tenant, async (tx) => {
-    const result = await tx
-      .delete(urlPerformanceTable)
-      .where(and(
-        eq(urlPerformanceTable.tenantId, tenant),
-        lt(urlPerformanceTable.date, cutoffDate),
-      ))
-      .returning({ id: urlPerformanceTable.id });
-    return result.length;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Stub functions (no-op, kept for interface compatibility)
-// ---------------------------------------------------------------------------
-export async function getPotentialTrends(_tenantId?: string): Promise<PotentialTrend[]> {
-  return [];
-}
-
-export async function createTrend(_trend: Partial<PotentialTrend>, _tenantId?: string): Promise<PotentialTrend | null> {
-  return null;
-}
+// Re-export functions from legacy that are not yet migrated
+export {
+  bulkDeleteKeywords,
+  bulkCreateKeywords,
+  bulkUpdateKeywordRankings,
+  getAllContentHistory,
+  getContentHistoryByUrl,
+  getContentHistoryByUrlOrKeywords,
+  getContentHistoryByKeyword,
+  getPerformanceData,
+  getPerformanceDataByUrl,
+  getURLPerformanceHistory,
+  upsertURLPerformance,
+  upsertPerformanceData,
+  getKeywordRankingHistory,
+  getExistingRankingDates,
+  upsertKeywordRankingHistory,
+  updateBlacklist,
+  deleteFromBlacklist,
+  bulkDeleteFromBlacklist,
+  getCostConfigs,
+  createCostConfig,
+  updateCostConfig,
+  deleteCostConfig,
+  updateConfig,
+  getSyncCursor,
+  setSyncCursor,
+  getUserByEmail,
+  countUsers,
+  getAllUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  getAuditLogs,
+  purgeOldAuditLogs,
+  purgeOldPerformanceData,
+  getPotentialTrends,
+  createTrend,
+} from './postgres-legacy';
