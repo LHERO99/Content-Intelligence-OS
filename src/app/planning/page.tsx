@@ -51,9 +51,18 @@ export default function PlanningPage() {
   };
 
   const tParam = searchParams?.get('t');
+  const tabParam = searchParams?.get('tab');
+
   useEffect(() => {
     fetchData();
   }, [tParam]);
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+      localStorage.setItem('planning-active-tab', tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     const handleRefresh = () => fetchData();
@@ -121,7 +130,7 @@ export default function PlanningPage() {
         </TabsContent>
 
         <TabsContent value="suggestions" className="space-y-4">
-          <SuggestionsTable keywords={data.keywords} onGoToKeywordMap={() => { setActiveTab('keyword-map'); localStorage.setItem('planning-active-tab', 'keyword-map'); }} />
+          <SuggestionsTable keywords={data.keywords} refreshKey={tParam} onGoToKeywordMap={() => { setActiveTab('keyword-map'); localStorage.setItem('planning-active-tab', 'keyword-map'); }} />
         </TabsContent>
 
         <TabsContent value="editorial" className="space-y-4">

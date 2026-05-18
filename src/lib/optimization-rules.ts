@@ -228,64 +228,89 @@ export async function evaluateOptimizationSuggestions(tenantId?: string): Promis
     getOptimizationRuleSettings(tenantId),
   ]);
 
-  const publishedMainKeywords = keywords.filter((k) => k.Main_Keyword === 'Y' && k.Status === 'Published' && !!k.Target_URL);
+  // MANUAL_REQUEST is evaluated for all main keywords (regardless of publish status).
+  // Auto-rules (age, rank drop, etc.) are only evaluated for published main keywords.
+  const allMainKeywords = keywords.filter((k) => k.Main_Keyword === 'Y' && !!k.Target_URL);
+  const publishedMainKeywordIds = new Set(
+    keywords.filter((k) => k.Main_Keyword === 'Y' && k.Status === 'Published' && !!k.Target_URL).map((k) => k.id)
+  );
   const now = new Date();
   const today = toDateOnly(now);
 
   const suggestions: OptimizationSuggestion[] = [];
 
-  for (const keyword of publishedMainKeywords) {
+  for (const keyword of allMainKeywords) {
     const targetUrl = String(keyword.Target_URL || '');
     if (!targetUrl) continue;
 
-    const lastPublished = latestPublishedDateForKeyword(keyword.id, targetUrl, logs) || keyword.Last_Published;
-    const [rankingHistory, urlPerformance] = await Promise.all([
-      getKeywordRankingHistory([keyword.id], tenantId),
-      getURLPerformanceHistory(targetUrl, tenantId),
-    ]);
-
-    const currentRanking = getCurrentRanking(keyword, rankingHistory);
     const reasons: string[] = [];
     const reasonCodes: string[] = [];
 
+    // MANUAL_REQUEST: checked for all main keywords
     if (hasOpenManualMonitoringRequest(keyword.id, targetUrl, logs)) {
       reasonCodes.push('MANUAL_REQUEST');
       reasons.push(RULE_LABELS.MANUAL_REQUEST);
     }
 
-    if (evaluateAgeAndTopRule(keyword, lastPublished, currentRanking, settings, now)) {
-      reasonCodes.push('AGE_AND_NOT_TOP');
-      reasons.push(RULE_LABELS.AGE_AND_NOT_TOP);
+    // Auto-rules: only for published main keywords
+    if (publishedMainKeywordIds.has(keyword.id)) {
+      const lastPublished = latestPublishedDateForKeyword(keyword.id, targetUrl, logs) || keyword.Last_Published;
+      const [rankingHistory, urlPerformance] = await Promise.all([
+        getKeywordRankingHistory([keyword.id], tenantId),
+        getURLPerformanceHistory(targetUrl, tenantId),
+      ]);
+
+      const currentRanking = getCurrentRanking(keyword, rankingHistory);
+
+      if (evaluateAgeAndTopRule(keyword, lastPublished, currentRanking, settings, now)) {
+        reasonCodes.push('AGE_AND_NOT_TOP');
+        reasons.push(RULE_LABELS.AGE_AND_NOT_TOP);
+      }
+
+      if (settings.URL_MISMATCH_ENABLED) {
+        reasonCodes.push('URL_MISMATCH_UNAVAILABLE');
+        reasons.push(RULE_LABELS.URL_MISMATCH_UNAVAILABLE);
+      }
+
+      if (evaluateRankDropRule(keyword, rankingHistory, settings, now)) {
+        reasonCodes.push('RANK_DROP');
+        reasons.push(RULE_LABELS.RANK_DROP);
+      }
+
+      if (evaluateNoLiftRule(targetUrl, lastPublished, urlPerformance, settings, now)) {
+        reasonCodes.push('NO_POST_PUBLISH_LIFT');
+        reasons.push(RULE_LABELS.NO_POST_PUBLISH_LIFT);
+      }
+
+      if (reasonCodes.length === 0) continue;
+
+      suggestions.push({
+        keywordId: keyword.id,
+        keyword: keyword.Keyword,
+        targetUrl,
+        actionType: 'Optimierung',
+        pageType: keyword.Page_Type,
+        currentRanking,
+        lastPublished: lastPublished || today,
+        reasons,
+        reasonCodes,
+      });
+    } else {
+      // Non-published keyword: only include if MANUAL_REQUEST fired
+      if (reasonCodes.length === 0) continue;
+
+      suggestions.push({
+        keywordId: keyword.id,
+        keyword: keyword.Keyword,
+        targetUrl,
+        actionType: 'Optimierung',
+        pageType: keyword.Page_Type,
+        currentRanking: undefined,
+        lastPublished: today,
+        reasons,
+        reasonCodes,
+      });
     }
-
-    if (settings.URL_MISMATCH_ENABLED) {
-      reasonCodes.push('URL_MISMATCH_UNAVAILABLE');
-      reasons.push(RULE_LABELS.URL_MISMATCH_UNAVAILABLE);
-    }
-
-    if (evaluateRankDropRule(keyword, rankingHistory, settings, now)) {
-      reasonCodes.push('RANK_DROP');
-      reasons.push(RULE_LABELS.RANK_DROP);
-    }
-
-    if (evaluateNoLiftRule(targetUrl, lastPublished, urlPerformance, settings, now)) {
-      reasonCodes.push('NO_POST_PUBLISH_LIFT');
-      reasons.push(RULE_LABELS.NO_POST_PUBLISH_LIFT);
-    }
-
-    if (reasonCodes.length === 0) continue;
-
-    suggestions.push({
-      keywordId: keyword.id,
-      keyword: keyword.Keyword,
-      targetUrl,
-      actionType: 'Optimierung',
-      pageType: keyword.Page_Type,
-      currentRanking,
-      lastPublished: lastPublished || today,
-      reasons,
-      reasonCodes,
-    });
   }
 
   return suggestions;

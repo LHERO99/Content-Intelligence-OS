@@ -42,9 +42,10 @@ import { useI18n } from "@/i18n/use-i18n";
 interface SuggestionsTableProps {
   keywords: KeywordMap[];
   onGoToKeywordMap?: () => void;
+  refreshKey?: string | null;
 }
 
-export function SuggestionsTable({ keywords, onGoToKeywordMap }: SuggestionsTableProps) {
+export function SuggestionsTable({ keywords, onGoToKeywordMap, refreshKey }: SuggestionsTableProps) {
   const { t } = useI18n();
   const { addAlert } = useAlerts();
   const [optimizationSuggestions, setOptimizationSuggestions] = React.useState<Record<string, { reasons: string[]; reasonCodes: string[] }>>({});
@@ -70,7 +71,7 @@ export function SuggestionsTable({ keywords, onGoToKeywordMap }: SuggestionsTabl
     };
 
     loadOptimizationSuggestions();
-  }, []);
+  }, [refreshKey]);
 
   // Keywords appear in Vorschläge if they are:
   // - Main keywords not currently in an active planning workflow
