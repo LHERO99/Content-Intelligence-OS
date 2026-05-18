@@ -90,13 +90,11 @@ export async function GET(request: NextRequest) {
           pageType = inferPageTypeFromUrl(targetUrl);
         }
 
-        // Action_Type: use the actual Action_Type stored on the log entry;
-        // fall back to keyword's planned type, then positional heuristic as last resort.
-        let actionType: string = String(
-          log.Action_Type ||
-          (allKeywords.find(k => k.id === log.Keyword_ID?.[0])?.Action_Type) ||
-          (index === 0 ? 'Erstellung' : 'Optimierung')
-        );
+        // Action_Type: use what the cycle recorded directly; fall back to positional
+        // order (first delivery = Erstellung, all subsequent = Optimierung).
+        // keyword.Action_Type is intentionally NOT used here — it reflects the current
+        // planned type, not the historical type of this specific log entry.
+        const actionType: string = log.Action_Type || (index === 0 ? 'Erstellung' : 'Optimierung');
 
         console.log(`[API Monitoring Detail] URL: ${targetUrl}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
 

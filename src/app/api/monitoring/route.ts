@@ -146,14 +146,11 @@ export async function GET() {
           pageType = inferPageTypeFromUrl(url);
         }
 
-        // Action_Type: read from log first (set when cycle has actionType), then keyword,
-        // then positional fallback — mirrors the logic in detail/route.ts
-        let actionType: string = String(
-          log.Action_Type ||
-          (keywords.find(k => k.id === log.Keyword_ID?.[0])?.Action_Type) ||
-          keyword?.Action_Type ||
-          (index === 0 ? 'Erstellung' : 'Optimierung')
-        );
+        // Action_Type: use what the cycle recorded directly; fall back to positional
+        // order (first delivery = Erstellung, all subsequent = Optimierung).
+        // keyword.Action_Type is intentionally NOT used here — it reflects the current
+        // planned type, not the historical type of this specific log entry.
+        const actionType: string = log.Action_Type || (index === 0 ? 'Erstellung' : 'Optimierung');
 
         console.log(`[API Monitoring] URL: ${url}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
 
@@ -227,12 +224,7 @@ export async function GET() {
             pageType = inferPageTypeFromUrl(url);
           }
 
-          const actionType: string = String(
-            log.Action_Type ||
-            (keywords.find(k => k.id === log.Keyword_ID?.[0])?.Action_Type) ||
-            keyword?.Action_Type ||
-            (seenDays.size === 1 ? 'Erstellung' : 'Optimierung')
-          );
+          const actionType: string = log.Action_Type || (seenDays.size === 1 ? 'Erstellung' : 'Optimierung');
           
           const cost = costs.find(c => {
             const cPageType = String(c.Page_Type || '').toLowerCase();

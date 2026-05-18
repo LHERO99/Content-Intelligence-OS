@@ -248,7 +248,7 @@ export async function syncDataForSeoForKeywords(
       rankings
         .forEach(r => {
           allRankingRecords.push({
-            Keyword_ID: [r.keywordId],
+            Keyword_ID: r.keywordId,
             Date: weekDate,
             Ranking: r.rank ?? 101, // 101 = nicht in Top 100
           });

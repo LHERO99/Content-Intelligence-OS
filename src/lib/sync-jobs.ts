@@ -216,7 +216,7 @@ async function runSyncJob(jobId: number, tenantId: string): Promise<void> {
       } else {
         try {
           const accessToken = await getAccessToken(gscRefreshToken);
-          const { gscRowsUpserted, errors } = await syncGscForUrls(urls, accessToken, gscSiteUrl, isFirstSync);
+          const { gscRowsUpserted, errors } = await syncGscForUrls(urls, accessToken, gscSiteUrl, isFirstSync, tenantId);
           result.gscRowsUpserted = gscRowsUpserted;
           result.errors.push(...errors);
         } catch (err: any) {
@@ -235,7 +235,7 @@ async function runSyncJob(jobId: number, tenantId: string): Promise<void> {
         result.skippedSistrix = true;
       } else {
         try {
-          const { sistrixRowsUpserted, errors } = await syncSistrixForUrls(urls, sistrixApiKey, isFirstSync);
+          const { sistrixRowsUpserted, errors } = await syncSistrixForUrls(urls, sistrixApiKey, isFirstSync, tenantId);
           result.sistrixRowsUpserted = sistrixRowsUpserted;
           result.errors.push(...errors);
         } catch (err: any) {
@@ -262,7 +262,7 @@ async function runSyncJob(jobId: number, tenantId: string): Promise<void> {
 
           if (urlKeywords.length > 0) {
             const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-              await syncDataForSeoForKeywords(urlKeywords, dfsUsername, dfsPassword, true);
+              await syncDataForSeoForKeywords(urlKeywords, dfsUsername, dfsPassword, true, tenantId);
             result.keywordsProcessed = keywordsProcessed;
             result.rankingRowsUpserted = rankingRowsUpserted;
             result.rankingsSkipped = rankingsSkipped;

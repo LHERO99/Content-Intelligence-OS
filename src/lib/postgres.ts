@@ -1527,7 +1527,7 @@ export async function upsertKeywordRankingHistory(rankings: any[], tenantId?: st
       try {
         await tx.insert(keywordRankings).values({
           tenantId: tenant,
-          keywordId: ranking.Keyword_ID,
+          keywordId: Array.isArray(ranking.Keyword_ID) ? ranking.Keyword_ID[0] : ranking.Keyword_ID,
           date: ranking.Date,
           ranking: ranking.Ranking,
         }).onConflictDoUpdate({
