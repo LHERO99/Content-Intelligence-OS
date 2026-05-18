@@ -525,9 +525,16 @@ export async function updateKeyword(
 
       if (Object.keys(planningUpdates).length > 0) {
         await tx
-          .update(planningStatus)
-          .set(planningUpdates)
-          .where(and(eq(planningStatus.urlId, keyword.urlId), eq(planningStatus.tenantId, tenant)));
+          .insert(planningStatus)
+          .values({
+            urlId: keyword.urlId,
+            tenantId: tenant,
+            ...planningUpdates,
+          })
+          .onConflictDoUpdate({
+            target: [planningStatus.urlId, planningStatus.tenantId],
+            set: planningUpdates,
+          });
       }
     }
 
