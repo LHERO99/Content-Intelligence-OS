@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getContentHistoryByKeyword, getAllContentHistory, createContentLog, getContentHistoryByUrl } from '@/lib/postgres';
+import { getContentHistoryByKeyword, getAllContentHistory, createContentLog, getContentHistoryByUrl, createExecutionVersion } from '@/lib/postgres';
+import { db, withTenant, getDefaultTenantId } from '@/lib/db';
+import { processEvents } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
@@ -45,19 +48,12 @@ export async function POST(request: Request) {
     }
 
     if (!isInternal && !session) {
-      console.warn('[API] Unauthorized POST request to /api/planning/history');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = session?.user?.tenantId;
-
+    const tenant = tenantId ?? getDefaultTenantId();
     const body = await request.json();
-    
-    console.log('[API] POST /api/planning/history - Request Body:', JSON.stringify(body, null, 2));
-    console.log('[API] POST /api/planning/history - Auth Type:', isInternal ? 'API Key' : 'Session');
-    if (isInternal) {
-      console.log('[API] POST /api/planning/history - API Key used (last 4 chars):', apiKey?.slice(-4));
-    }
 
     let { 
       keywordId, 
@@ -81,40 +77,79 @@ export async function POST(request: Request) {
 
     const finalKeywordId = keywordId || Keyword_ID;
     const finalUrl = url || Target_URL || Logged_URL;
-    const finalLoggedUrl = Logged_URL || finalUrl;
     const finalActionType = actionType || Action_Type || status;
     const finalContentBody = contentBody || Content_Body || content;
     const finalEventLabel = eventLabel || Event_Label;
     const finalEditor = editor || Editor;
     const finalCommissionLogId: number | undefined = commissionLogId ?? Commission_Log_Id ?? undefined;
 
-    if (!finalKeywordId) {
-      console.error('[API] Missing required fields:', { finalKeywordId });
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!finalKeywordId || !finalContentBody) {
+      return NextResponse.json({ 
+        error: 'Missing keywordId or content' 
+      }, { status: 400 });
     }
 
     const keywordIds = Array.isArray(finalKeywordId) ? finalKeywordId : [finalKeywordId];
 
-    console.log('[API] Creating content log for URL:', finalLoggedUrl);
+    // Execute in transaction
+    return await withTenant(tenant, async (tx) => {
+      // Look up cycleId from commissionLogId
+      let cycleId: number | undefined;
+      if (finalCommissionLogId) {
+        const [commissionEvent] = await tx
+          .select({ cycleId: processEvents.cycleId })
+          .from(processEvents)
+          .where(
+            and(
+              eq(processEvents.id, finalCommissionLogId),
+              eq(processEvents.tenantId, tenant)
+            )
+          )
+          .limit(1);
+        
+        cycleId = commissionEvent?.cycleId ?? undefined;
+      }
 
-    const newLog = await createContentLog({
-      Keyword_ID: keywordIds,
-      Target_URL: finalLoggedUrl,
-      Action_Type: finalActionType,
-      Content_Body: finalContentBody,
-      Event_Label: finalEventLabel,
-      Editor: finalEditor || (session?.user?.id ? [session.user.id] : undefined),
-      Commission_Log_Id: finalCommissionLogId,
-    }, tenantId);
+      if (!cycleId) {
+        console.error('[API] No cycleId found for commissionLogId:', finalCommissionLogId);
+        return NextResponse.json({ 
+          error: 'Commission log not found or has no cycle' 
+        }, { status: 400 });
+      }
 
-    if (!newLog) {
-      console.error('[API] createContentLog returned null');
-      return NextResponse.json({ error: 'Failed to create content log in Airtable' }, { status: 500 });
-    }
+      // Create new execution version with edited content
+      const versionId = await createExecutionVersion(
+        cycleId,
+        finalContentBody,
+        {
+          createdByUserId: session?.user?.id,
+          createdByAi: false,
+        },
+        tenantId
+      );
 
-    return NextResponse.json(newLog);
+      // Create content log with version reference
+      const newLog = await createContentLog({
+        Keyword_ID: keywordIds,
+        Target_URL: finalUrl,
+        Action_Type: finalActionType,
+        Event_Label: finalEventLabel,
+        Editor: finalEditor || (session?.user?.id ? [session.user.id] : undefined),
+        Cycle_Id: cycleId,
+        Commission_Log_Id: finalCommissionLogId,
+        Version_Id: versionId,
+      }, tenantId);
+
+      if (!newLog) {
+        return NextResponse.json({ 
+          error: 'Failed to create content log' 
+        }, { status: 500 });
+      }
+
+      return NextResponse.json(newLog);
+    });
   } catch (error: any) {
-    console.error('[API] Error creating content log:', error);
+    console.error('[API] Error saving content:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
