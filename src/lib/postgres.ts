@@ -1246,11 +1246,92 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
   return getContentHistoryByUrlOrKeywords([keywordId], [keywordId], tenantId);
 }
 
-// Stub implementations for not-yet-critical functions
 export async function bulkUpdateKeywordRankings(): Promise<void> { }
-export async function getPerformanceData(tenantId?: string, dayRange: number = 90): Promise<PerformanceData[]> { return []; }
-export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: string, dayRange: number = 365): Promise<PerformanceData[]> { return []; }
-export async function getURLPerformanceHistory(targetUrl: string, tenantId?: string, dayRange: number = 365): Promise<URLPerformance[]> { return []; }
+
+export async function getPerformanceData(tenantId?: string, dayRange: number = 90): Promise<PerformanceData[]> {
+  const tenant = tid(tenantId);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - dayRange);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+  return withTenant(tenant, async (tx) => {
+    const rows = await tx
+      .select()
+      .from(urlPerformance)
+      .where(and(eq(urlPerformance.tenantId, tenant), gte(urlPerformance.date, cutoffDate)))
+      .orderBy(desc(urlPerformance.date));
+
+    return rows.map((r, i) => ({
+      id: String(r.id),
+      ID: r.id,
+      Target_URL: r.targetUrl,
+      Date: r.date,
+      GSC_Clicks: r.gscClicks ?? undefined,
+      GSC_Impressions: r.gscImpressions ?? undefined,
+      Position: r.position ? Number(r.position) : undefined,
+      Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
+    }));
+  });
+}
+
+export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: string, dayRange: number = 365): Promise<PerformanceData[]> {
+  const tenant = tid(tenantId);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - dayRange);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+  return withTenant(tenant, async (tx) => {
+    const rows = await tx
+      .select()
+      .from(urlPerformance)
+      .where(and(
+        eq(urlPerformance.tenantId, tenant),
+        eq(urlPerformance.targetUrl, targetUrl),
+        gte(urlPerformance.date, cutoffDate)
+      ))
+      .orderBy(desc(urlPerformance.date));
+
+    return rows.map(r => ({
+      id: String(r.id),
+      ID: r.id,
+      Target_URL: r.targetUrl,
+      Date: r.date,
+      GSC_Clicks: r.gscClicks ?? undefined,
+      GSC_Impressions: r.gscImpressions ?? undefined,
+      Position: r.position ? Number(r.position) : undefined,
+      Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
+    }));
+  });
+}
+
+export async function getURLPerformanceHistory(targetUrl: string, tenantId?: string, dayRange: number = 365): Promise<URLPerformance[]> {
+  const tenant = tid(tenantId);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - dayRange);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+  return withTenant(tenant, async (tx) => {
+    const rows = await tx
+      .select()
+      .from(urlPerformance)
+      .where(and(
+        eq(urlPerformance.tenantId, tenant),
+        eq(urlPerformance.targetUrl, targetUrl),
+        gte(urlPerformance.date, cutoffDate)
+      ))
+      .orderBy(asc(urlPerformance.date));
+
+    return rows.map(r => ({
+      id: String(r.id),
+      Target_URL: r.targetUrl,
+      Date: r.date,
+      GSC_Clicks: r.gscClicks ?? undefined,
+      GSC_Impressions: r.gscImpressions ?? undefined,
+      Position: r.position ? Number(r.position) : undefined,
+      Sistrix_VI: r.sistrixVi ? Number(r.sistrixVi) : undefined,
+    }));
+  });
+}
 export async function upsertURLPerformance(records: any[], tenantId?: string): Promise<{ errors: any[] }> { 
   const tenant = tid(tenantId);
   const errors: any[] = [];
@@ -1353,9 +1434,34 @@ export async function upsertKeywordRankingHistory(rankings: any[], tenantId?: st
   
   return { errors };
 }
-export async function updateBlacklist(id: number, updates: any, tenantId?: string): Promise<BlacklistEntry | null> { 
-  // Blacklist updates not commonly used, return null for now
-  return null;
+export async function updateBlacklist(id: number, updates: any, tenantId?: string): Promise<BlacklistEntry | null> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    // Try keyword blacklist first
+    if (updates.Reason !== undefined || updates.reason !== undefined) {
+      const reason = updates.Reason ?? updates.reason;
+      const kwRows = await tx
+        .update(blacklistedKeywords)
+        .set({ reason })
+        .where(and(eq(blacklistedKeywords.id, id), eq(blacklistedKeywords.tenantId, tenant)))
+        .returning();
+      if (kwRows.length > 0) {
+        const r = kwRows[0];
+        return { id: r.id, Type: 'Keyword' as const, Keyword: r.keyword, Target_URL: null, Reason: r.reason ?? undefined, Added_At: r.addedAt.toISOString() };
+      }
+      const urlRows = await tx
+        .update(blacklistedUrls)
+        .set({ reason })
+        .where(and(eq(blacklistedUrls.id, id), eq(blacklistedUrls.tenantId, tenant)))
+        .returning();
+      if (urlRows.length > 0) {
+        const b = urlRows[0];
+        const urlRow = await tx.select().from(urls).where(eq(urls.id, b.urlId)).limit(1);
+        return { id: b.id, Type: 'URL' as const, Keyword: null, Target_URL: urlRow[0]?.url ?? null, Reason: b.reason ?? undefined, Added_At: b.addedAt.toISOString() };
+      }
+    }
+    return null;
+  });
 }
 export async function deleteFromBlacklist(id: number, tenantId?: string): Promise<boolean> {
   const tenant = tid(tenantId);

@@ -9,21 +9,24 @@ import { Loader2, Zap, ExternalLink } from "lucide-react";
 import { PlanningService } from "../services/planning-service";
 import { textColumnFilterFn } from "./filter-utils";
 
-const AddToEditorialButton = ({ row }: { row: any }) => {
+const AddToEditorialButton = ({ row, table }: { row: any; table: any }) => {
   const [loading, setLoading] = React.useState(false);
 
   const handleAdd = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setLoading(true);
     try {
-      // Use the existing Action_Type from the row if available, 
-      // otherwise fallback to logic based on current status
-      const existingActionType = row.original.Action_Type;
-      const isPublished = row.original.Status === "Published";
-      
+      // Resolve Action_Type the same way the display column does:
+      // rule-engine optimizationReasons take precedence over the raw DB value
+      const meta = table.options.meta as any;
+      const hasOptimizationReasons = Array.isArray(meta?.optimizationReasons?.[row.original.id]) && meta.optimizationReasons[row.original.id].length > 0;
+      const resolvedActionType: 'Optimierung' | 'Erstellung' = hasOptimizationReasons
+        ? "Optimierung"
+        : (row.original.Action_Type || (row.original.Status === "Published" ? "Optimierung" : "Erstellung"));
+
       await PlanningService.updateKeyword(row.original.id, { 
         Status: "Planned",
-        Action_Type: existingActionType || (isPublished ? "Optimierung" : "Erstellung")
+        Action_Type: resolvedActionType
       });
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
     } catch (error) {
@@ -87,9 +90,9 @@ export const suggestionColumns: ColumnDef<KeywordMap>[] = [
     id: "Action",
     header: () => <div className="text-center w-full">Aktion</div>,
     enableColumnFilter: false,
-    cell: ({ row }) => (
+    cell: ({ row, table }) => (
       <div className="flex justify-center w-full">
-         <AddToEditorialButton row={row} />
+         <AddToEditorialButton row={row} table={table} />
       </div>
     ),
   },
