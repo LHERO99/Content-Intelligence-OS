@@ -140,7 +140,7 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       })
       .from(urlKeywords)
       .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
-      .leftJoin(planningStatus, eq(planningStatus.urlId, urls.id))
+      .leftJoin(planningStatus, and(eq(planningStatus.urlId, urls.id), eq(planningStatus.tenantId, tenant)))
       .leftJoin(
         executionCycles,
         and(
@@ -231,7 +231,7 @@ export async function getKeyword(keywordId: string, tenantId?: string): Promise<
       })
       .from(urlKeywords)
       .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
-      .leftJoin(planningStatus, eq(planningStatus.urlId, urls.id))
+      .leftJoin(planningStatus, and(eq(planningStatus.urlId, urls.id), eq(planningStatus.tenantId, tenant)))
       .leftJoin(
         executionCycles,
         and(
@@ -306,7 +306,7 @@ export async function getKeywordsByUrl(targetUrl: string, tenantId?: string): Pr
       })
       .from(urlKeywords)
       .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
-      .leftJoin(planningStatus, eq(planningStatus.urlId, urls.id))
+      .leftJoin(planningStatus, and(eq(planningStatus.urlId, urls.id), eq(planningStatus.tenantId, tenant)))
       .leftJoin(
         executionCycles,
         and(
