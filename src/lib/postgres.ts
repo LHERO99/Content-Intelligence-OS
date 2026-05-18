@@ -1715,30 +1715,24 @@ export async function recomputeUrlCostSummary(
       if (!lastDeliveryAt || ts > lastDeliveryAt) lastDeliveryAt = ts;
     });
 
-    // 5. Upsert into url_cost_summary
-    await tx
-      .insert(urlCostSummary)
-      .values({
-        tenantId: tenant,
-        urlId,
-        totalAgencyCost: String(totalAgency),
-        totalOverheadCost: String(totalOverhead),
-        erstellungCount,
-        optimierungCount,
-        lastDeliveryAt,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [urlCostSummary.urlId, urlCostSummary.tenantId],
-        set: {
-          totalAgencyCost: String(totalAgency),
-          totalOverheadCost: String(totalOverhead),
-          erstellungCount,
-          optimierungCount,
-          lastDeliveryAt,
-          updatedAt: new Date(),
-        },
-      });
+    // 5. Upsert into url_cost_summary — use raw ON CONFLICT ON CONSTRAINT to avoid
+    //    Drizzle composite-target quirks with uniqueIndex vs UNIQUE CONSTRAINT.
+    await tx.execute(sql`
+      INSERT INTO url_cost_summary
+        (tenant_id, url_id, total_agency_cost, total_overhead_cost,
+         erstellung_count, optimierung_count, last_delivery_at, updated_at)
+      VALUES
+        (${tenant}, ${urlId}, ${String(totalAgency)}, ${String(totalOverhead)},
+         ${erstellungCount}, ${optimierungCount}, ${lastDeliveryAt}, NOW())
+      ON CONFLICT ON CONSTRAINT url_cost_summary_url_tenant_uniq
+      DO UPDATE SET
+        total_agency_cost   = EXCLUDED.total_agency_cost,
+        total_overhead_cost = EXCLUDED.total_overhead_cost,
+        erstellung_count    = EXCLUDED.erstellung_count,
+        optimierung_count   = EXCLUDED.optimierung_count,
+        last_delivery_at    = EXCLUDED.last_delivery_at,
+        updated_at          = NOW()
+    `);
   });
 }
 

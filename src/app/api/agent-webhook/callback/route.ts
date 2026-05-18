@@ -226,17 +226,16 @@ export async function POST(request: Request) {
       Version_Id: versionId ?? undefined,
     }, tenantId);
 
-    // Update materialized cost summary for this URL (fire-and-forget, never blocks response)
-    if (cycleId !== null) {
+    // Update materialized cost summary — always run when urlId is known,
+    // regardless of whether a cycle was found (recompute reads process_events directly).
+    // Fire-and-forget: never blocks the response.
+    const urlIdForSummary = await getUrlIdForKeyword(keywordId, tenantId);
+    if (urlIdForSummary) {
       const { getDefaultTenantId: getDefault } = await import('@/lib/db');
       const effectiveTenantId = tenantId ?? getDefault();
-      // Find urlId from the cycle we just updated
-      const urlIdForSummary = await import('@/lib/postgres').then(m => m.getUrlIdForKeyword(keywordId, tenantId));
-      if (urlIdForSummary) {
-        recomputeUrlCostSummary(urlIdForSummary, effectiveTenantId).catch(err =>
-          console.error('[Callback] Failed to recompute cost summary:', err)
-        );
-      }
+      recomputeUrlCostSummary(urlIdForSummary, effectiveTenantId).catch(err =>
+        console.error('[Callback] Failed to recompute cost summary:', err)
+      );
     }
 
     return NextResponse.json({
