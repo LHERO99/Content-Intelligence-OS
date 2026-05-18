@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getConfig, getKeywordMap } from '@/lib/postgres';
-import {
-  syncGscForUrls,
-  syncSistrixForUrls,
-  syncDataForSeoForKeywords,
-} from '@/lib/sync-performance';
-import { getAccessToken } from '@/lib/google-search-console';
+import { createSyncJob, fireSyncJob } from '@/lib/sync-jobs';
 
 export interface ManualSyncRequest {
   urls: string[];
@@ -21,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (!session || (session.user as any).role !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const tenantId = session.user?.tenantId;
+    const tenantId = session.user?.tenantId as string;
 
     const body = (await req.json()) as ManualSyncRequest;
     const { urls, mode, sources } = body;
@@ -33,99 +27,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Bitte mindestens eine Datenquelle auswählen.' }, { status: 400 });
     }
 
-    const isFirstSync = mode === '6months';
-    const result = {
-      urlsProcessed: urls.length,
-      keywordsProcessed: 0,
-      gscRowsUpserted: 0,
-      sistrixRowsUpserted: 0,
-      rankingRowsUpserted: 0,
-      rankingsSkipped: 0,
-      errors: [] as string[],
-      skippedGsc: !sources.includes('gsc'),
-      skippedSistrix: !sources.includes('sistrix'),
-      skippedDataforseo: !sources.includes('dataforseo'),
-    };
+    // Create job (or return existing active job for this tenant)
+    const job = await createSyncJob(tenantId, { urls, mode, sources });
 
-    let config: Record<string, string>;
-    try {
-      config = await getConfig(tenantId);
-    } catch (err: any) {
-      return NextResponse.json({ error: `Config load failed: ${err.message}` }, { status: 500 });
+    // Fire-and-forget: runs async in the Node.js process, survives HTTP response
+    if (job.status === 'pending') {
+      fireSyncJob(job.id, tenantId);
     }
 
-    // ── GSC ───────────────────────────────────────────────────────────────────
-    if (sources.includes('gsc')) {
-      const gscRefreshToken = config.GSC_REFRESH_TOKEN?.trim();
-      const gscSiteUrl = config.GSC_SITE_URL?.trim();
-
-      if (!gscRefreshToken || !gscSiteUrl) {
-        result.errors.push('GSC übersprungen: GSC_REFRESH_TOKEN oder GSC_SITE_URL nicht konfiguriert.');
-        result.skippedGsc = true;
-      } else {
-        try {
-          const accessToken = await getAccessToken(gscRefreshToken);
-          const { gscRowsUpserted, errors } = await syncGscForUrls(urls, accessToken, gscSiteUrl, isFirstSync);
-          result.gscRowsUpserted = gscRowsUpserted;
-          result.errors.push(...errors);
-        } catch (err: any) {
-          result.errors.push(`GSC Fehler: ${err.message}`);
-          result.skippedGsc = true;
-        }
-      }
-    }
-
-    // ── Sistrix ───────────────────────────────────────────────────────────────
-    if (sources.includes('sistrix')) {
-      const sistrixApiKey = config.SISTRIX_API_KEY?.trim();
-
-      if (!sistrixApiKey) {
-        result.errors.push('Sistrix übersprungen: SISTRIX_API_KEY nicht konfiguriert.');
-        result.skippedSistrix = true;
-      } else {
-        try {
-          const { sistrixRowsUpserted, errors } = await syncSistrixForUrls(urls, sistrixApiKey, isFirstSync);
-          result.sistrixRowsUpserted = sistrixRowsUpserted;
-          result.errors.push(...errors);
-        } catch (err: any) {
-          result.errors.push(`Sistrix Fehler: ${err.message}`);
-          result.skippedSistrix = true;
-        }
-      }
-    }
-
-    // ── DataForSEO ────────────────────────────────────────────────────────────
-    if (sources.includes('dataforseo')) {
-      const dfsUsername = config.DATAFORSEO_USERNAME?.trim();
-      const dfsPassword = config.DATAFORSEO_PASSWORD?.trim();
-
-      if (!dfsUsername || !dfsPassword) {
-        result.errors.push('DataForSEO übersprungen: Zugangsdaten nicht konfiguriert.');
-        result.skippedDataforseo = true;
-      } else {
-        try {
-          const allKeywords = await getKeywordMap(tenantId);
-          const urlKeywords = allKeywords.filter(
-            kw => kw.Target_URL && urls.includes(kw.Target_URL)
-          );
-
-          if (urlKeywords.length > 0) {
-            // force=true → bypass dedup check, overwrite existing rankings
-            const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-              await syncDataForSeoForKeywords(urlKeywords, dfsUsername, dfsPassword, true);
-            result.keywordsProcessed = keywordsProcessed;
-            result.rankingRowsUpserted = rankingRowsUpserted;
-            result.rankingsSkipped = rankingsSkipped;
-            result.errors.push(...errors);
-          }
-        } catch (err: any) {
-          result.errors.push(`DataForSEO Fehler: ${err.message}`);
-          result.skippedDataforseo = true;
-        }
-      }
-    }
-
-    return NextResponse.json({ success: true, completedAt: new Date().toISOString(), ...result });
+    return NextResponse.json({ jobId: job.id });
   } catch (error: any) {
     console.error('[API] sync/manual error:', error);
     return NextResponse.json({ error: error.message || 'Sync fehlgeschlagen' }, { status: 500 });

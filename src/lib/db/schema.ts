@@ -601,6 +601,28 @@ export const urlPerformance = pgTable(
   })
 );
 
+// ---------------------------------------------------------------------------
+// sync_jobs — background sync job queue
+// ---------------------------------------------------------------------------
+export const syncJobs = pgTable(
+  'sync_jobs',
+  {
+    id:          serial('id').primaryKey(),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    status:      text('status').notNull().default('pending'), // pending | running | done | failed
+    retryCount:  integer('retry_count').notNull().default(0),
+    payload:     jsonb('payload').notNull(),
+    result:      jsonb('result'),
+    error:       text('error'),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow(),
+    startedAt:   timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    tenantStatusIdx: index('sync_jobs_tenant_status_idx').on(t.tenantId, t.status, t.createdAt),
+  })
+);
+
 // ===========================================================================
 // BACKWARDS COMPATIBILITY ALIASES
 // ===========================================================================

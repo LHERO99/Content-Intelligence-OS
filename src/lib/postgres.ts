@@ -373,10 +373,11 @@ export async function getKeywordsByUrl(targetUrl: string, tenantId?: string): Pr
 // Create/Update/Delete Keywords
 // ---------------------------------------------------------------------------
 async function ensureUrl(url: string, pageType: string | undefined, tenant: string, tx: any): Promise<string> {
+  const normUrl = normalizeUrl(url);
   const existing = await tx
     .select({ id: urls.id })
     .from(urls)
-    .where(and(eq(urls.url, url), eq(urls.tenantId, tenant)))
+    .where(and(eq(urls.url, normUrl), eq(urls.tenantId, tenant)))
     .limit(1);
 
   if (existing.length > 0) return existing[0].id;
@@ -385,7 +386,7 @@ async function ensureUrl(url: string, pageType: string | undefined, tenant: stri
     .insert(urls)
     .values({
       tenantId: tenant,
-      url,
+      url: normUrl,
       pageType: pageType as any,
     })
     .returning({ id: urls.id });
@@ -1215,10 +1216,11 @@ export async function getAllContentHistory(tenantId?: string): Promise<ContentLo
 export async function getContentHistoryByUrl(targetUrl: string, tenantId?: string): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {
+    const normUrl = normalizeUrl(targetUrl);
     const [urlRecord] = await tx
       .select({ id: urls.id })
       .from(urls)
-      .where(and(eq(urls.url, targetUrl), eq(urls.tenantId, tenant)))
+      .where(and(eq(urls.url, normUrl), eq(urls.tenantId, tenant)))
       .limit(1);
 
     if (!urlRecord) return [];
@@ -1263,11 +1265,18 @@ export async function getContentHistoryByUrlOrKeywords(
   if (typeof urlOrKeywords === 'string') {
     // Primary: URL-based lookup (finds events where urlId is set correctly)
     const urlResults = await getContentHistoryByUrl(urlOrKeywords, tenantId);
-    // Fallback: if URL lookup returned nothing (e.g. events with urlId=NULL from
-    // callbacks that didn't echo Target_URL), try keyword-ID based lookup
-    if (urlResults.length === 0 && keywordIds && keywordIds.length > 0) {
-      return getContentHistoryByUrlOrKeywords(keywordIds, keywordIds, tenantId);
+
+    // Always also fetch by keyword IDs and merge — this catches events that were
+    // stored with urlId = null (e.g. callbacks that couldn't resolve the URL) but
+    // DO have a keywordId. Deduplicate by event ID so nothing appears twice.
+    if (keywordIds && keywordIds.length > 0) {
+      const kwResults = await getContentHistoryByUrlOrKeywords(keywordIds, keywordIds, tenantId);
+      const seen = new Set(urlResults.map(e => e.id));
+      const merged = [...urlResults, ...kwResults.filter(e => !seen.has(e.id))];
+      merged.sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
+      return merged;
     }
+
     return urlResults;
   }
   

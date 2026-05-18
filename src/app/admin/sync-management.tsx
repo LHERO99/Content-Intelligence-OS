@@ -1,70 +1,126 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, Loader2, RefreshCcw, XCircle, Search, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCcw, XCircle, Search, AlertTriangle, Info } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
+import type { SyncJob, SyncJobResult } from "@/lib/sync-jobs";
 
 type SyncSource = "gsc" | "dataforseo" | "sistrix";
 type SyncMode = "week" | "6months";
 
-interface SyncResult {
-  success: boolean;
-  completedAt?: string;
-  urlsProcessed: number;
-  keywordsProcessed: number;
-  gscRowsUpserted: number;
-  sistrixRowsUpserted: number;
-  rankingRowsUpserted: number;
-  rankingsSkipped: number;
-  errors: string[];
-  skippedGsc: boolean;
-  skippedSistrix: boolean;
-  skippedDataforseo: boolean;
-}
+const POLL_INTERVAL_MS = 5_000;
 
 export function SyncManagement() {
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
 
+  // ── URL list ──────────────────────────────────────────────────────────────
   const [allUrls, setAllUrls] = useState<string[]>([]);
   const [loadingUrls, setLoadingUrls] = useState(true);
   const [urlFilter, setUrlFilter] = useState("");
 
+  // ── Config ────────────────────────────────────────────────────────────────
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<SyncMode>("week");
   const [sources, setSources] = useState<Set<SyncSource>>(new Set(["gsc", "dataforseo", "sistrix"]));
 
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<SyncResult | null>(null);
+  // ── Job state ─────────────────────────────────────────────────────────────
+  const [jobId, setJobId] = useState<number | null>(null);
+  const [jobStatus, setJobStatus] = useState<SyncJob["status"] | null>(null);
+  const [jobStartedAt, setJobStartedAt] = useState<string | null>(null);
+  const [result, setResult] = useState<SyncJobResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load URL list on mount
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isRunning = jobStatus === "pending" || jobStatus === "running";
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const applyJobUpdate = (job: SyncJob) => {
+    setJobStatus(job.status);
+    if (job.startedAt) setJobStartedAt(job.startedAt);
+
+    if (job.status === "done") {
+      setResult(job.result);
+      setError(null);
+      stopPolling();
+    } else if (job.status === "failed") {
+      setResult(null);
+      setError(job.error ?? tr("Sync fehlgeschlagen", "Sync failed"));
+      stopPolling();
+    }
+  };
+
+  const pollJob = async (id: number) => {
+    try {
+      const res = await fetch(`/api/admin/sync/status/${id}`);
+      if (!res.ok) return;
+      const job: SyncJob = await res.json();
+      applyJobUpdate(job);
+    } catch {
+      // transient network error — keep polling
+    }
+  };
+
+  const startPolling = (id: number) => {
+    stopPolling();
+    pollRef.current = setInterval(() => pollJob(id), POLL_INTERVAL_MS);
+  };
+
+  // ── On mount: resume active job if one exists ─────────────────────────────
   useEffect(() => {
-    const load = async () => {
+    const init = async () => {
+      // Load URLs
       try {
         setLoadingUrls(true);
         const res = await fetch("/api/admin/sync/urls");
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to load URLs");
-        setAllUrls(data.urls || []);
-      } catch (err: any) {
-        setError(err.message);
+        if (res.ok) setAllUrls(data.urls || []);
       } finally {
         setLoadingUrls(false);
       }
+
+      // Check for active job (started in a previous session / tab)
+      try {
+        const res = await fetch("/api/admin/sync/active");
+        const data = await res.json();
+        if (res.ok && data.job) {
+          const job: SyncJob = data.job;
+          setJobId(job.id);
+          applyJobUpdate(job);
+          if (job.status === "pending" || job.status === "running") {
+            startPolling(job.id);
+          }
+        }
+      } catch {
+        // no active job or network error — ignore
+      }
     };
-    load();
+
+    init();
+    return () => stopPolling();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── URL list helpers ───────────────────────────────────────────────────────
   const filteredUrls = urlFilter.trim()
     ? allUrls.filter(url => url.toLowerCase().includes(urlFilter.toLowerCase()))
     : allUrls;
 
-  const allFilteredSelected = filteredUrls.length > 0 && filteredUrls.every(u => selectedUrls.has(u));
+  const allFilteredSelected =
+    filteredUrls.length > 0 && filteredUrls.every(u => selectedUrls.has(u));
 
   const toggleUrl = (url: string) => {
     setSelectedUrls(prev => {
@@ -94,11 +150,10 @@ export function SyncManagement() {
     });
   };
 
+  // ── Start sync ─────────────────────────────────────────────────────────────
   const handleSync = async () => {
-    if (!selectedUrls.size) return;
-    if (!sources.size) return;
+    if (!selectedUrls.size || !sources.size) return;
 
-    setRunning(true);
     setResult(null);
     setError(null);
 
@@ -114,11 +169,17 @@ export function SyncManagement() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Sync fehlgeschlagen");
-      setResult(data as SyncResult);
+
+      const id: number = data.jobId;
+      setJobId(id);
+      setJobStatus("pending");
+      setJobStartedAt(new Date().toISOString());
+
+      // Immediate first poll, then interval
+      await pollJob(id);
+      startPolling(id);
     } catch (err: any) {
       setError(err.message);
-    } finally {
-      setRunning(false);
     }
   };
 
@@ -128,6 +189,7 @@ export function SyncManagement() {
     sistrix: "Sistrix VI",
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       {/* ── Left: Configuration ── */}
@@ -183,7 +245,9 @@ export function SyncManagement() {
               </div>
             ) : filteredUrls.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
-                {urlFilter ? tr("Keine URLs gefunden.", "No URLs found.") : tr("Keine URLs im System.", "No URLs in system.")}
+                {urlFilter
+                  ? tr("Keine URLs gefunden.", "No URLs found.")
+                  : tr("Keine URLs im System.", "No URLs in system.")}
               </p>
             ) : (
               <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
@@ -220,7 +284,8 @@ export function SyncManagement() {
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                  disabled={isRunning}
+                  className={`rounded-lg border px-4 py-3 text-left transition-colors disabled:opacity-50 ${
                     mode === m
                       ? "border-primary/60 bg-primary/10 text-primary"
                       : "border-border hover:bg-muted/60"
@@ -233,8 +298,14 @@ export function SyncManagement() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {m === "week"
-                      ? tr("Letzte 7 Tage (GSC + Sistrix) · Aktuelles Wochen-Ranking (DataForSEO)", "Last 7 days (GSC + Sistrix) · Current week ranking (DataForSEO)")
-                      : tr("180 Tage GSC · 26 Wochen Sistrix · Aktuelles Ranking DataForSEO", "180 days GSC · 26 weeks Sistrix · Current ranking DataForSEO")}
+                      ? tr(
+                          "Letzte 7 Tage (GSC + Sistrix) · Aktuelles Wochen-Ranking (DataForSEO)",
+                          "Last 7 days (GSC + Sistrix) · Current week ranking (DataForSEO)"
+                        )
+                      : tr(
+                          "180 Tage GSC · 26 Wochen Sistrix · Aktuelles Ranking DataForSEO",
+                          "180 days GSC · 26 weeks Sistrix · Current ranking DataForSEO"
+                        )}
                   </div>
                 </button>
               ))}
@@ -266,6 +337,7 @@ export function SyncManagement() {
                     type="checkbox"
                     checked={sources.has(src)}
                     onChange={() => toggleSource(src)}
+                    disabled={isRunning}
                     className="h-3.5 w-3.5 rounded border-border"
                   />
                   <div>
@@ -283,8 +355,9 @@ export function SyncManagement() {
         </Card>
       </div>
 
-      {/* ── Right: Start + Result ── */}
+      {/* ── Right: Start + Status + Result ── */}
       <div className="space-y-5">
+
         {/* Start Card */}
         <Card>
           <CardHeader className="pb-3">
@@ -300,7 +373,9 @@ export function SyncManagement() {
               <div>
                 {tr("Zeitraum:", "Range:")}{" "}
                 <span className="font-medium text-foreground">
-                  {mode === "week" ? tr("Aktuelle Woche", "Current week") : tr("Letzte 6 Monate", "Last 6 months")}
+                  {mode === "week"
+                    ? tr("Aktuelle Woche", "Current week")
+                    : tr("Letzte 6 Monate", "Last 6 months")}
                 </span>
               </div>
               <div>
@@ -325,12 +400,25 @@ export function SyncManagement() {
               </Alert>
             )}
 
+            {/* Background-job info hint */}
+            {!isRunning && !result && (
+              <Alert className="py-2 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
+                <Info className="h-4 w-4 text-blue-500" />
+                <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+                  {tr(
+                    "Der Sync läuft im Hintergrund. Du kannst den Tab wechseln oder die Seite neu laden — der Fortschritt bleibt erhalten.",
+                    "The sync runs in the background. You can switch tabs or reload — progress is preserved."
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Button
               className="w-full h-10"
               onClick={handleSync}
-              disabled={running || !selectedUrls.size || !sources.size}
+              disabled={isRunning || !selectedUrls.size || !sources.size}
             >
-              {running ? (
+              {isRunning ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {tr("Sync läuft…", "Syncing…")}
@@ -344,6 +432,34 @@ export function SyncManagement() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Running status banner */}
+        {isRunning && jobId && (
+          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+            <div>
+              <AlertTitle className="text-sm text-blue-700 dark:text-blue-300">
+                {tr("Sync läuft im Hintergrund", "Sync running in background")}
+              </AlertTitle>
+              <AlertDescription className="text-xs text-blue-600 dark:text-blue-400">
+                {tr("Job", "Job")} #{jobId}
+                {jobStartedAt && (
+                  <> · {tr("gestartet", "started")}{" "}
+                    {new Date(jobStartedAt).toLocaleTimeString(
+                      locale === "de" ? "de-DE" : "en-GB",
+                      { hour: "2-digit", minute: "2-digit" }
+                    )}
+                  </>
+                )}
+                <br />
+                {tr(
+                  "Du kannst diese Seite verlassen — der Sync wird fortgesetzt.",
+                  "You can leave this page — the sync will continue."
+                )}
+              </AlertDescription>
+            </div>
+          </Alert>
+        )}
 
         {/* Error */}
         {error && (
@@ -364,7 +480,9 @@ export function SyncManagement() {
               </CardTitle>
               {result.completedAt && (
                 <CardDescription className="text-xs">
-                  {new Date(result.completedAt).toLocaleString(locale === "de" ? "de-DE" : "en-GB")}
+                  {new Date(result.completedAt).toLocaleString(
+                    locale === "de" ? "de-DE" : "en-GB"
+                  )}
                 </CardDescription>
               )}
             </CardHeader>
@@ -382,7 +500,13 @@ export function SyncManagement() {
                   <div key={label} className="rounded-md border bg-muted/30 px-2.5 py-2">
                     <div className="text-xs text-muted-foreground">{label}</div>
                     <div className="text-sm font-semibold mt-0.5">
-                      {skip ? <span className="text-muted-foreground text-xs">{tr("übersprungen", "skipped")}</span> : value}
+                      {skip ? (
+                        <span className="text-muted-foreground text-xs">
+                          {tr("übersprungen", "skipped")}
+                        </span>
+                      ) : (
+                        value
+                      )}
                     </div>
                   </div>
                 ))}
@@ -391,9 +515,21 @@ export function SyncManagement() {
               {/* Skipped sources */}
               {(result.skippedGsc || result.skippedSistrix || result.skippedDataforseo) && (
                 <div className="flex flex-wrap gap-1.5">
-                  {result.skippedGsc && <Badge variant="secondary" className="text-xs">GSC {tr("übersprungen", "skipped")}</Badge>}
-                  {result.skippedSistrix && <Badge variant="secondary" className="text-xs">Sistrix {tr("übersprungen", "skipped")}</Badge>}
-                  {result.skippedDataforseo && <Badge variant="secondary" className="text-xs">DataForSEO {tr("übersprungen", "skipped")}</Badge>}
+                  {result.skippedGsc && (
+                    <Badge variant="secondary" className="text-xs">
+                      GSC {tr("übersprungen", "skipped")}
+                    </Badge>
+                  )}
+                  {result.skippedSistrix && (
+                    <Badge variant="secondary" className="text-xs">
+                      Sistrix {tr("übersprungen", "skipped")}
+                    </Badge>
+                  )}
+                  {result.skippedDataforseo && (
+                    <Badge variant="secondary" className="text-xs">
+                      DataForSEO {tr("übersprungen", "skipped")}
+                    </Badge>
+                  )}
                 </div>
               )}
 
@@ -405,7 +541,12 @@ export function SyncManagement() {
                   </p>
                   <div className="max-h-32 overflow-y-auto space-y-0.5">
                     {result.errors.map((e, i) => (
-                      <p key={i} className="text-xs text-muted-foreground font-mono bg-muted/50 rounded px-2 py-1">{e}</p>
+                      <p
+                        key={i}
+                        className="text-xs text-muted-foreground font-mono bg-muted/50 rounded px-2 py-1"
+                      >
+                        {e}
+                      </p>
                     ))}
                   </div>
                 </div>
