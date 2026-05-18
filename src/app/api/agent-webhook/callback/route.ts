@@ -132,28 +132,11 @@ export async function POST(request: Request) {
     try {
       // Get urlId for keyword
       const urlId = await getUrlIdForKeyword(keywordId, tenantId);
-      console.log(`[API] Callback: urlId=${urlId}, tenantId=${tenantId}, keywordId=${keywordId}`);
       
       if (urlId) {
         // Use getDefaultTenantId() if tenantId is undefined (legacy mode)
         const { getDefaultTenantId } = await import('@/lib/db');
         const effectiveTenantId = tenantId ?? getDefaultTenantId();
-        
-        console.log(`[API] Callback: effectiveTenantId=${effectiveTenantId}`);
-        
-        // Debug: Check all cycles for this URL
-        const allCycles = await db
-          .select({ id: executionCycles.id, status: executionCycles.status, cycleNumber: executionCycles.cycleNumber })
-          .from(executionCycles)
-          .where(
-            and(
-              eq(executionCycles.urlId, urlId),
-              eq(executionCycles.tenantId, effectiveTenantId)
-            )
-          )
-          .orderBy(desc(executionCycles.cycleNumber));
-        
-        console.log(`[API] Callback: all cycles for URL=${JSON.stringify(allCycles)}`);
         
         // Find the most recent commissioned cycle
         const [activeCycle] = await db
@@ -168,8 +151,6 @@ export async function POST(request: Request) {
           )
           .orderBy(desc(executionCycles.cycleNumber))
           .limit(1);
-        
-        console.log(`[API] Callback: found activeCycle=${activeCycle?.id}`);
         
         if (activeCycle) {
           cycleId = activeCycle.id;
@@ -189,7 +170,6 @@ export async function POST(request: Request) {
             
             if (commissionEvent) {
               resolvedCommissionLogId = commissionEvent.id;
-              console.log(`[API] Callback: resolved commissionLogId=${resolvedCommissionLogId} from cycle ${activeCycle.id}`);
             }
           }
           
@@ -202,25 +182,16 @@ export async function POST(request: Request) {
             })
             .where(eq(executionCycles.id, activeCycle.id));
           
-          console.log(`[API] Callback: cycle ${activeCycle.id} updated to delivered`);
-          
           // Create execution version with the content
           versionId = await createExecutionVersion(
             activeCycle.id,
             sanitizedContent,
             {
               createdByAi: true,
-              // Could extract AI provider/model from callback body if available
             },
             tenantId
           );
-          
-          console.log(`[API] Callback: created version ${versionId}`);
-        } else {
-          console.warn(`[API] Callback: No commissioned cycle found for urlId=${urlId}, tenantId=${effectiveTenantId}`);
         }
-      } else {
-        console.error(`[API] Callback: Could not find urlId for keywordId=${keywordId}`);
       }
     } catch (err) {
       console.error('[API] Error updating cycle status to delivered:', err);
@@ -232,8 +203,6 @@ export async function POST(request: Request) {
                           (body.diffSummary && body.diffSummary.toLowerCase().includes('optimiert')) ||
                           (body.actionType && body.actionType === 'Optimierung');
     
-    console.log(`[API] Callback: Creating content log with versionId=${versionId}, cycleId=${cycleId}, commissionLogId=${resolvedCommissionLogId}`);
-    
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
       Target_URL: targetUrl,
@@ -243,8 +212,6 @@ export async function POST(request: Request) {
       Commission_Log_Id: resolvedCommissionLogId ?? undefined,
       Version_Id: versionId ?? undefined,
     }, tenantId);
-
-    console.log(`[API] Callback: Created content log with ID=${newLog?.ID}, version_id=${versionId}, commission_log_id=${resolvedCommissionLogId}`);
 
     return NextResponse.json({
       success: true,
