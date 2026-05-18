@@ -98,15 +98,16 @@ function mapToOldStatus(
   execution: typeof executionCycles.$inferSelect | null,
   publishing: typeof publishingStatus.$inferSelect | null
 ): KeywordStatus {
-  // Active production states take priority over published
+  // An active planning intent (user clicked "Hinzufügen") always wins over any
+  // stale execution-cycle relict from a previous Erstellung/Optimierung cycle.
+  if (planning?.status === 'planned') return 'Planned';
+  // Active production states
   if (execution?.status === 'commissioned') return 'Beauftragt';
   if (execution?.status === 'in_progress') return 'In Arbeit';
   // Only treat 'delivered' as Angeliefert when the publishing step has not yet
-  // been completed.  Once publishingStatus = 'published', this cycle is terminal
-  // and must not shadow a new 'planned' state set for the next optimization cycle.
+  // been completed.  Once publishingStatus = 'published', this cycle is terminal.
   if (execution?.status === 'delivered' && publishing?.status !== 'published') return 'Angeliefert';
   if (publishing?.status === 'in_review') return 'Review';
-  if (planning?.status === 'planned') return 'Planned';
   // Terminal published state — from either publishingStatus or planningStatus
   if (publishing?.status === 'published') return 'Published';
   if (planning?.status === 'published') return 'Published';
@@ -591,7 +592,7 @@ export async function updateKeyword(
       // These are handled by execution cycles, not directly updatable
     }
 
-    // Handle publishing — update publishingStatus per-cycle and set lastPublishedCycleId
+    // Handle publishing — upsert publishingStatus per-cycle and set lastPublishedCycleId
     if (updates.Status === 'Published' && updates.Last_Published) {
       // Find the latest delivered cycle to mark as published
       const [cycle] = await tx
@@ -608,13 +609,34 @@ export async function updateKeyword(
         .limit(1);
 
       if (cycle) {
-        await tx
-          .update(publishingStatus)
-          .set({
-            status: 'published',
-            publishedAt: new Date(updates.Last_Published),
-          })
-          .where(and(eq(publishingStatus.cycleId, cycle.id), eq(publishingStatus.tenantId, tenant)));
+        // Find latest version for this cycle (required FK for publishingStatus)
+        const [latestVersion] = await tx
+          .select({ id: executionVersions.id })
+          .from(executionVersions)
+          .where(and(eq(executionVersions.cycleId, cycle.id), eq(executionVersions.tenantId, tenant)))
+          .orderBy(desc(executionVersions.versionNumber))
+          .limit(1);
+
+        if (latestVersion) {
+          // Upsert: handles both the case where a publishingStatus row already exists
+          // and the case where none was ever created (e.g. n8n-delivered content)
+          await tx
+            .insert(publishingStatus)
+            .values({
+              tenantId: tenant,
+              cycleId: cycle.id,
+              versionId: latestVersion.id,
+              status: 'published',
+              publishedAt: new Date(updates.Last_Published),
+            })
+            .onConflictDoUpdate({
+              target: [publishingStatus.cycleId, publishingStatus.tenantId],
+              set: {
+                status: 'published',
+                publishedAt: new Date(updates.Last_Published),
+              },
+            });
+        }
 
         // Record which cycle was last published at URL level
         await tx
@@ -1248,6 +1270,26 @@ export async function getContentHistoryByKeyword(keywordId: string, tenantId?: s
 
 export async function bulkUpdateKeywordRankings(): Promise<void> { }
 
+/**
+ * Normalise a URL for consistent storage and lookup.
+ * Strips trailing slash, lowercases scheme+host, preserves path casing.
+ * e.g. "HTTPS://www.Example.com/Ratgeber/" → "https://www.example.com/Ratgeber"
+ */
+function normalizeUrl(raw: string): string {
+  try {
+    const u = new URL(raw.trim());
+    // Lowercase scheme and host, keep path/search/hash as-is
+    const normalised = `${u.protocol.toLowerCase()}//${u.host.toLowerCase()}${u.pathname.replace(/\/+$/, '') || '/'}${u.search}${u.hash}`;
+    // Remove trailing slash unless it's the root "/"
+    return normalised.endsWith('/') && normalised !== `${u.protocol.toLowerCase()}//${u.host.toLowerCase()}/`
+      ? normalised.slice(0, -1)
+      : normalised;
+  } catch {
+    // Not a valid absolute URL — return trimmed original
+    return raw.trim().replace(/\/+$/, '');
+  }
+}
+
 export async function getPerformanceData(tenantId?: string, dayRange: number = 90): Promise<PerformanceData[]> {
   const tenant = tid(tenantId);
   const cutoff = new Date();
@@ -1276,6 +1318,7 @@ export async function getPerformanceData(tenantId?: string, dayRange: number = 9
 
 export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: string, dayRange: number = 365): Promise<PerformanceData[]> {
   const tenant = tid(tenantId);
+  const normUrl = normalizeUrl(targetUrl);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dayRange);
   const cutoffDate = cutoff.toISOString().slice(0, 10);
@@ -1286,7 +1329,7 @@ export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: stri
       .from(urlPerformance)
       .where(and(
         eq(urlPerformance.tenantId, tenant),
-        eq(urlPerformance.targetUrl, targetUrl),
+        eq(urlPerformance.targetUrl, normUrl),
         gte(urlPerformance.date, cutoffDate)
       ))
       .orderBy(desc(urlPerformance.date));
@@ -1306,6 +1349,7 @@ export async function getPerformanceDataByUrl(targetUrl: string, tenantId?: stri
 
 export async function getURLPerformanceHistory(targetUrl: string, tenantId?: string, dayRange: number = 365): Promise<URLPerformance[]> {
   const tenant = tid(tenantId);
+  const normUrl = normalizeUrl(targetUrl);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dayRange);
   const cutoffDate = cutoff.toISOString().slice(0, 10);
@@ -1316,7 +1360,7 @@ export async function getURLPerformanceHistory(targetUrl: string, tenantId?: str
       .from(urlPerformance)
       .where(and(
         eq(urlPerformance.tenantId, tenant),
-        eq(urlPerformance.targetUrl, targetUrl),
+        eq(urlPerformance.targetUrl, normUrl),
         gte(urlPerformance.date, cutoffDate)
       ))
       .orderBy(asc(urlPerformance.date));
@@ -1341,7 +1385,7 @@ export async function upsertURLPerformance(records: any[], tenantId?: string): P
       try {
         await tx.insert(urlPerformance).values({
           tenantId: tenant,
-          targetUrl: record.Target_URL,
+          targetUrl: normalizeUrl(record.Target_URL),
           date: record.Date,
           gscClicks: record.GSC_Clicks,
           gscImpressions: record.GSC_Impressions,
