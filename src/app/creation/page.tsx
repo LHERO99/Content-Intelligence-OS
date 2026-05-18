@@ -272,7 +272,7 @@ export default function CreationPage() {
     : null;
 
   useEffect(() => {
-    console.log('[useEffect] displayLogId:', displayLogId, 'cached:', bodyCache[displayLogId] !== undefined);
+    console.log('[useEffect] displayLogId:', displayLogId, 'cached:', displayLogId ? bodyCache[displayLogId] !== undefined : false);
     if (!displayLogId || bodyCache[displayLogId] !== undefined) return;
     console.log('[useEffect] Fetching body for log:', displayLogId);
     fetch(`/api/planning/history/${displayLogId}/body`)
@@ -282,7 +282,7 @@ export default function CreationPage() {
       })
       .then((data) => {
         console.log('[useEffect] Received data:', data ? 'yes' : 'no', data);
-        if (data) setBodyCache((prev) => ({ ...prev, [displayLogId]: data }));
+        if (data && displayLogId) setBodyCache((prev) => ({ ...prev, [displayLogId]: data }));
       })
       .catch((err) => {
         console.error('[useEffect] Fetch error:', err);
