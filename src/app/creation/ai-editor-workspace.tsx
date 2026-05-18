@@ -52,9 +52,14 @@ export function AIEditorWorkspace({
   const [isSaving, setIsSaving] = useState(false);
   // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
   const [previewContent, setPreviewContent] = useState<string | null>(null);
-  const [isPublished, setIsPublished] = useState(false);
+  const [isPublished, setIsPublished] = useState(currentStatus === 'Published');
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
+
+  // Sync isPublished when currentStatus changes via polling (e.g. while page stays open).
+  useEffect(() => {
+    if (currentStatus === 'Published') setIsPublished(true);
+  }, [currentStatus]);
 
   // Derived: cycle is read-only once it has been published (prop-driven, server-authoritative).
   // This also handles page reloads correctly — no reliance on local isPublished state alone.
