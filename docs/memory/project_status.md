@@ -1,4 +1,148 @@
-# Projekt-Status (Stand: 17.05.2026 – aktualisiert 5)
+# Projekt-Status (Stand: 18.05.2026 – aktualisiert 6)
+
+## Content-Workflow Fix: Execution Cycles & Content Versioning (18.05.2026)
+
+### Was geändert wurde
+
+**Vollständige Commission-to-Delivery Pipeline implementiert:**
+
+**Problem 1: Kein Execution Cycle beim Commission**
+- Beim Klick auf "Beauftragen" wurde nur `updateKeyword({ Status: "Beauftragt" })` aufgerufen
+- Aber: `updateKeyword()` hatte Code-Kommentar "These are handled by execution cycles, not directly updatable"
+- **Kein** `execution_cycles` Record wurde erstellt!
+- Resultat: `mapToOldStatus(planning, null, publishing)` gab "Planned" zurück (nicht "Beauftragt")
+- Keyword blieb im Redaktionsplan, erschien nicht in Content-Erstellung
+
+**Problem 2: Content wurde nicht in execution_versions gespeichert**
+- Bei Content-Delivery wurde `createContentLog({ Content_Body: html })` aufgerufen
+- Aber: `Content_Body` wurde komplett ignoriert - kein `execution_versions` Eintrag erstellt
+- Resultat: `getContentLogs()` gab `Version='v1'` zurück (weil version=null)
+- UI zeigte "KI generiert gerade den Content..." statt des Contents
+
+**Problem 3: Nicht nur Main Keywords in Auftragsliste**
+- Filter in `creation/page.tsx` prüfte nur Status, nicht `Main_Keyword === 'Y'`
+- Resultat: Alle Keywords einer URL erschienen in der Auftragsliste
+
+**Problem 4: Manual Save funktionierte nicht**
+- `/api/planning/history` POST erstellte nur `process_events` ohne `execution_version`
+- Content wurde nirgendwo gespeichert
+- Nach Refresh war Content weg
+
+**Problem 5: Case-Mismatch API ↔ Frontend**
+- API gab `{ contentBody: "..." }` zurück (lowercase)
+- Frontend erwartete `{ Content_Body: "..." }` (PascalCase)
+- Resultat: Content wurde nicht angezeigt trotz erfolgreicher Speicherung
+
+### Implementierte Fixes
+
+**1. Execution Cycle Creation (`postgres.ts` + `trigger/route.ts`)**
+- Neue Funktion: `createExecutionCycle(urlId, actionType, userId, tenantId)`
+- Beim Commission: Cycle wird ZUERST erstellt mit `status='commissioned'`
+- Auto-Increment `cycleNumber` für Re-Optimierungen
+- Bei Agent-Erfolg: Cycle-Status → `'delivered'`
+- Bei Agent-Fehler: Cycle wird gelöscht (Reset zu "Planned")
+
+**2. Content Versioning (`postgres.ts` + Callback/Trigger Routes)**
+- Neue Funktion: `createExecutionVersion(cycleId, contentHtml, options, tenantId)`
+- Bei Content-Delivery: Version wird erstellt mit `versionNumber` auto-increment
+- `process_events.versionId` verlinkt zu `execution_versions.id`
+- `getContentLogs()` gibt `Version='v2'` zurück wenn `version.contentHtml` existiert
+
+**3. Main Keyword Filter (`creation/page.tsx`)**
+- Filter erweitert: `keyword.Main_Keyword === 'Y'`
+- Nur Haupt-Keywords erscheinen in Auftragsliste
+
+**4. Manual Save Fix (`/api/planning/history/route.ts`)**
+- POST Handler komplett überarbeitet:
+  - Lookup `cycleId` aus `commissionLogId` via `process_events` Query
+  - Erstellt neue `execution_version` (nicht Überschreiben!)
+  - Übergibt `Cycle_Id` und `Version_Id` an `createContentLog`
+- Jedes Manual Save erstellt Version 2, 3, 4... mit eigenem `versionNumber`
+
+**5. Case-Mismatch Fix (`creation/page.tsx` + `HistoryList.tsx`)**
+- Beide Schreibweisen unterstützt: `contentBody ?? Content_Body`
+- TypeScript-Typen erweitert: `{ contentBody?: string; Content_Body?: string }`
+
+**6. Commission Log ID Auto-Resolution (`callback/route.ts`)**
+- Wenn External Agent `commissionLogId` nicht sendet:
+  - Automatische Suche nach `cycle_commissioned` Event für den Cycle
+  - `resolvedCommissionLogId` wird für Mapping verwendet
+- `Commission_Log_Id` wird in `eventData.commission_log_id` gespeichert
+- SQL-Migration zum Heilen alter Daten ausgeführt
+
+**7. Cycle_Id vs Commission_Log_Id Trennung (`createContentLog`)**
+- Neuer Parameter: `Cycle_Id` für FK zu `execution_cycles.id`
+- `Commission_Log_Id` in `eventData` gespeichert für Display-Mapping
+- `getContentLogs()` extrahiert: `Commission_Log_Id: eventData.commission_log_id ?? cycle?.id`
+
+### Code-Änderungen
+
+**Neue Funktionen in `postgres.ts`:**
+- `getUrlIdForKeyword(keywordId, tenantId)` - Lookup helper
+- `createExecutionCycle(urlId, actionType, userId, tenantId)` - Cycle creation
+- `createExecutionVersion(cycleId, contentHtml, options, tenantId)` - Version creation
+- `deleteKeyword(id, tenantId)` - Single keyword deletion (war fehlend)
+
+**Aktualisierte Routes:**
+- `/api/agent-webhook/trigger/route.ts` - Commission + Internal Agent Success/Failure Handling
+- `/api/agent-webhook/callback/route.ts` - External Agent Content Delivery
+- `/api/planning/history/route.ts` - Manual Save mit Version Creation
+
+**Frontend-Fixes:**
+- `src/app/creation/page.tsx` - Main Keyword Filter + Case-Mismatch Fix
+- `src/app/planning/editorial-planning.tsx` - Main Keyword Filter
+- `src/features/shared/components/HistoryList.tsx` - Case-Mismatch Fix
+
+**Legacy-File Cleanup:**
+- `postgres-legacy.ts` → `.ts.bak` (TypeScript-Errors)
+- `postgres-old-backup.ts` → `.ts.bak` (TypeScript-Errors)
+
+### Workflow jetzt komplett funktional
+
+**Commission-Flow:**
+1. User klickt "Beauftragen" im Redaktionsplan
+2. `execution_cycles` Record erstellt (status='commissioned')
+3. Keyword verschwindet aus Redaktionsplan
+4. Keyword erscheint in Content-Erstellung Auftragsliste
+
+**Delivery-Flow (Internal Agent):**
+1. Agent generiert Content
+2. `execution_cycles` Status → 'delivered'
+3. `execution_versions` Record erstellt mit Content HTML
+4. `process_events` erstellt mit `versionId` Link
+5. Content wird in UI angezeigt
+
+**Delivery-Flow (External Agent):**
+1. External Agent sendet Callback mit Content
+2. System findet commissioned Cycle
+3. Cycle Status → 'delivered'
+4. Version erstellt mit Content
+5. `commissionLogId` auto-resolved aus Cycle
+6. Content wird in UI angezeigt
+
+**Manual Save-Flow:**
+1. User bearbeitet Content im Editor
+2. Klick auf "Speichern"
+3. System holt `cycleId` aus `commissionLogId`
+4. Neue Version erstellt (versionNumber++, createdByAi=false)
+5. Event Log mit Version-Link
+6. Content sofort sichtbar nach Refresh
+
+### Erfolgs-Kriterien
+
+✅ Keyword verschwindet aus Redaktionsplan nach Commission  
+✅ Keyword erscheint in Content-Erstellung mit Status="Beauftragt"  
+✅ Nach Delivery: Status="Angeliefert" + Content angezeigt  
+✅ Nur Main Keywords in Auftragsliste  
+✅ Manual Save erstellt neue Version (nicht Überschreiben)  
+✅ Content wird in UI korrekt angezeigt  
+✅ URL-Historie Dropdown zeigt Content  
+✅ External Agent Callbacks funktionieren  
+✅ Alte Daten via SQL-Migration geheilt  
+
+**Status:** ✅ Content-Workflow vollständig funktional, Production-ready
+
+---
 
 ## DB-Schema-Refactoring: URL-zentrische Architektur (17.05.2026)
 

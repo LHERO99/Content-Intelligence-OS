@@ -1,4 +1,107 @@
-# Technische Entscheidungen (Stand: 17.05.2026 – aktualisiert 4)
+# Technische Entscheidungen (Stand: 18.05.2026 – aktualisiert 5)
+
+## Content Versioning: Neue Version bei jedem Save (18.05.2026)
+
+### Entscheidung: Append-Only Versioning
+
+**Verhalten:**
+- Jeder Content-Save erstellt eine **neue** `execution_versions` Zeile
+- `versionNumber` wird auto-inkrementiert (1, 2, 3...)
+- **NICHT** Überschreiben der letzten Version
+
+**Beispiel:**
+1. Agent Delivery → Version 1 (versionNumber=1, createdByAi=true)
+2. Manual Edit #1 → Version 2 (versionNumber=2, createdByAi=false)
+3. Manual Edit #2 → Version 3 (versionNumber=3, createdByAi=false)
+
+**Vorteile:**
+- ✅ Vollständige Änderungs-Historie
+- ✅ Rollback möglich (zu vorheriger Version)
+- ✅ Audit-Trail: Wer hat wann was geändert
+- ✅ AI vs. Manual Edits nachvollziehbar
+
+**Schema:**
+```sql
+execution_versions (
+  id SERIAL PRIMARY KEY,
+  cycle_id INT REFERENCES execution_cycles(id),
+  version_number INT NOT NULL,
+  content_html TEXT,
+  created_by_user_id TEXT REFERENCES users(id),
+  created_by_ai BOOLEAN DEFAULT false,
+  created_at TIMESTAMP,
+  UNIQUE(cycle_id, version_number)
+)
+```
+
+**Frontend-Mapping:**
+- `creation/page.tsx` zeigt immer die **neueste Version** pro Commission
+- `latestV2LogByCommission.get(commissionLogId)` - nimmt neuesten Eintrag nach Timestamp
+- Nach Save: Refresh zeigt automatisch neue Version
+
+### Cycle_Id vs Commission_Log_Id Separation (18.05.2026)
+
+**Problem:**
+- `Commission_Log_Id` ist die **process_events.id** (Event-Log-Eintrag)
+- `cycleId` ist die **execution_cycles.id** (Workflow-Entität)
+- Ursprünglicher Code verwendete `Commission_Log_Id` als FK für `process_events.cycleId` → Foreign Key Constraint Fehler
+
+**Lösung:**
+- `createContentLog` akzeptiert jetzt **beide** Parameter:
+  - `Cycle_Id?: number` - für FK Constraint zu execution_cycles
+  - `Commission_Log_Id?: number` - für Display-Mapping zwischen Commission und Delivery
+- `Commission_Log_Id` wird in `eventData.commission_log_id` gespeichert (JSONB)
+- `getContentLogs()` extrahiert: `Commission_Log_Id: eventData.commission_log_id ?? cycle?.id`
+
+**Warum beide nötig:**
+- `Cycle_Id`: Database integrity (FK)
+- `Commission_Log_Id`: Frontend benötigt Verknüpfung zwischen "beauftragt" und "angeliefert" Events für UI-Mapping
+
+### Auto-Resolution von Commission Log ID (18.05.2026)
+
+**Problem:**
+- External Agent sendet `commissionLogId` nicht im Callback zurück
+- Frontend benötigt es aber für Job-Mapping
+
+**Lösung:**
+- Wenn `commissionLogId` nicht im Callback-Body:
+  - Query `process_events` für den gefundenen `cycleId`
+  - Suche Event mit `eventType='cycle_commissioned'`
+  - Verwende dessen `id` als `resolvedCommissionLogId`
+- Wird automatisch in `eventData.commission_log_id` gespeichert
+
+**SQL-Migration für alte Daten:**
+```sql
+UPDATE process_events pe_del
+SET event_data = jsonb_set(
+    COALESCE(pe_del.event_data, '{}'::jsonb), 
+    '{commission_log_id}', 
+    (SELECT pe_comm.id::text::jsonb FROM process_events pe_comm 
+     WHERE pe_comm.keyword_id = pe_del.keyword_id 
+       AND pe_comm.event_type = 'cycle_commissioned'
+       AND pe_comm.event_timestamp < pe_del.event_timestamp
+     ORDER BY pe_comm.event_timestamp DESC LIMIT 1)
+)
+WHERE pe_del.event_type = 'cycle_delivered' 
+  AND (pe_del.event_data->>'commission_log_id' IS NULL);
+```
+
+### Case-Handling: contentBody vs Content_Body (18.05.2026)
+
+**Problem:**
+- API-Funktion `getContentLogBody()` gibt `{ contentBody, eventLabel }` zurück (lowercase)
+- Frontend-Code erwartete `{ Content_Body, Event_Label }` (PascalCase)
+
+**Entscheidung:**
+- **Beide Schreibweisen unterstützen** für Backwards Compatibility
+- `displayedBody?.contentBody ?? displayedBody?.Content_Body`
+- TypeScript-Typen erweitert um beide Varianten
+
+**Regel:**
+- API gibt primär `contentBody` (camelCase) zurück
+- Frontend akzeptiert beide (Fallback zu PascalCase für Kompatibilität)
+
+---
 
 ## URL-zentrische Datenbank-Architektur (17.05.2026)
 

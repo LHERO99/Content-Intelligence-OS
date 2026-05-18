@@ -2,6 +2,26 @@
 
 ## Abgeschlossen (chronologisch)
 
+- [x] **Content-Workflow Fix: Execution Cycles & Versioning (18.05.2026)**
+  - Problem 1: Commission erstellte keine execution_cycles → Keyword blieb in Redaktionsplan
+  - Problem 2: Content wurde nicht in execution_versions gespeichert → "KI generiert..." trotz Content
+  - Problem 3: Alle Keywords (nicht nur Main) in Auftragsliste
+  - Problem 4: Manual Save funktionierte nicht (keine Version erstellt)
+  - Problem 5: Case-Mismatch contentBody vs Content_Body
+  - Fix: createExecutionCycle() + createExecutionVersion() Funktionen erstellt
+  - Fix: trigger/route.ts - Commission erstellt Cycle, Success/Failure updated/deleted Cycle
+  - Fix: callback/route.ts - External Agent Delivery erstellt Version + updated Cycle
+  - Fix: /api/planning/history POST - Manual Save erstellt neue Version (versionNumber++)
+  - Fix: Main Keyword Filter in creation/page.tsx und editorial-planning.tsx
+  - Fix: Case-Mismatch in creation/page.tsx und HistoryList.tsx behoben
+  - Fix: Cycle_Id vs Commission_Log_Id Trennung in createContentLog
+  - Fix: Auto-Resolution von commissionLogId aus process_events
+  - SQL-Migration für alte Daten ausgeführt
+  - Legacy-Files (postgres-legacy.ts, postgres-old-backup.ts) → .bak
+  - Debug-Logging vollständig entfernt nach Fertigstellung
+  - TypeScript-Build erfolgreich
+  - Kompletter Workflow funktional: Commission → Delivery → Save → Display
+
 - [x] **DB-Schema-Refactoring: URL-zentrische Architektur (17.05.2026)**
   - Neue Tabellen: urls, url_keywords, planning_status, execution_cycles, execution_versions, publishing_status, process_events
   - Vollständige Daten-Migration via COMPLETE_MIGRATION.sql
