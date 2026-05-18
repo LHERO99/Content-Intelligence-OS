@@ -12,7 +12,9 @@ import {
   createContentLog,
   getAllUsers,
   getConfig,
+  getAllContentHistory,
 } from '@/lib/postgres';
+import { hasOpenManualMonitoringRequest } from '@/lib/optimization-rules';
 import { triggerN8nWorkflow } from '@/lib/n8n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -23,8 +25,20 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const tenantId = session.user?.tenantId;
-    const keywords = await getKeywordMap(tenantId);
-    return NextResponse.json(keywords);
+    const [keywords, logs] = await Promise.all([
+      getKeywordMap(tenantId),
+      getAllContentHistory(tenantId),
+    ]);
+
+    const enriched = keywords.map((kw) => {
+      if (kw.Main_Keyword !== 'Y' || !kw.Target_URL) return kw;
+      if (hasOpenManualMonitoringRequest(kw.id, String(kw.Target_URL), logs)) {
+        return { ...kw, Action_Type: 'Optimierung' as const };
+      }
+      return kw;
+    });
+
+    return NextResponse.json(enriched);
   } catch (error: any) {
     console.error('[API] Error fetching keywords:', error);
     return NextResponse.json(

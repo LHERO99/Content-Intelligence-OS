@@ -69,7 +69,7 @@ function latestPublishedDateForKeyword(keywordId: string, targetUrl: string, log
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 }
 
-function hasOpenManualMonitoringRequest(keywordId: string, targetUrl: string, logs: any[]): boolean {
+export function hasOpenManualMonitoringRequest(keywordId: string, targetUrl: string, logs: any[]): boolean {
   const relevantLogs = logs.filter((log) => {
     const url = String(log.Target_URL || log.Logged_URL || '');
     const hasKeyword = Array.isArray(log.Keyword_ID) && log.Keyword_ID.includes(keywordId);
