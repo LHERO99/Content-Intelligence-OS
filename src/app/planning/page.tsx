@@ -33,8 +33,8 @@ export default function PlanningPage() {
   const fetchData = async () => {
     try {
       const [kwRes, trendRes] = await Promise.all([
-        fetch('/api/planning/keywords'),
-        fetch('/api/planning/trends')
+        fetch('/api/planning/keywords', { cache: 'no-store' }),
+        fetch('/api/planning/trends', { cache: 'no-store' })
       ]);
       
       if (!kwRes.ok || !trendRes.ok) throw new Error(t("planning.dataLoadError"));

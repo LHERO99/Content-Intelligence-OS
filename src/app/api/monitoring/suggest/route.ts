@@ -31,8 +31,11 @@ export async function POST(request: NextRequest) {
           || keywords.find((entry) => normalizeUrl(String(entry.Target_URL || '')) === normalizedUrl);
 
         if (!keyword) {
+          console.warn(`[suggest] No keyword found for URL: ${normalizedUrl}`);
           return { url, logged: false, reason: 'Kein passendes Keyword gefunden' };
         }
+
+        console.log(`[suggest] Found keyword id=${keyword.id} mainKeyword=${keyword.Main_Keyword} for URL: ${normalizedUrl}`);
 
         await createContentLog({
           Keyword_ID: [keyword.id],
@@ -46,6 +49,8 @@ export async function POST(request: NextRequest) {
         await updateKeyword(keyword.id, {
           Action_Type: 'Optimierung',
         }, tenantId);
+
+        console.log(`[suggest] updateKeyword done for id=${keyword.id}`);
 
         return { url, logged: true, keywordId: keyword.id };
       })
