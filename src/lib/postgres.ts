@@ -1261,7 +1261,14 @@ export async function getContentHistoryByUrlOrKeywords(
   tenantId?: string
 ): Promise<ContentLog[]> {
   if (typeof urlOrKeywords === 'string') {
-    return getContentHistoryByUrl(urlOrKeywords, tenantId);
+    // Primary: URL-based lookup (finds events where urlId is set correctly)
+    const urlResults = await getContentHistoryByUrl(urlOrKeywords, tenantId);
+    // Fallback: if URL lookup returned nothing (e.g. events with urlId=NULL from
+    // callbacks that didn't echo Target_URL), try keyword-ID based lookup
+    if (urlResults.length === 0 && keywordIds && keywordIds.length > 0) {
+      return getContentHistoryByUrlOrKeywords(keywordIds, keywordIds, tenantId);
+    }
+    return urlResults;
   }
   
   const tenant = tid(tenantId);
@@ -1294,7 +1301,7 @@ export async function getContentHistoryByUrlOrKeywords(
       Action_Type: cycle?.actionType ? mapToOldActionType(cycle.actionType) as any : undefined,
       Page_Type: url?.pageType as any,
       Version: version?.contentHtml ? 'v2' : 'v1',
-      Event_Label: (event.eventData as any)?.original_event_label || event.eventType,
+      Event_Label: (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType),
       Created_At: event.eventTimestamp.toISOString(),
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,

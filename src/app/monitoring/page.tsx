@@ -32,6 +32,7 @@ import {
   ExternalLink,
   ChevronLeft,
   Wand2,
+  CheckCircle2,
   Users,
   AlertCircle,
   LayoutDashboard,
@@ -93,6 +94,7 @@ export default function MonitoringPage() {
   const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [plannedUrl, setPlannedUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('monitoring-active-tab') || "overview";
@@ -166,13 +168,14 @@ export default function MonitoringPage() {
         body: JSON.stringify({ urls: targetUrls }),
       });
       if (!res.ok) throw new Error(tr("Fehler beim Einreichen", "Error while submitting"));
+      if (urlsToSubmit?.length === 1) setPlannedUrl(urlsToSubmit[0]);
       addAlert({ 
         type: "success", 
         message: t("monitoring.addedToSuggestions"),
         description: (
           <button 
             onClick={() => { window.location.href = '/planning?tab=suggestions'; }}
-            className="text-white underline hover:no-underline font-medium"
+            className="underline hover:no-underline font-medium"
           >
             {t("monitoring.switchToSuggestions")}
           </button>
@@ -229,11 +232,22 @@ export default function MonitoringPage() {
           </h1>
           <Button 
             onClick={() => handleSubmitToSuggestions([viewingUrl])}
-            disabled={submitting}
-            className={`${detailOptimizable ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-gray-400 cursor-not-allowed opacity-70"}`}
+            disabled={submitting || !detailOptimizable || plannedUrl === viewingUrl}
+            className={`${
+              plannedUrl === viewingUrl
+                ? "bg-green-600 hover:bg-green-600 text-white cursor-default"
+                : detailOptimizable
+                ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                : "bg-gray-400 cursor-not-allowed opacity-70"
+            }`}
           >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-            {t("monitoring.optimizePlan")}
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : plannedUrl === viewingUrl ? (
+              <><CheckCircle2 className="h-4 w-4 mr-2" />{tr("Beauftragt", "Planned")}</>
+            ) : (
+              <><Wand2 className="h-4 w-4 mr-2" />{t("monitoring.optimizePlan")}</>
+            )}
           </Button>
         </div>
         {!detailOptimizable && (

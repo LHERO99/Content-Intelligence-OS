@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword, createExecutionVersion } from '@/lib/postgres';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { db } from '@/lib/db';
-import { executionCycles, processEvents } from '@/lib/db/schema';
+import { executionCycles, processEvents, urls } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 /**
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     const keywordId = body.keywordId || body.Keyword_ID;
     const content = body.content || body.contentBody || body.Content_Body;
     const status = body.status || body.Status;
-    const targetUrl = body.Target_URL || body.targetUrl || body.Logged_URL;
+    const targetUrlFromBody = body.Target_URL || body.targetUrl || body.Logged_URL;
     const commissionLogId: number | null = body.commissionLogId ?? null;
 
     if (!keywordId || !content) {
@@ -128,10 +128,23 @@ export async function POST(request: Request) {
     let cycleId: number | null = null;
     let versionId: number | null = null;
     let resolvedCommissionLogId: number | null = commissionLogId;
+    // targetUrl: prefer what the agent sends back; if missing, resolve from the
+    // urls table via urlId so that createContentLog always has a urlId to store.
+    let targetUrl: string | undefined = targetUrlFromBody;
 
     try {
       // Get urlId for keyword
       const urlId = await getUrlIdForKeyword(keywordId, tenantId);
+
+      // Resolve targetUrl from DB if the agent didn't echo it back
+      if (!targetUrl && urlId) {
+        const [urlRow] = await db
+          .select({ url: urls.url })
+          .from(urls)
+          .where(eq(urls.id, urlId))
+          .limit(1);
+        if (urlRow) targetUrl = urlRow.url;
+      }
       
       if (urlId) {
         // Use getDefaultTenantId() if tenantId is undefined (legacy mode)

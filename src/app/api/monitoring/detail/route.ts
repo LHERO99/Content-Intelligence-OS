@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
       urlPerformance, 
       keywordRankingHistory
     ] = await Promise.all([
-      getPerformanceDataByUrl(targetUrl, tenantId),
+      getPerformanceDataByUrl(targetUrl, tenantId).catch(() => []),
       getContentHistoryByUrlOrKeywords(targetUrl, keywordIds, tenantId),
       getCostConfigs(tenantId),
-      getURLPerformanceHistory(targetUrl, tenantId),
+      getURLPerformanceHistory(targetUrl, tenantId).catch(() => []),
       getKeywordRankingHistory(keywordIds, tenantId)
     ]);
 
