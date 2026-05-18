@@ -77,24 +77,30 @@ export function SuggestionsTable({ keywords, onGoToKeywordMap, refreshKey }: Sug
   // - Status 'Backlog': new URL that needs first content creation
   // - optimizationRequestedAt is set: explicitly commissioned from monitoring (manual or automatic)
   // - Rule engine returned a suggestion
-  // Keywords actively in production workflow (Planned → Review) are excluded.
-  // Statuses that indicate the URL is already in an active planning or production
-  // workflow. 'Planned' is included so that stale optimizationSuggestions data
-  // cannot keep an entry visible after it has been moved to the editorial plan.
-  // Note: optimizationRequestedAt is checked FIRST so an explicit DB signal always
-  // wins over the blocking set.
+  // Keywords actively in production workflow are always excluded — no exceptions.
+  // 'Planned' blocks so a keyword moved to the editorial plan stops showing here.
+  // 'Published' is intentionally NOT blocked so the rule-engine can surface
+  // re-optimisation needs — but only if there is an active rule-engine suggestion.
   const blockingStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review']);
+
   const suggestionData = React.useMemo(() => {
     return keywords.filter(kw => {
       if (kw.Main_Keyword !== 'Y') return false;
-      // Explicit optimization request always shows — even if status is somehow blocking
-      if (kw.optimizationRequestedAt) return true;
-      // Block if in active workflow (prevents stale rule-engine data from lingering)
+
+      // Active workflow always wins — no escape hatch can override this.
       if (blockingStatuses.has(kw.Status ?? '')) return false;
-      // Rule-engine based suggestion (auto-rules for published URLs)
+
+      // Explicit DB signal (manual request from monitoring) — only show if NOT
+      // already in an active workflow (checked above).
+      if (kw.optimizationRequestedAt) return true;
+
+      // Rule-engine suggestion for any status (including Published):
+      // a published URL should only reappear if there is an active rule reason.
       if (!!optimizationSuggestions[kw.id]) return true;
-      // New URL that needs first content creation
+
+      // New URL that needs first content creation.
       if (kw.Status === 'Backlog') return true;
+
       return false;
     });
   }, [keywords, optimizationSuggestions]);

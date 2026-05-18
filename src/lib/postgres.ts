@@ -101,6 +101,9 @@ function mapToOldStatus(
   // An active planning intent (user clicked "Hinzufügen") always wins over any
   // stale execution-cycle relict from a previous Erstellung/Optimierung cycle.
   if (planning?.status === 'planned') return 'Planned';
+  // Explicit publish (user clicked "Als veröffentlicht markieren") wins over a
+  // stale 'delivered' execution cycle — even if publishingStatus row is missing.
+  if (planning?.status === 'published') return 'Published';
   // Active production states
   if (execution?.status === 'commissioned') return 'Beauftragt';
   if (execution?.status === 'in_progress') return 'In Arbeit';
@@ -108,9 +111,7 @@ function mapToOldStatus(
   // been completed.  Once publishingStatus = 'published', this cycle is terminal.
   if (execution?.status === 'delivered' && publishing?.status !== 'published') return 'Angeliefert';
   if (publishing?.status === 'in_review') return 'Review';
-  // Terminal published state — from either publishingStatus or planningStatus
   if (publishing?.status === 'published') return 'Published';
-  if (planning?.status === 'published') return 'Published';
   return 'Backlog';
 }
 
@@ -609,7 +610,10 @@ export async function updateKeyword(
         .limit(1);
 
       if (cycle) {
-        // Find latest version for this cycle (required FK for publishingStatus)
+        // Find latest version for this cycle (required FK for publishingStatus).
+        // If none exists (e.g. n8n-delivered content without a version row),
+        // create a minimal placeholder so publishingStatus can always be written.
+        let versionId: number | null = null;
         const [latestVersion] = await tx
           .select({ id: executionVersions.id })
           .from(executionVersions)
@@ -618,6 +622,22 @@ export async function updateKeyword(
           .limit(1);
 
         if (latestVersion) {
+          versionId = latestVersion.id;
+        } else {
+          // Create a minimal placeholder version so the publishingStatus FK is satisfied
+          const [placeholder] = await tx
+            .insert(executionVersions)
+            .values({
+              tenantId: tenant,
+              cycleId: cycle.id,
+              versionNumber: 1,
+              createdByAi: false,
+            })
+            .returning({ id: executionVersions.id });
+          versionId = placeholder?.id ?? null;
+        }
+
+        if (versionId) {
           // Upsert: handles both the case where a publishingStatus row already exists
           // and the case where none was ever created (e.g. n8n-delivered content)
           await tx
@@ -625,7 +645,7 @@ export async function updateKeyword(
             .values({
               tenantId: tenant,
               cycleId: cycle.id,
-              versionId: latestVersion.id,
+              versionId,
               status: 'published',
               publishedAt: new Date(updates.Last_Published),
             })
@@ -675,6 +695,7 @@ export async function createExecutionCycle(
       );
     
     const nextCycleNumber = (result?.maxCycle ?? 0) + 1;
+    const mappedActionType = mapFromOldActionType(actionType);
     
     // Create new execution cycle
     const [cycle] = await tx
@@ -683,24 +704,28 @@ export async function createExecutionCycle(
         tenantId: tenant,
         urlId,
         cycleNumber: nextCycleNumber,
-        actionType: mapFromOldActionType(actionType),
+        actionType: mappedActionType,
         status: 'commissioned',
         commissionedByUserId: userId || null,
         commissionedAt: new Date(),
       })
       .returning({ id: executionCycles.id });
 
-    // Reset planning_status from 'planned' back to 'backlog' so that
-    // mapToOldStatus can reach the execution.status === 'commissioned' branch
-    // and return 'Beauftragt' instead of 'Planned'.
+    // Update planningStatus in one atomic write:
+    //   - Reset 'planned' → 'backlog' so mapToOldStatus reaches the commissioned branch
+    //   - Clear optimizationRequestedAt so the suggestions escape-hatch no longer fires
+    //   - Store plannedActionType so the keyword list reflects the correct action type
     await tx
       .update(planningStatus)
-      .set({ status: 'backlog' })
+      .set({
+        status: sql`CASE WHEN ${planningStatus.status} = 'planned' THEN 'backlog'::planning_status_enum ELSE ${planningStatus.status} END`,
+        plannedActionType: mappedActionType,
+        optimizationRequestedAt: null,
+      })
       .where(
         and(
           eq(planningStatus.urlId, urlId),
           eq(planningStatus.tenantId, tenant),
-          eq(planningStatus.status, 'planned')
         )
       );
     

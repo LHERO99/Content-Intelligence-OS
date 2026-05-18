@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
-import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle, createExecutionVersion } from '@/lib/postgres';
+import { createContentLog, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle, createExecutionVersion } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 import { db } from '@/lib/db';
 import { executionCycles } from '@/lib/db/schema';
@@ -47,7 +47,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'URL not found for keyword' }, { status: 404 });
       }
       
-      // Create execution cycle FIRST (this sets the status to "Beauftragt")
+      // Create execution cycle — this atomically:
+      //   1. Inserts the new cycle (status='commissioned')
+      //   2. Resets planning.status from 'planned' → 'backlog'
+      //   3. Sets plannedActionType to the correct action type
+      //   4. Clears optimizationRequestedAt (prevents stale suggestions escape-hatch)
       try {
         executionCycleId = await createExecutionCycle(
           urlId,
@@ -61,11 +65,6 @@ export async function POST(req: NextRequest) {
           message: 'Failed to create execution cycle' 
         }, { status: 500 });
       }
-      
-      // Update Action_Type in planning_status (NOT Status - that comes from execution cycle)
-      await updateKeyword(data.keywordId, { 
-        Action_Type: commissioningActionType 
-      }, tenantId);
       
       // Log event to database — capture ID so delivery/callback can reference it
       try {
