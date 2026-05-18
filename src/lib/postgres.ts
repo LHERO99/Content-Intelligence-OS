@@ -536,9 +536,12 @@ export async function updateKeyword(
       
       if (updates.Action_Type) {
         planningUpdates.plannedActionType = mapFromOldActionType(updates.Action_Type);
-        // When optimization is requested, record the timestamp
+        // When optimization is requested, record the timestamp and reset status to
+        // 'backlog' so the URL is never stuck in a blocking state (e.g. 'planned'
+        // left over from a previous Erstellung cycle that wasn't properly reset).
         if (updates.Action_Type === 'Optimierung') {
           planningUpdates.optimizationRequestedAt = new Date();
+          planningUpdates.status = 'backlog';
         }
       }
 
