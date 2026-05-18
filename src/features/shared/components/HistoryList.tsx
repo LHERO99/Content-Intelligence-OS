@@ -28,7 +28,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
         const res = await fetch(`/api/planning/history/${log.ID}/body`);
         if (res.ok) {
           const data = await res.json();
-          setBodyContent(data.Content_Body ?? null);
+          setBodyContent(data.contentBody ?? data.Content_Body ?? null);
         }
       } catch {
         // non-critical

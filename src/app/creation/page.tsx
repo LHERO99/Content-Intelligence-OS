@@ -213,9 +213,9 @@ export default function CreationPage() {
   // Pagination
   const [jobPage, setJobPage] = useState(0);
 
-  // Body cache: logId → { Content_Body, Event_Label }
+  // Body cache: logId → { contentBody, Content_Body, Event_Label }
   const [bodyCache, setBodyCache] = useState<
-    Record<string, { Content_Body?: string; Event_Label?: string }>
+    Record<string, { contentBody?: string; Content_Body?: string; Event_Label?: string }>
   >({});
 
   // ── Data fetching ────────────────────────────────────────────────────────────
@@ -290,8 +290,8 @@ export default function CreationPage() {
   }, [displayLogId]);
 
   const displayedBody = displayLogId ? bodyCache[displayLogId] : undefined;
-  console.log('[render] selectedJob:', selectedJob?.commissionLogId, 'displayLogId:', displayLogId, 'displayedBody:', displayedBody ? 'yes' : 'no');
-  const v2Content = displayedBody?.Content_Body ?? '';
+  console.log('[render] selectedJob:', selectedJob?.commissionLogId, 'displayLogId:', displayLogId, 'displayedBody:', displayedBody ? 'yes' : 'no', 'contentBody:', displayedBody?.contentBody ? 'yes' : 'no');
+  const v2Content = displayedBody?.contentBody ?? displayedBody?.Content_Body ?? '';
 
   // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)
   const v1Content = useMemo(() => {
