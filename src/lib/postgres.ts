@@ -25,6 +25,7 @@ import {
   auditLogs as auditLogsTable,
   users as usersTable,
   tenants as tenantsTable,
+  urlCostSummary,
 } from './db/schema';
 
 export * from './postgres-types';
@@ -493,6 +494,22 @@ export async function getUrlIdForKeyword(
       .limit(1);
     
     return result?.urlId ?? null;
+  });
+}
+
+export async function getUrlIdForUrl(
+  targetUrl: string,
+  tenantId?: string
+): Promise<string | null> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const normUrl = normalizeUrl(targetUrl);
+    const [result] = await tx
+      .select({ id: urls.id })
+      .from(urls)
+      .where(and(eq(urls.url, normUrl), eq(urls.tenantId, tenant)))
+      .limit(1);
+    return result?.id ?? null;
   });
 }
 
@@ -1586,6 +1603,233 @@ export async function bulkDeleteFromBlacklist(ids: number[], tenantId?: string):
   }
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Cost Summary (materialized cache — updated on every delivery event)
+// ---------------------------------------------------------------------------
+
+/**
+ * Recomputes the cost summary for a single URL and upserts it into
+ * url_cost_summary. Called after every cycle_delivered / content_published
+ * event so the monitoring routes never need to do a full event scan.
+ *
+ * Mirrors the deduplication logic in the monitoring routes:
+ *   - Dedup key = cycle ID (Commission_Log_Id) if present, else calendar day
+ *   - Positional fallback: first delivery = Erstellung, rest = Optimierung
+ */
+export async function recomputeUrlCostSummary(
+  urlId: string,
+  tenantId?: string
+): Promise<void> {
+  const tenant = tid(tenantId);
+
+  await withTenant(tenant, async (tx) => {
+    // 1. Load all delivery events for this URL
+    const deliveryEvents = await tx
+      .select({
+        event: processEvents,
+        cycle: executionCycles,
+        url: urls,
+      })
+      .from(processEvents)
+      .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
+      .leftJoin(urls, eq(urls.id, processEvents.urlId))
+      .where(
+        and(
+          eq(processEvents.urlId, urlId),
+          eq(processEvents.tenantId, tenant),
+          inArray(processEvents.eventType, ['cycle_delivered', 'content_published'])
+        )
+      )
+      .orderBy(asc(processEvents.eventTimestamp));
+
+    if (deliveryEvents.length === 0) return;
+
+    // 2. Load cost configs for this tenant
+    const costs = await tx
+      .select()
+      .from(costConfigTable)
+      .where(eq(costConfigTable.tenantId, tenant));
+
+    const urlRecord = deliveryEvents[0].url;
+    const rawPageType = urlRecord?.pageType ?? '';
+
+    const inferPageType = (pt: string): string => {
+      if (pt) return pt;
+      const u = urlRecord?.url?.toLowerCase() ?? '';
+      if (u.includes('/ratgeber/')) return 'Ratgeber';
+      if (u.includes('/kategorie/')) return 'Kategorie';
+      if (u.includes('/marke/')) return 'Marke';
+      if (u.includes('/produkt/')) return 'Produkt';
+      return 'Kategorie';
+    };
+
+    // 3. Deduplicate: one entry per cycle, fall back to day for legacy events
+    const seenKeys = new Set<string>();
+    const dedupedEvents: typeof deliveryEvents = [];
+    for (const row of deliveryEvents) {
+      const key = row.event.cycleId
+        ? `cycle:${row.event.cycleId}`
+        : `day:${row.event.eventTimestamp.toISOString().split('T')[0]}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        dedupedEvents.push(row);
+      }
+    }
+
+    // 4. Calculate totals
+    let totalAgency = 0;
+    let totalOverhead = 0;
+    let erstellungCount = 0;
+    let optimierungCount = 0;
+    let lastDeliveryAt: Date | null = null;
+
+    dedupedEvents.forEach((row, index) => {
+      const cycleActionType = row.cycle?.actionType
+        ? mapToOldActionType(row.cycle.actionType)
+        : undefined;
+      const eventDataActionType = (row.event.eventData as any)?.action_type as string | undefined;
+      const actionType: string =
+        cycleActionType ?? eventDataActionType ?? (index === 0 ? 'Erstellung' : 'Optimierung');
+
+      const pageType = inferPageType(rawPageType);
+
+      const cost = costs.find(
+        (c) =>
+          String(c.pageType ?? '').toLowerCase() === pageType.toLowerCase() &&
+          String(c.actionType ?? '').toLowerCase() === actionType.toLowerCase()
+      );
+
+      if (cost) {
+        totalAgency += Number(cost.agencyCost ?? 0);
+        totalOverhead += Number(cost.overheadCost ?? 0);
+      }
+
+      if (actionType.toLowerCase() === 'optimierung') {
+        optimierungCount++;
+      } else {
+        erstellungCount++;
+      }
+
+      const ts = row.event.eventTimestamp;
+      if (!lastDeliveryAt || ts > lastDeliveryAt) lastDeliveryAt = ts;
+    });
+
+    // 5. Upsert into url_cost_summary
+    await tx
+      .insert(urlCostSummary)
+      .values({
+        tenantId: tenant,
+        urlId,
+        totalAgencyCost: String(totalAgency),
+        totalOverheadCost: String(totalOverhead),
+        erstellungCount,
+        optimierungCount,
+        lastDeliveryAt,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [urlCostSummary.urlId, urlCostSummary.tenantId],
+        set: {
+          totalAgencyCost: String(totalAgency),
+          totalOverheadCost: String(totalOverhead),
+          erstellungCount,
+          optimierungCount,
+          lastDeliveryAt,
+          updatedAt: new Date(),
+        },
+      });
+  });
+}
+
+/**
+ * Fetch the precomputed cost summary for a single URL.
+ * Returns null if no summary exists yet (URL never had a delivery).
+ */
+export async function getUrlCostSummary(
+  urlId: string,
+  tenantId?: string
+): Promise<{
+  totalAgencyCost: number;
+  totalOverheadCost: number;
+  erstellungCount: number;
+  optimierungCount: number;
+  lastDeliveryAt: Date | null;
+} | null> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(urlCostSummary)
+      .where(
+        and(eq(urlCostSummary.urlId, urlId), eq(urlCostSummary.tenantId, tenant))
+      )
+      .limit(1);
+    if (!row) return null;
+    return {
+      totalAgencyCost: Number(row.totalAgencyCost),
+      totalOverheadCost: Number(row.totalOverheadCost),
+      erstellungCount: row.erstellungCount,
+      optimierungCount: row.optimierungCount,
+      lastDeliveryAt: row.lastDeliveryAt,
+    };
+  });
+}
+
+/**
+ * Fetch cost summaries for all URLs of a tenant in one query.
+ * Returns a map: url (string) → summary (includes pageType for count aggregation).
+ */
+export async function getAllUrlCostSummaries(
+  tenantId?: string
+): Promise<
+  Map<
+    string,
+    {
+      totalAgencyCost: number;
+      totalOverheadCost: number;
+      erstellungCount: number;
+      optimierungCount: number;
+      pageType: string;
+    }
+  >
+> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const rows = await tx
+      .select({
+        summary: urlCostSummary,
+        url: urls,
+      })
+      .from(urlCostSummary)
+      .leftJoin(urls, eq(urls.id, urlCostSummary.urlId))
+      .where(eq(urlCostSummary.tenantId, tenant));
+
+    const map = new Map<
+      string,
+      {
+        totalAgencyCost: number;
+        totalOverheadCost: number;
+        erstellungCount: number;
+        optimierungCount: number;
+        pageType: string;
+      }
+    >();
+    for (const row of rows) {
+      const urlStr = row.url?.url;
+      if (!urlStr) continue;
+      map.set(urlStr, {
+        totalAgencyCost: Number(row.summary.totalAgencyCost),
+        totalOverheadCost: Number(row.summary.totalOverheadCost),
+        erstellungCount: row.summary.erstellungCount,
+        optimierungCount: row.summary.optimierungCount,
+        pageType: row.url?.pageType ?? '',
+      });
+    }
+    return map;
+  });
+}
+
 export async function getCostConfigs(tenantId?: string): Promise<CostConfig[]> {
   const tenant = tid(tenantId);
   return withTenant(tenant, async (tx) => {

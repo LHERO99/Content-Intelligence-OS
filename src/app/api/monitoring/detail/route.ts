@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   getPerformanceDataByUrl, 
   getContentHistoryByUrlOrKeywords, 
-  getCostConfigs, 
   getURLPerformanceHistory, 
   getKeywordRankingHistory,
-  getKeywordMap 
+  getKeywordMap,
+  getUrlCostSummary,
+  getUrlIdForUrl,
 } from '@/lib/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -25,97 +26,30 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const inferPageTypeFromUrl = (value?: string) => {
-      const normalized = String(value || '').toLowerCase();
-      if (normalized.includes('/ratgeber/')) return 'Ratgeber';
-      if (normalized.includes('/kategorie/')) return 'Kategorie';
-      if (normalized.includes('/marke/')) return 'Marke';
-      if (normalized.includes('/produkt/')) return 'Produkt';
-      return 'Kategorie';
-    };
-
     // 1. Fetch Keyword Map to identify associated keywords for this URL
     const allKeywords = await getKeywordMap(tenantId);
     const relatedKeywords = allKeywords.filter(kw => kw.Target_URL === targetUrl);
     const keywordIds = relatedKeywords.map(kw => kw.id);
 
-    // 2. Fetch Performance Data from all tables
+    // 2. Fetch all data in parallel
     const [
       legacyPerformance, 
       history, 
-      costs, 
       urlPerformance, 
-      keywordRankingHistory
+      keywordRankingHistory,
+      urlId,
     ] = await Promise.all([
       getPerformanceDataByUrl(targetUrl, tenantId).catch(() => []),
       getContentHistoryByUrlOrKeywords(targetUrl, keywordIds, tenantId),
-      getCostConfigs(tenantId),
       getURLPerformanceHistory(targetUrl, tenantId).catch(() => []),
-      getKeywordRankingHistory(keywordIds, tenantId)
+      getKeywordRankingHistory(keywordIds, tenantId),
+      getUrlIdForUrl(targetUrl, tenantId).catch(() => null),
     ]);
 
-    // Calculate individual savings
-    let totalAgency = 0;
-    let totalOverhead = 0;
-    
-    // Rule: Only display savings if content was actually delivered/published
-    const deliveryLogs = history.filter(l => {
-      const summary = l.Event_Label?.toLowerCase() || '';
-      return (summary.includes('content angeliefert') || summary.includes('content veröffentlicht')) &&
-             !summary.includes('url wurde dem tool hinzugefügt') &&
-             !summary.includes('url wurde dem tab \'vorschläge\' hinzugefügt') &&
-             !summary.includes('url wurde der redaktionsplanung hinzugefügt');
-    }).sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime());
-    
-    if (deliveryLogs.length > 0) {
-      // Deduplicate: Group logs by day
-      const dailyLogs: typeof deliveryLogs = [];
-      const seenDays = new Set<string>();
-
-      deliveryLogs.forEach(log => {
-        const day = new Date(log.Created_At).toISOString().split('T')[0];
-        if (!seenDays.has(day)) {
-          dailyLogs.push(log);
-          seenDays.add(day);
-        }
-      });
-
-      dailyLogs.forEach((log, index) => {
-        const keywordId = log.Keyword_ID?.[0];
-        const keyword = allKeywords.find(k => k.id === keywordId);
-
-        // Infer Page_Type from URL structure if missing from log and keyword
-        let pageType: string = String(log.Page_Type || keyword?.Page_Type || '');
-        if (!pageType) {
-          pageType = inferPageTypeFromUrl(targetUrl);
-        }
-
-        // Action_Type: use what the cycle recorded directly; fall back to positional
-        // order (first delivery = Erstellung, all subsequent = Optimierung).
-        // keyword.Action_Type is intentionally NOT used here — it reflects the current
-        // planned type, not the historical type of this specific log entry.
-        const actionType: string = log.Action_Type || (index === 0 ? 'Erstellung' : 'Optimierung');
-
-        console.log(`[API Monitoring Detail] URL: ${targetUrl}, Day: ${new Date(log.Created_At).toISOString().split('T')[0]}, Page_Type: ${pageType}, Action_Type: ${actionType}`);
-
-        const cost = costs.find(c => {
-          const cPageType = String(c.Page_Type || '').toLowerCase();
-          const cActionType = String(c.Action_Type || '').toLowerCase();
-          return cPageType === pageType.toLowerCase() && 
-                 cActionType === actionType.toLowerCase();
-        });
-
-        if (cost) {
-          totalAgency += Number(cost.Agency_Cost || 0);
-          totalOverhead += Number(cost.Overhead_Cost || 0);
-          console.log(`[API Monitoring Detail] Match found: Agency=${cost.Agency_Cost}, Overhead=${cost.Overhead_Cost}`);
-        } else {
-          console.warn(`[API Monitoring Detail] No cost config found for Page_Type=${pageType}, Action_Type=${actionType}. Available:`, costs.map(c => `${c.Page_Type}/${c.Action_Type}`).join(', '));
-        }
-      });
-    } else {
-      console.log(`[API Monitoring Detail] No delivery log found for ${targetUrl}. Savings remain 0.`);
-    }
+    // 3. Read precomputed savings from materialized summary
+    const costSummary = urlId
+      ? await getUrlCostSummary(urlId, tenantId)
+      : null;
 
     return NextResponse.json({
       performance: legacyPerformance, // Backward compatibility
@@ -124,9 +58,9 @@ export async function GET(request: NextRequest) {
       keywords: relatedKeywords,
       history,
       savings: {
-        agency: totalAgency,
-        overhead: totalOverhead
-      }
+        agency: costSummary?.totalAgencyCost ?? 0,
+        overhead: costSummary?.totalOverheadCost ?? 0,
+      },
     });
   } catch (error: any) {
     console.error('[API Monitoring Detail] Error:', error);

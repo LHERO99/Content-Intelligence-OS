@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
-import { createContentLog, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle, createExecutionVersion } from '@/lib/postgres';
+import { createContentLog, getConfig, getKeywordsByUrl, getUrlIdForKeyword, createExecutionCycle, createExecutionVersion, recomputeUrlCostSummary } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 import { db } from '@/lib/db';
 import { executionCycles } from '@/lib/db/schema';
@@ -238,6 +238,14 @@ export async function POST(req: NextRequest) {
               Version_Id: versionId,
               Editor: session.user?.id ? [session.user.id] : undefined,
             }, tenantId);
+
+            // Update materialized cost summary (fire-and-forget)
+            const urlIdForSummary = await getUrlIdForKeyword(data.keywordId, tenantId);
+            if (urlIdForSummary) {
+              recomputeUrlCostSummary(urlIdForSummary, tenantId).catch(err =>
+                console.error('[InternalAgent] Failed to recompute cost summary:', err)
+              );
+            }
           } catch (logErr) {
             console.error('[InternalAgent] Failed to create content version/log:', logErr);
           }

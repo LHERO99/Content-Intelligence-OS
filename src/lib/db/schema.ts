@@ -623,6 +623,28 @@ export const syncJobs = pgTable(
   })
 );
 
+// ---------------------------------------------------------------------------
+// url_cost_summary  (materialized per-URL cost cache — updated on every delivery)
+// ---------------------------------------------------------------------------
+export const urlCostSummary = pgTable(
+  'url_cost_summary',
+  {
+    id:                serial('id').primaryKey(),
+    tenantId:          text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    urlId:             text('url_id').notNull().references(() => urls.id, { onDelete: 'cascade' }),
+    totalAgencyCost:   numeric('total_agency_cost').notNull().default('0'),
+    totalOverheadCost: numeric('total_overhead_cost').notNull().default('0'),
+    erstellungCount:   integer('erstellung_count').notNull().default(0),
+    optimierungCount:  integer('optimierung_count').notNull().default(0),
+    lastDeliveryAt:    timestamp('last_delivery_at', { withTimezone: true }),
+    updatedAt:         timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    uniq:      uniqueIndex('url_cost_summary_url_tenant_uniq').on(t.urlId, t.tenantId),
+    tenantIdx: index('url_cost_summary_tenant_idx').on(t.tenantId),
+  })
+);
+
 // ===========================================================================
 // BACKWARDS COMPATIBILITY ALIASES
 // ===========================================================================

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword, createExecutionVersion } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, createAuditLog, getAllTenants, getUrlIdForKeyword, createExecutionVersion, recomputeUrlCostSummary } from '@/lib/postgres';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { db } from '@/lib/db';
 import { executionCycles, processEvents, urls } from '@/lib/db/schema';
@@ -226,13 +226,25 @@ export async function POST(request: Request) {
       Version_Id: versionId ?? undefined,
     }, tenantId);
 
+    // Update materialized cost summary for this URL (fire-and-forget, never blocks response)
+    if (cycleId !== null) {
+      const { getDefaultTenantId: getDefault } = await import('@/lib/db');
+      const effectiveTenantId = tenantId ?? getDefault();
+      // Find urlId from the cycle we just updated
+      const urlIdForSummary = await import('@/lib/postgres').then(m => m.getUrlIdForKeyword(keywordId, tenantId));
+      if (urlIdForSummary) {
+        recomputeUrlCostSummary(urlIdForSummary, effectiveTenantId).catch(err =>
+          console.error('[Callback] Failed to recompute cost summary:', err)
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       logId: newLog?.id,
       versionId: versionId,
       cycleId: cycleId
     });
-
   } catch (error: any) {
     console.error('[API] Error in agent callback:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

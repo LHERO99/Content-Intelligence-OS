@@ -37,13 +37,10 @@ import {
   AlertCircle,
   LayoutDashboard,
   List,
-  Calendar as CalendarIcon,
-  RotateCcw,
   Map
 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAlerts } from "@/components/alerts-provider";
 import { UrlDetail } from "./url-detail";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -101,11 +98,6 @@ export default function MonitoringPage() {
     }
     return "overview";
   });
-  const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
-  });
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -309,51 +301,6 @@ export default function MonitoringPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <Card className="bg-white border-none shadow-sm">
-            <CardContent className="py-4">
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="global-start-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {t("monitoring.periodFrom")}
-                  </Label>
-                  <Input
-                    id="global-start-date"
-                    type="date"
-                    value={dateRange.start}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="h-9 w-[160px] text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="global-end-date" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {t("monitoring.periodTo")}
-                  </Label>
-                  <Input
-                    id="global-end-date"
-                    type="date"
-                    value={dateRange.end}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="h-9 w-[160px] text-sm"
-                  />
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setDateRange({
-                    start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0],
-                    end: new Date().toISOString().split('T')[0]
-                  })}
-                  className="h-9 gap-2 text-muted-foreground hover:text-primary"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  {t("common.reset")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-2">
