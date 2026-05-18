@@ -53,7 +53,7 @@ export function SuggestionsTable({ keywords, onGoToKeywordMap, refreshKey }: Sug
   React.useEffect(() => {
     const loadOptimizationSuggestions = async () => {
       try {
-        const res = await fetch('/api/planning/optimization-suggestions');
+        const res = await fetch('/api/planning/optimization-suggestions', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         const mapped: Record<string, { reasons: string[]; reasonCodes: string[] }> = {};

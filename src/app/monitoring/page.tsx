@@ -171,7 +171,7 @@ export default function MonitoringPage() {
         message: t("monitoring.addedToSuggestions"),
         description: (
           <button 
-            onClick={() => router.push(`/planning?tab=suggestions&t=${Date.now()}`)}
+            onClick={() => { window.location.href = '/planning?tab=suggestions'; }}
             className="text-white underline hover:no-underline font-medium"
           >
             {t("monitoring.switchToSuggestions")}
