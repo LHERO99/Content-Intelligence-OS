@@ -66,13 +66,16 @@ export function UrlDetail({ url }: UrlDetailProps) {
       const json = await res.json();
       setData(json);
       
-      // Auto-set initial date range based on available data
+      // Auto-set initial date range from ALL available data (performance + rankings)
       const allPerformance = json.urlPerformance.length > 0 ? json.urlPerformance : json.performance;
-      if (allPerformance.length > 0) {
-        const dates = allPerformance.map((p: any) => p.Date).sort();
+      const perfDates = allPerformance.map((p: any) => p.Date);
+      const rankingDates = (json.keywordRankings ?? []).map((r: any) => r.Date);
+      const allDates = [...perfDates, ...rankingDates].filter(Boolean).sort();
+
+      if (allDates.length > 0) {
         setDateRange({
-          start: dates[0],
-          end: dates[dates.length - 1]
+          start: allDates[0],
+          end: allDates[allDates.length - 1]
         });
       }
     } catch (err) {
@@ -102,11 +105,13 @@ export function UrlDetail({ url }: UrlDetailProps) {
   const handleResetDates = () => {
     if (!data) return;
     const baseData = data.urlPerformance.length > 0 ? data.urlPerformance : data.performance;
-    if (baseData.length > 0) {
-      const dates = baseData.map(p => p.Date).sort();
+    const perfDates = baseData.map(p => p.Date);
+    const rankingDates = data.keywordRankings.map(r => r.Date);
+    const allDates = [...perfDates, ...rankingDates].filter(Boolean).sort();
+    if (allDates.length > 0) {
       setDateRange({
-        start: dates[0],
-        end: dates[dates.length - 1]
+        start: allDates[0],
+        end: allDates[allDates.length - 1]
       });
     }
   };

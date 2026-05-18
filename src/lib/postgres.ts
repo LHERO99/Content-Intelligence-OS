@@ -375,12 +375,21 @@ export async function getKeywordsByUrl(targetUrl: string, tenantId?: string): Pr
 async function ensureUrl(url: string, pageType: string | undefined, tenant: string, tx: any): Promise<string> {
   const normUrl = normalizeUrl(url);
   const existing = await tx
-    .select({ id: urls.id })
+    .select({ id: urls.id, pageType: urls.pageType })
     .from(urls)
     .where(and(eq(urls.url, normUrl), eq(urls.tenantId, tenant)))
     .limit(1);
 
-  if (existing.length > 0) return existing[0].id;
+  if (existing.length > 0) {
+    // Backfill pageType if the existing record has none but we now know it
+    if (pageType && !existing[0].pageType) {
+      await tx
+        .update(urls)
+        .set({ pageType: pageType as any })
+        .where(eq(urls.id, existing[0].id));
+    }
+    return existing[0].id;
+  }
 
   const [newUrl] = await tx
     .insert(urls)
@@ -839,7 +848,7 @@ export async function createExecutionVersion(
 
 export async function getContentLogs(tenantId?: string, limit?: number): Promise<ContentLog[]> {
   const tenant = tid(tenantId);
-  const maxRows = limit ?? 200;
+  const maxRows = limit ?? 5000;
 
   return withTenant(tenant, async (tx) => {
     const events = await tx

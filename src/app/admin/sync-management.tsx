@@ -402,9 +402,9 @@ export function SyncManagement() {
 
             {/* Background-job info hint */}
             {!isRunning && !result && (
-              <Alert className="py-2 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
-                <Info className="h-4 w-4 text-blue-500" />
-                <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+              <Alert className="py-2 border-primary/30 bg-primary/5">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-xs text-primary/80">
                   {tr(
                     "Der Sync läuft im Hintergrund. Du kannst den Tab wechseln oder die Seite neu laden — der Fortschritt bleibt erhalten.",
                     "The sync runs in the background. You can switch tabs or reload — progress is preserved."
@@ -435,13 +435,13 @@ export function SyncManagement() {
 
         {/* Running status banner */}
         {isRunning && jobId && (
-          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          <Alert className="border-primary/30 bg-primary/5">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
             <div>
-              <AlertTitle className="text-sm text-blue-700 dark:text-blue-300">
+              <AlertTitle className="text-sm text-primary">
                 {tr("Sync läuft im Hintergrund", "Sync running in background")}
               </AlertTitle>
-              <AlertDescription className="text-xs text-blue-600 dark:text-blue-400">
+              <AlertDescription className="text-xs text-primary/70">
                 {tr("Job", "Job")} #{jobId}
                 {jobStartedAt && (
                   <> · {tr("gestartet", "started")}{" "}
