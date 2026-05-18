@@ -50,9 +50,10 @@ export default function PlanningPage() {
     }
   };
 
+  const tParam = searchParams?.get('t');
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [tParam]);
 
   useEffect(() => {
     const handleRefresh = () => fetchData();
