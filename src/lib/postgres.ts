@@ -98,13 +98,15 @@ function mapToOldStatus(
   execution: typeof executionCycles.$inferSelect | null,
   publishing: typeof publishingStatus.$inferSelect | null
 ): KeywordStatus {
-  // All keywords inherit URL-level status
-  if (publishing?.status === 'published') return 'Published';
-  if (publishing?.status === 'in_review') return 'Review';
-  if (execution?.status === 'delivered') return 'Angeliefert';
-  if (execution?.status === 'in_progress') return 'In Arbeit';
+  // Active production states take priority over published
   if (execution?.status === 'commissioned') return 'Beauftragt';
+  if (execution?.status === 'in_progress') return 'In Arbeit';
+  if (execution?.status === 'delivered') return 'Angeliefert';
+  if (publishing?.status === 'in_review') return 'Review';
   if (planning?.status === 'planned') return 'Planned';
+  // Terminal published state — from either publishingStatus or planningStatus
+  if (publishing?.status === 'published') return 'Published';
+  if (planning?.status === 'published') return 'Published';
   return 'Backlog';
 }
 
@@ -214,6 +216,7 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       Action_Type: mapToOldActionType(planning?.plannedActionType ?? cycle?.actionType),
       Page_Type: url.pageType as any,
       Last_Published: toIsoDate(publishing?.publishedAt),
+      optimizationRequestedAt: planning?.optimizationRequestedAt?.toISOString(),
     }));
   });
 }
@@ -507,8 +510,20 @@ export async function updateKeyword(
       
       if (updates.Status) {
         if (updates.Status === 'Backlog') planningUpdates.status = 'backlog';
-        else if (updates.Status === 'Planned') planningUpdates.status = 'planned';
-        else if (updates.Status === 'Published') planningUpdates.status = 'planned'; // Keep planned for re-optimization
+        else if (updates.Status === 'Planned') {
+          planningUpdates.status = 'planned';
+          // Clear optimization request when explicitly moved to editorial planning
+          planningUpdates.optimizationRequestedAt = null;
+        }
+        else if (updates.Status === 'Published') {
+          // Transition to 'published' state and clear workflow flags
+          planningUpdates.status = 'published';
+          planningUpdates.plannedActionType = null;
+          planningUpdates.optimizationRequestedAt = null;
+          if (updates.Last_Published) {
+            planningUpdates.lastPublishedAt = new Date(updates.Last_Published);
+          }
+        }
       }
       
       if (updates.Editorial_Deadline !== undefined) {
@@ -521,6 +536,10 @@ export async function updateKeyword(
       
       if (updates.Action_Type) {
         planningUpdates.plannedActionType = mapFromOldActionType(updates.Action_Type);
+        // When optimization is requested, record the timestamp
+        if (updates.Action_Type === 'Optimierung') {
+          planningUpdates.optimizationRequestedAt = new Date();
+        }
       }
 
       if (Object.keys(planningUpdates).length > 0) {
@@ -565,9 +584,9 @@ export async function updateKeyword(
       // These are handled by execution cycles, not directly updatable
     }
 
-    // Handle publishing
+    // Handle publishing — update publishingStatus per-cycle and set lastPublishedCycleId
     if (updates.Status === 'Published' && updates.Last_Published) {
-      // Find active cycle and mark as published
+      // Find the latest delivered cycle to mark as published
       const [cycle] = await tx
         .select({ id: executionCycles.id })
         .from(executionCycles)
@@ -589,6 +608,12 @@ export async function updateKeyword(
             publishedAt: new Date(updates.Last_Published),
           })
           .where(and(eq(publishingStatus.cycleId, cycle.id), eq(publishingStatus.tenantId, tenant)));
+
+        // Record which cycle was last published at URL level
+        await tx
+          .update(planningStatus)
+          .set({ lastPublishedCycleId: cycle.id })
+          .where(and(eq(planningStatus.urlId, keyword.urlId), eq(planningStatus.tenantId, tenant)));
       }
     }
   });

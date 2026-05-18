@@ -438,13 +438,28 @@ export async function publishContent(
       })
       .where(and(eq(publishingStatus.cycleId, cycleId), eq(publishingStatus.tenantId, tenantId)));
 
-    // Log event
+    // Fetch the cycle to get the urlId
     const [cycle] = await tx
       .select({ urlId: executionCycles.urlId })
       .from(executionCycles)
       .where(eq(executionCycles.id, cycleId))
       .limit(1);
 
+    // Reset planningStatus to 'published' and clear all workflow flags
+    if (cycle) {
+      await tx
+        .update(planningStatus)
+        .set({
+          status: 'published',
+          plannedActionType: null,
+          optimizationRequestedAt: null,
+          lastPublishedAt: new Date(),
+          lastPublishedCycleId: cycleId,
+        })
+        .where(and(eq(planningStatus.urlId, cycle.urlId), eq(planningStatus.tenantId, tenantId)));
+    }
+
+    // Log event
     await tx.insert(processEvents).values({
       tenantId,
       eventType: 'content_published',

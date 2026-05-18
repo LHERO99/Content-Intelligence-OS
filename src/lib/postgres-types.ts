@@ -33,6 +33,7 @@ export interface KeywordMap {
   Action_Type?: 'Erstellung' | 'Optimierung';
   Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Last_Published?: string; // ISO Date String
+  optimizationRequestedAt?: string; // ISO Timestamp — set when optimization is commissioned from monitoring
 }
 
 export interface SkippedKeyword extends Partial<KeywordMap> {

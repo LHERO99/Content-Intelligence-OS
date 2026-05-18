@@ -55,6 +55,7 @@ export const planningStatusEnum = pgEnum('planning_status_enum', [
   'suggested',
   'backlog',
   'planned',
+  'published',
   'cancelled',
 ]);
 
@@ -183,6 +184,9 @@ export const planningStatus = pgTable(
     priorityScore: numeric('priority_score'),
     plannedActionType: actionTypeEnum('planned_action_type'),
     assignedEditorId: text('assigned_editor_id').references(() => users.id, { onDelete: 'set null' }),
+    lastPublishedAt: timestamp('last_published_at', { withTimezone: true }),
+    lastPublishedCycleId: integer('last_published_cycle_id').references(() => executionCycles.id, { onDelete: 'set null' }),
+    optimizationRequestedAt: timestamp('optimization_requested_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },

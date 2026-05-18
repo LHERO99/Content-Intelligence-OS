@@ -193,12 +193,8 @@ export async function GET() {
       const previous = urlPerf[1];
       const urlLogs = resolvedLogs.filter(l => l.Target_URL === url).sort((a, b) => new Date(b.Created_At).getTime() - new Date(a.Created_At).getTime());
 
-      const openOptimizationStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review', 'Optimierung']);
       const hasOpenOptimizationRequest = keywords.some((keyword) =>
-        keyword.Target_URL === url &&
-        keyword.Action_Type === 'Optimierung' &&
-        keyword.Status &&
-        openOptimizationStatuses.has(keyword.Status)
+        keyword.Target_URL === url && !!keyword.optimizationRequestedAt
       );
 
       // Calculate individual URL savings

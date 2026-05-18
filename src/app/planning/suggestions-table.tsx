@@ -73,20 +73,21 @@ export function SuggestionsTable({ keywords, onGoToKeywordMap, refreshKey }: Sug
     loadOptimizationSuggestions();
   }, [refreshKey]);
 
-  // Keywords appear in Vorschläge if they are:
-  // - Main keywords not currently in an active planning workflow
-  // - AND either: in Backlog, returned by the rule engine, or manually/auto commissioned (Action_Type = 'Optimierung')
-  const activeWorkflowStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review']);
+  // Keywords appear in Vorschläge if they are main keywords AND:
+  // - Status 'Backlog': new URL that needs first content creation
+  // - optimizationRequestedAt is set: explicitly commissioned from monitoring (manual or automatic)
+  // - Rule engine returned a suggestion
+  // Keywords actively in production workflow (Planned → Review) are excluded.
+  const blockingStatuses = new Set(['Planned', 'Beauftragt', 'In Arbeit', 'Angeliefert', 'Review']);
   const suggestionData = React.useMemo(() => {
-    return keywords.filter(kw =>
-      kw.Main_Keyword === 'Y' &&
-      !activeWorkflowStatuses.has(kw.Status ?? '') &&
-      (
-        kw.Status === 'Backlog' ||
-        !!optimizationSuggestions[kw.id] ||
-        kw.Action_Type === 'Optimierung'
-      )
-    );
+    return keywords.filter(kw => {
+      if (kw.Main_Keyword !== 'Y') return false;
+      if (blockingStatuses.has(kw.Status ?? '')) return false;
+      if (kw.Status === 'Backlog') return true;
+      if (kw.optimizationRequestedAt) return true;
+      if (!!optimizationSuggestions[kw.id]) return true;
+      return false;
+    });
   }, [keywords, optimizationSuggestions]);
 
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "Priority_Score", desc: true }]);
