@@ -156,7 +156,7 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
             tx
               .select({ max: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` })
               .from(executionCycles)
-              .where(eq(executionCycles.urlId, urls.id))
+              .where(and(eq(executionCycles.urlId, urls.id), eq(executionCycles.tenantId, tenant)))
           )
         )
       )
@@ -248,7 +248,7 @@ export async function getKeyword(keywordId: string, tenantId?: string): Promise<
             tx
               .select({ max: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` })
               .from(executionCycles)
-              .where(eq(executionCycles.urlId, urls.id))
+              .where(and(eq(executionCycles.urlId, urls.id), eq(executionCycles.tenantId, tenant)))
           )
         )
       )
@@ -323,7 +323,7 @@ export async function getKeywordsByUrl(targetUrl: string, tenantId?: string): Pr
             tx
               .select({ max: sql<number>`COALESCE(MAX(${executionCycles.cycleNumber}), 0)` })
               .from(executionCycles)
-              .where(eq(executionCycles.urlId, urls.id))
+              .where(and(eq(executionCycles.urlId, urls.id), eq(executionCycles.tenantId, tenant)))
           )
         )
       )
@@ -689,6 +689,20 @@ export async function createExecutionCycle(
         commissionedAt: new Date(),
       })
       .returning({ id: executionCycles.id });
+
+    // Reset planning_status from 'planned' back to 'backlog' so that
+    // mapToOldStatus can reach the execution.status === 'commissioned' branch
+    // and return 'Beauftragt' instead of 'Planned'.
+    await tx
+      .update(planningStatus)
+      .set({ status: 'backlog' })
+      .where(
+        and(
+          eq(planningStatus.urlId, urlId),
+          eq(planningStatus.tenantId, tenant),
+          eq(planningStatus.status, 'planned')
+        )
+      );
     
     return cycle.id;
   });
