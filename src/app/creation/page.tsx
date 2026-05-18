@@ -272,16 +272,25 @@ export default function CreationPage() {
     : null;
 
   useEffect(() => {
+    console.log('[useEffect] displayLogId:', displayLogId, 'cached:', bodyCache[displayLogId] !== undefined);
     if (!displayLogId || bodyCache[displayLogId] !== undefined) return;
+    console.log('[useEffect] Fetching body for log:', displayLogId);
     fetch(`/api/planning/history/${displayLogId}/body`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        console.log('[useEffect] Fetch response:', r.status, r.ok);
+        return r.ok ? r.json() : null;
+      })
       .then((data) => {
+        console.log('[useEffect] Received data:', data ? 'yes' : 'no', data);
         if (data) setBodyCache((prev) => ({ ...prev, [displayLogId]: data }));
       })
-      .catch(() => {/* non-critical */});
+      .catch((err) => {
+        console.error('[useEffect] Fetch error:', err);
+      });
   }, [displayLogId]);
 
   const displayedBody = displayLogId ? bodyCache[displayLogId] : undefined;
+  console.log('[render] selectedJob:', selectedJob?.commissionLogId, 'displayLogId:', displayLogId, 'displayedBody:', displayedBody ? 'yes' : 'no');
   const v2Content = displayedBody?.Content_Body ?? '';
 
   // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)

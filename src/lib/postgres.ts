@@ -756,22 +756,32 @@ export async function getContentLogs(tenantId?: string, limit?: number): Promise
       .orderBy(desc(processEvents.eventTimestamp))
       .limit(maxRows);
 
-    return events.map(({ event, url, cycle, version }) => ({
-      id: String(event.id),
-      ID: event.id,
-      Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
-      Target_URL: url?.url,
-      Logged_URL: url?.url,
-      Action_Type: cycle?.actionType ? mapToOldActionType(cycle.actionType) as any : undefined,
-      Page_Type: url?.pageType as any,
-      Version: version?.contentHtml ? 'v2' : 'v1',
-      Content_Body: undefined, // Not loaded in list view
-      Event_Label: (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType),
-      Created_At: event.eventTimestamp.toISOString(),
-      Updated_At: event.eventTimestamp.toISOString(),
-      Editor: event.userId ? [event.userId] : undefined,
-      Commission_Log_Id: (event.eventData as any)?.commission_log_id ?? cycle?.id,
-    }));
+    return events.map(({ event, url, cycle, version }) => {
+      const commissionLogId = (event.eventData as any)?.commission_log_id ?? cycle?.id;
+      const eventLabel = (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType);
+      
+      // Debug log for delivery events
+      if (eventLabel === 'Content angeliefert') {
+        console.log(`[getContentLogs] Delivery event ID=${event.id}: commission_log_id from eventData=${(event.eventData as any)?.commission_log_id}, cycleId=${cycle?.id}, final Commission_Log_Id=${commissionLogId}`);
+      }
+      
+      return {
+        id: String(event.id),
+        ID: event.id,
+        Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
+        Target_URL: url?.url,
+        Logged_URL: url?.url,
+        Action_Type: cycle?.actionType ? mapToOldActionType(cycle.actionType) as any : undefined,
+        Page_Type: url?.pageType as any,
+        Version: version?.contentHtml ? 'v2' : 'v1',
+        Content_Body: undefined, // Not loaded in list view
+        Event_Label: eventLabel,
+        Created_At: event.eventTimestamp.toISOString(),
+        Updated_At: event.eventTimestamp.toISOString(),
+        Editor: event.userId ? [event.userId] : undefined,
+        Commission_Log_Id: commissionLogId,
+      };
+    });
   });
 }
 
