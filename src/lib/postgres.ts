@@ -756,13 +756,34 @@ export async function getContentLogs(tenantId?: string, limit?: number): Promise
       .orderBy(desc(processEvents.eventTimestamp))
       .limit(maxRows);
 
-    return events.map(({ event, url, cycle, version }) => {
-      const commissionLogId = (event.eventData as any)?.commission_log_id ?? cycle?.id;
+    // Build a map of commission event IDs by keyword for fallback lookup
+    const commissionByKeyword = new Map<string, number>();
+    for (const { event } of events) {
       const eventLabel = (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType);
+      if (eventLabel === 'Content wurde beauftragt' && event.keywordId) {
+        // Store the most recent commission event per keyword (events are sorted desc by timestamp)
+        if (!commissionByKeyword.has(event.keywordId)) {
+          commissionByKeyword.set(event.keywordId, event.id);
+        }
+      }
+    }
+
+    return events.map(({ event, url, cycle, version }) => {
+      let commissionLogId = (event.eventData as any)?.commission_log_id ?? cycle?.id;
+      const eventLabel = (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType);
+      
+      // Fallback: If delivery event has no commission_log_id and no cycleId, 
+      // look up the most recent commission event for the same keyword
+      if (eventLabel === 'Content angeliefert' && !commissionLogId && event.keywordId) {
+        commissionLogId = commissionByKeyword.get(event.keywordId) ?? undefined;
+        if (commissionLogId) {
+          console.log(`[getContentLogs] Delivery event ID=${event.id}: Using fallback commission lookup for keyword ${event.keywordId}, found commission=${commissionLogId}`);
+        }
+      }
       
       // Debug log for delivery events
       if (eventLabel === 'Content angeliefert') {
-        console.log(`[getContentLogs] Delivery event ID=${event.id}: commission_log_id from eventData=${(event.eventData as any)?.commission_log_id}, cycleId=${cycle?.id}, final Commission_Log_Id=${commissionLogId}`);
+        console.log(`[getContentLogs] Delivery event ID=${event.id}: commission_log_id from eventData=${(event.eventData as any)?.commission_log_id}, cycleId=${cycle?.id}, fallback=${commissionLogId !== ((event.eventData as any)?.commission_log_id ?? cycle?.id)}, final Commission_Log_Id=${commissionLogId}`);
       }
       
       return {
