@@ -1,11 +1,9 @@
 import * as React from "react";
 import { 
   Loader2, 
-  Plus, 
   Calendar, 
   ExternalLink, 
   AlertCircle,
-  Zap
 } from "lucide-react";
 import Link from "next/link";
 import { 
@@ -40,7 +38,6 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === "de" ? de : en);
   const [loading, setLoading] = React.useState(false);
-  const [isAddingToPlan, setIsAddingToPlan] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<Partial<KeywordMap>>({});
   const { history, isLoading: loadingHistory } = useContentHistory(keyword?.id, keyword?.Target_URL);
@@ -62,24 +59,6 @@ export function EditKeywordModal({ keyword, open, onOpenChange, onSave }: EditKe
       });
     }
   }, [keyword]);
-
-  const handleAddToContentPlan = async () => {
-    if (!keyword) return;
-    setIsAddingToPlan(true);
-    setError(null);
-    try {
-      const updates: Partial<KeywordMap> = {
-        Status: "Planned"
-      };
-      await onSave(keyword.id, updates);
-      setFormData(prev => ({ ...prev, ...updates }));
-    } catch (err: any) {
-      console.error("Error adding to plan:", err);
-      setError(err.message || tr("Fehler beim Hinzufügen zum Content-Plan", "Error adding to content plan"));
-    } finally {
-      setIsAddingToPlan(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

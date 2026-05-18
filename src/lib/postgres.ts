@@ -536,10 +536,11 @@ export async function updateKeyword(
       
       if (updates.Action_Type) {
         planningUpdates.plannedActionType = mapFromOldActionType(updates.Action_Type);
-        // When optimization is requested, record the timestamp and reset status to
-        // 'backlog' so the URL is never stuck in a blocking state (e.g. 'planned'
-        // left over from a previous Erstellung cycle that wasn't properly reset).
-        if (updates.Action_Type === 'Optimierung') {
+        // Only set optimizationRequestedAt / status side-effects when no explicit
+        // Status transition is being requested at the same time.  When Status is
+        // also provided (e.g. "Planned" from AddToEditorialButton), that branch
+        // already owns those fields — we must not overwrite them here.
+        if (updates.Action_Type === 'Optimierung' && !updates.Status) {
           planningUpdates.optimizationRequestedAt = new Date();
           planningUpdates.status = 'backlog';
         }
