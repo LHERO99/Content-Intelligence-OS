@@ -101,7 +101,10 @@ function mapToOldStatus(
   // Active production states take priority over published
   if (execution?.status === 'commissioned') return 'Beauftragt';
   if (execution?.status === 'in_progress') return 'In Arbeit';
-  if (execution?.status === 'delivered') return 'Angeliefert';
+  // Only treat 'delivered' as Angeliefert when the publishing step has not yet
+  // been completed.  Once publishingStatus = 'published', this cycle is terminal
+  // and must not shadow a new 'planned' state set for the next optimization cycle.
+  if (execution?.status === 'delivered' && publishing?.status !== 'published') return 'Angeliefert';
   if (publishing?.status === 'in_review') return 'Review';
   if (planning?.status === 'planned') return 'Planned';
   // Terminal published state — from either publishingStatus or planningStatus
