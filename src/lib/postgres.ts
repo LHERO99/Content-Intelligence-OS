@@ -1720,8 +1720,8 @@ export async function recomputeUrlCostSummary(
       if (!lastDeliveryAt || ts > lastDeliveryAt) lastDeliveryAt = ts;
     });
 
-    // 5. Upsert into url_cost_summary — use raw ON CONFLICT ON CONSTRAINT to avoid
-    //    Drizzle composite-target quirks with uniqueIndex vs UNIQUE CONSTRAINT.
+    // 5. Upsert into url_cost_summary — use column-list ON CONFLICT to work with
+    //    both uniqueIndex and UNIQUE CONSTRAINT (avoids named-constraint requirement).
     await tx.execute(sql`
       INSERT INTO url_cost_summary
         (tenant_id, url_id, total_agency_cost, total_overhead_cost,
@@ -1729,7 +1729,7 @@ export async function recomputeUrlCostSummary(
       VALUES
         (${tenant}, ${urlId}, ${String(totalAgency)}, ${String(totalOverhead)},
          ${erstellungCount}, ${optimierungCount}, ${lastDeliveryAt}, NOW())
-      ON CONFLICT ON CONSTRAINT url_cost_summary_url_tenant_uniq
+      ON CONFLICT (url_id, tenant_id)
       DO UPDATE SET
         total_agency_cost   = EXCLUDED.total_agency_cost,
         total_overhead_cost = EXCLUDED.total_overhead_cost,

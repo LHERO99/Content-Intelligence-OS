@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createContentLog, updateKeyword, getConfig } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, getUrlIdForKeyword, recomputeUrlCostSummary } from '@/lib/postgres';
 
 /**
  * Endpoint for n8n or external agent callbacks to return generated content.
@@ -91,11 +91,18 @@ export async function POST(request: Request) {
     
     const newLog = await createContentLog({
       Keyword_ID: [keywordId],
-      Logged_URL: targetUrl,
+      Target_URL: targetUrl,
       Action_Type: isOptimization ? 'Optimierung' : 'Erstellung',
       Content_Body: content,
-      Diff_Summary: 'Content angeliefert',
     }, tenantId);
+
+    // Recompute materialized cost summary (fire-and-forget)
+    const urlIdForSummary = await getUrlIdForKeyword(keywordId, tenantId);
+    if (urlIdForSummary) {
+      recomputeUrlCostSummary(urlIdForSummary, tenantId).catch(err =>
+        console.error('[n8n Callback] Failed to recompute cost summary:', err)
+      );
+    }
 
     return NextResponse.json({
       success: true,

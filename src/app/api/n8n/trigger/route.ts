@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { triggerN8nWorkflow, N8nActionType } from '@/lib/n8n';
-import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl } from '@/lib/postgres';
+import { createContentLog, updateKeyword, getConfig, getKeywordsByUrl, getUrlIdForKeyword, recomputeUrlCostSummary } from '@/lib/postgres';
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 
 /**
@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
           Keyword_ID: [data.keywordId],
           Target_URL: data.targetUrl,
           Action_Type: action === "COMMISSION_OPTIMIZATION" ? "Optimierung" : "Erstellung",
-          Diff_Summary: "Content wurde beauftragt",
           Editor: session.user?.email ? [session.user.email] : undefined
         }, tenantId);
       } catch (logErr) {
@@ -178,13 +177,19 @@ export async function POST(req: NextRequest) {
               Keyword_ID: [data.keywordId],
               Target_URL: data.targetUrl,
               Action_Type: action === 'COMMISSION_OPTIMIZATION' ? 'Optimierung' : 'Erstellung',
-              Diff_Summary: 'Content angeliefert',
               Content_Body: finalHtml,
               Editor: session.user?.email ? [session.user.email] : undefined,
             }, tenantId);
           } catch (logErr) {
             console.error('[InternalAgent] Failed to create content log:', logErr);
           }
+        }
+        // Recompute materialized cost summary (fire-and-forget)
+        const urlIdForSummary = await getUrlIdForKeyword(data.keywordId, tenantId);
+        if (urlIdForSummary) {
+          recomputeUrlCostSummary(urlIdForSummary, tenantId).catch(err =>
+            console.error('[n8n Trigger] Failed to recompute cost summary:', err)
+          );
         }
       }
 
