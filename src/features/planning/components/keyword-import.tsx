@@ -36,7 +36,7 @@ const SYSTEM_COLUMNS = [
   { id: "Main_Keyword", label: "Main Keyword (Y/N)", required: false },
   { id: "Article_Count", label: "Article Count", required: false },
   { id: "Avg_Product_Value", label: "Avg Product Value", required: false },
-  { id: "Page_Type", label: "Page Type (Kategorie/Ratgeber/Marke/Produkt)", required: false },
+  { id: "Page_Type", label: "Page Type (Kategorie/Ratgeber/Marke/Produkt)", required: true },
   { id: "Cluster", label: "Cluster", required: false },
   { id: "Status", label: "Status", required: false },
 ];
@@ -193,7 +193,10 @@ export function KeywordImport() {
         });
         if (!mappedRow.Status) mappedRow.Status = "Backlog";
         return mappedRow;
-      }).filter(kw => kw.Keyword && kw.Target_URL);
+      }).filter(kw => {
+        const validPageTypes = ["Kategorie", "Ratgeber", "Marke", "Produkt"];
+        return kw.Keyword && kw.Target_URL && validPageTypes.includes(kw.Page_Type);
+      });
 
       if (keywords.length === 0) {
         throw new Error(tr("Keine gültigen Datensätze nach dem Mapping gefunden.", "No valid records found after mapping."));

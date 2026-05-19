@@ -111,7 +111,7 @@ export const urls = pgTable(
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
     url: text('url').notNull(),
-    pageType: text('page_type').$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>(),
+    pageType: text('page_type').notNull().$type<'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt'>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },

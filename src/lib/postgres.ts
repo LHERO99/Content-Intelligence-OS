@@ -1205,8 +1205,13 @@ export async function bulkCreateKeywords(
   
   for (const kw of keywords) {
     try {
+      const validPageTypes = ['Kategorie', 'Ratgeber', 'Marke', 'Produkt'];
       if (!kw.Keyword || !kw.Target_URL) {
         skipped.push({ ...kw, reason: 'Keyword und Target_URL sind Pflichtfelder.' });
+        continue;
+      }
+      if (!kw.Page_Type || !validPageTypes.includes(kw.Page_Type)) {
+        skipped.push({ ...kw, reason: `Page_Type ist ein Pflichtfeld und muss einer der folgenden Werte sein: ${validPageTypes.join(', ')}.` });
         continue;
       }
       
