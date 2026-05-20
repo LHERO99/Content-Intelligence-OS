@@ -1728,7 +1728,7 @@ export async function recomputeUrlCostSummary(
          erstellung_count, optimierung_count, last_delivery_at, updated_at)
       VALUES
         (${tenant}, ${urlId}, ${String(totalAgency)}, ${String(totalOverhead)},
-         ${erstellungCount}, ${optimierungCount}, ${lastDeliveryAt}, NOW())
+         ${erstellungCount}, ${optimierungCount}, ${(lastDeliveryAt as Date | null)?.toISOString() ?? null}, NOW())
       ON CONFLICT (url_id, tenant_id)
       DO UPDATE SET
         total_agency_cost   = EXCLUDED.total_agency_cost,
