@@ -35,6 +35,7 @@ import {
   CheckCircle2,
   Users,
   AlertCircle,
+  AlertTriangle,
   LayoutDashboard,
   List,
   Map
@@ -92,6 +93,7 @@ export default function MonitoringPage() {
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [plannedUrl, setPlannedUrl] = useState<string | null>(null);
+  const [costConfigMissing, setCostConfigMissing] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('monitoring-active-tab') || "overview";
@@ -105,10 +107,17 @@ export default function MonitoringPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/monitoring");
-      if (!res.ok) throw new Error("Failed to fetch monitoring data");
-      const json = await res.json();
+      const [monRes, setupRes] = await Promise.all([
+        fetch("/api/monitoring"),
+        fetch("/api/admin/setup-status"),
+      ]);
+      if (!monRes.ok) throw new Error("Failed to fetch monitoring data");
+      const json = await monRes.json();
       setData(json);
+      if (setupRes.ok) {
+        const setup = await setupRes.json();
+        setCostConfigMissing(!setup.costConfig?.ok);
+      }
     } catch (err: any) {
       addAlert({ type: "error", message: err.message });
     } finally {
@@ -280,6 +289,18 @@ export default function MonitoringPage() {
           <p className="text-muted-foreground">{t("monitoring.subtitle")}</p>
         </div>
       </div>
+
+      {costConfigMissing && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+          <span className="flex-1">{t("setup.missingCostConfig")}</span>
+          <Link href="/admin?tab=costs">
+            <Button variant="outline" size="sm" className="border-amber-200 text-amber-800 hover:bg-amber-100">
+              {t("setup.setupNow")}
+            </Button>
+          </Link>
+        </div>
+      )}
 
       <Tabs
         value={activeTab}

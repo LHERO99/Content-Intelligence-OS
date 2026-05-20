@@ -29,7 +29,11 @@ import {
   RefreshCw,
   History,
   Map,
-  ArrowRight
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Settings2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +42,7 @@ import { ContentHistoryTable } from "./content-history-table";
 import { useI18n } from "@/i18n/use-i18n";
 import { SystemHealthCard } from "@/components/system-health-card";
 import Link from "next/link";
+import type { SetupStatus } from "@/app/api/admin/setup-status/route";
 
 // --- Helper Components ---
 
@@ -80,28 +85,32 @@ export default function DashboardPage() {
   const [potentialTrends, setPotentialTrends] = useState<PotentialTrend[]>([]);
   const [contentHistory, setContentHistory] = useState<ContentLog[]>([]);
   const [keywordCount, setKeywordCount] = useState<number | null>(null);
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const [perfRes, trendsRes, historyRes, kwRes] = await Promise.all([
+      const [perfRes, trendsRes, historyRes, kwRes, setupRes] = await Promise.all([
         fetch('/api/debug/airtable?table=Performance-Data'),
         fetch('/api/debug/airtable?table=Potential-Trends'),
         fetch('/api/planning/history'),
         fetch('/api/planning/keywords'),
+        fetch('/api/admin/setup-status'),
       ]);
       
       const perf = perfRes.ok ? (await perfRes.json()).records || [] : [];
       const trends = trendsRes.ok ? (await trendsRes.json()).records || [] : [];
       const history = historyRes.ok ? await historyRes.json() : [];
       const kw = kwRes.ok ? await kwRes.json() : [];
+      const setup = setupRes.ok ? (await setupRes.json()) as SetupStatus : null;
 
       setPerformanceData(perf);
       setPotentialTrends(trends);
       setContentHistory(history);
       setKeywordCount(Array.isArray(kw) ? kw.length : 0);
+      setSetupStatus(setup);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -178,24 +187,76 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Onboarding banner — shown when no keywords exist yet */}
-      {keywordCount === 0 && (
-        <div className="flex items-start gap-4 rounded-xl border border-primary/30 bg-primary/5 p-5">
-          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Map className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-primary">{t("onboarding.dashboardBannerTitle")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.dashboardBannerDesc")}</p>
-          </div>
-          <Link href="/planning?tab=keyword-map">
-            <Button size="sm" className="shrink-0 gap-1.5">
-              {t("onboarding.dashboardBannerCta")}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      )}
+      {/* Setup checklist — shown until all required areas are configured */}
+      {setupStatus && (() => {
+        const integrationsOk = setupStatus.integrations.gsc || setupStatus.integrations.sistrix || setupStatus.integrations.dataforseo;
+        const allDone = setupStatus.costConfig.ok && integrationsOk && setupStatus.keywordMap.ok;
+        if (allDone) return null;
+
+        const items: { ok: boolean; warn?: boolean; label: string; desc: string; href: string; cta: string }[] = [
+          {
+            ok: setupStatus.keywordMap.ok,
+            label: t("setup.keywordMap"),
+            desc: setupStatus.keywordMap.ok
+              ? t("setup.keywordMapOk").replace("{count}", String(setupStatus.keywordMap.count))
+              : t("setup.keywordMapMissing"),
+            href: "/planning?tab=keyword-map",
+            cta: t("setup.keywordMapCta"),
+          },
+          {
+            ok: setupStatus.costConfig.ok,
+            label: t("setup.costConfig"),
+            desc: setupStatus.costConfig.ok
+              ? t("setup.costConfigOk").replace("{count}", String(setupStatus.costConfig.count))
+              : t("setup.costConfigMissing"),
+            href: "/admin?tab=costs",
+            cta: t("setup.costConfigCta"),
+          },
+          {
+            ok: integrationsOk,
+            label: t("setup.integrations"),
+            desc: integrationsOk ? t("setup.integrationsOk") : t("setup.integrationsMissing"),
+            href: "/admin?tab=integrations",
+            cta: t("setup.integrationsCta"),
+          },
+        ];
+
+        return (
+          <Card className="border-amber-200 bg-amber-50/60">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5 text-amber-600" />
+                <CardTitle className="text-base text-amber-900">{t("setup.title")}</CardTitle>
+              </div>
+              <CardDescription className="text-amber-700">{t("setup.subtitle")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {items.map((item) => (
+                <div key={item.label} className="flex items-start justify-between gap-4 rounded-lg border border-amber-100 bg-white/70 px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    {item.ok
+                      ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />
+                      : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+                    }
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </div>
+                  {!item.ok && (
+                    <Link href={item.href}>
+                      <Button variant="outline" size="sm" className="shrink-0 gap-1 border-amber-200 text-amber-800 hover:bg-amber-100">
+                        {item.cta}
+                        <ArrowRight className="h-3 w-3" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3">

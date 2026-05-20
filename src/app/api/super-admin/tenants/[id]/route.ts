@@ -9,6 +9,7 @@ import {
   executionCycles,
   processEvents,
   config,
+  costConfig,
   tenantSubscriptions,
   pricingTiers,
   users,
@@ -65,6 +66,12 @@ export async function GET(
       .select({ total: count() })
       .from(urls)
       .where(eq(urls.tenantId, tenantId));
+
+    // ── Cost config count ─────────────────────────────────────────────────────
+    const [costConfigRow] = await db
+      .select({ total: count() })
+      .from(costConfig)
+      .where(eq(costConfig.tenantId, tenantId));
 
     // ── Execution stats (last 30 days) ────────────────────────────────────────
     const thirtyDaysAgo = new Date();
@@ -152,13 +159,16 @@ export async function GET(
                                                    "none";
 
     // ── Health criteria breakdown ─────────────────────────────────────────────
+    const rankingIntegrationOk = Boolean(cfg["GSC_REFRESH_TOKEN"]?.trim() || cfg["SISTRIX_API_KEY"]?.trim() || cfg["DATAFORSEO_USERNAME"]?.trim());
+    const costConfigOk = (costConfigRow?.total ?? 0) > 0;
+
     const criteria = [
       {
         key:       "integrations",
         label:     "Integrationen",
         passed:    connectedIntegrations.length > 0,
-        points:    connectedIntegrations.length > 0 ? 25 : 0,
-        maxPoints: 25,
+        points:    connectedIntegrations.length > 0 ? 20 : 0,
+        maxPoints: 20,
         detail:    connectedIntegrations.length > 0
           ? `${connectedIntegrations.map((i) => i.name).join(", ")} verbunden`
           : "Keine Integration verbunden",
@@ -167,8 +177,8 @@ export async function GET(
         key:       "keywords",
         label:     "Keywords",
         passed:    (kwTotalRow?.total ?? 0) > 0,
-        points:    (kwTotalRow?.total ?? 0) > 0 ? 25 : 0,
-        maxPoints: 25,
+        points:    (kwTotalRow?.total ?? 0) > 0 ? 20 : 0,
+        maxPoints: 20,
         detail:    (kwTotalRow?.total ?? 0) > 0
           ? `${(kwTotalRow?.total ?? 0).toLocaleString("de-DE")} Keywords in der Datenbank`
           : "Keine Keywords vorhanden",
@@ -177,8 +187,8 @@ export async function GET(
         key:       "urls",
         label:     "URLs",
         passed:    (urlRow?.total ?? 0) > 0,
-        points:    (urlRow?.total ?? 0) > 0 ? 25 : 0,
-        maxPoints: 25,
+        points:    (urlRow?.total ?? 0) > 0 ? 20 : 0,
+        maxPoints: 20,
         detail:    (urlRow?.total ?? 0) > 0
           ? `${(urlRow?.total ?? 0).toLocaleString("de-DE")} distinct URLs vorhanden`
           : "Keine URLs vorhanden",
@@ -187,13 +197,33 @@ export async function GET(
         key:       "activity",
         label:     "Aktivität (30 Tage)",
         passed:    (erstellungen30d + optimierungen30d) > 0,
-        points:    (erstellungen30d + optimierungen30d) > 0 ? 25 : 0,
-        maxPoints: 25,
+        points:    (erstellungen30d + optimierungen30d) > 0 ? 20 : 0,
+        maxPoints: 20,
         detail:    (erstellungen30d + optimierungen30d) > 0
           ? `${erstellungen30d} Erstellung(en), ${optimierungen30d} Optimierung(en)`
           : lastActivityDate
             ? `0 Aktionen — letzter Log vor ${daysSinceActivity} Tagen (${new Date(lastActivityDate).toLocaleDateString("de-DE")})`
             : "Noch keine Content-Aktivität",
+      },
+      {
+        key:       "costConfig",
+        label:     "Kostenkonfiguration",
+        passed:    costConfigOk,
+        points:    costConfigOk ? 10 : 0,
+        maxPoints: 10,
+        detail:    costConfigOk
+          ? `${(costConfigRow?.total ?? 0)} Konfigurationen hinterlegt`
+          : "Keine Kostenkonfiguration — ROI & Einsparungen werden nicht berechnet",
+      },
+      {
+        key:       "rankingIntegration",
+        label:     "Ranking-Integration",
+        passed:    rankingIntegrationOk,
+        points:    rankingIntegrationOk ? 10 : 0,
+        maxPoints: 10,
+        detail:    rankingIntegrationOk
+          ? "GSC, Sistrix oder DataForSEO verbunden"
+          : "Keine Ranking-Integration verbunden (GSC, Sistrix oder DataForSEO)",
       },
     ];
 

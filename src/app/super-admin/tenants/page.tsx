@@ -70,6 +70,13 @@ interface Tenant {
   tierName: string | null;
   monthlyPrice: string | null;
   yearlyPrice: string | null;
+  setup?: {
+    costConfigCount: number;
+    keywordCount: number;
+    integrations: { gsc: boolean; sistrix: boolean; dataforseo: boolean };
+    complete: boolean;
+    score: number; // 0–3
+  };
 }
 
 interface HealthCriterion {
@@ -454,6 +461,7 @@ export default function TenantsPage() {
                     <TableHead>{t("superAdmin.tenantsColBilling")}</TableHead>
                     <TableHead>{t("superAdmin.tenantsColPrice")}</TableHead>
                     <TableHead>{t("superAdmin.tenantsColUsers")}</TableHead>
+                    <TableHead>Setup</TableHead>
                     <TableHead>{t("superAdmin.tenantsColCreated")}</TableHead>
                     <TableHead />
                   </TableRow>
@@ -489,6 +497,34 @@ export default function TenantsPage() {
                         )}
                       </TableCell>
                       <TableCell>{ten.userCount}</TableCell>
+                      <TableCell>
+                        {ten.setup ? (() => {
+                          const s = ten.setup;
+                          const missing: string[] = [];
+                          if (!s.keywordCount) missing.push("Keywords");
+                          if (!s.costConfigCount) missing.push("Kosten");
+                          if (!s.integrations.gsc && !s.integrations.sistrix && !s.integrations.dataforseo) missing.push("Integrationen");
+                          if (s.complete) {
+                            return (
+                              <span title="Vollständig eingerichtet">
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              </span>
+                            );
+                          }
+                          if (s.score === 0) {
+                            return (
+                              <span title={`Fehlt: ${missing.join(", ")}`}>
+                                <XCircle className="h-4 w-4 text-red-400" />
+                              </span>
+                            );
+                          }
+                          return (
+                            <span title={`Unvollständig – fehlt: ${missing.join(", ")}`}>
+                              <AlertTriangle className="h-4 w-4 text-amber-400" />
+                            </span>
+                          );
+                        })() : <span className="text-muted-foreground text-xs">—</span>}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {new Date(ten.createdAt).toLocaleDateString("de-DE")}
                       </TableCell>
@@ -806,6 +842,46 @@ function TenantDetailView({
 
           {/* Cron Status */}
           <CronStatusCard cronStatus={tenantDetail.cronStatus} t={t} />
+
+          {/* Setup status summary */}
+          {(() => {
+            const costCrit  = tenantDetail.health.criteria.find((c) => c.key === "costConfig");
+            const rankCrit  = tenantDetail.health.criteria.find((c) => c.key === "rankingIntegration");
+            const kwCrit    = tenantDetail.health.criteria.find((c) => c.key === "keywords");
+            const items = [
+              { label: "Keyword-Map",          passed: kwCrit?.passed ?? false,   detail: kwCrit?.detail ?? "" },
+              { label: "Kostenkonfiguration",   passed: costCrit?.passed ?? false, detail: costCrit?.detail ?? "" },
+              { label: "Ranking-Integration",   passed: rankCrit?.passed ?? false, detail: rankCrit?.detail ?? "" },
+            ];
+            const allDone = items.every((i) => i.passed);
+            return (
+              <Card className={allDone ? "border-green-200 bg-green-50/40" : "border-amber-200 bg-amber-50/40"}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    {allDone
+                      ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      : <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                    Setup-Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {items.map((item) => (
+                      <div key={item.label} className="flex items-start gap-2.5 rounded-lg border bg-white/60 px-3 py-2.5">
+                        {item.passed
+                          ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                          : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
+                        <div>
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Bottom row: Keywords by status + Integrations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

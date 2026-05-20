@@ -6,8 +6,11 @@ import {
   tenants,
   users,
   tenantSubscriptions,
+  costConfig,
+  config as configTable,
+  urlKeywords,
 } from "@/lib/db/schema";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 
@@ -50,12 +53,65 @@ export async function GET() {
       tierMap[t.id] = { name: t.name, monthlyPrice: t.monthlyPrice, yearlyPrice: t.yearlyPrice };
     }
 
-    const result = rows.map((r) => ({
-      ...r,
-      tierName:     r.tierId ? (tierMap[r.tierId]?.name ?? null)         : null,
-      monthlyPrice: r.tierId ? (tierMap[r.tierId]?.monthlyPrice ?? null)  : null,
-      yearlyPrice:  r.tierId ? (tierMap[r.tierId]?.yearlyPrice ?? null)   : null,
-    }));
+    // Setup status per tenant — cost configs, keyword count, integration keys
+    const tenantIds = rows.map((r) => r.id);
+
+    const [costCounts, keywordCounts, integrationConfigs] = await Promise.all([
+      tenantIds.length
+        ? db.select({ tenantId: costConfig.tenantId, count: count() })
+            .from(costConfig)
+            .groupBy(costConfig.tenantId)
+        : Promise.resolve([]),
+      tenantIds.length
+        ? db.select({ tenantId: urlKeywords.tenantId, count: count() })
+            .from(urlKeywords)
+            .groupBy(urlKeywords.tenantId)
+        : Promise.resolve([]),
+      tenantIds.length
+        ? db.select({ tenantId: configTable.tenantId, key: configTable.key, value: configTable.value })
+            .from(configTable)
+            .where(sql`${configTable.key} IN ('GSC_REFRESH_TOKEN','SISTRIX_API_KEY','DATAFORSEO_USERNAME')`)
+        : Promise.resolve([]),
+    ]);
+
+    const costCountMap: Record<string, number> = {};
+    for (const c of costCounts) costCountMap[c.tenantId] = c.count;
+
+    const keywordCountMap: Record<string, number> = {};
+    for (const k of keywordCounts) keywordCountMap[k.tenantId] = k.count;
+
+    const integrationMap: Record<string, { gsc: boolean; sistrix: boolean; dataforseo: boolean }> = {};
+    for (const cfg of integrationConfigs) {
+      if (!integrationMap[cfg.tenantId]) {
+        integrationMap[cfg.tenantId] = { gsc: false, sistrix: false, dataforseo: false };
+      }
+      if (cfg.key === 'GSC_REFRESH_TOKEN' && cfg.value?.trim()) integrationMap[cfg.tenantId].gsc = true;
+      if (cfg.key === 'SISTRIX_API_KEY' && cfg.value?.trim()) integrationMap[cfg.tenantId].sistrix = true;
+      if (cfg.key === 'DATAFORSEO_USERNAME' && cfg.value?.trim()) integrationMap[cfg.tenantId].dataforseo = true;
+    }
+
+    const result = rows.map((r) => {
+      const integ = integrationMap[r.id] ?? { gsc: false, sistrix: false, dataforseo: false };
+      const kwCount = keywordCountMap[r.id] ?? 0;
+      const ccCount = costCountMap[r.id] ?? 0;
+      const integOk = integ.gsc || integ.sistrix || integ.dataforseo;
+      const setupComplete = ccCount > 0 && kwCount > 0 && integOk;
+      const setupScore = (ccCount > 0 ? 1 : 0) + (kwCount > 0 ? 1 : 0) + (integOk ? 1 : 0);
+
+      return {
+        ...r,
+        tierName:       r.tierId ? (tierMap[r.tierId]?.name ?? null)        : null,
+        monthlyPrice:   r.tierId ? (tierMap[r.tierId]?.monthlyPrice ?? null) : null,
+        yearlyPrice:    r.tierId ? (tierMap[r.tierId]?.yearlyPrice ?? null)  : null,
+        setup: {
+          costConfigCount: ccCount,
+          keywordCount:    kwCount,
+          integrations:    integ,
+          complete:        setupComplete,
+          score:           setupScore, // 0–3
+        },
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {
