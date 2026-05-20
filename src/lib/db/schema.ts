@@ -429,7 +429,8 @@ export const costConfig = pgTable(
     overheadCost: numeric('overhead_cost').notNull().default('0'),
   },
   (t) => ({
-    tenantIdx: index('cost_config_tenant_idx').on(t.tenantId),
+    tenantIdx:   index('cost_config_tenant_idx').on(t.tenantId),
+    uniqueEntry: uniqueIndex('cost_config_tenant_page_action_uniq').on(t.tenantId, t.pageType, t.actionType),
   })
 );
 

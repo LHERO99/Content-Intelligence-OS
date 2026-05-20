@@ -13,6 +13,7 @@ import {
 import { eq, count, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
+import { seedDefaultCostConfig } from "@/lib/postgres";
 
 export async function GET() {
   try {
@@ -185,6 +186,11 @@ export async function POST(req: Request) {
         });
       }
     });
+
+    // Seed default cost config (fire-and-forget — non-critical)
+    seedDefaultCostConfig(tenantId).catch((err) =>
+      console.error("[SuperAdmin] Failed to seed default cost config:", err)
+    );
 
     return NextResponse.json({ success: true, tenantId }, { status: 201 });
   } catch (error: any) {

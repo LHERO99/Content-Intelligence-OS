@@ -1893,6 +1893,35 @@ export async function deleteCostConfig(id: number, tenantId?: string): Promise<b
     return true;
   });
 }
+
+const DEFAULT_COST_CONFIG = [
+  { pageType: 'Kategorie', actionType: 'Erstellung',  agencyCost: '350',  overheadCost: '50'  },
+  { pageType: 'Kategorie', actionType: 'Optimierung', agencyCost: '300',  overheadCost: '50'  },
+  { pageType: 'Ratgeber',  actionType: 'Erstellung',  agencyCost: '1100', overheadCost: '75'  },
+  { pageType: 'Ratgeber',  actionType: 'Optimierung', agencyCost: '850',  overheadCost: '75'  },
+  { pageType: 'Marke',     actionType: 'Erstellung',  agencyCost: '300',  overheadCost: '50'  },
+  { pageType: 'Marke',     actionType: 'Optimierung', agencyCost: '250',  overheadCost: '50'  },
+  { pageType: 'Produkt',   actionType: 'Erstellung',  agencyCost: '150',  overheadCost: '25'  },
+  { pageType: 'Produkt',   actionType: 'Optimierung', agencyCost: '100',  overheadCost: '25'  },
+] as const;
+
+/**
+ * Seeds the default cost configuration for a tenant.
+ * Uses ON CONFLICT DO NOTHING so existing customised entries are never overwritten.
+ */
+export async function seedDefaultCostConfig(tenantId?: string): Promise<void> {
+  const tenant = tid(tenantId);
+  await withTenant(tenant, async (tx) => {
+    for (const entry of DEFAULT_COST_CONFIG) {
+      await tx.execute(sql`
+        INSERT INTO cost_config (tenant_id, page_type, action_type, agency_cost, overhead_cost)
+        VALUES (${tenant}, ${entry.pageType}, ${entry.actionType}, ${entry.agencyCost}, ${entry.overheadCost})
+        ON CONFLICT (tenant_id, page_type, action_type) DO NOTHING
+      `);
+    }
+  });
+}
+
 export async function updateConfig(key: string, value: string, fileUrl?: string, tenantId?: string): Promise<any> {
   await setConfig(key, value, tenantId);
   return { key, value };

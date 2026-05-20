@@ -187,39 +187,113 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Setup checklist — shown until all required areas are configured */}
+      {/* Setup checklist — shown until all required fields are configured */}
       {setupStatus && (() => {
-        const integrationsOk = setupStatus.integrations.gsc || setupStatus.integrations.sistrix || setupStatus.integrations.dataforseo;
-        const allDone = setupStatus.costConfig.ok && integrationsOk && setupStatus.keywordMap.ok;
-        if (allDone) return null;
+        const s = setupStatus;
+        const requiredDone = s.keywordMap.ok && s.integrations.gsc || s.integrations.sistrix || s.integrations.dataforseo;
+        // Hide entire card only when keyword map + at least one integration is ok
+        const atLeastOneIntegration = s.integrations.gsc || s.integrations.sistrix || s.integrations.dataforseo;
+        if (s.keywordMap.ok && atLeastOneIntegration) return null;
 
-        const items: { ok: boolean; warn?: boolean; label: string; desc: string; href: string; cta: string }[] = [
+        type CheckItem = { ok: boolean; label: string; desc: string; href: string; cta: string };
+
+        const requiredItems: CheckItem[] = [
           {
-            ok: setupStatus.keywordMap.ok,
+            ok:    s.keywordMap.ok,
             label: t("setup.keywordMap"),
-            desc: setupStatus.keywordMap.ok
-              ? t("setup.keywordMapOk").replace("{count}", String(setupStatus.keywordMap.count))
+            desc:  s.keywordMap.ok
+              ? t("setup.keywordMapOk").replace("{count}", String(s.keywordMap.count))
               : t("setup.keywordMapMissing"),
-            href: "/planning?tab=keyword-map",
-            cta: t("setup.keywordMapCta"),
+            href:  "/planning?tab=keyword-map",
+            cta:   t("setup.keywordMapCta"),
           },
           {
-            ok: setupStatus.costConfig.ok,
-            label: t("setup.costConfig"),
-            desc: setupStatus.costConfig.ok
-              ? t("setup.costConfigOk").replace("{count}", String(setupStatus.costConfig.count))
-              : t("setup.costConfigMissing"),
-            href: "/admin?tab=costs",
-            cta: t("setup.costConfigCta"),
+            ok:    s.integrations.gsc,
+            label: t("setup.gsc"),
+            desc:  s.integrations.gsc ? t("setup.gscOk") : t("setup.gscMissing"),
+            href:  "/admin?tab=integrations",
+            cta:   t("setup.integrationsCta"),
           },
           {
-            ok: integrationsOk,
-            label: t("setup.integrations"),
-            desc: integrationsOk ? t("setup.integrationsOk") : t("setup.integrationsMissing"),
-            href: "/admin?tab=integrations",
-            cta: t("setup.integrationsCta"),
+            ok:    s.integrations.sistrix,
+            label: t("setup.sistrix"),
+            desc:  s.integrations.sistrix ? t("setup.sistrixOk") : t("setup.sistrixMissing"),
+            href:  "/admin?tab=integrations",
+            cta:   t("setup.integrationsCta"),
+          },
+          {
+            ok:    s.integrations.dataforseo,
+            label: t("setup.dataforseo"),
+            desc:  s.integrations.dataforseo ? t("setup.dataforseoOk") : t("setup.dataforseoMissing"),
+            href:  "/admin?tab=integrations",
+            cta:   t("setup.integrationsCta"),
           },
         ];
+
+        const optionalItems: CheckItem[] = [
+          {
+            ok:    s.optional.costConfig.ok,
+            label: t("setup.costConfig"),
+            desc:  s.optional.costConfig.ok
+              ? t("setup.costConfigOk").replace("{count}", String(s.optional.costConfig.count))
+              : t("setup.costConfigDefault"),
+            href:  "/admin?tab=costs",
+            cta:   t("setup.costConfigCta"),
+          },
+          {
+            ok:    s.optional.branding.ok,
+            label: t("setup.branding"),
+            desc:  s.optional.branding.ok ? t("setup.brandingOk") : t("setup.brandingMissing"),
+            href:  "/admin?tab=branding",
+            cta:   t("setup.brandingCta"),
+          },
+          {
+            ok:    s.optional.agentType.ok,
+            label: t("setup.agentType"),
+            desc:  s.optional.agentType.ok ? t("setup.agentTypeOk") : t("setup.agentTypeMissing"),
+            href:  "/admin?tab=agent",
+            cta:   t("setup.agentTypeCta"),
+          },
+          {
+            ok:    s.optional.alerts.ok,
+            label: t("setup.alerts"),
+            desc:  s.optional.alerts.ok
+              ? t("setup.alertsOk").replace("{count}", String(s.optional.alerts.count))
+              : t("setup.alertsMissing"),
+            href:  "/admin?tab=alert-rules",
+            cta:   t("setup.alertsCta"),
+          },
+          {
+            ok:    s.optional.optimizationRules.ok,
+            label: t("setup.optimizationRules"),
+            desc:  s.optional.optimizationRules.ok ? t("setup.optimizationRulesOk") : t("setup.optimizationRulesMissing"),
+            href:  "/admin?tab=optimization-rules",
+            cta:   t("setup.optimizationRulesCta"),
+          },
+        ];
+
+        const renderItem = (item: CheckItem, isOptional = false) => (
+          <div key={item.label} className="flex items-start justify-between gap-4 rounded-lg border border-amber-100 bg-white/70 px-4 py-3">
+            <div className="flex items-start gap-3">
+              {item.ok
+                ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                : isOptional
+                  ? <Settings2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+              }
+              <div>
+                <p className="text-sm font-medium text-foreground">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            </div>
+            <Link href={item.href}>
+              <Button variant="outline" size="sm" className="shrink-0 gap-1 border-amber-200 text-amber-800 hover:bg-amber-100 text-xs">
+                {item.cta}
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+        );
 
         return (
           <Card className="border-amber-200 bg-amber-50/60">
@@ -230,29 +304,17 @@ export default function DashboardPage() {
               </div>
               <CardDescription className="text-amber-700">{t("setup.subtitle")}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {items.map((item) => (
-                <div key={item.label} className="flex items-start justify-between gap-4 rounded-lg border border-amber-100 bg-white/70 px-4 py-3">
-                  <div className="flex items-start gap-3">
-                    {item.ok
-                      ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />
-                      : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
-                    }
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
-                    </div>
-                  </div>
-                  {!item.ok && (
-                    <Link href={item.href}>
-                      <Button variant="outline" size="sm" className="shrink-0 gap-1 border-amber-200 text-amber-800 hover:bg-amber-100">
-                        {item.cta}
-                        <ArrowRight className="h-3 w-3" />
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              ))}
+            <CardContent className="space-y-4">
+              {/* Required section */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">{t("setup.required")}</p>
+                {requiredItems.map((item) => renderItem(item, false))}
+              </div>
+              {/* Optional section */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("setup.optional")}</p>
+                {optionalItems.map((item) => renderItem(item, true))}
+              </div>
             </CardContent>
           </Card>
         );

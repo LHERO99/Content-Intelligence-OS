@@ -116,7 +116,7 @@ export default function MonitoringPage() {
       setData(json);
       if (setupRes.ok) {
         const setup = await setupRes.json();
-        setCostConfigMissing(!setup.costConfig?.ok);
+        setCostConfigMissing(!setup.optional?.costConfig?.ok);
       }
     } catch (err: any) {
       addAlert({ type: "error", message: err.message });
