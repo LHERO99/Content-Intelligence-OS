@@ -54,7 +54,6 @@ import {
   CalendarDays,
   ShieldCheck,
   ShieldOff,
-  Coins,
 } from "lucide-react";
 import { useI18n } from "@/i18n/use-i18n";
 
@@ -223,10 +222,6 @@ export default function TenantsPage() {
     billingCycle:  "monthly",
   });
 
-  // Backfill cost config
-  const [backfilling, setBackfilling]       = useState(false);
-  const [backfillResult, setBackfillResult] = useState<{ seeded: number; skipped: number; errors: number } | null>(null);
-
   const load = useCallback(async () => {
     setLoading(true);
     const [tenantsRes, tiersRes] = await Promise.all([
@@ -237,19 +232,6 @@ export default function TenantsPage() {
     setTiers(await tiersRes.json());
     setLoading(false);
   }, []);
-
-  const handleBackfillCostConfig = async () => {
-    setBackfilling(true);
-    setBackfillResult(null);
-    try {
-      const res = await fetch("/api/super-admin/backfill-cost-config", { method: "POST" });
-      const data = await res.json();
-      setBackfillResult(data);
-      if (data.seeded > 0) load(); // refresh list to update setup badges
-    } finally {
-      setBackfilling(false);
-    }
-  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -454,46 +436,6 @@ export default function TenantsPage() {
           </h1>
           <p className="text-muted-foreground mt-1">{t("superAdmin.tenantsSubtitle")}</p>
         </div>
-
-        {/* ── Admin-Wartungsaktionen ── */}
-        <Card className="border-dashed">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Wartungsaktionen
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium">Kosten-Defaults auffüllen</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Setzt Standard-Kostenkonfiguration für alle Tenants, die noch keine eigene Konfiguration haben.
-                </p>
-                {backfillResult && (
-                  <div className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm mt-2 ${backfillResult.errors > 0 ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
-                    {backfillResult.errors > 0
-                      ? <AlertTriangle className="w-4 h-4 shrink-0" />
-                      : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-                    {backfillResult.seeded} Tenant(s) geseedet · {backfillResult.skipped} bereits konfiguriert
-                    {backfillResult.errors > 0 && ` · ${backfillResult.errors} Fehler`}
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBackfillCostConfig}
-                disabled={backfilling}
-                className="gap-1.5 shrink-0"
-              >
-                {backfilling
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Coins className="w-3.5 h-3.5" />}
-                Ausführen
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* ── Tenant-Liste ── */}
         <Card>

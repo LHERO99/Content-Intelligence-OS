@@ -26,6 +26,8 @@ import {
   ChevronDown,
   Activity,
   AlertTriangle,
+  Coins,
+  Wrench,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -130,6 +132,8 @@ export default function SuperAdminHealthPage() {
   const [error, setError] = useState<string | null>(null);
   const [syncingTenant, setSyncingTenant] = useState<string | null>(null);
   const [syncMessages, setSyncMessages] = useState<Record<string, string>>({});
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<{ seeded: number; skipped: number; errors: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,6 +153,18 @@ export default function SuperAdminHealthPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function handleBackfillCostConfig() {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const res = await fetch("/api/super-admin/backfill-cost-config", { method: "POST" });
+      const json = await res.json();
+      setBackfillResult(json);
+    } finally {
+      setBackfilling(false);
+    }
+  }
 
   async function triggerSync(tenantId: string, source: string) {
     setSyncingTenant(`${tenantId}:${source}`);
@@ -277,6 +293,46 @@ export default function SuperAdminHealthPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Wartungsaktionen */}
+      <Card className="border-dashed">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Wrench className="h-4 w-4" /> Wartungsaktionen
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Kosten-Defaults auffüllen</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Setzt Standard-Kostenkonfiguration für alle Tenants, die noch keine eigene Konfiguration haben.
+              </p>
+              {backfillResult && (
+                <div className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm mt-2 ${backfillResult.errors > 0 ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
+                  {backfillResult.errors > 0
+                    ? <AlertTriangle className="h-4 w-4 shrink-0" />
+                    : <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                  {backfillResult.seeded} Tenant(s) geseedet · {backfillResult.skipped} bereits konfiguriert
+                  {backfillResult.errors > 0 && ` · ${backfillResult.errors} Fehler`}
+                </div>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBackfillCostConfig}
+              disabled={backfilling}
+              className="gap-1.5 shrink-0"
+            >
+              {backfilling
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Coins className="h-3.5 w-3.5" />}
+              Ausführen
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tenant grid */}
       {loading && !data && (
