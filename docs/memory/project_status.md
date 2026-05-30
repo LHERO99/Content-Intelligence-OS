@@ -1,4 +1,74 @@
-# Projekt-Status (Stand: 18.05.2026 – aktualisiert 6)
+# Projekt-Status (Stand: 21.05.2026 – aktualisiert 7)
+
+## Super-Admin: Setup-Status-Infrastruktur & Wartungsaktionen (21.05.2026)
+
+### Was geändert wurde
+
+**Setup-Status-System vollständig implementiert:**
+
+**Setup-Status API (`GET /api/admin/setup-status`)**
+- Interface `SetupStatus` mit Pflichtfeldern (`keywordMap`, `integrations`) und optionalen Feldern (`costConfig`, `branding`, `agentType`, `alerts`, `optimizationRules`)
+- `costConfig.ok` = mind. 1 Eintrag mit `agency_cost > 0`
+
+**Dashboard-Checkliste (`src/app/page.tsx`)**
+- Zwei Sektionen: Pflicht / Optional
+- Verschwindet wenn Keyword-Map + mind. 1 Integration ✅
+
+**Monitoring Warn-Banner (`src/app/monitoring/page.tsx`)**
+- Prüft `optional.costConfig.ok`
+
+**Super-Admin Tenant-Liste**
+- Setup-Spalte mit Ampel-Icons (CheckCircle2 / AlertTriangle / XCircle)
+- Setup-Counts (costConfigCount, keywordCount, integrations) in List-Query
+
+**Super-Admin Tenant-Detail**
+- Health Score auf 4×20 + 2×10 erweitert (costConfig + rankingIntegration)
+- Setup-Status-Block (3-spaltig)
+
+**Default Cost Config**
+- `seedDefaultCostConfig()` in `postgres.ts` mit ON CONFLICT DO NOTHING
+- 8 Standardwerte (Kategorie/Ratgeber/Marke/Produkt × Erstellung/Optimierung)
+- Seed nach Tenant-Erstellung in `super-admin/tenants/route.ts`
+
+**Backfill-Aktion**
+- `POST /api/super-admin/backfill-cost-config` — befüllt alle Tenants ohne Kostenkonfiguration
+- Button auf **System-Gesundheit-Seite** (`/super-admin/health`) in eigener "Wartungsaktionen"-Karte
+- Bewusst **nicht** auf der Tenant-Listenseite (konzeptuell falsch platziert)
+
+**Layout Tenant-Listenseite bereinigt**
+- Backfill-Button aus CardHeader der Tenant-Liste entfernt
+- Tenant-Listenseite zeigt nur noch die Tabelle + Refresh
+
+**i18n**
+- `setup.*` Keys in `de.ts` + `en.ts` vollständig
+
+### Ausstehende DB-Migration
+```sql
+CREATE UNIQUE INDEX cost_config_tenant_page_action_uniq
+ON cost_config (tenant_id, page_type, action_type);
+```
+Ohne diesen Index schlägt `seedDefaultCostConfig()` fehl (ON CONFLICT braucht den Index). **Noch nicht gegen DB ausgeführt.**
+
+### Code-Änderungen
+
+```
+src/lib/postgres.ts                                         — seedDefaultCostConfig() NEU
+src/lib/db/schema.ts                                        — uniqueIndex cost_config (Migration ausstehend!)
+src/app/api/admin/setup-status/route.ts                     — NEU
+src/app/api/super-admin/backfill-cost-config/route.ts       — NEU
+src/app/api/super-admin/tenants/route.ts                    — Setup-Counts in GET, seedDefaultCostConfig() in POST
+src/app/api/super-admin/tenants/[id]/route.ts               — Health Score 4×20+2×10
+src/app/super-admin/tenants/page.tsx                        — Setup-Spalte, Setup-Status-Block; Backfill entfernt
+src/app/super-admin/health/page.tsx                         — Wartungsaktionen-Karte mit Backfill-Button
+src/app/page.tsx                                            — Setup-Checkliste (Pflicht + Optional)
+src/app/monitoring/page.tsx                                 — Warn-Banner costConfig
+src/i18n/messages/de.ts                                     — setup.* Keys
+src/i18n/messages/en.ts                                     — setup.* Keys
+```
+
+**Status:** ✅ Implementiert, tsc sauber. DB-Migration für Unique Index noch ausstehend.
+
+---
 
 ## Content-Workflow Fix: Execution Cycles & Content Versioning (18.05.2026)
 

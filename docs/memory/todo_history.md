@@ -179,7 +179,23 @@
 
 ## Offen / Ausstehend
 
-- [x] Fix: Keyword-Import Fehler (Tenant-Id Weitergabe) (17.05.2026)
+- [ ] **DB-Migration**: `CREATE UNIQUE INDEX cost_config_tenant_page_action_uniq ON cost_config (tenant_id, page_type, action_type);` — noch nicht gegen DB ausgeführt (Voraussetzung für seedDefaultCostConfig ON CONFLICT)
+
+## Abgeschlossen (chronologisch)
+
+- [x] **Super-Admin Setup-Status & Wartungsaktionen (21.05.2026)**
+  - Setup-Status API `GET /api/admin/setup-status` mit Pflicht + Optional Feldern
+  - Dashboard-Checkliste auf `page.tsx` (verschwindet wenn komplett)
+  - Monitoring Warn-Banner für fehlende Kostenkonfiguration
+  - Tenant-Liste: Setup-Spalte mit Ampel-Icons + Setup-Counts in Query
+  - Tenant-Detail: Health Score 4×20+2×10, Setup-Status-Block 3-spaltig
+  - `seedDefaultCostConfig()` — 8 Standardwerte, ON CONFLICT DO NOTHING
+  - Seed wird automatisch bei Tenant-Erstellung ausgeführt
+  - `POST /api/super-admin/backfill-cost-config` — Backfill für alle Tenants
+  - Backfill-Button auf System-Gesundheit-Seite in "Wartungsaktionen"-Karte platziert
+  - Backfill-Logik vollständig aus Tenant-Listenseite entfernt
+  - i18n `setup.*` Keys in de.ts + en.ts
+  - tsc --noEmit ✅
 - [x] Fix: Admin Panel Config-Speicher-Fehler (Tenant-Id Rückgabe bei Login) (17.05.2026)
 - [x] Cleanup: Migration 0008 für alte Tabellen entfernt (17.05.2026)
 - [x] Cleanup: Nicht mehr verwendete Airtable-Dateien dokumentiert (17.05.2026)
