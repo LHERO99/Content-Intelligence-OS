@@ -874,16 +874,18 @@ export async function getContentLogs(tenantId?: string, limit?: number): Promise
         url: urls,
         cycle: executionCycles,
         version: executionVersions,
+        user: usersTable,
       })
       .from(processEvents)
       .leftJoin(urls, eq(urls.id, processEvents.urlId))
       .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
       .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .leftJoin(usersTable, eq(usersTable.id, processEvents.userId))
       .where(eq(processEvents.tenantId, tenant))
       .orderBy(desc(processEvents.eventTimestamp))
       .limit(maxRows);
 
-    return events.map(({ event, url, cycle, version }) => {
+    return events.map(({ event, url, cycle, version, user }) => {
       const commissionLogId = (event.eventData as any)?.commission_log_id ?? cycle?.id;
       const eventLabel = (event.eventData as any)?.original_event_label || mapEventTypeToLabel(event.eventType);
       
@@ -902,6 +904,8 @@ export async function getContentLogs(tenantId?: string, limit?: number): Promise
         Updated_At: event.eventTimestamp.toISOString(),
         Editor: event.userId ? [event.userId] : undefined,
         Commission_Log_Id: commissionLogId,
+        User_Name: user?.name ?? undefined,
+        User_Email: user?.email ?? undefined,
       };
     });
   });

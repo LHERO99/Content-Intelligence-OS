@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, RefreshCw, FileText, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
+import { Loader2, PlusCircle, Lightbulb, Calendar, Send, CheckCircle, Zap, RefreshCw, FileText, ChevronDown, ChevronUp, ShieldAlert, User } from "lucide-react";
 import { ContentLog } from "@/lib/postgres-types";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -86,6 +86,14 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
             })}
           </span>
         </div>
+        {(log.User_Name || log.User_Email) && (
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <User className="h-3 w-3" />
+            <span className="font-medium" title={log.User_Email}>
+              {log.User_Name || log.User_Email}
+            </span>
+          </div>
+        )}
 
         {isDelivery && (
           <div className="space-y-2">

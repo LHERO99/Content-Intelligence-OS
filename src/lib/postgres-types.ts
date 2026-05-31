@@ -53,9 +53,13 @@ export interface ContentLog {
   Event_Label?: string;
   Created_At: string;
   Updated_At?: string;
-  Editor?: string[]; // user IDs
+  Editor?: string[]; // user IDs (kept for backwards compatibility)
   /** FK back to the "Content wurde beauftragt" log row that originated this entry */
   Commission_Log_Id?: number;
+  /** User display name who performed the action */
+  User_Name?: string;
+  /** User email who performed the action */
+  User_Email?: string;
 }
 
 export interface PerformanceData {
