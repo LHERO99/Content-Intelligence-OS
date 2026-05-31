@@ -86,14 +86,12 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
                 minute: '2-digit'
               })}
             </span>
-            {(log.User_Name || log.User_Email) && (
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <User className="h-3 w-3" />
-                <span className="font-medium" title={log.User_Email}>
-                  {log.User_Name || log.User_Email}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <User className="h-3 w-3" />
+              <span className="font-medium" title={log.User_Email}>
+                {log.User_Name || log.User_Email || 'System'}
+              </span>
+            </div>
           </div>
         </div>
 

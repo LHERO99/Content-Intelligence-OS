@@ -9,7 +9,8 @@ import {
   Sparkles, 
   Send, 
   FileText,
-  CheckCircle2
+  CheckCircle2,
+  Map as MapIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { KeywordStatus } from '@/lib/postgres-types';
+import { KeywordStatus, KeywordMap } from '@/lib/postgres-types';
 import { useI18n } from '@/i18n/use-i18n';
 
 import { PlanningService } from "@/features/planning/services/planning-service";
@@ -31,6 +32,7 @@ interface AIEditorWorkspaceProps {
   mode?: 'Erstellung' | 'Optimierung' | 'Planung';
   keywordId: string;
   keyword: string;
+  targetUrl?: string;
   currentStatus: KeywordStatus;
   /** ID of the "Content wurde beauftragt" log row — anchors saves/publish to this cycle */
   commissionLogId: number;
@@ -44,6 +46,7 @@ export function AIEditorWorkspace({
   mode = 'Optimierung',
   keywordId,
   keyword,
+  targetUrl,
   currentStatus,
   commissionLogId,
 }: AIEditorWorkspaceProps) {
@@ -53,6 +56,8 @@ export function AIEditorWorkspace({
   // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(currentStatus === 'Published');
+  const [allKeywords, setAllKeywords] = useState<string[]>([]);
+  const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
 
@@ -81,6 +86,33 @@ export function AIEditorWorkspace({
   useEffect(() => {
     if (isReadOnly) setActiveMode('preview');
   }, [isReadOnly]);
+
+  // Load all keywords for this URL
+  useEffect(() => {
+    if (!targetUrl) {
+      setAllKeywords([keyword]); // fallback to just the main keyword
+      return;
+    }
+    
+    setIsLoadingKeywords(true);
+    fetch(`/api/planning/keywords/by-url?url=${encodeURIComponent(targetUrl)}`)
+      .then(res => res.json())
+      .then((keywords: KeywordMap[]) => {
+        // Sort: main keyword first, then by keyword name
+        const sorted = keywords.sort((a, b) => {
+          if (a.Main_Keyword === 'Y' && b.Main_Keyword !== 'Y') return -1;
+          if (a.Main_Keyword !== 'Y' && b.Main_Keyword === 'Y') return 1;
+          return a.Keyword.localeCompare(b.Keyword);
+        });
+        setAllKeywords(sorted.map(k => k.Keyword));
+      })
+      .catch(() => {
+        setAllKeywords([keyword]); // fallback on error
+      })
+      .finally(() => {
+        setIsLoadingKeywords(false);
+      });
+  }, [targetUrl, keyword]);
 
   const handleSaveContent = async (html: string) => {
     setIsSaving(true);
@@ -250,6 +282,60 @@ export function AIEditorWorkspace({
               ) : null}
             </Tooltip>
           </TooltipProvider>
+        </div>
+      </div>
+
+      {/* Content Info Section */}
+      <div className="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-lg p-3 flex flex-col gap-2 shrink-0">
+        {/* Target URL Info */}
+        {targetUrl && (
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-md border border-primary/20 shadow-sm">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <FileText className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-semibold text-slate-600">
+                {tr('Ziel-URL', 'Target URL')}:
+              </span>
+            </div>
+            <span className="text-xs text-slate-700 truncate flex-1">
+              {targetUrl}
+            </span>
+          </div>
+        )}
+
+        {/* Keywords Info */}
+        <div className="flex items-start gap-2 bg-white px-3 py-2 rounded-md border border-primary/20 shadow-sm">
+          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+            <MapIcon className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-slate-600">
+              {tr('Keywords', 'Keywords')}:
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 flex-1">
+            {isLoadingKeywords ? (
+              <span className="text-xs text-slate-400 italic">
+                {tr('Lade Keywords...', 'Loading keywords...')}
+              </span>
+            ) : (
+              allKeywords.map((kw, idx) => (
+                <span
+                  key={idx}
+                  className={cn(
+                    "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                    idx === 0 
+                      ? "bg-primary/10 text-primary border border-primary/30" // Main keyword
+                      : "bg-slate-100 text-slate-700 border border-slate-200" // Secondary keywords
+                  )}
+                >
+                  {kw}
+                  {idx === 0 && (
+                    <span className="ml-1 text-[10px] opacity-70">
+                      ({tr('Haupt', 'Main')})
+                    </span>
+                  )}
+                </span>
+              ))
+            )}
+          </div>
         </div>
       </div>
 

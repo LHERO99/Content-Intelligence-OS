@@ -7,7 +7,7 @@ import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
 import {
   Loader2, Send, Zap, Clock, FileText, AlertTriangle,
-  RefreshCw, Map as MapIcon, ChevronLeft, ChevronRight,
+  RefreshCw, Map as MapIcon, ChevronLeft, ChevronRight, User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -45,6 +45,9 @@ interface JobEntry {
   displayLogId?: number;
   /** True when the keyword was reset to Planned after a failed run */
   isFailedRetry: boolean;
+  /** User who commissioned the content */
+  userName?: string;
+  userEmail?: string;
 }
 
 const PAGE_SIZE = 20;
@@ -180,6 +183,8 @@ function buildJobEntries(
       displayLogId,
       // Failed = active cycle keyword was reset to Planned with no delivery yet
       isFailedRetry: isActiveCycle && keywordStatus === 'Planned' && !delivery,
+      userName: cl.User_Name,
+      userEmail: cl.User_Email,
     };
   });
 }
@@ -392,11 +397,11 @@ export default function CreationPage() {
                           <TableCell className="font-medium">
                             <div className="flex flex-col gap-1 py-1">
                               <span className="text-sm font-bold leading-tight">{job.keyword}</span>
-                              {job.targetUrl && (
+                              {job.userName && (
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
-                                  <FileText className="h-3 w-3 shrink-0" />
+                                  <User className="h-3 w-3 shrink-0" />
                                   <span className="truncate">
-                                    {job.targetUrl.replace(/^https?:\/\/(www\.)?/, '')}
+                                    {job.userName}
                                   </span>
                                 </div>
                               )}
@@ -558,6 +563,7 @@ export default function CreationPage() {
                       mode={selectedJob.actionType}
                       keywordId={selectedJob.keywordId}
                       keyword={selectedJob.keyword}
+                      targetUrl={selectedJob.targetUrl}
                       currentStatus={selectedJob.keywordStatus}
                       commissionLogId={selectedJob.commissionLogId}
                     />
