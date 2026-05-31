@@ -65,7 +65,7 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
       </div>
 
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2 overflow-hidden">
             <span className="text-sm font-bold text-primary truncate">
               {summary}
@@ -76,24 +76,26 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
               </Badge>
             )}
           </div>
-          <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
-            {new Date(log.Created_At).toLocaleString(toLocaleTag(locale), {
-              day: '2-digit',
-              month: '2-digit',
-              year: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </span>
-        </div>
-        {(log.User_Name || log.User_Email) && (
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <User className="h-3 w-3" />
-            <span className="font-medium" title={log.User_Email}>
-              {log.User_Name || log.User_Email}
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+              {new Date(log.Created_At).toLocaleString(toLocaleTag(locale), {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
             </span>
+            {(log.User_Name || log.User_Email) && (
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span className="font-medium" title={log.User_Email}>
+                  {log.User_Name || log.User_Email}
+                </span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {isDelivery && (
           <div className="space-y-2">
