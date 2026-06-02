@@ -514,7 +514,7 @@ export default function MonitoringPage() {
                             </TableCell>
                             <TableCell className="max-w-md">
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-medium truncate">{item.url}</span>
+                                <span className="font-medium truncate" title={item.url}>{item.url}</span>
                                 {item.lastActionDate && (
                                     <span className="text-[10px] text-muted-foreground">
                                     {t("monitoring.update")}: {new Date(item.lastActionDate).toLocaleDateString(locale === "de" ? 'de-DE' : 'en-US')}

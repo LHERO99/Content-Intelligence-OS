@@ -249,6 +249,7 @@ async function runSyncJob(jobId: number, tenantId: string): Promise<void> {
     if (sources.includes('dataforseo')) {
       const dfsUsername = config.DATAFORSEO_USERNAME?.trim();
       const dfsPassword = config.DATAFORSEO_PASSWORD?.trim();
+      const tenantDomain = config.TENANT_DOMAIN?.trim();
 
       if (!dfsUsername || !dfsPassword) {
         result.errors.push('DataForSEO übersprungen: Zugangsdaten nicht konfiguriert.');
@@ -262,7 +263,7 @@ async function runSyncJob(jobId: number, tenantId: string): Promise<void> {
 
           if (urlKeywords.length > 0) {
             const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-              await syncDataForSeoForKeywords(urlKeywords, dfsUsername, dfsPassword, true, tenantId);
+              await syncDataForSeoForKeywords(urlKeywords, dfsUsername, dfsPassword, true, tenantId, tenantDomain);
             result.keywordsProcessed = keywordsProcessed;
             result.rankingRowsUpserted = rankingRowsUpserted;
             result.rankingsSkipped = rankingsSkipped;

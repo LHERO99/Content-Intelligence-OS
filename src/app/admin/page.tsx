@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, Palette, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link, KeyRound, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, UserPlus, Copy, Check, Edit2, Trash2, X, Users, Coins, SlidersHorizontal, PlugZap, Bot, RefreshCcw, Bell, Mail, MailCheck, Link, KeyRound, CheckCircle2, AlertCircle, Settings2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CostManagement } from "./cost-management";
-import { BrandingTab } from "@/features/admin/components/branding-tab";
+import { GeneralSettingsTab } from "@/features/admin/components/general-settings-tab";
 import { OptimizationRulesTab } from "@/features/admin/components/optimization-rules-tab";
 import { IntegrationsManagement } from "./integrations-management";
 import { AgentSettingsTab } from "@/features/admin/components/agent-settings-tab";
@@ -249,8 +249,12 @@ export default function AdminPage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="users" className="space-y-6">
+      <Tabs defaultValue="general" className="space-y-6">
         <TabsList>
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            {t("admin.general")}
+          </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             {t("admin.users")}
@@ -258,10 +262,6 @@ export default function AdminPage() {
           <TabsTrigger value="costs" className="flex items-center gap-2">
             <Coins className="h-4 w-4" />
             {t("admin.costs")}
-          </TabsTrigger>
-          <TabsTrigger value="branding" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            {t("admin.branding")}
           </TabsTrigger>
           <TabsTrigger value="optimization-rules" className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4" />
@@ -284,6 +284,10 @@ export default function AdminPage() {
               {tr("Alert-Regeln", "Alert Rules")}
             </TabsTrigger>
           </TabsList>
+
+        <TabsContent value="general">
+          <GeneralSettingsTab />
+        </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -647,9 +651,6 @@ export default function AdminPage() {
 
         <TabsContent value="costs">
           <CostManagement />
-        </TabsContent>
-        <TabsContent value="branding">
-          <BrandingTab />
         </TabsContent>
         <TabsContent value="optimization-rules">
           <OptimizationRulesTab />

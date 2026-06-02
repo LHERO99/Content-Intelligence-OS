@@ -8,6 +8,7 @@ import { eq, count, gt, sql } from 'drizzle-orm';
 
 export interface SetupStatus {
   // Pflichtfelder
+  tenantDomain: { ok: boolean };
   keywordMap: { ok: boolean; count: number };
   integrations: { gsc: boolean; sistrix: boolean; dataforseo: boolean };
   // Optionale Bereiche
@@ -58,8 +59,10 @@ export async function GET() {
     const brandingOk = Boolean(cfg['LOGO_URL'] || cfg['BRAND_COLOR'] || cfg['BRAND_NAME']);
     const agentOk    = Boolean(cfg['EXTERNAL_AGENT_ENABLED'] || cfg['EXTERNAL_AGENT_WEBHOOK_URL'] || cfg['N8N_WEBHOOK_URL']);
     const optRulesOk = Object.keys(cfg).some((k) => k.startsWith('OPT_RULE_'));
+    const tenantDomainOk = Boolean(cfg['TENANT_DOMAIN']?.trim());
 
     const status: SetupStatus = {
+      tenantDomain: { ok: tenantDomainOk },
       keywordMap:   { ok: kwCount > 0, count: kwCount },
       integrations: {
         gsc:        gsc?.configured        ?? false,

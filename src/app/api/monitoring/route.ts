@@ -143,10 +143,11 @@ export async function GET() {
         keyword => keyword.Target_URL === url && !!keyword.optimizationRequestedAt
       );
 
-      const isPublished = urlLogs.some(l => {
-        const s = String(l.Event_Label || '').toLowerCase();
-        return s.includes('content angeliefert') || s.includes('content veröffentlicht');
-      });
+      // Robust check: at least one keyword for this URL must have Status === 'Published'
+      // (i.e., the last execution cycle was explicitly marked as published).
+      // "Angeliefert" alone is not sufficient.
+      const urlKeywords = keywords.filter(k => k.Target_URL === url);
+      const isPublished = urlKeywords.length > 0 && urlKeywords.some(k => k.Status === 'Published');
 
       const optimizationEligibility = !isPublished
         ? 'NO_PUBLISHED_CONTENT'
