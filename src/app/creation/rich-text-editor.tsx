@@ -18,6 +18,7 @@ import {
   Undo, 
   Redo,
   Save,
+  CheckCheck,
   Code,
   Type,
   Pilcrow
@@ -30,6 +31,8 @@ interface RichTextEditorProps {
   content: string;
   onSave: (content: string) => void;
   isSaving?: boolean;
+  isSaved?: boolean;
+  onContentChange?: () => void;
 }
 
 const MenuBar = ({ editor, showCode, setShowCode, tr }: { editor: any, showCode: boolean, setShowCode: (show: boolean) => void, tr: (de: string, en: string) => string }) => {
@@ -192,7 +195,7 @@ const MenuBar = ({ editor, showCode, setShowCode, tr }: { editor: any, showCode:
   );
 };
 
-export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProps) {
+export function RichTextEditor({ content, onSave, isSaving, isSaved, onContentChange }: RichTextEditorProps) {
   const { locale } = useI18n();
   const tr = (de: string, en: string) => (locale === 'de' ? de : en);
   const [showCode, setShowCode] = React.useState(false);
@@ -212,6 +215,9 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
       }),
     ],
     content: content,
+    onUpdate: () => {
+      onContentChange?.();
+    },
     editorProps: {
       attributes: {
         class: 'focus:outline-none p-8 min-h-[500px] prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-primary prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:text-slate-600 prose-a:text-primary font-poppins',
@@ -250,7 +256,7 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
         {showCode ? (
           <textarea
             value={codeContent}
-            onChange={(e) => setCodeContent(e.target.value)}
+            onChange={(e) => { setCodeContent(e.target.value); onContentChange?.(); }}
             className="w-full h-full p-8 font-mono text-sm bg-slate-950 text-emerald-400 focus:outline-none resize-none"
             spellCheck={false}
           />
@@ -329,15 +335,24 @@ export function RichTextEditor({ content, onSave, isSaving }: RichTextEditorProp
               onSave(editor.getHTML());
             }
           }} 
-          disabled={isSaving}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-9"
+          disabled={isSaving || isSaved}
+          className={cn(
+            "gap-2 h-9 transition-all",
+            isSaved
+              ? "bg-green-600 hover:bg-green-600 text-white cursor-default"
+              : "bg-primary hover:bg-primary/90 text-primary-foreground"
+          )}
         >
           {isSaving ? (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : isSaved ? (
+            <CheckCheck className="h-4 w-4" />
           ) : (
             <Save className="h-4 w-4" />
           )}
-          {tr('Speichern', 'Save')}
+          {isSaved
+            ? tr('Änderungen gespeichert', 'Changes saved')
+            : tr('Speichern', 'Save')}
         </Button>
       </div>
     </div>

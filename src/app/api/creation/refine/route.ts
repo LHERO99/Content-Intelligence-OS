@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getProviderConfigValues } from '@/lib/admin-integrations';
-import { createContentLog } from '@/lib/postgres';
 
 const SYSTEM_PROMPT = `You are an expert SEO content editor. Your task is to refine the provided HTML article content based on the user's instruction.
 
@@ -192,17 +191,6 @@ export async function POST(request: Request) {
     if (!refinedContent) {
       return NextResponse.json({ error: 'Das Modell hat keinen Inhalt zurückgegeben.' }, { status: 502 });
     }
-
-    // Write ContentLog (fire-and-forget)
-    createContentLog({
-      Keyword_ID: [keywordId],
-      Action_Type: 'KI-Chat',
-      Content_Body: refinedContent,
-      Event_Label: `KI-Chat (${providerId}/${modelId}): ${instructions.slice(0, 200)}`,
-      Editor: session.user?.id ? [session.user.id] : undefined,
-    }, tenantId).catch((err) => {
-      console.error('[/api/creation/refine] ContentLog write failed:', err);
-    });
 
     return NextResponse.json({ refinedContent });
   } catch (error: any) {

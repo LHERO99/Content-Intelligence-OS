@@ -53,6 +53,7 @@ export function AIEditorWorkspace({
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
   const [workingContent, setWorkingContent] = useState(v2Content);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(currentStatus === 'Published');
@@ -134,6 +135,7 @@ export function AIEditorWorkspace({
       
       setWorkingContent(html);
       toast.success(tr('Änderungen erfolgreich gespeichert', 'Changes saved successfully'));
+      setIsSaved(true);
       
       // Trigger a global refresh to update polling/parent data
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
@@ -462,7 +464,9 @@ export function AIEditorWorkspace({
             <RichTextEditor 
               content={workingContent} 
               onSave={handleSaveContent} 
-              isSaving={isSaving} 
+              isSaving={isSaving}
+              isSaved={isSaved}
+              onContentChange={() => setIsSaved(false)}
             />
           </div>
         )}
