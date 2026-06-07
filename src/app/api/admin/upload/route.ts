@@ -28,7 +28,7 @@ function getS3Client() {
     endpoint,
     region: 'eu-central-1', // Hetzner ignoriert diesen Wert, wird aber vom SDK benötigt
     credentials: { accessKeyId, secretAccessKey },
-    forcePathStyle: false, // Hetzner nutzt virtual-hosted style: {bucket}.{endpoint}
+    forcePathStyle: true, // path-style: {endpoint}/{bucket}/{key} — zuverlässiger für Hetzner
   });
 }
 
