@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { KeywordMap, ContentLog, KeywordStatus } from '@/lib/postgres-types';
 import { triggerN8nAction } from '@/lib/n8n';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
 import {
   Loader2, Send, Zap, Clock, FileText, AlertTriangle,
-  RefreshCw, Map as MapIcon, ChevronLeft, ChevronRight, User,
+  RefreshCw, Map as MapIcon, User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -204,8 +204,9 @@ export default function CreationPage() {
   // Which job row is selected (commission log id as string key)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
 
-  // Pagination
-  const [jobPage, setJobPage] = useState(0);
+  // Infinite scroll: how many jobs are currently rendered
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Body cache: logId → { contentBody, Content_Body, Event_Label }
   const [bodyCache, setBodyCache] = useState<
@@ -247,8 +248,8 @@ export default function CreationPage() {
     [contentLogs, keywords],
   );
 
-  const totalPages = Math.ceil(allJobs.length / PAGE_SIZE);
-  const pagedJobs = allJobs.slice(jobPage * PAGE_SIZE, (jobPage + 1) * PAGE_SIZE);
+  const visibleJobs = useMemo(() => allJobs.slice(0, visibleCount), [allJobs, visibleCount]);
+  const hasMore = visibleCount < allJobs.length;
 
   const selectedJob = allJobs.find((j) => j.commissionLogId === selectedJobId) ?? null;
 
@@ -276,6 +277,29 @@ export default function CreationPage() {
   }, [displayLogId]);
 
   const displayedBody = displayLogId ? bodyCache[displayLogId] : undefined;
+
+  // ── Infinite scroll: attach scroll listener to the Radix ScrollArea viewport ─
+  useEffect(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return;
+    const viewport = scrollArea.querySelector(
+      '[data-radix-scroll-area-viewport]',
+    ) as HTMLElement | null;
+    if (!viewport) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      if (scrollHeight - scrollTop - clientHeight < 120) {
+        // Load next batch — functional updater captures allJobs.length via closure;
+        // effect re-runs when allJobs.length changes so closure is always fresh.
+        setVisibleCount((c) => (c < allJobs.length ? c + PAGE_SIZE : c));
+      }
+    };
+
+    viewport.addEventListener('scroll', handleScroll, { passive: true });
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, [allJobs.length]); // re-attach whenever total count changes (e.g. after polling)
+
   const v2Content = displayedBody?.contentBody ?? displayedBody?.Content_Body ?? '';
 
   // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)
@@ -372,8 +396,8 @@ export default function CreationPage() {
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-              <ScrollArea className="flex-1">
+            <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+              <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
                 <Table>
                   <TableHeader className="bg-primary/5 sticky top-0 z-10">
                     <TableRow>
@@ -382,53 +406,63 @@ export default function CreationPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedJobs.length > 0 ? (
-                      pagedJobs.map((job) => (
-                        <TableRow
-                          key={job.commissionLogId}
-                          className={cn(
-                            'cursor-pointer transition-all hover:bg-primary/10 relative',
-                            selectedJobId === job.commissionLogId
-                              ? 'bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]'
-                              : 'border-l-4 border-l-transparent',
-                          )}
-                          onClick={() => setSelectedJobId(job.commissionLogId)}
-                        >
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col gap-1 py-1">
-                              <span className="text-sm font-bold leading-tight">{job.keyword}</span>
-                              {job.userName && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
-                                  <User className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">
-                                    {job.userName}
+                    {visibleJobs.length > 0 ? (
+                      <>
+                        {visibleJobs.map((job) => (
+                          <TableRow
+                            key={job.commissionLogId}
+                            className={cn(
+                              'cursor-pointer transition-all hover:bg-primary/10 relative',
+                              selectedJobId === job.commissionLogId
+                                ? 'bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]'
+                                : 'border-l-4 border-l-transparent',
+                            )}
+                            onClick={() => setSelectedJobId(job.commissionLogId)}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col gap-1 py-1">
+                                <span className="text-sm font-bold leading-tight">{job.keyword}</span>
+                                {job.userName && (
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
+                                    <User className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">
+                                      {job.userName}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50"
+                                  >
+                                    {job.actionType}
+                                  </Badge>
+                                  <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                    <Clock className="h-3 w-3 text-slate-400" />
+                                    {formatDate(job.commissionedAt)}
                                   </span>
                                 </div>
-                              )}
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <Badge
-                                  variant="outline"
-                                  className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50"
-                                >
-                                  {job.actionType}
-                                </Badge>
-                                <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-                                  <Clock className="h-3 w-3 text-slate-400" />
-                                  {formatDate(job.commissionedAt)}
-                                </span>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              variant="secondary"
-                              className={cn('whitespace-nowrap', statusBadgeClass(job))}
-                            >
-                              {statusLabel(job)}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge
+                                variant="secondary"
+                                className={cn('whitespace-nowrap', statusBadgeClass(job))}
+                              >
+                                {statusLabel(job)}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {/* Infinite-scroll sentinel: spinner row appears when more items remain */}
+                        {hasMore && (
+                          <TableRow>
+                            <TableCell colSpan={2} className="py-3 text-center">
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground/50" />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     ) : keywords.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={2} className="py-8">
@@ -459,39 +493,6 @@ export default function CreationPage() {
                   </TableBody>
                 </Table>
               </ScrollArea>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="shrink-0 flex items-center justify-between border-t border-primary/10 px-3 py-2 bg-primary/5">
-                  <span className="text-[11px] text-muted-foreground">
-                    {jobPage * PAGE_SIZE + 1}–{Math.min((jobPage + 1) * PAGE_SIZE, allJobs.length)}{' '}
-                    {tr('von', 'of')} {allJobs.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      disabled={jobPage === 0}
-                      onClick={() => setJobPage((p) => p - 1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-[11px] font-medium text-primary tabular-nums">
-                      {jobPage + 1} / {totalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      disabled={jobPage >= totalPages - 1}
-                      onClick={() => setJobPage((p) => p + 1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
