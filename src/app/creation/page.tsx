@@ -156,8 +156,30 @@ function buildJobEntries(
     if (publishLog) {
       keywordStatus = 'Published';
     } else if (isActiveCycle) {
-      // Active cycle: use the live kw.Status (tracks Beauftragt → In Arbeit → Angeliefert etc.)
-      keywordStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+      const rawStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+      if (rawStatus === 'Published') {
+        // kw.Status is 'Published', but we must verify it belongs to THIS cycle and
+        // not to an older one (e.g. an Erstellung cycle that was published before this
+        // Optimierung cycle was commissioned).
+        // A "contaminated" Published state exists when there is a FK-linked publish log
+        // for a DIFFERENT commission cycle of the same keyword.
+        const contamination = publishLogs.some(
+          (pl) =>
+            pl.Commission_Log_Id != null &&
+            pl.Commission_Log_Id !== cl.ID &&
+            pl.Keyword_ID?.[0] === kwId,
+        );
+        if (contamination) {
+          // kw.Status was overwritten by a re-publish of an older cycle — don't inherit.
+          keywordStatus = delivery ? 'Angeliefert' : ('Backlog' as KeywordStatus);
+        } else {
+          // No FK-linked publish log from another cycle → trust kw.Status (legacy data
+          // where this cycle was published before Commission_Log_Id tracking was added).
+          keywordStatus = 'Published';
+        }
+      } else {
+        keywordStatus = rawStatus;
+      }
     } else {
       // Older cycle without a FK-linked publish log — legacy data.
       // Show Published only if kw.Status is Published AND this cycle has a delivery log.

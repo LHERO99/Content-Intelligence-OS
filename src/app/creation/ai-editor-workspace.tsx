@@ -175,6 +175,10 @@ export function AIEditorWorkspace({
   };
 
   const handlePublish = async () => {
+    // Guard: prevent re-publishing an already-published cycle.
+    // The disabled attribute on TooltipTrigger does not reliably block click events on
+    // non-native-button elements, so we add an explicit early-return here.
+    if (isPublished) return;
     setIsSaving(true);
     try {
       await PlanningService.updateKeyword(keywordId, {
