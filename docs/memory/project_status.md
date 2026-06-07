@@ -1,4 +1,101 @@
-# Projekt-Status (Stand: 21.05.2026 – aktualisiert 7)
+# Projekt-Status (Stand: 07.06.2026 – aktualisiert 8)
+
+## GeneralSettingsTab & Tenant-Domain (02.06.2026 + 07.06.2026)
+
+### Was geändert wurde
+
+**Admin-Panel Tab-Refactoring:**
+- `BrandingTab` entfernt und durch `GeneralSettingsTab` ersetzt (`src/features/admin/components/general-settings-tab.tsx` — NEU, 511 Zeilen)
+- `GeneralSettingsTab` kombiniert Domain-Konfiguration + Branding in einem einzigen Tab
+- Neuer Tab "Allgemein" ist jetzt der **Default-Tab** im Admin-Panel (vorher: "Nutzer")
+- "Branding"-Tab aus dem Admin-Panel entfernt
+- Icon: `Settings2` für den neuen Tab
+
+**`GeneralSettingsTab` enthält:**
+- `TENANT_DOMAIN` — Domain-Eingabefeld mit Regex-Validierung (`/^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}...`)
+- `BRAND_PRIMARY_COLOR` — Hex-Farbpicker mit Kontrast-Prüfung
+- `BRAND_LOGO_URL` — Logo-Upload (Datei-Upload via `/api/admin/upload`)
+- `BRAND_FAVICON_URL` — Favicon-Upload
+- Speichern-Button ist deaktiviert wenn Domain oder Farbe ungültig
+
+**Setup-Status: `tenantDomain` als neues Pflichtfeld (API + Dashboard):**
+- `SetupStatus.tenantDomain: { ok: boolean }` zu Interface hinzugefügt
+- Prüft ob `cfg['TENANT_DOMAIN']?.trim()` gesetzt ist
+- Dashboard-Checkliste: `tenantDomain.ok` ist jetzt Teil der Pflicht-Bedingung zum Ausblenden der Checkliste
+- Neuer Checklisten-Eintrag: Link auf `/admin?tab=general`
+- Branding-Link in Checkliste von `/admin?tab=branding` → `/admin?tab=general`
+- i18n: `setup.tenantDomain`, `setup.tenantDomainOk`, `setup.tenantDomainMissing`, `setup.tenantDomainCta` in de.ts + en.ts
+- i18n: `admin.general` Key in de.ts + en.ts
+
+**DataForSEO: `tenantDomain` für Ranking-Abfragen:**
+- `syncDataForSeoForKeywords()` bekommt neuen optionalen Parameter `tenantDomain?: string`
+- Bei konfigurierter `TENANT_DOMAIN`: `targetForRanking = tenantDomain` statt der URL selbst
+- Stellt sicher, dass alle Ranking-Abfragen für die korrekte Mandanten-Domain laufen
+- Alle 3 Aufrufstellen angepasst: `sync-jobs.ts`, `syncDataForSeoChunk()`, `syncPerformanceForUrls()`
+
+**Monitoring: `isPublished`-Prüfung verbessert:**
+- Vorher: String-Matching auf Event-Labels (`s.includes('content angeliefert')`)
+- Jetzt: `urlKeywords.some(k => k.Status === 'Published')` — robuster und typgenau
+
+**UI-Fix Monitoring-Tabelle:**
+- URL-Zelle: `title={item.url}` als Tooltip-Fallback bei langen URLs
+
+### Code-Änderungen
+
+```
+src/features/admin/components/general-settings-tab.tsx   — NEU (ersetzt branding-tab)
+src/app/admin/page.tsx                                   — BrandingTab → GeneralSettingsTab, Tab "general" als Default
+src/app/api/admin/setup-status/route.ts                  — tenantDomain-Pflichtfeld
+src/app/page.tsx                                         — tenantDomain in Checkliste + Bedingung; Branding-Link → general
+src/app/monitoring/page.tsx                              — isPublished via Status-Feld + URL-Tooltip
+src/lib/sync-performance.ts                              — tenantDomain-Parameter für DFS-Sync (3 Stellen)
+src/lib/sync-jobs.ts                                     — tenantDomain aus Config an syncDataForSeoForKeywords
+src/i18n/messages/de.ts                                  — setup.tenantDomain* + admin.general Keys
+src/i18n/messages/en.ts                                  — setup.tenantDomain* + admin.general Keys
+```
+
+**Status:** ✅ Implementiert, tsc sauber.
+
+---
+
+## HistoryList: User-Info & Content-Preview Keywords (31.05.2026)
+
+### Was geändert wurde
+
+**User-Info im Event-Log (HistoryList):**
+- `ContentLog` Interface: `User_Name?: string` und `User_Email?: string` hinzugefügt
+- `getContentLogs()` in `postgres.ts`: LEFT JOIN auf `usersTable` via `processEvents.userId`
+- `mapContentLogRow` gibt `User_Name` und `User_Email` zurück
+- `HistoryItem` Komponente zeigt unterhalb des Timestamps: User-Icon + `User_Name` (Fallback → `User_Email` → `'System'`)
+- `User_Email` als `title`-Tooltip auf dem Namens-Element
+- Timestamp-Block umgebaut: `items-center` → `items-start` + `flex-col` für vertikales Layout
+
+**Keywords-Info im AI-Editor-Workspace:**
+- `AIEditorWorkspace` Props: `targetUrl?: string` hinzugefügt
+- Neuer API-Endpoint: `GET /api/planning/keywords/by-url?url=...` — gibt alle Keywords für eine URL zurück
+- Editor lädt beim Mounten alle Keywords der Ziel-URL via Fetch
+- Sortierung: Main-Keyword zuerst, dann alphabetisch nach Keyword-Name
+- Darstellung als Badges: Haupt-Keyword = `bg-primary/10` mit `(Haupt)` Label; Secondary = `bg-slate-100`
+- Content-Info-Block zeigt: Ziel-URL + Keywords-Badges
+- `isLoadingKeywords` State für Lade-Indikator
+- Fallback: nur Haupt-Keyword wenn `targetUrl` nicht gesetzt oder Fetch schlägt fehl
+
+### Code-Änderungen
+
+```
+src/lib/postgres-types.ts                               — ContentLog: User_Name?, User_Email? hinzugefügt
+src/lib/postgres.ts                                     — getContentLogs() JOIN auf usersTable
+src/features/shared/components/HistoryList.tsx          — User-Info-Block im HistoryItem
+src/app/api/planning/keywords/by-url/route.ts           — NEU: GET Keywords by URL
+src/app/creation/ai-editor-workspace.tsx                — targetUrl-Prop, Keywords-Info-Block, useEffect-Fetch
+src/app/creation/page.tsx                               — User-Icon Import
+```
+
+**Status:** ✅ Implementiert.
+
+---
+
+
 
 ## Super-Admin: Setup-Status-Infrastruktur & Wartungsaktionen (21.05.2026)
 

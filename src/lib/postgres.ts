@@ -1266,15 +1266,17 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
         url: urls,
         cycle: executionCycles,
         version: executionVersions,
+        user: usersTable,
       })
       .from(processEvents)
       .leftJoin(urls, eq(urls.id, processEvents.urlId))
       .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
       .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .leftJoin(usersTable, eq(usersTable.id, processEvents.userId))
       .where(and(eq(processEvents.urlId, urlRecord.id), eq(processEvents.tenantId, tenant)))
       .orderBy(desc(processEvents.eventTimestamp));
 
-    return events.map(({ event, url, cycle, version }) => ({
+    return events.map(({ event, url, cycle, version, user }) => ({
       id: String(event.id),
       ID: event.id,
       Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
@@ -1288,6 +1290,8 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
       Commission_Log_Id: cycle?.id,
+      User_Name: user?.name ?? undefined,
+      User_Email: user?.email ?? undefined,
     }));
   });
 }
@@ -1325,18 +1329,20 @@ export async function getContentHistoryByUrlOrKeywords(
         url: urls,
         cycle: executionCycles,
         version: executionVersions,
+        user: usersTable,
       })
       .from(processEvents)
       .leftJoin(urls, eq(urls.id, processEvents.urlId))
       .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
       .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .leftJoin(usersTable, eq(usersTable.id, processEvents.userId))
       .where(and(
         eq(processEvents.tenantId, tenant),
         keywordIdsToQuery.length > 0 ? inArray(processEvents.keywordId, keywordIdsToQuery.filter(Boolean) as string[]) : sql`1=1`
       ))
       .orderBy(desc(processEvents.eventTimestamp));
 
-    return events.map(({ event, url, cycle, version }) => ({
+    return events.map(({ event, url, cycle, version, user }) => ({
       id: String(event.id),
       ID: event.id,
       Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
@@ -1350,6 +1356,8 @@ export async function getContentHistoryByUrlOrKeywords(
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
       Commission_Log_Id: cycle?.id,
+      User_Name: user?.name ?? undefined,
+      User_Email: user?.email ?? undefined,
     }));
   });
 }

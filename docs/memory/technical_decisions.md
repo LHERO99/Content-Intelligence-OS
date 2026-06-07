@@ -1,4 +1,38 @@
-# Technische Entscheidungen (Stand: 18.05.2026 – aktualisiert 5)
+# Technische Entscheidungen (Stand: 07.06.2026 – aktualisiert 6)
+
+## GeneralSettingsTab: BrandingTab ersetzt (02.06.2026)
+- `BrandingTab` wurde aufgelöst — `GeneralSettingsTab` übernimmt Domain + Branding in einem Tab
+- Admin-Tab-Reihenfolge: `general` (Default) → `users` → `costs` → `optimization-rules` → `integrations` → `agent-settings` → `alerts` → `feedback`
+- **Regel**: Konfigurationen die logisch zusammengehören (Domain + Branding = "Tenant-Identität") in einem Tab bündeln
+
+## TENANT_DOMAIN: Pflichtfeld für DataForSEO-Ranking-Abfragen (02.06.2026)
+- DataForSEO-Ranking-Abfragen verwenden als Ziel-Domain `TENANT_DOMAIN` aus der Tenant-Config
+- Vorher: Die Target-URL aus der Keyword-Map wurde direkt als Domain für die Ranking-Abfrage verwendet
+- **Problem**: Wenn Target-URLs Subpfade oder Unterseiten-URLs enthalten, schlägt die Domain-Erkennung fehl
+- **Lösung**: `TENANT_DOMAIN` als zentraler Konfigurationspunkt → `targetForRanking = tenantDomain?.trim() ? tenantDomain : url`
+- **Regel**: Für Ranking-Abfragen immer `TENANT_DOMAIN` aus der Tenant-Config verwenden, nicht aus URLs ableiten
+- `TENANT_DOMAIN` ist als Pflichtfeld in der Setup-Checkliste aufgenommen
+
+## Monitoring: isPublished via Status-Feld, nicht Event-Label (02.06.2026)
+- Vorher: `urlLogs.some(l => s.includes('content angeliefert') || s.includes('content veröffentlicht'))`
+- **Problem**: Event-Label-String-Matching ist fragil und kulturell abhängig
+- **Jetzt**: `urlKeywords.some(k => k.Status === 'Published')`
+- **Regel**: Status-Prüfungen immer auf Enum-Felder basieren, nie auf freitextigen Event-Labels
+
+## ContentLog: User-Info via JOIN, kein separater Fetch (31.05.2026)
+- `getContentLogs()` joined direkt auf `usersTable` via `processEvents.userId`
+- `User_Name` + `User_Email` werden in einer einzigen Query geladen (kein N+1)
+- `Editor?: string[]` bleibt für Backwards Compatibility erhalten
+- **Regel**: User-Display-Daten via JOIN in der List-Query laden, nicht per separate Fetch-Schicht
+
+## AIEditorWorkspace: Keywords-Info via dedizierten Endpoint (31.05.2026)
+- `GET /api/planning/keywords/by-url?url=...` — Endpoint gibt alle Keywords für eine URL zurück
+- Editor-Komponente fetcht Keywords on-mount wenn `targetUrl` gesetzt
+- Fallback: nur Haupt-Keyword wenn URL fehlt oder Fetch schlägt fehl
+- Main-Keyword wird immer zuerst sortiert (BY `Main_Keyword === 'Y'`)
+- **Regel**: Für kontextuelle Info im Editor (welche Keywords gehören zur URL?) einen eigenen schlanken Endpoint verwenden
+
+
 
 ## Content Versioning: Neue Version bei jedem Save (18.05.2026)
 

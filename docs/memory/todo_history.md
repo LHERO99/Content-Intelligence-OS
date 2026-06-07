@@ -2,7 +2,26 @@
 
 ## Abgeschlossen (chronologisch)
 
-- [x] **Content-Workflow Fix: Execution Cycles & Versioning (18.05.2026)**
+- [x] **GeneralSettingsTab & TENANT_DOMAIN (02.06.2026 + 07.06.2026)**
+  - `BrandingTab` durch `GeneralSettingsTab` ersetzt (Domain + Branding in einem Tab)
+  - Admin-Panel: Tab "Allgemein" als neuer Default-Tab
+  - `SetupStatus.tenantDomain: { ok: boolean }` als Pflichtfeld hinzugefügt
+  - Dashboard-Checkliste: `tenantDomain.ok` ist Bedingung für Ausblenden
+  - `syncDataForSeoForKeywords()`: `tenantDomain`-Parameter für korrekte Ranking-Abfragen
+  - Monitoring: `isPublished` auf `k.Status === 'Published'` umgestellt
+  - i18n: `setup.tenantDomain*` + `admin.general` Keys
+  - URL-Tooltip in Monitoring-Tabelle
+
+- [x] **HistoryList: User-Info & Keywords im Editor (31.05.2026)**
+  - `ContentLog`: `User_Name?` + `User_Email?` hinzugefügt
+  - `getContentLogs()` JOIN auf `usersTable` → User-Daten in einer Query
+  - HistoryItem zeigt User-Icon + Name/Email unterhalb Timestamp
+  - Neuer Endpoint `GET /api/planning/keywords/by-url`
+  - `AIEditorWorkspace`: `targetUrl`-Prop + Keywords-Info-Block mit Badges
+
+## Offen / Ausstehend
+
+
   - Problem 1: Commission erstellte keine execution_cycles → Keyword blieb in Redaktionsplan
   - Problem 2: Content wurde nicht in execution_versions gespeichert → "KI generiert..." trotz Content
   - Problem 3: Alle Keywords (nicht nur Main) in Auftragsliste
