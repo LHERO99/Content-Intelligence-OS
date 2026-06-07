@@ -1,5 +1,11 @@
 # TODO Historie
 
+## Offen / Ausstehend
+
+- [ ] **DB-Migration**: `CREATE UNIQUE INDEX cost_config_tenant_page_action_uniq ON cost_config (tenant_id, page_type, action_type);` — noch nicht gegen DB ausgeführt (Voraussetzung für `seedDefaultCostConfig` ON CONFLICT)
+
+---
+
 ## Abgeschlossen (chronologisch)
 
 - [x] **GeneralSettingsTab & TENANT_DOMAIN (02.06.2026 + 07.06.2026)**
@@ -19,9 +25,16 @@
   - Neuer Endpoint `GET /api/planning/keywords/by-url`
   - `AIEditorWorkspace`: `targetUrl`-Prop + Keywords-Info-Block mit Badges
 
-## Offen / Ausstehend
+- [x] **Bug Fix: "System" in Monitoring-Content-Historie (07.06.2026)**
+  - `getContentHistoryByUrl()` + `getContentHistoryByUrlOrKeywords()` in `postgres.ts`: LEFT JOIN auf `usersTable` ergänzt
+  - `User_Name` + `User_Email` werden jetzt korrekt zurückgegeben (vorher immer `undefined` → Fallback "System")
 
+- [x] **Infinite Scroll für Auftrags-Liste in Content-Erstellung (07.06.2026)**
+  - `creation/page.tsx`: Paginierung (ChevronLeft/Right) durch Infinite Scroll ersetzt
+  - Radix ScrollArea: `min-h-0` Fix + Scroll-Listener via `[data-radix-scroll-area-viewport]`
+  - Sentinel-Spinner-Zeile wenn mehr Einträge vorhanden
 
+- [x] **Content-Workflow Fix: Execution Cycles & Versioning (18.05.2026)**
   - Problem 1: Commission erstellte keine execution_cycles → Keyword blieb in Redaktionsplan
   - Problem 2: Content wurde nicht in execution_versions gespeichert → "KI generiert..." trotz Content
   - Problem 3: Alle Keywords (nicht nur Main) in Auftragsliste
@@ -37,7 +50,6 @@
   - Fix: Auto-Resolution von commissionLogId aus process_events
   - SQL-Migration für alte Daten ausgeführt
   - Legacy-Files (postgres-legacy.ts, postgres-old-backup.ts) → .bak
-  - Debug-Logging vollständig entfernt nach Fertigstellung
   - TypeScript-Build erfolgreich
   - Kompletter Workflow funktional: Commission → Delivery → Save → Display
 
@@ -195,12 +207,6 @@
   - `api/planning/blacklist/route.ts` (2 Stellen)
   - `api/planning/trends/route.ts`
   - `api/monitoring/suggest/route.ts`
-
-## Offen / Ausstehend
-
-- [ ] **DB-Migration**: `CREATE UNIQUE INDEX cost_config_tenant_page_action_uniq ON cost_config (tenant_id, page_type, action_type);` — noch nicht gegen DB ausgeführt (Voraussetzung für seedDefaultCostConfig ON CONFLICT)
-
-## Abgeschlossen (chronologisch)
 
 - [x] **Super-Admin Setup-Status & Wartungsaktionen (21.05.2026)**
   - Setup-Status API `GET /api/admin/setup-status` mit Pflicht + Optional Feldern
