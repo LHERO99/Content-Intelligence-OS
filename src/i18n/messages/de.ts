@@ -182,7 +182,7 @@ const de = {
     costConfigDefault: "Standardwerte hinterlegt – bitte anpassen",
     costConfigMissing: "Keine Kostenkonfiguration hinterlegt",
     costConfigCta: "Anpassen",
-    tenantDomain: "Tenant-Domain",
+    tenantDomain: "Domain",
     tenantDomainOk: "Hinterlegt",
     tenantDomainMissing: "Nicht hinterlegt – Ranking-Abfragen funktionieren nicht",
     tenantDomainCta: "Jetzt hinterlegen",

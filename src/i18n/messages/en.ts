@@ -182,7 +182,7 @@ const en = {
     costConfigDefault: "Default values set – please adjust",
     costConfigMissing: "No cost configuration set up",
     costConfigCta: "Adjust",
-    tenantDomain: "Tenant Domain",
+    tenantDomain: "Domain",
     tenantDomainOk: "Configured",
     tenantDomainMissing: "Not configured – ranking queries will not work",
     tenantDomainCta: "Configure now",

@@ -242,8 +242,8 @@ export function GeneralSettingsTab() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
-              {tr("Tenant-Domain", "Tenant Domain")}
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            {tr("Domain", "Domain")}
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                 {tr("Pflichtfeld", "Required")}
               </Badge>
             </label>
@@ -253,7 +253,7 @@ export function GeneralSettingsTab() {
               onChange={(e) =>
                 setConfig({ ...config, TENANT_DOMAIN: e.target.value.trim() })
               }
-              placeholder="beispiel.de"
+              placeholder="example.com"
               className={
                 config.TENANT_DOMAIN && !isDomainValid
                   ? "border-red-500 focus-visible:ring-red-500"
@@ -271,8 +271,8 @@ export function GeneralSettingsTab() {
             )}
             <p className="text-xs text-muted-foreground">
               {tr(
-                "Diese Domain wird für Ranking-Abfragen (DataForSEO) verwendet. Nur die Root-Domain eingeben, z. B. docmorris.de",
-                "This domain is used for ranking queries (DataForSEO). Enter the root domain only, e.g. docmorris.de"
+              "Diese Domain wird für Ranking-Abfragen (DataForSEO) verwendet. Nur die Root-Domain eingeben, z. B. example.com",
+                  "This domain is used for ranking queries (DataForSEO). Enter the root domain only, e.g. example.com"
               )}
             </p>
           </div>
