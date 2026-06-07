@@ -1,4 +1,29 @@
-# Technische Entscheidungen (Stand: 07.06.2026 – aktualisiert 6)
+# Technische Entscheidungen (Stand: 07.06.2026 – aktualisiert 7)
+
+## AIEditorWorkspace: v2Content-Stabilität via lastV2Ref (07.06.2026)
+- **Problem**: Nach `handleSaveFromAI` → `refresh-planning-data` → `displayLogId` wechselt → `bodyCache[newId]` noch undefined → `v2Content = ''` → Workspace unmountet → AI-Chat-Tab und Nachrichten weg
+- **Lösung**: `lastV2Ref = useRef<Record<number, string>>({})` in `page.tsx` hält den letzten bekannten `v2Content` pro `selectedJobId`; der angezeigte Wert ist `bodyCache[displayLogId]?.contentBody ?? lastV2Ref.current[selectedJobId] ?? ''`
+- **Regel**: `AIEditorWorkspace` darf nie wegen eines kurzzeitig leerem Body-Cache unmounten — `lastV2Ref` stellt sicher, dass der zuletzt bekannte Inhalt gehalten wird bis der neue Body geladen ist
+
+## Publish Idempotency: Guard in handlePublish (07.06.2026)
+- `TooltipTrigger` um ein `disabled`-Prop wrappbares Element ist kein natives `<button>` → Click-Events werden nicht zuverlässig geblockt
+- **Fix**: `if (isPublished) return;` als erster Guard in `handlePublish`
+- **Regel**: Alle irreversiblen Aktionen (Publish, Commission) müssen einen expliziten State-Guard als erste Zeile haben, unabhängig vom disabled-State des auslösenden UI-Elements
+
+## Publish Cross-Cycle Contamination: Expliziter Check in buildJobEntries (07.06.2026)
+- **Problem**: `kw.Status = 'Published'` wird durch Re-Publish der Erstellung gesetzt. Der aktive Optimierungs-Cycle liest denselben `kw.Status` und erbt fälschlicherweise `'Published'`
+- **Fix**: Im aktiven Cycle-Branch wird geprüft ob ein `publishLogs`-Eintrag mit passendem `Keyword_ID[0] === kwId` aber `Commission_Log_Id !== cl.ID` existiert. Wenn ja: Status-Override zu `'Angeliefert'` oder `'Backlog'`
+- **Regel**: Status aus `kw.Status` ist URL/Keyword-global — für Cycle-spezifischen Status immer gegen `publishLogs` kreuzprüfen um Cycle-Kontamination zu vermeiden
+
+## KI-Chat Logging: Prompt-Events nicht persistieren (07.06.2026)
+- **Entscheidung**: KI-Chat-Prompts (`refine/route.ts`) werden nicht mehr als `ContentLog` persistiert
+- `'KI-Chat: KI-Optimierung übernommen'` (via `handleSaveFromAI` → `/api/planning/history`) bleibt erhalten — das ist ein User-initiierter Übernahme-Event, kein Prompt-Event
+- **Begründung**: Prompt-Logs erzeugen Rauschen im Event-Log ohne Mehrwert für den User; die Übernahme selbst ist das relevante Ereignis
+
+## RichTextEditor: isSaved-Feedback-Pattern (07.06.2026)
+- **Pattern**: Parent hält `isSaved: boolean` State; nach erfolgreichem Save `setIsSaved(true)`; RichTextEditor ruft `onContentChange?.()` on jede Änderung → Parent `setIsSaved(false)`
+- Button-Zustände: Spinner (`isSaving`) → grün + `CheckCheck` + "Änderungen gespeichert" (`isSaved`, disabled) → normal "Speichern" (enabled)
+- **Regel**: Feedback-States nie im Editor selbst halten — Parent kennt den API-Erfolg; Editor kennt die Content-Änderungen; Props verbinden beide Zustände
 
 ## GeneralSettingsTab: BrandingTab ersetzt (02.06.2026)
 - `BrandingTab` wurde aufgelöst — `GeneralSettingsTab` übernimmt Domain + Branding in einem Tab

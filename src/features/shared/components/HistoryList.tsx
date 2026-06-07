@@ -76,8 +76,8 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
               </Badge>
             )}
           </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground justify-end flex-wrap">
+            <span className="font-medium whitespace-nowrap">
               {new Date(log.Created_At).toLocaleString(toLocaleTag(locale), {
                 day: '2-digit',
                 month: '2-digit',
@@ -86,9 +86,10 @@ const HistoryItem = ({ log, isLast, version }: { log: ContentLog; isLast: boolea
                 minute: '2-digit'
               })}
             </span>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="text-muted-foreground/40">·</span>
+            <div className="flex items-center gap-1 font-medium">
               <User className="h-3 w-3" />
-              <span className="font-medium" title={log.User_Email}>
+              <span title={log.User_Email}>
                 {log.User_Name || log.User_Email || 'System'}
               </span>
             </div>

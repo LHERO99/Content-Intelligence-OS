@@ -1,4 +1,47 @@
-# Projekt-Status (Stand: 07.06.2026 – aktualisiert 8)
+# Projekt-Status (Stand: 07.06.2026 – aktualisiert 10)
+
+## Content-Erstellung: UX-Fixes & Bug-Fixes (07.06.2026)
+
+### Was geändert wurde
+
+**Fix: AI Chat Tab Reset + Nachrichtenverlust nach "Übernehmen"**
+- **Root Cause**: Nach `handleSaveFromAI` feuert `refresh-planning-data` → neues `displayLogId` → `bodyCache[newId]` undefined → `v2Content = ''` → `AIEditorWorkspace` unmountet → Tab reset auf `'preview'`, Nachrichten weg
+- **Lösung**: `lastV2Ref = useRef<Record<number, string>>({})` in `page.tsx` — hält letzten bekannten `v2Content` pro `selectedJobId`; `v2Content` fällt nie mehr auf `''` während Body-Reload → Workspace bleibt gemountet → Tab und Nachrichten bleiben erhalten
+
+**Fix: Publish Bug — Optimierung zeigt fälschlicherweise "Veröffentlicht"**
+- **Root Cause**: `handlePublish` hatte keinen Idempotency-Guard. `TooltipTrigger` blockiert `disabled`-Click-Events nicht zuverlässig (kein natives `<button>`). Re-Publish der Erstellung überschreibt `kw.Status = 'Published'` → Optimierung (aktiver Cycle) erbt diesen Status aus `kw.Status`.
+- **Fix A**: `if (isPublished) return;` Guard in `handlePublish`
+- **Fix B**: `buildJobEntries` prüft per Contamination-Check ob `kw.Status = 'Published'` vom aktiven Cycle stammt oder von einem anderen Cycle
+
+**Fix: "Bearbeiten"-Tab nach manuellem Speichern verlassen**
+- `setActiveMode('preview')` aus `handleSaveContent` entfernt — User bleibt nach dem Speichern im "Bearbeiten"-Tab
+
+**Feature: Save-Button Feedback im "Bearbeiten"-Tab**
+- `isSaved` State in `AIEditorWorkspace`: nach erfolgreichem Speichern wechselt Button zu grün + `CheckCheck`-Icon + "Änderungen gespeichert" (disabled)
+- Sobald User wieder tippt (`onUpdate` / `onChange`), Reset auf normalen "Speichern"-Zustand
+- Props: `isSaved?: boolean` + `onContentChange?: () => void` auf `RichTextEditor`
+
+**Cleanup: KI-Chat Prompt-Logging entfernt**
+- `createContentLog`-Block (fire-and-forget) vollständig aus `refine/route.ts` entfernt
+- `import { createContentLog }` entfernt (war danach ungenutzt)
+- `"KI-Chat: KI-Optimierung übernommen"` (via `/api/planning/history`) bleibt weiterhin geloggt
+
+**Cleanup: `tenantId: 'default'` aus `ai-chat-panel.tsx` entfernt**
+- War toter Code — Server liest `tenantId` ausschließlich aus `session.user?.tenantId`
+
+### Code-Änderungen
+
+```
+src/app/creation/page.tsx                    — lastV2Ref + Publish Contamination-Fix in buildJobEntries
+src/app/creation/ai-editor-workspace.tsx     — Tab-Fix (kein setActiveMode nach Save) + isSaved State + Publish Guard
+src/app/creation/ai-chat-panel.tsx           — tenantId: 'default' entfernt
+src/app/creation/rich-text-editor.tsx        — isSaved Props + CheckCheck Icon + onUpdate/onChange Reset
+src/app/api/creation/refine/route.ts         — createContentLog Block entfernt
+```
+
+**Status:** ✅ Implementiert. Noch nicht committet.
+
+---
 
 ## GeneralSettingsTab & Tenant-Domain (02.06.2026 + 07.06.2026)
 

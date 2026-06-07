@@ -4,6 +4,14 @@
 
 ## Abgeschlossen (chronologisch)
 
+- [x] **Content-Erstellung: UX-Fixes & Bug-Fixes (07.06.2026)**
+  - Fix: AI Chat Tab Reset nach "Übernehmen" — `lastV2Ref` in `page.tsx` hält letzten `v2Content` pro Job; Workspace bleibt gemountet
+  - Fix: Publish Bug (Cross-Cycle Status Contamination) — `if (isPublished) return;` Guard + `contamination`-Check in `buildJobEntries`
+  - Fix: `setActiveMode('preview')` nach manuellem Speichern entfernt — User bleibt im "Bearbeiten"-Tab
+  - Feature: Save-Button Feedback — `isSaved` State + `CheckCheck`-Icon + "Änderungen gespeichert" (grün/disabled) in `RichTextEditor`
+  - Cleanup: KI-Chat Prompt-Logging (`createContentLog` in `refine/route.ts`) entfernt
+  - Cleanup: `tenantId: 'default'` aus `ai-chat-panel.tsx` Fetch-Body entfernt (toter Code)
+
 - [x] **DB-Migration**: `cost_config_tenant_page_action_uniq` — Index existierte bereits in der DB, kein Handlungsbedarf.
 
 - [x] **GeneralSettingsTab & TENANT_DOMAIN (02.06.2026 + 07.06.2026)**
