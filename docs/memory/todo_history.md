@@ -1,12 +1,10 @@
 # TODO Historie
 
-## Offen / Ausstehend
-
-- [ ] **DB-Migration**: `CREATE UNIQUE INDEX cost_config_tenant_page_action_uniq ON cost_config (tenant_id, page_type, action_type);` — noch nicht gegen DB ausgeführt (Voraussetzung für `seedDefaultCostConfig` ON CONFLICT)
-
 ---
 
 ## Abgeschlossen (chronologisch)
+
+- [x] **DB-Migration**: `cost_config_tenant_page_action_uniq` — Index existierte bereits in der DB, kein Handlungsbedarf.
 
 - [x] **GeneralSettingsTab & TENANT_DOMAIN (02.06.2026 + 07.06.2026)**
   - `BrandingTab` durch `GeneralSettingsTab` ersetzt (Domain + Branding in einem Tab)
