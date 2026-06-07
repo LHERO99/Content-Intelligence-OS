@@ -137,8 +137,6 @@ export function AIEditorWorkspace({
       
       // Trigger a global refresh to update polling/parent data
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
-      
-      setActiveMode('preview');
     } catch (error) {
       toast.error(tr('Fehler beim Speichern des Contents', 'Error saving content'));
     } finally {

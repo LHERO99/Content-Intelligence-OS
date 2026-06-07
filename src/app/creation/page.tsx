@@ -278,29 +278,19 @@ export default function CreationPage() {
 
   const displayedBody = displayLogId ? bodyCache[displayLogId] : undefined;
 
-  // ── Infinite scroll: attach scroll listener to the Radix ScrollArea viewport ─
-  useEffect(() => {
-    const scrollArea = scrollAreaRef.current;
-    if (!scrollArea) return;
-    const viewport = scrollArea.querySelector(
-      '[data-radix-scroll-area-viewport]',
-    ) as HTMLElement | null;
-    if (!viewport) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = viewport;
-      if (scrollHeight - scrollTop - clientHeight < 120) {
-        // Load next batch — functional updater captures allJobs.length via closure;
-        // effect re-runs when allJobs.length changes so closure is always fresh.
-        setVisibleCount((c) => (c < allJobs.length ? c + PAGE_SIZE : c));
-      }
-    };
-
-    viewport.addEventListener('scroll', handleScroll, { passive: true });
-    return () => viewport.removeEventListener('scroll', handleScroll);
-  }, [allJobs.length]); // re-attach whenever total count changes (e.g. after polling)
-
-  const v2Content = displayedBody?.contentBody ?? displayedBody?.Content_Body ?? '';
+  // ── Stable v2Content: prevent AIEditorWorkspace unmount during body re-fetch ──
+  // After saving (AI apply or manual), displayLogId changes to the new log ID while
+  // bodyCache[newId] is still undefined. Without this guard, v2Content briefly
+  // becomes '' which triggers the !v2Content branch → workspace unmounts → tab
+  // resets to 'preview' and chat messages are lost.
+  // We keep the last known non-empty value per job; it gets superseded as soon as
+  // the new body arrives and bodyCache fills in.
+  const lastV2Ref = useRef<Record<number, string>>({});
+  const v2ContentRaw = displayedBody?.contentBody ?? displayedBody?.Content_Body ?? '';
+  if (v2ContentRaw && selectedJobId != null) {
+    lastV2Ref.current[selectedJobId] = v2ContentRaw;
+  }
+  const v2Content = v2ContentRaw || (selectedJobId != null ? lastV2Ref.current[selectedJobId] ?? '' : '');
 
   // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)
   const v1Content = useMemo(() => {
