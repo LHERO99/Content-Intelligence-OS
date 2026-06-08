@@ -113,6 +113,23 @@ async function checkCronSync(
   }
 
   if (latest.action.endsWith(':skipped')) {
+    let skippedReason = 'not_configured';
+    try {
+      const p = JSON.parse(latest.rawPayload || '{}');
+      if (p.skippedReason) skippedReason = String(p.skippedReason);
+    } catch {}
+
+    if (skippedReason === 'no_urls') {
+      return {
+        id,
+        label,
+        status: 'ok',
+        detail: 'Nothing to sync — no URLs in this run',
+        detailKey: 'dashboard.systemHealth.cron.noUrls',
+        checkedAt: latest.timestamp,
+      };
+    }
+
     return {
       id,
       label,

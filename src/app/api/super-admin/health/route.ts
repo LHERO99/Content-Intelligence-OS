@@ -84,6 +84,7 @@ export interface HealthSummaryResponse {
 function deriveStatus(action: string): 'ok' | 'error' | 'skipped' | 'unknown' {
   if (action.endsWith(':success') || action.endsWith(':ok')) return 'ok';
   if (action.endsWith(':error') || action.endsWith(':unauthorized')) return 'error';
+  if (action.endsWith(':no_urls')) return 'ok';
   if (action.endsWith(':skipped')) return 'skipped';
   return 'unknown';
 }
