@@ -2179,9 +2179,15 @@ export async function getKpiByYear(
 //                  exceed the 30-day pre-delivery baseline by ≥ 20%
 // ---------------------------------------------------------------------------
 export interface AggregateKpis {
-  avgTTR: number;
-  stabilityIndex: number;
-  avgTTP: number;
+  avgTTR:               number;
+  ttrUrlCount:          number;   // URLs die Top-10 erreicht haben
+  ttrSuccessRate:       number;   // % aller creation-delivered URLs mit Ranking-Daten
+  stabilityIndex:       number;
+  stabilityUrlCount:    number;   // URLs mit ≥6 konsekutiven Top-5-Wochen
+  stabilitySuccessRate: number;   // % aller URLs mit mind. einem Top-5-Datenpunkt
+  avgTTP:               number;
+  ttpUrlCount:          number;   // URLs die 20%-Lift erreicht haben
+  ttpSuccessRate:       number;   // % aller creation-delivered URLs mit GSC-Daten danach
 }
 
 const _aggregateKpiCache = new Map<string, { value: AggregateKpis; expiresAt: number }>();
@@ -2217,7 +2223,24 @@ export async function getAggregateKpis(tenantId?: string): Promise<AggregateKpis
           AND ec.action_type = 'creation'
         GROUP BY ec.url_id, ec.delivered_at
       )
-      SELECT ROUND(AVG(first_top10_date - delivered_date)) AS avg_ttr
+      SELECT
+        ROUND(AVG(first_top10_date - delivered_date)) AS avg_ttr,
+        COUNT(*)                                       AS ttr_count,
+        (
+          SELECT COUNT(DISTINCT ec2.url_id)
+          FROM execution_cycles ec2
+          JOIN url_keywords uk2
+            ON uk2.url_id     = ec2.url_id
+           AND uk2.main_keyword = true
+           AND uk2.tenant_id  = ${tenant}
+          JOIN keyword_rankings kr2
+            ON kr2.keyword_id = uk2.id
+           AND kr2.tenant_id  = ${tenant}
+           AND kr2.date       >= ec2.delivered_at::date
+          WHERE ec2.tenant_id   = ${tenant}
+            AND ec2.status      = 'delivered'
+            AND ec2.action_type = 'creation'
+        ) AS ttr_eligible
       FROM first_top10
     `);
 
@@ -2272,7 +2295,18 @@ export async function getAggregateKpis(tenantId?: string): Promise<AggregateKpis
           AND ec.delivered_at < fs.first_stable_date
         GROUP BY ec.url_id
       )
-      SELECT ROUND(AVG(opt_count)::numeric, 1) AS stability_index
+      SELECT
+        ROUND(AVG(opt_count)::numeric, 1) AS stability_index,
+        COUNT(*)                           AS stability_count,
+        (
+          SELECT COUNT(DISTINCT uk2.url_id)
+          FROM url_keywords uk2
+          JOIN keyword_rankings kr2
+            ON kr2.keyword_id = uk2.id
+           AND kr2.tenant_id  = ${tenant}
+          WHERE uk2.tenant_id    = ${tenant}
+            AND uk2.main_keyword = true
+        ) AS stability_eligible
       FROM opt_before
     `);
 
@@ -2318,7 +2352,18 @@ export async function getAggregateKpis(tenantId?: string): Promise<AggregateKpis
           AND up.gsc_clicks > GREATEST(b.baseline_clicks * 1.2, 1)
         GROUP BY b.url_id, b.first_delivered_at
       )
-      SELECT ROUND(AVG(lift_date - first_delivered_at::date)) AS avg_ttp
+      SELECT
+        ROUND(AVG(lift_date - first_delivered_at::date)) AS avg_ttp,
+        COUNT(*)                                          AS ttp_count,
+        (
+          SELECT COUNT(DISTINCT b2.url_id)
+          FROM baselines b2
+          JOIN urls u2 ON u2.id = b2.url_id
+          JOIN url_performance up2
+            ON  up2.target_url = u2.target_url
+            AND up2.tenant_id  = ${tenant}
+            AND up2.date       > b2.first_delivered_at::date
+        ) AS ttp_eligible
       FROM first_lift
     `);
 
@@ -2326,10 +2371,26 @@ export async function getAggregateKpis(tenantId?: string): Promise<AggregateKpis
     const stabilityRow = (stabilityRows[0] ?? {}) as Record<string, unknown>;
     const ttpRow       = (ttpRows[0]       ?? {}) as Record<string, unknown>;
 
+    const safeRate = (count: number, eligible: number) =>
+      eligible > 0 ? Math.round((count / eligible) * 100) : 0;
+
+    const ttrCount     = Number(ttrRow.ttr_count               ?? 0) || 0;
+    const ttrEligible  = Number(ttrRow.ttr_eligible            ?? 0) || 0;
+    const stabCount    = Number(stabilityRow.stability_count   ?? 0) || 0;
+    const stabEligible = Number(stabilityRow.stability_eligible ?? 0) || 0;
+    const ttpCount     = Number(ttpRow.ttp_count               ?? 0) || 0;
+    const ttpEligible  = Number(ttpRow.ttp_eligible            ?? 0) || 0;
+
     return {
-      avgTTR:         Number(ttrRow.avg_ttr       ?? 0) || 0,
-      stabilityIndex: Number(stabilityRow.stability_index ?? 0) || 0,
-      avgTTP:         Number(ttpRow.avg_ttp        ?? 0) || 0,
+      avgTTR:               Number(ttrRow.avg_ttr              ?? 0) || 0,
+      ttrUrlCount:          ttrCount,
+      ttrSuccessRate:       safeRate(ttrCount, ttrEligible),
+      stabilityIndex:       Number(stabilityRow.stability_index ?? 0) || 0,
+      stabilityUrlCount:    stabCount,
+      stabilitySuccessRate: safeRate(stabCount, stabEligible),
+      avgTTP:               Number(ttpRow.avg_ttp              ?? 0) || 0,
+      ttpUrlCount:          ttpCount,
+      ttpSuccessRate:       safeRate(ttpCount, ttpEligible),
     };
   });
 

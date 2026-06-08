@@ -1,6 +1,18 @@
-# Technische Entscheidungen (Stand: 08.06.2026 – aktualisiert 8)
+# Technische Entscheidungen (Stand: 08.06.2026 – aktualisiert 9)
 
-## Upload-Infrastruktur: S3-kompatibel (Hetzner Object Storage) statt Vercel Blob (08.06.2026)
+## Aggregate-KPIs: Survivorship Bias via Basis+Erfolgsrate kommunizieren (08.06.2026)
+- avgTTR / stabilityIndex / avgTTP schließen URLs ohne erreichtes Ziel aus der Hauptberechnung aus (methodisch korrekt, da Dauer nur für abgeschlossene Vorgänge messbar ist)
+- **Lösung**: Jede Kachel zeigt unter dem Wert: `Basis: N URLs · X% Erfolgsrate`
+- Eligible-Counts per Scalar-Subquery inline in der Haupt-SELECT berechnet (kein zusätzlicher Round-Trip)
+- `safeRate(count, eligible)` = `eligible > 0 ? Math.round(count/eligible * 100) : 0` — keine Division durch 0
+- **Regel**: Aggregate-Metriken die einen Survivorship-Filter anwenden müssen immer die Basis-Größe und Erfolgsrate offenlegen
+
+## Aggregate-KPIs: avgTTR nutzt keyword_rankings, nicht url_performance.Position (08.06.2026)
+- `url_performance.Position` ist eine **GSC-Durchschnittsposition** aller Queries einer URL — typisch 30–80, selten unter 10 → Bedingung `<= 10` war fast immer false → Kachel zeigte immer 0
+- **Korrekt**: `keyword_rankings.ranking <= 10` (DataForSEO-Ranking des Main-Keywords) — hier ist `<= 10` das echte Ziel
+- **Regel**: GSC-Position ≠ Keyword-Ranking; für "Erstmals Top 10" immer `keyword_rankings` verwenden
+
+
 - `@vercel/blob` war die einzige Dependency, die an Vercel gebunden hat — entfernt
 - `@aws-sdk/client-s3` war bereits als transitive Dependency vorhanden → kein neues Paket nötig
 - **Wichtig**: `forcePathStyle: true` ist für Hetzner Object Storage zwingend (verwendet path-style URLs statt virtual-hosted)

@@ -1,6 +1,91 @@
-# Projekt-Status (Stand: 08.06.2026 – aktualisiert 11)
+# Projekt-Status (Stand: 08.06.2026 – aktualisiert 12)
 
-## HistoryList Whitespace, Upload-Migration S3, KPI Jahres-Filter (08.06.2026)
+## KPI-Kacheln: Basis + Erfolgsrate (Option A+B) (08.06.2026)
+
+### Was geändert wurde
+
+**Ziel:** Survivorship Bias der drei Aggregate-KPI-Kacheln transparent machen durch Anzeige von Basis-Anzahl (n URLs) + Erfolgsrate (%) unter jedem Wert.
+
+**`src/lib/postgres.ts`**
+- `AggregateKpis` Interface um 6 neue Felder erweitert: `ttrUrlCount`, `ttrSuccessRate`, `stabilityUrlCount`, `stabilitySuccessRate`, `ttpUrlCount`, `ttpSuccessRate`
+- `avgTTR`-SQL: +`COUNT(*) AS ttr_count` + Scalar-Subquery `ttr_eligible` (alle creation-delivered URLs mit mind. einem Keyword-Rankings-Datenpunkt nach Delivery)
+- `stabilityIndex`-SQL: +`COUNT(*) AS stability_count` + Scalar-Subquery `stability_eligible` (alle URLs mit mind. einem Top-5-Ranking-Datenpunkt für Main-Keyword)
+- `avgTTP`-SQL: +`COUNT(*) AS ttp_count` + Scalar-Subquery `ttp_eligible` (alle creation-delivered URLs mit mind. einem url_performance-Datenpunkt nach Delivery)
+- Hilfsfunktion `safeRate(count, eligible)` inline im return-Block (`eligible > 0 ? Math.round((count/eligible)*100) : 0`)
+
+**`src/i18n/messages/de.ts` + `en.ts`**
+- Neue Keys in `monitoring`-Sektion: `basis: "Basis"` + `successRate: "Erfolgsrate"` / `"success rate"`
+
+**`src/app/monitoring/page.tsx`**
+- `AggregateKpis` Interface um 6 neue Felder erweitert
+- avgTTR-Kachel: Basis/Rate-Zeile nach bestehender `<p>`-Beschreibung ergänzt (nur sichtbar wenn nicht loading)
+- Stabilitäts-Index-Kachel: `flex items-center justify-center h-[100px]` → `pb-4`; Wert-Zeile in `<div className="flex items-center">` gewrappt; Basis/Rate-Zeile darunter
+- avgTTP-Kachel: identische Anpassung wie Stabilitäts-Index
+
+### Code-Änderungen
+
+```
+src/lib/postgres.ts                     — AggregateKpis Interface + 3 SQL-Queries erweitert (count + eligible)
+src/i18n/messages/de.ts                 — monitoring.basis + monitoring.successRate Keys
+src/i18n/messages/en.ts                 — monitoring.basis + monitoring.successRate Keys
+src/app/monitoring/page.tsx             — AggregateKpis Interface + Basis/Rate-Zeilen in allen 3 Kacheln
+```
+
+**Status:** ✅ Implementiert, tsc sauber. Noch nicht committet.
+
+---
+
+## Aggregate KPI-Kacheln: Echte Daten + Tooltip-Icons (08.06.2026)
+
+### Was geändert wurde
+
+**Hintergrund:** Drei KPI-Kacheln im Content-Monitoring (`Ø Time to Rank`, `Stabilitäts-Index`, `Time-to-Performance`) zeigten hardcodierte Nullwerte. Der ursprüngliche `avgTTR`-Berechnungsloop nutzte `url_performance.Position <= 10` (GSC-Durchschnittsposition) statt `keyword_rankings.ranking <= 10` und lieferte daher immer 0.
+
+**`src/lib/postgres.ts`**
+- `AggregateKpis` Interface (avgTTR, stabilityIndex, avgTTP)
+- `getAggregateKpis(tenantId)` mit 1h In-Memory-Cache (`_aggregateKpiCache`, gleiches Muster wie `_configCacheByTenant`)
+- SQL-CTE avgTTR: first_top10 via `keyword_rankings.ranking <= 10` (korrekt), nicht GSC-Position
+- SQL-CTE stabilityIndex: Islands-&-Gaps-Trick (`rn_all - rn_top5`), `HAVING COUNT(*) >= 6`
+- SQL-CTE avgTTP: baseline 30 Tage vor Delivery, `gsc_clicks > GREATEST(baseline * 1.2, 1)`
+
+**`src/app/api/monitoring/aggregate-kpis/route.ts`** (NEU)
+- `GET /api/monitoring/aggregate-kpis` — Auth per Session, Fallback auf `{ 0, 0, 0 }`
+
+**`src/app/api/monitoring/route.ts`**
+- Defekten `publishedLogs`/`avgTTR`-Loop entfernt (~37 Zeilen)
+
+**`src/app/monitoring/page.tsx`**
+- `aggregateKpis`/`aggregateKpisLoading` States + `useEffect` (fetcht beim Mount)
+- Alle 3 Kacheln: Loader2-Spinner beim Laden, echte Werte danach
+- 7 Tooltip-Icons (HelpCircle) in allen KPI-Kacheln mit i18n-Texten
+- `avgTTR` aus `MonitoringData.metrics` Interface entfernt
+
+**`src/i18n/messages/de.ts` + `en.ts`**
+- `monitoring.tooltips.*` — 7 Keys für alle KPI-Kacheln
+
+### Technische Details
+
+- `tx.execute(sql`...`)` gibt RowList zurück (direkt als Array indexierbar), nicht `{ rows: [] }`
+- `unstable_cache` wird im Codebase nicht verwendet — In-Memory-Map-Pattern wie in `postgres.ts` üblich
+- `TooltipProvider` sitzt global in `src/app/layout.tsx` — kein lokaler Wrapper nötig
+- `TooltipTrigger` hat kein `asChild`-Prop in Base UI — direkte Children
+
+### Code-Änderungen
+
+```
+src/lib/postgres.ts                                       — getAggregateKpis() + AggregateKpis Interface
+src/app/api/monitoring/aggregate-kpis/route.ts            — NEU: GET /api/monitoring/aggregate-kpis
+src/app/api/monitoring/route.ts                           — defekter avgTTR-Loop entfernt
+src/app/monitoring/page.tsx                               — States, useEffect, 7 Tooltips, 3 Kacheln
+src/i18n/messages/de.ts                                   — monitoring.tooltips.* (7 Keys)
+src/i18n/messages/en.ts                                   — monitoring.tooltips.* (7 Keys)
+```
+
+**Status:** ✅ Implementiert, tsc sauber. Noch nicht committet.
+
+---
+
+
 
 ### HistoryList: Whitespace-Fix Metadaten-Block
 

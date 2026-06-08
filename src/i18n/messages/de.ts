@@ -129,6 +129,8 @@ const de = {
     periodTo: "bis",
     avgTimeToRank: "Ø Time to Rank",
     days: "Tage",
+    basis: "Basis",
+    successRate: "Erfolgsrate",
     agencySavings: "Eingesparte Agenturkosten",
     overheadSavings: "Einsparung Overhead",
     contentUpdates: "Content-Updates",

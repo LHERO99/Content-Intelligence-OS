@@ -80,9 +80,15 @@ interface YearlyKpi {
 }
 
 interface AggregateKpis {
-  avgTTR: number;
-  stabilityIndex: number;
-  avgTTP: number;
+  avgTTR:               number;
+  ttrUrlCount:          number;
+  ttrSuccessRate:       number;
+  stabilityIndex:       number;
+  stabilityUrlCount:    number;
+  stabilitySuccessRate: number;
+  avgTTP:               number;
+  ttpUrlCount:          number;
+  ttpSuccessRate:       number;
 }
 
 const ELIGIBILITY_MESSAGES = {
@@ -417,6 +423,13 @@ export default function MonitoringPage() {
                   <div className="text-2xl font-bold text-primary">{aggregateKpis?.avgTTR ?? 0} {t("monitoring.days")}</div>
                 )}
                 <p className="text-xs text-muted-foreground">{tr("Von Veröffentlichung bis Top 10 Ranking", "From publication to top 10 ranking")}</p>
+                {!aggregateKpisLoading && (
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                    <span>{t("monitoring.basis")}: {aggregateKpis?.ttrUrlCount ?? 0} URLs</span>
+                    <span>·</span>
+                    <span>{aggregateKpis?.ttrSuccessRate ?? 0}% {t("monitoring.successRate")}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -585,13 +598,20 @@ export default function MonitoringPage() {
                 </CardTitle>
                 <CardDescription className="text-[10px]">{t("monitoringDetail.avgOptimizationsToPeak")}</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[100px]">
+              <CardContent className="pb-4">
                 {aggregateKpisLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-primary">{aggregateKpis?.stabilityIndex ?? 0}</div>
-                    <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
+                    <div className="flex items-center">
+                      <div className="text-3xl font-bold text-primary">{aggregateKpis?.stabilityIndex ?? 0}</div>
+                      <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                      <span>{t("monitoring.basis")}: {aggregateKpis?.stabilityUrlCount ?? 0} URLs</span>
+                      <span>·</span>
+                      <span>{aggregateKpis?.stabilitySuccessRate ?? 0}% {t("monitoring.successRate")}</span>
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -613,13 +633,20 @@ export default function MonitoringPage() {
                 </CardTitle>
                   <CardDescription className="text-[10px]">{t("monitoringDetail.avgDaysToLift")}</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[100px]">
+              <CardContent className="pb-4">
                 {aggregateKpisLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-primary">{aggregateKpis?.avgTTP ?? 0}</div>
-                    <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
+                    <div className="flex items-center">
+                      <div className="text-3xl font-bold text-primary">{aggregateKpis?.avgTTP ?? 0}</div>
+                      <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                      <span>{t("monitoring.basis")}: {aggregateKpis?.ttpUrlCount ?? 0} URLs</span>
+                      <span>·</span>
+                      <span>{aggregateKpis?.ttpSuccessRate ?? 0}% {t("monitoring.successRate")}</span>
+                    </div>
                   </>
                 )}
               </CardContent>
