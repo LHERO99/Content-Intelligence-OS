@@ -148,6 +148,15 @@ const de = {
     optimizationInProgress: "Optimierung bereits in Bearbeitung",
     switchToSuggestions: "Zum Vorschläge-Tab wechseln",
     addedToSuggestions: "Die Auswahl wurde in die Vorschläge für die Redaktionsplanung mit aufgenommen",
+    tooltips: {
+      avgTimeToRank:     "Ø Tage von der ersten Content-Lieferung bis das Haupt-Keyword erstmals in den Top 10 rankt. Berechnet auf Basis der wöchentlichen Keyword-Rankings.",
+      agencySavings:     "Summe der eingesparten Agenturkosten basierend auf der konfigurierten Kostenkonfiguration pro Seitentyp und Aktionsart.",
+      overheadSavings:   "Summe des eingesparten internen Aufwands basierend auf der konfigurierten Kostenkonfiguration pro Seitentyp und Aktionsart.",
+      contentUpdates:    "Anzahl aller Contents (Erstellungen und Optimierungen), die über Plexaro beauftragt und geliefert wurden.",
+      textsInPeriod:     "Aufschlüsselung der beauftragten Contents im gewählten Zeitraum nach Erstellungen und Optimierungen.",
+      stabilityIndex:    "Ø Optimierungszyklen, bis das Haupt-Keyword 6 aufeinanderfolgende Wochen stabil in den Top 5 rankt. URLs ohne erreichte Stabilität werden nicht eingerechnet.",
+      timeToPerformance: "Ø Tage von der ersten Content-Lieferung bis die GSC-Klicks die 30-Tage-Baseline vor Lieferung um ≥ 20% übersteigen. URLs ohne messbaren Anstieg werden nicht eingerechnet.",
+    },
   },
   onboarding: {
     keywordMapRequired: "Starte mit der Keyword-Map",

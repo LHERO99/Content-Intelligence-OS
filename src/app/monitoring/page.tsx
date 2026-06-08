@@ -40,6 +40,7 @@ import {
   List,
   Map,
   CalendarDays,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ import { UrlDetail } from "./url-detail";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from "@/i18n/use-i18n";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface MonitoringData {
   metrics: {
@@ -398,6 +400,14 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
                   {t("monitoring.avgTimeToRank")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.avgTimeToRank")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -415,6 +425,14 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Coins className="h-4 w-4" />
                   {t("monitoring.agencySavings")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-primary-foreground/50 hover:text-primary-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.agencySavings")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -433,6 +451,14 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <MousePointer2 className="h-4 w-4 text-primary" />
                   {t("monitoring.overheadSavings")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.overheadSavings")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -451,6 +477,14 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <LayoutList className="h-4 w-4 text-primary" />
                   {t("monitoring.contentUpdates")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.contentUpdates")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -494,6 +528,14 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-primary" />
                   {t("monitoringDetail.textsInPeriod")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.textsInPeriod")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                 <CardDescription className="text-[10px]">
                   {selectedPeriod === 'all'
@@ -532,6 +574,14 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
                   {t("monitoringDetail.stabilityIndex")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.stabilityIndex")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                 <CardDescription className="text-[10px]">{t("monitoringDetail.avgOptimizationsToPeak")}</CardDescription>
               </CardHeader>
@@ -551,7 +601,15 @@ export default function MonitoringPage() {
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Time-to-Performance
+                  {t("monitoringDetail.timeToPerformance")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.timeToPerformance")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                   <CardDescription className="text-[10px]">{t("monitoringDetail.avgDaysToLift")}</CardDescription>
               </CardHeader>
