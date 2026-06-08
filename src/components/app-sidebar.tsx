@@ -108,6 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-center px-1">
             <Image
+              key={logoUrl}
               src={logoUrl}
               alt="App Logo"
               width={120}
