@@ -38,7 +38,8 @@ import {
   AlertTriangle,
   LayoutDashboard,
   List,
-  Map
+  Map,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,13 @@ interface MonitoringData {
     optimizationEligibility: 'ELIGIBLE' | 'NO_PUBLISHED_CONTENT' | 'ALREADY_IN_WORKFLOW';
     savings: number;
   }>;
+}
+
+interface YearlyKpi {
+  totalAgencySavings: number;
+  totalOverheadSavings: number;
+  created: number;
+  optimized: number;
 }
 
 const ELIGIBILITY_MESSAGES = {
@@ -100,9 +108,28 @@ export default function MonitoringPage() {
     }
     return "overview";
   });
+
+  const currentYear = new Date().getFullYear();
+  const lastYear = currentYear - 1;
+  const [selectedPeriod, setSelectedPeriod] = useState<'all' | number>(currentYear);
+  const [yearlyKpi, setYearlyKpi] = useState<YearlyKpi | null>(null);
+  const [yearlyKpiLoading, setYearlyKpiLoading] = useState(false);
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (selectedPeriod === 'all') {
+      setYearlyKpi(null);
+      return;
+    }
+    setYearlyKpiLoading(true);
+    fetch(`/api/monitoring/kpi?year=${selectedPeriod}`)
+      .then(r => r.json())
+      .then(d => setYearlyKpi(d))
+      .catch(err => console.error('[KPI] fetch error:', err))
+      .finally(() => setYearlyKpiLoading(false));
+  }, [selectedPeriod]);
 
   const fetchData = async () => {
     try {
@@ -322,6 +349,32 @@ export default function MonitoringPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Period switcher */}
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground mr-1">{tr("Zeitraum", "Period")}:</span>
+            {([lastYear, currentYear] as number[]).map(year => (
+              <Button
+                key={year}
+                size="sm"
+                variant={selectedPeriod === year ? 'default' : 'outline'}
+                className="h-7 px-3 text-xs"
+                onClick={() => setSelectedPeriod(year)}
+              >
+                {year}
+              </Button>
+            ))}
+            <Button
+              size="sm"
+              variant={selectedPeriod === 'all' ? 'default' : 'outline'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setSelectedPeriod('all')}
+            >
+              {tr("Gesamt", "All time")}
+            </Button>
+            {yearlyKpiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-2">
@@ -345,9 +398,12 @@ export default function MonitoringPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {data?.metrics.totalAgencySavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
+                  {(selectedPeriod === 'all'
+                    ? (data?.metrics.totalAgencySavings ?? 0)
+                    : (yearlyKpi?.totalAgencySavings ?? 0)
+                  ).toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
-                <p className="text-xs opacity-80">{tr("Gesamtvolumen durch KI-Workflow", "Total volume through AI workflow")}</p>
+                <p className="text-xs opacity-80">{tr("Eingesparte Agenturkosten", "Saved agency costs")}</p>
               </CardContent>
             </Card>
 
@@ -360,7 +416,10 @@ export default function MonitoringPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">
-                  {data?.metrics.totalOverheadSavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
+                  {(selectedPeriod === 'all'
+                    ? (data?.metrics.totalOverheadSavings ?? 0)
+                    : (yearlyKpi?.totalOverheadSavings ?? 0)
+                  ).toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
                 <p className="text-xs text-muted-foreground">{tr("Reduzierter interner Aufwand", "Reduced internal effort")}</p>
               </CardContent>
@@ -374,22 +433,36 @@ export default function MonitoringPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">
-                  {(data?.metrics.counts.neuerstellung_ratgeber || 0) +
-                    (data?.metrics.counts.optimierung_ratgeber || 0) +
-                    (data?.metrics.counts.neuerstellung_kategorie || 0) +
-                    (data?.metrics.counts.optimierung_kategorie || 0) +
-                    (data?.metrics.counts.neuerstellung_marke || 0) +
-                    (data?.metrics.counts.optimierung_marke || 0) +
-                    (data?.metrics.counts.neuerstellung_produkt || 0) +
-                    (data?.metrics.counts.optimierung_produkt || 0)}
-                </div>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
-                  <span>{tr("Ratgeber", "Guide")}: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
-                  <span>{tr("Kategorie", "Category")}: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
-                  <span>{tr("Marke", "Brand")}: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
-                  <span>{tr("Produkt", "Product")}: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
-                </div>
+                {selectedPeriod === 'all' ? (
+                  <>
+                    <div className="text-2xl font-bold text-primary">
+                      {(data?.metrics.counts.neuerstellung_ratgeber || 0) +
+                        (data?.metrics.counts.optimierung_ratgeber || 0) +
+                        (data?.metrics.counts.neuerstellung_kategorie || 0) +
+                        (data?.metrics.counts.optimierung_kategorie || 0) +
+                        (data?.metrics.counts.neuerstellung_marke || 0) +
+                        (data?.metrics.counts.optimierung_marke || 0) +
+                        (data?.metrics.counts.neuerstellung_produkt || 0) +
+                        (data?.metrics.counts.optimierung_produkt || 0)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
+                      <span>{tr("Ratgeber", "Guide")}: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
+                      <span>{tr("Kategorie", "Category")}: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
+                      <span>{tr("Marke", "Brand")}: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
+                      <span>{tr("Produkt", "Product")}: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-primary">
+                      {(yearlyKpi?.created ?? 0) + (yearlyKpi?.optimized ?? 0)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
+                      <span>{tr("Erstellt", "Created")}: {yearlyKpi?.created ?? 0}</span>
+                      <span>{tr("Optimiert", "Optimized")}: {yearlyKpi?.optimized ?? 0}</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -401,16 +474,34 @@ export default function MonitoringPage() {
                   <Wand2 className="h-4 w-4 text-primary" />
                   {t("monitoringDetail.textsInPeriod")}
                 </CardTitle>
-                <CardDescription className="text-[10px]">{t("monitoringDetail.createdVsOptimized")}</CardDescription>
+                <CardDescription className="text-[10px]">
+                  {selectedPeriod === 'all'
+                    ? tr("Gesamt über alle Jahre", "All time total")
+                    : `${selectedPeriod}`}
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col justify-center h-[100px]">
                 <div className="flex justify-between items-end border-b pb-2">
                   <span className="text-sm text-muted-foreground">{t("monitoringDetail.created")}:</span>
-                  <span className="text-xl font-bold text-primary">0</span>
+                  <span className="text-xl font-bold text-primary">
+                    {selectedPeriod === 'all'
+                      ? (data?.metrics.counts.neuerstellung_ratgeber || 0) +
+                        (data?.metrics.counts.neuerstellung_kategorie || 0) +
+                        (data?.metrics.counts.neuerstellung_marke || 0) +
+                        (data?.metrics.counts.neuerstellung_produkt || 0)
+                      : (yearlyKpi?.created ?? 0)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-end pt-2">
                   <span className="text-sm text-muted-foreground">{t("monitoringDetail.optimized")}:</span>
-                  <span className="text-xl font-bold text-primary">0</span>
+                  <span className="text-xl font-bold text-primary">
+                    {selectedPeriod === 'all'
+                      ? (data?.metrics.counts.optimierung_ratgeber || 0) +
+                        (data?.metrics.counts.optimierung_kategorie || 0) +
+                        (data?.metrics.counts.optimierung_marke || 0) +
+                        (data?.metrics.counts.optimierung_produkt || 0)
+                      : (yearlyKpi?.optimized ?? 0)}
+                  </span>
                 </div>
               </CardContent>
             </Card>

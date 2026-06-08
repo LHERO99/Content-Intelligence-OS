@@ -2089,3 +2089,81 @@ export async function purgeOldPerformanceData(retainDays: number = 400, tenantId
 }
 export async function getPotentialTrends(tenantId?: string): Promise<PotentialTrend[]> { return []; }
 export async function createTrend(trend: any, tenantId?: string): Promise<PotentialTrend | null> { return null; }
+
+// ---------------------------------------------------------------------------
+// KPI by Year — live join on execution_cycles × urls × cost_config
+// Used for yearly breakdowns in the monitoring KPI overview.
+// Does NOT use url_cost_summary (which is cumulative all-time only).
+// ---------------------------------------------------------------------------
+export interface KpiByYear {
+  totalAgencySavings: number;
+  totalOverheadSavings: number;
+  created: number;
+  optimized: number;
+}
+
+export async function getKpiByYear(
+  year: number,
+  tenantId?: string
+): Promise<KpiByYear> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+
+    // All delivered cycles within the year, with their URL's page type
+    const cycles = await tx
+      .select({
+        actionType: executionCycles.actionType,
+        pageType: urls.pageType,
+      })
+      .from(executionCycles)
+      .innerJoin(urls, eq(urls.id, executionCycles.urlId))
+      .where(
+        and(
+          eq(executionCycles.tenantId, tenant),
+          eq(executionCycles.status, 'delivered'),
+          gte(executionCycles.deliveredAt, startDate),
+          lt(executionCycles.deliveredAt, endDate)
+        )
+      );
+
+    if (cycles.length === 0) {
+      return { totalAgencySavings: 0, totalOverheadSavings: 0, created: 0, optimized: 0 };
+    }
+
+    // Cost config lookup: "PageType|CostActionType" → { agencyCost, overheadCost }
+    const costConfigs = await tx
+      .select()
+      .from(costConfigTable)
+      .where(eq(costConfigTable.tenantId, tenant));
+
+    const costLookup = new Map<string, { agencyCost: number; overheadCost: number }>();
+    for (const cfg of costConfigs) {
+      costLookup.set(`${cfg.pageType}|${cfg.actionType}`, {
+        agencyCost: Number(cfg.agencyCost),
+        overheadCost: Number(cfg.overheadCost),
+      });
+    }
+
+    let totalAgencySavings = 0;
+    let totalOverheadSavings = 0;
+    let created = 0;
+    let optimized = 0;
+
+    for (const cycle of cycles) {
+      const pageType = cycle.pageType ?? 'Kategorie';
+      // DB enum: 'creation' | 'optimization' → cost_config: 'Erstellung' | 'Optimierung'
+      const costActionType = cycle.actionType === 'creation' ? 'Erstellung' : 'Optimierung';
+      const cost = costLookup.get(`${pageType}|${costActionType}`);
+      if (cost) {
+        totalAgencySavings += cost.agencyCost;
+        totalOverheadSavings += cost.overheadCost;
+      }
+      if (cycle.actionType === 'creation') created++;
+      else optimized++;
+    }
+
+    return { totalAgencySavings, totalOverheadSavings, created, optimized };
+  });
+}

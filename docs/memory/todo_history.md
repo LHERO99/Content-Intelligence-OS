@@ -4,6 +4,28 @@
 
 ## Abgeschlossen (chronologisch)
 
+- [x] **HistoryList: Whitespace-Fix Metadaten-Block (08.06.2026)**
+  - Root Cause: flex-col Metadaten-Spalte → 2-zeilig → visueller Leeraum in Row
+  - Fix: flex-row + items-center + gap-1.5 + · Separator zwischen Timestamp und Username
+
+- [x] **Upload-Migration: Vercel Blob → Hetzner Object Storage (08.06.2026)**
+  - `@vercel/blob` entfernt, `@aws-sdk/client-s3` mit S3Client + PutObjectCommand
+  - `forcePathStyle: true` für Hetzner nötig
+  - ENV: S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_PUBLIC_URL
+  - package.json + package-lock.json aktualisiert
+  - .gitignore: /uploads entfernt
+
+- [x] **Logo-Sidebar-Fix: key={logoUrl} + remotePatterns für S3 (08.06.2026)**
+  - `next.config.ts`: S3_PUBLIC_URL Hostname als remotePatterns für next/image
+  - `app-sidebar.tsx`: `key={logoUrl}` auf `<Image>` → Remount bei URL-Wechsel
+
+- [x] **KPI Jahres-Filter im Content-Monitoring (08.06.2026)**
+  - `getKpiByYear(year, tenantId?)` in postgres.ts — Live-Join executionCycles × urls × costConfig
+  - ActionType-Mapping: creation/optimization → Erstellung/Optimierung
+  - Neuer Endpoint `GET /api/monitoring/kpi?year=`
+  - monitoring/page.tsx: Periode-Switcher + alle 4 KPI-Kacheln dynamisch verdrahtet
+  - tsc --noEmit ✅
+
 - [x] **Content-Erstellung: UX-Fixes & Bug-Fixes (07.06.2026)**
   - Fix: AI Chat Tab Reset nach "Übernehmen" — `lastV2Ref` in `page.tsx` hält letzten `v2Content` pro Job; Workspace bleibt gemountet
   - Fix: Publish Bug (Cross-Cycle Status Contamination) — `if (isPublished) return;` Guard + `contamination`-Check in `buildJobEntries`

@@ -1,4 +1,58 @@
-# Projekt-Status (Stand: 07.06.2026 – aktualisiert 10)
+# Projekt-Status (Stand: 08.06.2026 – aktualisiert 11)
+
+## HistoryList Whitespace, Upload-Migration S3, KPI Jahres-Filter (08.06.2026)
+
+### HistoryList: Whitespace-Fix Metadaten-Block
+
+**Root Cause:** Rechte Metadaten-Spalte (Timestamp + Username) war `flex-col` → 2-zeilig → Row-Höhe größer als "Content angeliefert"-Text → visueller Leeraum innerhalb der Row
+**Fix:** `flex-col` → `flex.items-center.gap-1.5.flex-wrap.justify-end` mit `·` Separator zwischen Timestamp und Username
+
+### Upload-Infrastruktur: Vercel Blob → Hetzner Object Storage (S3)
+
+- `@vercel/blob` vollständig entfernt, `@aws-sdk/client-s3` (war bereits transitive Dependency) genutzt
+- `forcePathStyle: true` nötig für Hetzner (path-style URLs, nicht virtual-hosted)
+- Pfad-Struktur: `branding/{tenantId}/{prefix}-{timestamp}.{ext}`
+- Gibt direkte Hetzner-CDN-URL zurück: `${S3_PUBLIC_URL}/{objectKey}`
+- Zwischenschritt lokales Filesystem (verworfen) → direkt auf S3 migriert
+- Lokaler `/api/uploads/[...path]` Proxy-Route erstellt und wieder gelöscht (nicht nötig)
+- `.gitignore`: `/uploads` Eintrag entfernt
+- `package.json`: `@vercel/blob` entfernt, `@aws-sdk/client-s3` hinzugefügt
+- `package-lock.json`: lokal per `npm install` aktualisiert (nötig für `npm ci` im Coolify-Build)
+
+**ENV-Variablen:** `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL`
+
+### Logo-Sidebar-Fix nach Upload-Migration
+
+- `next.config.ts`: `S3_PUBLIC_URL` Hostname als `remotePatterns` für `next/image` freigegeben (wird zur Build-Zeit ausgelesen)
+- `src/components/app-sidebar.tsx`: `key={logoUrl}` auf `<Image>` → Remount bei URL-Wechsel erzwungen
+
+### KPI Jahres-Filter im Content-Monitoring
+
+- "Texte im Zeitraum" zeigte hardcodierte Nullen — nie funktional verdrahtet
+- `url_cost_summary` ist eine kumulative All-Time-Summe ohne Datumsgranularität → ungeeignet für Zeitraum-Auswertungen
+- Neue Funktion `getKpiByYear(year, tenantId?)` in `postgres.ts` — Live-Join: `executionCycles × urls × costConfig` mit `deliveredAt`-Filter
+- `executionCycles.actionType` speichert `'creation'`/`'optimization'`, `costConfig.actionType` speichert `'Erstellung'`/`'Optimierung'` → Mapping nötig
+- Neuer Endpoint `GET /api/monitoring/kpi?year=2026`
+- `monitoring/page.tsx`: Periode-Switcher (letztes Jahr / aktuelles Jahr / Gesamt), alle 4 KPI-Kacheln dynamisch verdrahtet
+
+### Code-Änderungen
+
+```
+src/features/shared/components/HistoryList.tsx          — flex-row Metadaten (Whitespace-Fix)
+src/app/api/admin/upload/route.ts                       — S3-Upload (Hetzner Object Storage, @aws-sdk/client-s3)
+src/components/app-sidebar.tsx                          — key={logoUrl} auf <Image>
+next.config.ts                                          — remotePatterns für S3_PUBLIC_URL
+package.json                                            — @vercel/blob entfernt, @aws-sdk/client-s3 hinzugefügt
+package-lock.json                                       — aktualisiert (npm install)
+.gitignore                                              — /uploads entfernt
+src/lib/postgres.ts                                     — getKpiByYear() + KpiByYear Interface angehängt
+src/app/api/monitoring/kpi/route.ts                     — NEU: GET /api/monitoring/kpi?year=
+src/app/monitoring/page.tsx                             — Jahres-Filter UI + echte KPI-Werte
+```
+
+**Status:** ✅ Implementiert, tsc sauber. Noch nicht committet.
+
+---
 
 ## Content-Erstellung: UX-Fixes & Bug-Fixes (07.06.2026)
 

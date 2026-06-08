@@ -1,4 +1,26 @@
-# Technische Entscheidungen (Stand: 07.06.2026 – aktualisiert 7)
+# Technische Entscheidungen (Stand: 08.06.2026 – aktualisiert 8)
+
+## Upload-Infrastruktur: S3-kompatibel (Hetzner Object Storage) statt Vercel Blob (08.06.2026)
+- `@vercel/blob` war die einzige Dependency, die an Vercel gebunden hat — entfernt
+- `@aws-sdk/client-s3` war bereits als transitive Dependency vorhanden → kein neues Paket nötig
+- **Wichtig**: `forcePathStyle: true` ist für Hetzner Object Storage zwingend (verwendet path-style URLs statt virtual-hosted)
+- `next.config.ts` muss `S3_PUBLIC_URL` zur Build-Zeit kennen um `images.remotePatterns` korrekt zu setzen
+- **Regel**: Für S3-kompatible Speicher immer `forcePathStyle` prüfen — virtual-hosted style funktioniert nur mit AWS direkt oder kompatiblen CDNs
+
+## next/image: key-Prop bei Remote-URL-Wechsel erzwingen (08.06.2026)
+- `<Image src={logoUrl}>` aktualisiert sich **nicht** wenn `src` sich ändert, weil Next.js das Image-Element im DOM hält
+- **Fix**: `key={logoUrl}` auf `<Image>` setzt die Komponente bei URL-Wechsel komplett neu auf (Remount)
+- **Regel**: Immer `key={dynamischeSrc}` bei `next/image` wenn sich die URL zur Laufzeit ändern kann
+
+## KPI Jahres-Auswertung: Live-Join statt url_cost_summary (08.06.2026)
+- `url_cost_summary` ist eine kumulative All-Time-View ohne Datumsgranularität → für Jahres-KPIs ungeeignet
+- **Lösung**: Live-Join `executionCycles × urls × costConfig` mit `deliveredAt BETWEEN year-01-01 AND (year+1)-01-01` Filter
+- **Wichtig**: ActionType-Mismatch zwischen Tabellen:
+  - `executionCycles.actionType` = `'creation'` / `'optimization'` (DB-Enum, lowercase)
+  - `costConfig.actionType` = `'Erstellung'` / `'Optimierung'` (Display-String, deutsch)
+  - → Mapping nötig: `CASE WHEN ec.action_type = 'creation' THEN 'Erstellung' ELSE 'Optimierung' END`
+- Index auf `commissionedAt` existiert bereits → Query performant
+- **Regel**: Aggregations-Views/-Tables nie für Zeitraum-Auswertungen verwenden wenn sie keine Datumsgranularität haben
 
 ## AIEditorWorkspace: v2Content-Stabilität via lastV2Ref (07.06.2026)
 - **Problem**: Nach `handleSaveFromAI` → `refresh-planning-data` → `displayLogId` wechselt → `bodyCache[newId]` noch undefined → `v2Content = ''` → Workspace unmountet → AI-Chat-Tab und Nachrichten weg
