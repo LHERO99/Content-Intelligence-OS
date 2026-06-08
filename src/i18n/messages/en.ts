@@ -102,6 +102,7 @@ const en = {
         lastRun: "Last run: {time}",
         stale: "Last run: {time} (>{days} days)",
         skipped: "Integration not configured — sync skipped",
+        noUrls: "Nothing to sync — no URLs in this run",
         failed: "Error: {error}",
       },
       runs: {

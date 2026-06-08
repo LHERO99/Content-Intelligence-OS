@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
             : sistrixErrors.length > 0
             ? `cron:sync-sistrix:error`
             : result.urlsProcessed === 0
-            ? `cron:sync-sistrix:skipped`
+            ? `cron:sync-sistrix:no_urls`
             : `cron:sync-sistrix:success`,
           {
             urlsProcessed: result.skippedSistrix ? 0 : result.urlsProcessed,

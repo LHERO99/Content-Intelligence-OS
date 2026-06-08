@@ -123,6 +123,17 @@ async function checkCronSync(
     };
   }
 
+  if (latest.action.endsWith(':no_urls')) {
+    return {
+      id,
+      label,
+      status: 'ok',
+      detail: 'Nothing to sync — no URLs in this run',
+      detailKey: 'dashboard.systemHealth.cron.noUrls',
+      checkedAt: latest.timestamp,
+    };
+  }
+
   if (age !== null && age > staleAfterDays) {
     return {
       id,
