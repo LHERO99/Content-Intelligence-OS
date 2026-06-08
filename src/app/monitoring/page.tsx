@@ -51,7 +51,6 @@ import { useI18n } from "@/i18n/use-i18n";
 
 interface MonitoringData {
   metrics: {
-    avgTTR: number;
     totalAgencySavings: number;
     totalOverheadSavings: number;
     counts: Record<string, number>;
@@ -76,6 +75,12 @@ interface YearlyKpi {
   totalOverheadSavings: number;
   created: number;
   optimized: number;
+}
+
+interface AggregateKpis {
+  avgTTR: number;
+  stabilityIndex: number;
+  avgTTP: number;
 }
 
 const ELIGIBILITY_MESSAGES = {
@@ -114,8 +119,20 @@ export default function MonitoringPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'all' | number>(currentYear);
   const [yearlyKpi, setYearlyKpi] = useState<YearlyKpi | null>(null);
   const [yearlyKpiLoading, setYearlyKpiLoading] = useState(false);
+  const [aggregateKpis, setAggregateKpis] = useState<AggregateKpis | null>(null);
+  const [aggregateKpisLoading, setAggregateKpisLoading] = useState(false);
+
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    setAggregateKpisLoading(true);
+    fetch('/api/monitoring/aggregate-kpis')
+      .then(r => r.json())
+      .then(d => setAggregateKpis(d))
+      .catch(err => console.error('[AggregateKpis] fetch error:', err))
+      .finally(() => setAggregateKpisLoading(false));
   }, []);
 
   useEffect(() => {
@@ -384,7 +401,11 @@ export default function MonitoringPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{data?.metrics.avgTTR || 0} {t("monitoring.days")}</div>
+                {aggregateKpisLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                ) : (
+                  <div className="text-2xl font-bold text-primary">{aggregateKpis?.avgTTR ?? 0} {t("monitoring.days")}</div>
+                )}
                 <p className="text-xs text-muted-foreground">{tr("Von Veröffentlichung bis Top 10 Ranking", "From publication to top 10 ranking")}</p>
               </CardContent>
             </Card>
@@ -515,8 +536,14 @@ export default function MonitoringPage() {
                 <CardDescription className="text-[10px]">{t("monitoringDetail.avgOptimizationsToPeak")}</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center h-[100px]">
-                <div className="text-3xl font-bold text-primary">0.0</div>
-                <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
+                {aggregateKpisLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-primary">{aggregateKpis?.stabilityIndex ?? 0}</div>
+                    <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -529,8 +556,14 @@ export default function MonitoringPage() {
                   <CardDescription className="text-[10px]">{t("monitoringDetail.avgDaysToLift")}</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center h-[100px]">
-                <div className="text-3xl font-bold text-primary">0</div>
-                <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
+                {aggregateKpisLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-primary">{aggregateKpis?.avgTTP ?? 0}</div>
+                    <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

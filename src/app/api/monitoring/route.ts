@@ -45,44 +45,6 @@ export async function GET() {
       return resolvedUrl ? { ...l, Target_URL: resolvedUrl } : l;
     });
 
-    // publishedLogs used for Time-to-Rank calculation
-    const publishedLogs = resolvedLogs.filter(l => {
-      const type = l.Action_Type;
-      const summary = l.Event_Label?.toLowerCase() || '';
-      return type === 'Erstellung' ||
-             type === 'Optimierung' ||
-             summary.includes('content angeliefert') ||
-             summary.includes('content veröffentlicht');
-    });
-
-    // Time-to-Rank calculation
-    let totalTTR = 0;
-    let ttrCount = 0;
-
-    publishedLogs.forEach(log => {
-      if (!log.Target_URL) return;
-      const urlPerf = performance
-        .filter(p => p.Target_URL === log.Target_URL && p.Date)
-        .sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
-
-      const publishDate = new Date(log.Created_At);
-      const top10Entry = urlPerf.find(
-        p => p.Date && new Date(p.Date) >= publishDate && p.Position && p.Position <= 10
-      );
-
-      if (top10Entry && top10Entry.Date) {
-        const diffDays = Math.ceil(
-          (new Date(top10Entry.Date).getTime() - publishDate.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        if (diffDays >= 0) {
-          totalTTR += diffDays;
-          ttrCount++;
-        }
-      }
-    });
-
-    const avgTTR = ttrCount > 0 ? Math.round(totalTTR / ttrCount) : 0;
-
     const inferPageTypeFromUrl = (value?: string) => {
       const normalized = String(value || '').toLowerCase();
       if (normalized.includes('/ratgeber/')) return 'Ratgeber';
@@ -178,7 +140,6 @@ export async function GET() {
 
     return NextResponse.json({
       metrics: {
-        avgTTR,
         totalAgencySavings,
         totalOverheadSavings,
         counts,

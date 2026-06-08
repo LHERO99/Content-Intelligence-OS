@@ -2167,3 +2167,176 @@ export async function getKpiByYear(
     return { totalAgencySavings, totalOverheadSavings, created, optimized };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Aggregate KPIs — SQL-computed, in-memory cached for 1h per tenant
+//
+// avgTTR:          Ø days from first creation delivery until main keyword
+//                  reaches ranking ≤ 10 (uses keyword_rankings, not GSC position)
+// stabilityIndex:  Ø optimization cycles needed until main keyword is stable
+//                  in top 5 for 6 consecutive weekly data points
+// avgTTP:          Ø days from first creation delivery until GSC clicks
+//                  exceed the 30-day pre-delivery baseline by ≥ 20%
+// ---------------------------------------------------------------------------
+export interface AggregateKpis {
+  avgTTR: number;
+  stabilityIndex: number;
+  avgTTP: number;
+}
+
+const _aggregateKpiCache = new Map<string, { value: AggregateKpis; expiresAt: number }>();
+
+export async function getAggregateKpis(tenantId?: string): Promise<AggregateKpis> {
+  const tenant = tid(tenantId);
+
+  const cached = _aggregateKpiCache.get(tenant);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const result = await withTenant(tenant, async (tx) => {
+    // ------------------------------------------------------------------
+    // avgTTR: days from first creation delivery → main keyword top 10
+    // ------------------------------------------------------------------
+    const ttrRows = await tx.execute(sql`
+      WITH first_top10 AS (
+        SELECT
+          ec.url_id,
+          ec.delivered_at::date AS delivered_date,
+          MIN(kr.date)          AS first_top10_date
+        FROM execution_cycles ec
+        JOIN url_keywords uk
+          ON uk.url_id = ec.url_id
+         AND uk.main_keyword = true
+         AND uk.tenant_id = ${tenant}
+        JOIN keyword_rankings kr
+          ON kr.keyword_id = uk.id
+         AND kr.tenant_id  = ${tenant}
+         AND kr.date       >= ec.delivered_at::date
+         AND kr.ranking    <= 10
+        WHERE ec.tenant_id  = ${tenant}
+          AND ec.status     = 'delivered'
+          AND ec.action_type = 'creation'
+        GROUP BY ec.url_id, ec.delivered_at
+      )
+      SELECT ROUND(AVG(first_top10_date - delivered_date)) AS avg_ttr
+      FROM first_top10
+    `);
+
+    // ------------------------------------------------------------------
+    // stabilityIndex: Islands & Gaps — 6 consecutive weeks in top 5
+    // ------------------------------------------------------------------
+    const stabilityRows = await tx.execute(sql`
+      WITH main_rankings AS (
+        SELECT
+          uk.url_id,
+          kr.date,
+          kr.ranking,
+          ROW_NUMBER() OVER (PARTITION BY uk.url_id ORDER BY kr.date) AS rn_all
+        FROM url_keywords uk
+        JOIN keyword_rankings kr
+          ON kr.keyword_id = uk.id
+         AND kr.tenant_id  = ${tenant}
+        WHERE uk.tenant_id    = ${tenant}
+          AND uk.main_keyword = true
+      ),
+      top5_only AS (
+        SELECT
+          url_id,
+          date,
+          rn_all,
+          ROW_NUMBER() OVER (PARTITION BY url_id ORDER BY date) AS rn_top5
+        FROM main_rankings
+        WHERE ranking <= 5
+      ),
+      grouped AS (
+        SELECT url_id, date, rn_all - rn_top5 AS grp
+        FROM top5_only
+      ),
+      stability_windows AS (
+        SELECT url_id, MIN(date) AS stability_start
+        FROM grouped
+        GROUP BY url_id, grp
+        HAVING COUNT(*) >= 6
+      ),
+      first_stable AS (
+        SELECT url_id, MIN(stability_start) AS first_stable_date
+        FROM stability_windows
+        GROUP BY url_id
+      ),
+      opt_before AS (
+        SELECT ec.url_id, COUNT(*) AS opt_count
+        FROM execution_cycles ec
+        JOIN first_stable fs ON fs.url_id = ec.url_id
+        WHERE ec.tenant_id   = ${tenant}
+          AND ec.status      = 'delivered'
+          AND ec.action_type = 'optimization'
+          AND ec.delivered_at < fs.first_stable_date
+        GROUP BY ec.url_id
+      )
+      SELECT ROUND(AVG(opt_count)::numeric, 1) AS stability_index
+      FROM opt_before
+    `);
+
+    // ------------------------------------------------------------------
+    // avgTTP: days from first creation delivery → GSC clicks +20% lift
+    // ------------------------------------------------------------------
+    const ttpRows = await tx.execute(sql`
+      WITH first_delivery AS (
+        SELECT url_id, MIN(delivered_at) AS first_delivered_at
+        FROM execution_cycles
+        WHERE tenant_id   = ${tenant}
+          AND status      = 'delivered'
+          AND action_type = 'creation'
+        GROUP BY url_id
+      ),
+      baselines AS (
+        SELECT
+          u.id            AS url_id,
+          u.target_url,
+          fd.first_delivered_at,
+          COALESCE(AVG(up.gsc_clicks), 0) AS baseline_clicks
+        FROM urls u
+        JOIN first_delivery fd ON fd.url_id = u.id
+        LEFT JOIN url_performance up
+          ON  up.target_url = u.target_url
+          AND up.tenant_id  = ${tenant}
+          AND up.date >= (fd.first_delivered_at::date - INTERVAL '30 days')
+          AND up.date <   fd.first_delivered_at::date
+        WHERE u.tenant_id = ${tenant}
+        GROUP BY u.id, u.target_url, fd.first_delivered_at
+      ),
+      first_lift AS (
+        SELECT
+          b.url_id,
+          b.first_delivered_at,
+          MIN(up.date) AS lift_date
+        FROM baselines b
+        JOIN urls u ON u.id = b.url_id
+        JOIN url_performance up
+          ON  up.target_url = u.target_url
+          AND up.tenant_id  = ${tenant}
+          AND up.date > b.first_delivered_at::date
+          AND up.gsc_clicks > GREATEST(b.baseline_clicks * 1.2, 1)
+        GROUP BY b.url_id, b.first_delivered_at
+      )
+      SELECT ROUND(AVG(lift_date - first_delivered_at::date)) AS avg_ttp
+      FROM first_lift
+    `);
+
+    const ttrRow       = (ttrRows[0]       ?? {}) as Record<string, unknown>;
+    const stabilityRow = (stabilityRows[0] ?? {}) as Record<string, unknown>;
+    const ttpRow       = (ttpRows[0]       ?? {}) as Record<string, unknown>;
+
+    return {
+      avgTTR:         Number(ttrRow.avg_ttr       ?? 0) || 0,
+      stabilityIndex: Number(stabilityRow.stability_index ?? 0) || 0,
+      avgTTP:         Number(ttpRow.avg_ttp        ?? 0) || 0,
+    };
+  });
+
+  _aggregateKpiCache.set(tenant, {
+    value:     result,
+    expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour TTL
+  });
+
+  return result;
+}
