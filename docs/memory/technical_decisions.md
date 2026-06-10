@@ -1,6 +1,17 @@
-# Technische Entscheidungen (Stand: 08.06.2026 – aktualisiert 9)
+# Technische Entscheidungen (Stand: 09.06.2026 – aktualisiert 10)
 
-## Aggregate-KPIs: Survivorship Bias via Basis+Erfolgsrate kommunizieren (08.06.2026)
+## Health-Dashboard: Audit-Log-Zustand vs. aktueller Config-Zustand (09.06.2026)
+- Audit-Log-basierte Health-Checks zeigen historischen Zustand — bei zeitlicher Diskrepanz (Integration nach letztem Cron konfiguriert) entsteht ein falsches Warning
+- **Lösung**: `checkCronSync` akzeptiert optionalen `configKey`-Parameter; bei `:skipped`-Eintrag mit `not_configured` wird der aktuelle Config-Wert via `getConfig(tenantId)` nachgeladen
+- Wenn Key jetzt vorhanden: `status: 'ok'` mit "Konfiguriert — Sync ausstehend" — keine Warnung mehr ohne Warten auf nächsten Cron
+- **Regel**: Audit-Log-basierte Checks die "nicht konfiguriert" anzeigen, müssen immer mit dem aktuellen Config-Zustand abgeglichen werden, wenn ein `configKey` bekannt ist
+
+## Health-Dashboard: Audit-Log-Action-Strings — eindeutig pro Ursache (09.06.2026)
+- Früher: `cron:sync-sistrix:skipped` wurde für zwei verschiedene Fälle geschrieben ("nicht konfiguriert" UND "0 URLs im Chunk"). Payload-Feld `skippedReason` unterschied sie, wurde aber nie gelesen.
+- **Entscheidung**: Eigenständiger Action-String `cron:sync-sistrix:no_urls` für den 0-URLs-Fall
+- **Regel**: Audit-Log-Action-Strings müssen eindeutig sein. Zwei verschiedene Zustände → zwei verschiedene Action-Suffixe. Payload-Felder sind nur für Details, nicht für Routing-Entscheidungen im Consumer.
+
+
 - avgTTR / stabilityIndex / avgTTP schließen URLs ohne erreichtes Ziel aus der Hauptberechnung aus (methodisch korrekt, da Dauer nur für abgeschlossene Vorgänge messbar ist)
 - **Lösung**: Jede Kachel zeigt unter dem Wert: `Basis: N URLs · X% Erfolgsrate`
 - Eligible-Counts per Scalar-Subquery inline in der Haupt-SELECT berechnet (kein zusätzlicher Round-Trip)

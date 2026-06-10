@@ -66,6 +66,8 @@ export type RunRecord = {
   deletedAt?: string;
   workflowId?: string;
   input?: Record<string, unknown>;
+  /** Final HTML produced by the agent run — populated after success */
+  finalHtml?: string;
 };
 
 export type RunStep = {
@@ -112,6 +114,8 @@ export type AgentNodeData = {
   isParent?: boolean;
   isFocused?: boolean;
   executionOrder?: number;
+  /** Current orchestrator round — set when the node's step is running */
+  currentRound?: number;
   purpose?: string;
   inputContract?: string;
   outputContract?: string;

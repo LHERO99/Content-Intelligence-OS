@@ -50,7 +50,8 @@ function toFlowNodes(
   workflowNodes: WorkflowNodeRecord[],
   runStateByNode: Record<string, RunState>,
   outputPreviewByNode: Record<string, string>,
-  executionOrderByNode: Record<string, number>
+  executionOrderByNode: Record<string, number>,
+  currentRoundByNode?: Record<string, number>
 ): Node<AgentNodeData>[] {
   return workflowNodes
     .slice()
@@ -65,6 +66,7 @@ function toFlowNodes(
         status: runStateByNode[node.id] || "idle",
         outputPreview: outputPreviewByNode[node.id],
         executionOrder: executionOrderByNode[node.id],
+        currentRound: currentRoundByNode?.[node.id],
         provider: node.config.provider,
         icon: NODE_STYLE_BY_TYPE[node.type].icon,
         isParent: Boolean(node.isParent),
@@ -124,6 +126,7 @@ export function AgentWorkflowV2Management() {
   const [runStateByNode, setRunStateByNode] = useState<Record<string, RunState>>({});
   const [outputPreviewByNode, setOutputPreviewByNode] = useState<Record<string, string>>({});
   const [executionOrderByNode, setExecutionOrderByNode] = useState<Record<string, number>>({});
+  const [currentRoundByNode, setCurrentRoundByNode] = useState<Record<string, number>>({});
 
   // ── Canvas state ──
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -253,15 +256,18 @@ export function AgentWorkflowV2Management() {
     const nextStatus: Record<string, RunState> = {};
     const nextPreview: Record<string, string> = {};
     const nextOrder: Record<string, number> = {};
+    const nextRound: Record<string, number> = {};
     steps.forEach((step) => {
       nextStatus[step.nodeId] =
         step.status === "success" ? "success" : step.status === "failed" ? "failed" : step.status === "running" ? "running" : "idle";
       nextPreview[step.nodeId] = step.output ? JSON.stringify(step.output).slice(0, 90) : step.error ? `Error: ${step.error}` : "-";
       if (!nextOrder[step.nodeId]) nextOrder[step.nodeId] = Object.keys(nextOrder).length + 1;
+      if (step.status === "running" && step.round != null) nextRound[step.nodeId] = step.round;
     });
     setRunStateByNode(nextStatus);
     setOutputPreviewByNode(nextPreview);
     setExecutionOrderByNode(nextOrder);
+    setCurrentRoundByNode(nextRound);
   }, []);
 
   const loadRunModalDetails = useCallback(async (runId: string) => {
@@ -278,7 +284,12 @@ export function AgentWorkflowV2Management() {
     setRuns((prev) =>
       prev.map((r) =>
         r.id === runId
-          ? { ...r, status: runData?.run?.status ?? r.status, durationMs: runData?.run?.durationMs ?? r.durationMs }
+          ? {
+              ...r,
+              status: runData?.run?.status ?? r.status,
+              durationMs: runData?.run?.durationMs ?? r.durationMs,
+              finalHtml: runData?.run?.finalHtml ?? r.finalHtml,
+            }
           : r
       )
     );
@@ -421,7 +432,7 @@ export function AgentWorkflowV2Management() {
     const version = workflow?.draftVersion || workflow?.activeVersion;
     if (!version) return;
     skipNextAutosaveRef.current = true;
-    setNodes(toFlowNodes(version.nodes || [], runStateByNode, outputPreviewByNode, executionOrderByNode));
+    setNodes(toFlowNodes(version.nodes || [], runStateByNode, outputPreviewByNode, executionOrderByNode, currentRoundByNode));
     setEdges(toFlowEdges(version.edges || [], runStateByNode));
     setIsDirty(false);
     setAutoSaveError(null);
@@ -702,7 +713,7 @@ export function AgentWorkflowV2Management() {
       const missingPurpose = enabledSubNodes.find((n) => !String((n.data as any).purpose || "").trim());
       if (missingPurpose) { setError(`Subagent "${missingPurpose.data.label}" benötigt eine Purpose-Beschreibung.`); return; }
 
-      setRunning(true); setError(null); setSuccess(null); setExecutionOrderByNode({});
+      setRunning(true); setError(null); setSuccess(null); setExecutionOrderByNode({}); setCurrentRoundByNode({});
       const pendingStatus: Record<string, RunState> = {};
       nodes.forEach((n) => { pendingStatus[n.id] = "running"; });
       setRunStateByNode(pendingStatus);

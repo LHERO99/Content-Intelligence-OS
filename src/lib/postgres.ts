@@ -108,6 +108,9 @@ function mapToOldStatus(
   // Active production states
   if (execution?.status === 'commissioned') return 'Beauftragt';
   if (execution?.status === 'in_progress') return 'In Arbeit';
+  // Terminal failure/cancellation states — cycle is preserved (not deleted)
+  if (execution?.status === 'failed') return 'Fehlgeschlagen';
+  if (execution?.status === 'cancelled') return 'Abgebrochen';
   // Only treat 'delivered' as Angeliefert when the publishing step has not yet
   // been completed.  Once publishingStatus = 'published', this cycle is terminal.
   if (execution?.status === 'delivered' && publishing?.status !== 'published') return 'Angeliefert';
@@ -223,6 +226,8 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       Page_Type: url.pageType as any,
       Last_Published: toIsoDate(publishing?.publishedAt),
       optimizationRequestedAt: planning?.optimizationRequestedAt?.toISOString(),
+      agentRunId: cycle?.agentRunId ?? null,
+      cycleId: cycle?.id ?? null,
     }));
   });
 }
@@ -290,6 +295,8 @@ export async function getKeyword(keywordId: string, tenantId?: string): Promise<
       Action_Type: mapToOldActionType(planning?.plannedActionType ?? cycle?.actionType),
       Page_Type: url.pageType as any,
       Last_Published: toIsoDate(publishing?.publishedAt),
+      agentRunId: cycle?.agentRunId ?? null,
+      cycleId: cycle?.id ?? null,
     };
   });
 }

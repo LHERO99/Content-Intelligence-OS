@@ -103,6 +103,7 @@ const de = {
         stale: "Zuletzt: {time} (>{days} Tage)",
         skipped: "Integration nicht konfiguriert — Sync übersprungen",
         noUrls: "Kein Sync erforderlich — keine URLs in diesem Durchlauf",
+        configuredPending: "Konfiguriert — Sync wird beim nächsten Lauf ausgeführt",
         failed: "Fehler: {error}",
       },
       runs: {

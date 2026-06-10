@@ -19,6 +19,8 @@ export interface WorkflowNodeConfig {
   timeoutMs: number;
   retries: number;
   enabled: boolean;
+  /** Max orchestrator rounds for the run. Only used on the orchestrator node. Default: 20 */
+  maxRounds?: number;
 }
 
 export interface WorkflowNodeV2 {
@@ -88,6 +90,10 @@ export interface WorkflowRunV2 {
   idempotencyKey: string;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
+  /** The final rendered HTML output — stored in its own column for easy access */
+  finalHtml?: string;
+  /** When true the running loop will stop after the current LLM call completes */
+  cancelRequested?: boolean;
   startedAt: string;
   finishedAt?: string;
   durationMs?: number;

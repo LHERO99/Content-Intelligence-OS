@@ -1,6 +1,69 @@
-# Projekt-Status (Stand: 08.06.2026 – aktualisiert 12)
+# Projekt-Status (Stand: 09.06.2026 – aktualisiert 13)
 
-## KPI-Kacheln: Basis + Erfolgsrate (Option A+B) (08.06.2026)
+## System Health Dashboard: Sistrix-Sync-Status-Fix (09.06.2026)
+
+### Symptom
+"Sistrix Sync — Integration nicht konfiguriert — Sync übersprungen" auch bei konfiguriertem und funktionierendem API-Key.
+
+### Root Cause (3-stufig)
+
+**Stufe 1 — gleicher Audit-Log-String für zwei verschiedene Situationen:**
+`sync-gsc/route.ts` schrieb `cron:sync-sistrix:skipped` sowohl für "Sistrix nicht konfiguriert" (`skippedSistrix === true`) als auch für "Sistrix konfiguriert, aber 0 URLs im Chunk" (`urlsProcessed === 0 && !skippedSistrix`). Das Payload-Feld `skippedReason` unterschied die Fälle, wurde aber nie ausgelesen.
+
+**Stufe 2 — `system-health/route.ts` las `skippedReason` nicht aus:**
+`checkCronSync` prüfte nur `action.endsWith(':skipped')` → zeigte für BEIDE Fälle "Integration nicht konfiguriert".
+
+**Stufe 3 — Zeitproblem (Hauptursache für persistente Anzeige):**
+Sistrix wurde erst nach dem letzten Cron-Lauf konfiguriert. Der Audit-Log-Eintrag war korrekt (`skippedReason: 'not_configured'` vom damaligen Zeitpunkt), spiegelte aber nicht den aktuellen Konfigurations-Zustand wider. Der Integrationen-Check testete live (grün), das Health-Dashboard zeigte den alten Eintrag (rot).
+
+### Fix-Sequenz (alle Stufen kombiniert)
+
+**`src/app/api/cron/sync-gsc/route.ts`:**
+- `urlsProcessed === 0 && !skippedSistrix` → schreibt jetzt `cron:sync-sistrix:no_urls` statt `:skipped`
+
+**`src/app/api/system-health/route.ts`:**
+- `:skipped`-Handler liest `rawPayload.skippedReason` aus
+- `skippedReason === 'no_urls'` → `status: 'ok'`, Key `cron.noUrls`
+- `skippedReason === 'not_configured'` + `configKey` übergeben → liest live die aktuelle Config via `getConfig(tenantId)`
+  - Key jetzt vorhanden → `status: 'ok'`, Key `cron.configuredPending` (sofortiger Fix ohne Warten auf Cron)
+  - Key nicht vorhanden → `status: 'warning'`, "Integration nicht konfiguriert" (korrekte Warnung)
+- `:no_urls`-Handler ergänzt (für zukünftige Einträge)
+- `checkCronSync`-Signatur: neuer optionaler Parameter `configKey?: string`
+- Aufruf: `checkCronSync('cron:sync-sistrix', 'Sistrix Sync', tenantId, 8, 'SISTRIX_API_KEY')`
+
+**`src/app/api/super-admin/health/route.ts`:**
+- `deriveStatus()`: `:no_urls` → `'ok'` (vor `:skipped`)
+
+**`src/i18n/messages/de.ts` + `en.ts`:**
+- `monitoring.cron.noUrls` — "Kein Sync erforderlich — keine URLs in diesem Durchlauf"
+- `monitoring.cron.configuredPending` — "Konfiguriert — Sync wird beim nächsten Lauf ausgeführt"
+
+### Vollständige Status-Matrix nach Fix
+
+| Audit-Log-Action | skippedReason | Config-Zustand | Ergebnis |
+|---|---|---|---|
+| `:skipped` | `not_configured` | Key fehlt in Config | ⚠ "Integration nicht konfiguriert" |
+| `:skipped` | `not_configured` | Key jetzt in Config | ✓ "Konfiguriert — Sync ausstehend" |
+| `:skipped` | `no_urls` | egal | ✓ "Kein Sync erforderlich" |
+| `:no_urls` | — | egal | ✓ "Kein Sync erforderlich" |
+| `:success` | — | egal | ✓ "Zuletzt: …" |
+| `:error` | — | egal | ✗ Fehlermeldung |
+
+### Code-Änderungen
+
+```
+src/app/api/cron/sync-gsc/route.ts            — :no_urls statt :skipped für 0-URL-Fall
+src/app/api/system-health/route.ts            — skippedReason-Check + configKey-Param + live Config-Check
+src/app/api/super-admin/health/route.ts       — deriveStatus(): :no_urls → 'ok'
+src/i18n/messages/de.ts                       — cron.noUrls + cron.configuredPending
+src/i18n/messages/en.ts                       — cron.noUrls + cron.configuredPending
+```
+
+**Status:** ✅ Implementiert, tsc sauber. Noch nicht committet.
+
+---
+
+
 
 ### Was geändert wurde
 

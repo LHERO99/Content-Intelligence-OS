@@ -103,6 +103,7 @@ const en = {
         stale: "Last run: {time} (>{days} days)",
         skipped: "Integration not configured — sync skipped",
         noUrls: "Nothing to sync — no URLs in this run",
+        configuredPending: "Configured — sync pending next run",
         failed: "Error: {error}",
       },
       runs: {

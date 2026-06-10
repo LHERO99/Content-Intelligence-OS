@@ -431,6 +431,22 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
     );
   }
 
+  async isCancelRequested(tenantId: string, runId: string): Promise<boolean> {
+    const store = await loadStore();
+    const run = store.runs.find((r) => r.id === runId && r.tenantId === tenantId);
+    return run?.cancelRequested ?? false;
+  }
+
+  async requestCancel(tenantId: string, runId: string): Promise<void> {
+    const store = await loadStore();
+    const nextRuns = store.runs.map((r) =>
+      r.id === runId && r.tenantId === tenantId
+        ? { ...r, cancelRequested: true, updatedAt: nowIso() }
+        : r
+    );
+    await persistRuns(nextRuns, store.runSteps, store.messages);
+  }
+
   async cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null> {
     const store = await loadStore();
     const run = store.runs.find((entry) => entry.id === runId && entry.tenantId === tenantId && !entry.deletedAt);

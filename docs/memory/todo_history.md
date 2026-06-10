@@ -4,7 +4,23 @@
 
 ## Abgeschlossen (chronologisch)
 
-- [x] **HistoryList: Whitespace-Fix Metadaten-Block (08.06.2026)**
+- [x] **System Health Dashboard: Sistrix-Sync-Warning-Fix (09.06.2026)**
+  - Root Cause 1: `cron:sync-sistrix:skipped` wurde für "nicht konfiguriert" UND "0 URLs" geschrieben → neuer Action-String `cron:sync-sistrix:no_urls` für 0-URL-Fall
+  - Root Cause 2: `checkCronSync` las `skippedReason` aus dem Payload nicht aus → jetzt ausgelesen; `no_urls` → grün
+  - Root Cause 3 (Hauptproblem): Integration nach letztem Cron konfiguriert → Audit-Log veraltet → `configKey`-Parameter: live Config-Check via `getConfig(tenantId)` wenn Key jetzt vorhanden → "Konfiguriert — Sync ausstehend" statt Warning
+  - `super-admin/health/route.ts`: `deriveStatus()` um `:no_urls` → `'ok'` erweitert
+  - i18n: `cron.noUrls` + `cron.configuredPending` in de.ts + en.ts
+  - tsc --noEmit ✅
+
+- [x] **KPI-Kacheln: Basis + Erfolgsrate (Option A+B) (09.06.2026)**
+  - `AggregateKpis` Interface: +6 Felder (ttrUrlCount, ttrSuccessRate, stabilityUrlCount, stabilitySuccessRate, ttpUrlCount, ttpSuccessRate)
+  - 3 SQL-Queries: COUNT(*) + Scalar-Subquery *_eligible pro KPI
+  - `safeRate(count, eligible)` Hilfsfunktion
+  - monitoring/page.tsx: Basis/Rate-Zeile unter allen 3 KPI-Werten; h-[100px] → pb-4 bei Stabilitäts-Index + avgTTP
+  - i18n: `monitoring.basis` + `monitoring.successRate`
+  - tsc --noEmit ✅
+
+
   - Root Cause: flex-col Metadaten-Spalte → 2-zeilig → visueller Leeraum in Row
   - Fix: flex-row + items-center + gap-1.5 + · Separator zwischen Timestamp und Username
 

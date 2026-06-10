@@ -27,6 +27,10 @@ export interface WorkflowRunRepositoryV2 {
   getRunWithDetails(tenantId: string, runId: string): Promise<WorkflowRunWithDetailsV2 | null>;
   getRunMessages(tenantId: string, runId: string): Promise<WorkflowMessageV2[]>;
   findByIdempotencyKey(tenantId: string, workflowVersionId: string, idempotencyKey: string): Promise<WorkflowRunV2 | null>;
+  /** Check if a cancel was requested for this run (polls the DB flag). */
+  isCancelRequested(tenantId: string, runId: string): Promise<boolean>;
+  /** Mark the run as cancel-requested without changing the status yet. */
+  requestCancel(tenantId: string, runId: string): Promise<void>;
   cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
   softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
   restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
@@ -58,6 +62,8 @@ export interface AgentWorkflowServiceV2 {
   listRuns(tenantId: string, limit?: number, includeDeleted?: boolean): Promise<WorkflowRunV2[]>;
   getRun(tenantId: string, runId: string): Promise<WorkflowRunWithDetailsV2 | null>;
   getRunMessages(tenantId: string, runId: string): Promise<WorkflowMessageV2[]>;
+  /** Signal an active run to stop after its current LLM call. */
+  requestCancel(tenantId: string, runId: string): Promise<void>;
   cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
   softDeleteRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;
   restoreRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null>;

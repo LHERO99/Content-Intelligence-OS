@@ -23,6 +23,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { Brain, SquareTerminal, Wand2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AgentNodeData, AgentStepType, NODE_STYLE_BY_TYPE } from "../types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,20 +34,28 @@ export type BezierDataEdge = Edge<{ label?: string; streaming?: boolean }>;
 
 export function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>) {
   const style = NODE_STYLE_BY_TYPE[data.type];
+  const isRunning = data.status === "running";
   const statusColor =
     data.status === "success"
       ? "#22C55E"
       : data.status === "failed"
         ? "#EF4444"
-        : data.status === "running"
+        : isRunning
           ? "#F59E0B"
           : "#94A3B8";
 
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-[#111828]/95 backdrop-blur-sm min-w-[240px] p-3 text-white shadow-2xl"
+      className={cn(
+        "rounded-2xl border bg-[#111828]/95 backdrop-blur-sm min-w-[240px] p-3 text-white shadow-2xl transition-all",
+        isRunning ? "border-amber-400/50" : "border-white/10",
+      )}
       style={{
-        boxShadow: selected ? `0 0 0 1px ${style.color}, 0 0 24px ${style.glow}` : undefined,
+        boxShadow: selected
+          ? `0 0 0 1px ${style.color}, 0 0 24px ${style.glow}`
+          : isRunning
+            ? "0 0 0 2px rgba(251,191,36,0.35), 0 0 20px rgba(251,191,36,0.15)"
+            : undefined,
       }}
     >
       <Handle type="target" position={Position.Top} className="!bg-slate-300 !border-[#0f172a] !w-2.5 !h-2.5" />
@@ -72,7 +81,15 @@ export function AgentNodeCard({ data, selected }: NodeProps<Node<AgentNodeData>>
               {data.executionOrder}
             </span>
           )}
-          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          {isRunning && typeof data.currentRound === "number" && (
+            <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full border border-amber-400/60 bg-amber-500/20 px-1 text-[10px] font-semibold text-amber-200 animate-pulse">
+              R{data.currentRound}
+            </span>
+          )}
+          <span
+            className={cn("h-2.5 w-2.5 rounded-full", isRunning && "animate-pulse")}
+            style={{ backgroundColor: statusColor }}
+          />
         </div>
       </div>
 

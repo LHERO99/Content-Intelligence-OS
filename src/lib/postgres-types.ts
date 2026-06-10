@@ -13,7 +13,9 @@ export type KeywordStatus =
   | 'Angeliefert'
   | 'Review'
   | 'Optimierung'
-  | 'Published';
+  | 'Published'
+  | 'Fehlgeschlagen'
+  | 'Abgebrochen';
 
 export interface KeywordMap {
   id: string;
@@ -34,6 +36,10 @@ export interface KeywordMap {
   Page_Type?: 'Ratgeber' | 'Kategorie' | 'Marke' | 'Produkt';
   Last_Published?: string; // ISO Date String
   optimizationRequestedAt?: string; // ISO Timestamp — set when optimization is commissioned from monitoring
+  /** ID of the linked agent run (from execution_cycles.agent_run_id) */
+  agentRunId?: string | null;
+  /** Execution cycle ID for cancel/restart operations */
+  cycleId?: number | null;
 }
 
 export interface SkippedKeyword extends Partial<KeywordMap> {
