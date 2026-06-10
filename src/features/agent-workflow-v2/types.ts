@@ -1,7 +1,7 @@
 // ─── Domain types for Agent Workflow V2 ──────────────────────────────────────
 
 export type AgentStepType = "orchestrator" | "research" | "analysis" | "briefing" | "draft" | "review" | "custom";
-export type AgentProvider = "openai" | "openrouter" | "gemini" | "vertex_legal";
+export type AgentProvider = "openai" | "openrouter" | "gemini" | "copilot" | "perplexity";
 export type RunState = "idle" | "running" | "success" | "failed";
 export type FlowMode = "default" | "custom";
 export type ExecutionView = "executions" | "timeline" | "messages";

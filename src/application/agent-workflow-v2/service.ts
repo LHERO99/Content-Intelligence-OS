@@ -404,6 +404,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
           instruction: node.config.instruction,
           payload: inputPayload,
           timeoutMs: node.config.timeoutMs,
+          tenantId: run.tenantId,
         });
         finishedAt = nowIso();
         lastError = undefined;

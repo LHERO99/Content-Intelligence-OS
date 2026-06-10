@@ -37,19 +37,21 @@ export interface WorkflowRunRepositoryV2 {
 }
 
 export interface IntegrationSecretProviderV2 {
-  getOpenAIApiKey(): Promise<string | null>;
-  getOpenRouterApiKey(): Promise<string | null>;
-  getGeminiApiKey(): Promise<string | null>;
-  getVertexLegalConfig(): Promise<{ projectId: string; location: string; endpointId: string; accessToken?: string } | null>;
+  getOpenAIApiKey(tenantId?: string): Promise<string | null>;
+  getOpenRouterApiKey(tenantId?: string): Promise<string | null>;
+  getGeminiApiKey(tenantId?: string): Promise<string | null>;
+  getGitHubModelsApiKey(tenantId?: string): Promise<string | null>;
+  getPerplexityApiKey(tenantId?: string): Promise<string | null>;
 }
 
 export interface AgentModelRunnerV2 {
   runStep(input: {
-    provider: 'openai' | 'openrouter' | 'gemini' | 'vertex_legal';
+    provider: 'openai' | 'openrouter' | 'gemini' | 'copilot' | 'perplexity';
     model: string;
     instruction: string;
     payload: Record<string, unknown>;
     timeoutMs: number;
+    tenantId: string;
   }): Promise<Record<string, unknown>>;
 }
 

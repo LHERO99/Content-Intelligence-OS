@@ -4,7 +4,7 @@ export type WorkflowMode = 'default' | 'custom';
 export type WorkflowState = 'draft' | 'published' | 'archived';
 
 export type AgentStepType = 'orchestrator' | 'research' | 'analysis' | 'briefing' | 'draft' | 'review' | 'custom';
-export type AgentProvider = 'openai' | 'openrouter' | 'gemini' | 'vertex_legal';
+export type AgentProvider = 'openai' | 'openrouter' | 'gemini' | 'copilot' | 'perplexity';
 
 export type RunStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
 export type StepStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped';

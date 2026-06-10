@@ -206,7 +206,12 @@ export function AgentWorkflowV2Management() {
   const selectedProviderModelError = modelErrorsByProvider[selectedProvider] || null;
 
   const isModelDiscoverySupported = useCallback(
-    (provider: AgentProvider) => provider === "openai" || provider === "openrouter" || provider === "gemini",
+    (provider: AgentProvider) =>
+      provider === "openai" ||
+      provider === "openrouter" ||
+      provider === "gemini" ||
+      provider === "copilot" ||
+      provider === "perplexity",
     []
   );
   const selectedProviderSupportsDiscovery = isModelDiscoverySupported(selectedProvider);

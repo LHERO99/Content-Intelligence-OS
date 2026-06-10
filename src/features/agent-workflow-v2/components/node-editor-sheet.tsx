@@ -248,7 +248,8 @@ export function NodeEditorSheet({
                       <SelectItem value="openai">OpenAI</SelectItem>
                       <SelectItem value="openrouter">OpenRouter</SelectItem>
                       <SelectItem value="gemini">Gemini</SelectItem>
-                      <SelectItem value="vertex_legal">Vertex Legal Agent</SelectItem>
+                      <SelectItem value="copilot">Copilot (GitHub Models)</SelectItem>
+                      <SelectItem value="perplexity">Perplexity</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -464,14 +465,6 @@ export function NodeEditorSheet({
                   />
                 </div>
 
-                {selectedNodeRecord.config.provider === "vertex_legal" && (
-                  <Alert>
-                    <AlertTitle>Vertex Legal Agent aktiv</AlertTitle>
-                    <AlertDescription>
-                      Dieser Node nutzt den externen Vertex AI Endpoint. Bitte Konfiguration im Integrations-Tab prüfen.
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
             </ConfigSection>
 
