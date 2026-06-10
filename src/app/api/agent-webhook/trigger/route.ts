@@ -212,26 +212,29 @@ async function executeAgentInBackground(opts: BackgroundRunOptions): Promise<voi
   const {
     agentService, tenantId, workflowId, enrichedPayload,
     executionCycleId, commissionLogId, keywordId, targetUrl, userId, actionType,
+    suggestedRunId,
   } = opts;
 
   let run: Awaited<ReturnType<typeof agentService.run>> | null = null;
 
   try {
+    // Pre-link execution_cycle ↔ agent_run BEFORE starting the run so that
+    // the cancel endpoint can resolve the runId from the cycle immediately.
+    if (executionCycleId && suggestedRunId) {
+      try {
+        await db.update(executionCycles)
+          .set({ agentRunId: suggestedRunId, status: 'in_progress', updatedAt: new Date() })
+          .where(eq(executionCycles.id, executionCycleId));
+      } catch (linkErr) {
+        console.error('[BgAgent] Failed to pre-link agentRunId:', linkErr);
+      }
+    }
+
     run = await agentService.run(tenantId, workflowId, {
       input:    enrichedPayload,
       runFrom:  'published',
+      runId:    suggestedRunId,
     });
-
-    // Link execution_cycle ↔ agent_run
-    if (executionCycleId && run?.id) {
-      try {
-        await db.update(executionCycles)
-          .set({ agentRunId: run.id, updatedAt: new Date() })
-          .where(eq(executionCycles.id, executionCycleId));
-      } catch (linkErr) {
-        console.error('[BgAgent] Failed to link agentRunId:', linkErr);
-      }
-    }
 
     if (run?.status === 'cancelled') {
       // Reflect cancellation in execution_cycle
@@ -275,6 +278,15 @@ async function executeAgentInBackground(opts: BackgroundRunOptions): Promise<voi
       // Update cycle to delivered
       if (executionCycleId) {
         try {
+          // Bug 3 guard: if a cancel arrived after the run finished but before
+          // this write, don't silently overwrite the cancellation.
+          const [cycleRow] = await db
+            .select({ status: executionCycles.status })
+            .from(executionCycles)
+            .where(eq(executionCycles.id, executionCycleId))
+            .limit(1);
+          if (cycleRow?.status === 'cancelled') return;
+
           await db.update(executionCycles)
             .set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() })
             .where(eq(executionCycles.id, executionCycleId));

@@ -182,4 +182,6 @@ export interface RunWorkflowInputV2 {
   input?: Record<string, unknown>;
   idempotencyKey?: string;
   runFrom?: 'draft' | 'published';
+  /** Pre-generated run ID — pass this so the caller can link it before the run starts */
+  runId?: string;
 }

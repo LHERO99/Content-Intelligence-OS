@@ -469,7 +469,7 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
 
     const startedAt = nowIso();
     const run: WorkflowRunV2 = {
-      id: crypto.randomUUID(),
+      id: input.runId ?? crypto.randomUUID(),
       tenantId,
       workflowId,
       workflowVersionId: version.id,
