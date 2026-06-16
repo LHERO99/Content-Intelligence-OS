@@ -76,10 +76,11 @@ export async function POST(req: NextRequest) {
       resolvedCycleId = cycle?.id ?? resolvedCycleId;
     }
 
-    // Signal the agent run to cancel
+    // Signal the agent run to cancel — use cancelRun (not requestCancel) so that
+    // status is set to 'cancelled' immediately in the DB, preventing zombie runs.
     if (resolvedRunId) {
       const service = createAgentWorkflowServiceV2();
-      await service.requestCancel(tenantId, resolvedRunId);
+      await service.cancelRun(tenantId, resolvedRunId);
     }
 
     // Immediately mark the execution cycle as cancelled so the UI updates fast

@@ -709,18 +709,20 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       : undefined;
 
     try {
-      // Only update status if not already cancelled by an external request
+      // If an external cancel arrived while the loop was running, honour it:
+      // never regress from 'cancelled' back to 'success'.
+      // Always write — never leave the run as a zombie 'running' record.
       const alreadyCancelled = await this.runs.isCancelRequested(tenantId, run.id);
-      if (!alreadyCancelled || finalStatus === 'cancelled') {
-        await this.runs.updateRun(run.id, {
-          status:     finalStatus,
-          output:     finalOutput,
-          // Store finalHtml in its own column for fast access
-          finalHtml:  capturedFinalHtml,
-          finishedAt,
-          durationMs: finalDurationMs,
-        });
-      }
+      const effectiveStatus: WorkflowRunWithDetailsV2['status'] =
+        alreadyCancelled && finalStatus !== 'cancelled' ? 'cancelled' : finalStatus;
+      await this.runs.updateRun(run.id, {
+        status:     effectiveStatus,
+        output:     finalOutput,
+        // Store finalHtml in its own column for fast access
+        finalHtml:  capturedFinalHtml,
+        finishedAt,
+        durationMs: finalDurationMs,
+      });
     } catch (persistErr) {
       console.error('[AgentService] Failed to persist run status (non-fatal):', persistErr);
     }
