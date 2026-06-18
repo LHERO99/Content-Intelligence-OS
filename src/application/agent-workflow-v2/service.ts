@@ -551,6 +551,10 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
 
       if (orchestratorStep.status === 'failed') { hasFailed = true; break; }
 
+      // Mid-round cancel check — catches cancels that arrived during the orchestrator LLM call
+      const cancelAfterOrchestrator = await this.runs.isCancelRequested(tenantId, run.id);
+      if (cancelAfterOrchestrator) { wasCancelled = true; break; }
+
       const decision = extractDecisionFromOutput(orchestratorStep.output);
       if (!decision) {
         hasFailed = true;
@@ -630,6 +634,10 @@ export class DefaultAgentWorkflowServiceV2 implements AgentWorkflowServiceV2 {
       });
 
       if (subagentStep.status === 'failed') { hasFailed = true; break; }
+
+      // Mid-round cancel check — catches cancels that arrived during the subagent LLM call
+      const cancelAfterSubagent = await this.runs.isCancelRequested(tenantId, run.id);
+      if (cancelAfterSubagent) { wasCancelled = true; break; }
 
       const resultMessage: WorkflowMessageV2 = {
         id: crypto.randomUUID(), tenantId, runId: run.id,

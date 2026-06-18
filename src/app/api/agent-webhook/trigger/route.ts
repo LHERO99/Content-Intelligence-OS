@@ -14,7 +14,7 @@ import {
 import { createAgentWorkflowServiceV2 } from '@/app/api/agent-workflows-v2/_service';
 import { db } from '@/lib/db';
 import { executionCycles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 
 /**
  * API Route to trigger agent workflows or an external agent webhook.
@@ -222,11 +222,31 @@ async function executeAgentInBackground(opts: BackgroundRunOptions): Promise<voi
     // the cancel endpoint can resolve the runId from the cycle immediately.
     if (executionCycleId && suggestedRunId) {
       try {
+        // Only update to 'in_progress' if the cycle is NOT already 'cancelled'
+        // (the user may have clicked "Abbrechen" before this background task started).
         await db.update(executionCycles)
           .set({ agentRunId: suggestedRunId, status: 'in_progress', updatedAt: new Date() })
-          .where(eq(executionCycles.id, executionCycleId));
+          .where(and(
+            eq(executionCycles.id, executionCycleId),
+            ne(executionCycles.status, 'cancelled'),
+          ));
       } catch (linkErr) {
         console.error('[BgAgent] Failed to pre-link agentRunId:', linkErr);
+      }
+
+      // Abort-check: if the cycle was already cancelled, stop here immediately.
+      try {
+        const [cycleState] = await db
+          .select({ status: executionCycles.status })
+          .from(executionCycles)
+          .where(eq(executionCycles.id, executionCycleId))
+          .limit(1);
+        if (cycleState?.status === 'cancelled') {
+          console.log('[BgAgent] Cycle already cancelled before run start, aborting');
+          return;
+        }
+      } catch (readErr) {
+        console.error('[BgAgent] Failed to read cycle status for abort-check:', readErr);
       }
     }
 
