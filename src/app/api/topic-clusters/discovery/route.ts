@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/db';
-import { topicClusters, urlKeywords, topicIdeas, config } from '@/lib/db/schema';
+import { topicClusters, urlKeywords, topicIdeas } from '@/lib/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { fetchKeywordIdeas } from '@/lib/dataforseo';
+import { getConfig } from '@/lib/postgres';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +19,9 @@ export async function POST(request: Request) {
     const { clusterIds, limit = 50 } = body;
 
     // Load DataForSEO credentials from config
-    const configRows = await db.select()
-      .from(config)
-      .where(and(
-        eq(config.tenantId, tenantId),
-        inArray(config.key, ['dataforseo_username', 'dataforseo_password']),
-      ));
-
-    const cfgMap = Object.fromEntries(configRows.map((r) => [r.key, r.value]));
-    const username = cfgMap['dataforseo_username'];
-    const password = cfgMap['dataforseo_password'];
+    const cfg = await getConfig(tenantId);
+    const username = cfg['DATAFORSEO_USERNAME'];
+    const password = cfg['DATAFORSEO_PASSWORD'];
 
     if (!username || !password) {
       return NextResponse.json(
