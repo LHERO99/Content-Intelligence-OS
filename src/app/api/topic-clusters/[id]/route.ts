@@ -75,6 +75,7 @@ export async function PATCH(request: Request, { params }: Params) {
     if (body.name !== undefined)        updates.name        = body.name;
     if (body.description !== undefined) updates.description = body.description;
     if (body.color !== undefined)       updates.color       = body.color;
+    if (body.parentId !== undefined)    updates.parentId    = body.parentId ?? null;
     updates.updatedAt = new Date();
 
     const [updated] = await db

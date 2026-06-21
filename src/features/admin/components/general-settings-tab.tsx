@@ -46,6 +46,8 @@ export function GeneralSettingsTab() {
     BRAND_PRIMARY_COLOR: "#00463c",
     BRAND_LOGO_URL: "/docmorris-logo.png",
     BRAND_FAVICON_URL: "/favicon.ico",
+    DATAFORSEO_LANGUAGE: "",
+    DATAFORSEO_LOCATION: "",
   });
 
   const normalizedPrimary = normalizeHexColor(config.BRAND_PRIMARY_COLOR);
@@ -82,6 +84,8 @@ export function GeneralSettingsTab() {
         BRAND_PRIMARY_COLOR: normalizeHexColor(data.BRAND_PRIMARY_COLOR),
         BRAND_LOGO_URL: data.BRAND_LOGO_URL || "/docmorris-logo.png",
         BRAND_FAVICON_URL: data.BRAND_FAVICON_URL || "/favicon.ico",
+        DATAFORSEO_LANGUAGE: data.DATAFORSEO_LANGUAGE || "",
+        DATAFORSEO_LOCATION: data.DATAFORSEO_LOCATION || "",
       });
     } catch (err: any) {
       setError(err.message);
@@ -275,6 +279,43 @@ export function GeneralSettingsTab() {
                   "This domain is used for ranking queries (DataForSEO). Enter the root domain only, e.g. example.com"
               )}
             </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {tr("Sprache (DataForSEO)", "Language (DataForSEO)")}
+              </label>
+              <Input
+                type="text"
+                value={config.DATAFORSEO_LANGUAGE}
+                onChange={(e) => setConfig({ ...config, DATAFORSEO_LANGUAGE: e.target.value.trim() })}
+                placeholder="de"
+              />
+              <p className="text-xs text-muted-foreground">
+                {tr(
+                  "ISO-Sprachcode, z. B. de, en, nl. Wird für Topic Discovery verwendet. Standard: de",
+                  "ISO language code, e.g. de, en, nl. Used for Topic Discovery. Default: de"
+                )}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {tr("Standort-Code (DataForSEO)", "Location Code (DataForSEO)")}
+              </label>
+              <Input
+                type="text"
+                value={config.DATAFORSEO_LOCATION}
+                onChange={(e) => setConfig({ ...config, DATAFORSEO_LOCATION: e.target.value.trim() })}
+                placeholder="2276"
+              />
+              <p className="text-xs text-muted-foreground">
+                {tr(
+                  "DataForSEO Location Code, z. B. 2276 (Deutschland), 2040 (Österreich), 2756 (Schweiz). Standard: 2276",
+                  "DataForSEO Location Code, e.g. 2276 (Germany), 2040 (Austria), 2756 (Switzerland). Default: 2276"
+                )}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

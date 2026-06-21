@@ -12,16 +12,22 @@ import { CheckCircle, Lightbulb } from 'lucide-react';
 interface Props {
   suggestion: SuggestionWithCoverage;
   clusters: TopicClusterWithStats[];
-  onAdopt: (suggestion: SuggestionWithCoverage & { _selectedClusterId: string }) => void;
+  onDirectPlan: (suggestion: SuggestionWithCoverage, clusterId: string) => Promise<void>;
 }
 
-export function SuggestionCard({ suggestion, clusters, onAdopt }: Props) {
+export function SuggestionCard({ suggestion, clusters, onDirectPlan }: Props) {
   const { t } = useI18n();
   const [clusterId, setClusterId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAdopt = () => {
+  const handlePlan = async () => {
     if (!clusterId) return;
-    onAdopt({ ...suggestion, _selectedClusterId: clusterId } as any);
+    setIsLoading(true);
+    try {
+      await onDirectPlan(suggestion, clusterId);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -66,8 +72,8 @@ export function SuggestionCard({ suggestion, clusters, onAdopt }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" disabled={!clusterId} onClick={handleAdopt}>
-              {t('topicDiscovery.adopt')}
+            <Button size="sm" disabled={!clusterId || isLoading} onClick={handlePlan}>
+              {isLoading ? 'Wird gespeichert...' : t('topicMap.planIdea')}
             </Button>
           </div>
         )}

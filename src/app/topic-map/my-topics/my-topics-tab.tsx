@@ -79,6 +79,7 @@ export function MyTopicsTab() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         cluster={editingCluster}
+        allClusters={clusters}
         onCreate={createCluster}
         onUpdate={(id, data) => updateCluster(id, data)}
       />

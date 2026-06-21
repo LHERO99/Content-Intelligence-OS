@@ -6,6 +6,7 @@
 export type TopicCluster = {
   id: string;
   tenantId: string;
+  parentId: string | null;
   name: string;
   description: string | null;
   color: string;
@@ -24,6 +25,7 @@ export type TopicClusterWithStats = TopicCluster & {
     inProgress: number;
     published: number;
   };
+  children: TopicClusterWithStats[];
 };
 
 export type TopicIdea = {

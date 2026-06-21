@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n/use-i18n';
 import { useClusterDetail } from '@/features/topic-map/hooks/use-topic-clusters';
 import { TopicIdea } from '@/lib/db/topic-journey-types';
-import { X, Plus, Lightbulb, Link2 } from 'lucide-react';
+import { X, Plus, Lightbulb, Link2, CheckCircle2 } from 'lucide-react';
 import { PlanIdeaModal } from './plan-idea-modal';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   clusterId: string | null;
@@ -27,6 +28,7 @@ function statusColor(status?: string) {
 
 export function ClusterDetailPanel({ clusterId, onClose, onClustersRefresh }: Props) {
   const { t } = useI18n();
+  const router = useRouter();
   const { detail, isLoading, refresh, deleteIdea, addIdea } = useClusterDetail(clusterId);
   const [planIdea, setPlanIdea] = useState<TopicIdea | null>(null);
   const [addingIdea, setAddingIdea] = useState(false);
@@ -68,7 +70,7 @@ export function ClusterDetailPanel({ clusterId, onClose, onClustersRefresh }: Pr
               </SheetHeader>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 <div className="border rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold">{detail.urls.length}</div>
                   <div className="text-xs text-muted-foreground">{t('topicMap.urlCount')}</div>
@@ -76,6 +78,12 @@ export function ClusterDetailPanel({ clusterId, onClose, onClustersRefresh }: Pr
                 <div className="border rounded-lg p-3 text-center">
                   <div className="text-2xl font-bold">{detail.ideas.length}</div>
                   <div className="text-xs text-muted-foreground">{t('topicMap.ideaCount')}</div>
+                </div>
+                <div className="border rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {detail.urls.filter(u => u.planningStatus && u.planningStatus !== '').length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">In Planung</div>
                 </div>
               </div>
 
@@ -188,7 +196,12 @@ export function ClusterDetailPanel({ clusterId, onClose, onClustersRefresh }: Pr
             setPlanIdea(null);
             refresh();
             onClustersRefresh();
-            toast.success('Thema erfolgreich zur Planung hinzugefügt');
+            toast.success('Keyword zur Keywordmap hinzugefügt', {
+              action: {
+                label: 'In Planung ansehen →',
+                onClick: () => router.push('/planning?tab=keyword-map'),
+              },
+            });
           }}
         />
       )}

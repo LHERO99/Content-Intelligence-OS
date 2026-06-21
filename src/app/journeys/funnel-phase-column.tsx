@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FunnelPhase, JourneyPageMapping } from "@/lib/db/topic-journey-types";
 import { useI18n } from "@/i18n/use-i18n";
+import Link from "next/link";
 
 const PHASE_COLORS: Record<FunnelPhase, string> = {
   awareness:     "#3b82f6",
@@ -121,6 +122,19 @@ export function FunnelPhaseColumn({
                 </span>
               )}
             </div>
+
+            {/* Planning link */}
+            {m.url && (
+              <div className="mt-1.5">
+                <Link
+                  href={`/planning?tab=keyword-map&url=${encodeURIComponent(m.url)}`}
+                  className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <ExternalLink className="w-2.5 h-2.5" />
+                  {tr("In Planung ansehen", "View in planning")}
+                </Link>
+              </div>
+            )}
           </div>
         ))}
       </div>

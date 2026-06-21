@@ -3,21 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/i18n/use-i18n';
 import { useTopicDiscovery, SuggestionWithCoverage } from '@/features/topic-map/hooks/use-topic-discovery';
 import { useTopicClusters } from '@/features/topic-map/hooks/use-topic-clusters';
 import { SuggestionCard } from './suggestion-card';
-import { AdoptIdeaModal } from './adopt-idea-modal';
 import { RefreshCw, AlertTriangle, Lightbulb } from 'lucide-react';
+import { PlanIdeaModal } from '../my-topics/plan-idea-modal';
+import { TopicIdea } from '@/lib/db/topic-journey-types';
+import { toast } from 'sonner';
 
 export function DiscoveryPanel() {
   const { t } = useI18n();
   const router = useRouter();
   const { suggestions, isLoading, error, refresh, adoptIdea } = useTopicDiscovery();
   const { clusters, refresh: refreshClusters } = useTopicClusters();
-  const [selectedIdea, setSelectedIdea] = useState<SuggestionWithCoverage | null>(null);
   const [showCovered, setShowCovered] = useState(false);
+  // State for direct-to-planning flow: adopted idea + clusterId
+  const [planTarget, setPlanTarget] = useState<{ idea: TopicIdea; clusterId: string } | null>(null);
 
   useEffect(() => {
     refreshClusters();
@@ -28,6 +30,16 @@ export function DiscoveryPanel() {
 
   const isNotConfigured = error?.includes('DataForSEO ist nicht konfiguriert');
   const noClusters = !isLoading && !error && clusters.length === 0;
+
+  // Called from SuggestionCard when user clicks "Zur Keywordmap hinzufügen"
+  const handleDirectPlan = async (suggestion: SuggestionWithCoverage, clusterId: string) => {
+    try {
+      const created = await adoptIdea(suggestion, clusterId);
+      setPlanTarget({ idea: created, clusterId });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   if (isNotConfigured) {
     return (
@@ -100,20 +112,26 @@ export function DiscoveryPanel() {
             key={suggestion.keyword}
             suggestion={suggestion}
             clusters={clusters}
-            onAdopt={setSelectedIdea}
+            onDirectPlan={handleDirectPlan}
           />
         ))}
       </div>
 
-      {selectedIdea && (
-        <AdoptIdeaModal
-          idea={selectedIdea}
-          clusters={clusters}
-          onConfirm={async (clusterId) => {
-            await adoptIdea(selectedIdea, clusterId);
-            setSelectedIdea(null);
+      {planTarget && (
+        <PlanIdeaModal
+          open={!!planTarget}
+          idea={planTarget.idea}
+          clusterId={planTarget.clusterId}
+          onClose={() => setPlanTarget(null)}
+          onSuccess={() => {
+            setPlanTarget(null);
+            toast.success('Keyword zur Keywordmap hinzugefügt', {
+              action: {
+                label: 'In Planung ansehen →',
+                onClick: () => router.push('/planning?tab=keyword-map'),
+              },
+            });
           }}
-          onCancel={() => setSelectedIdea(null)}
         />
       )}
     </div>

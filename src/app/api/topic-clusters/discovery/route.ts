@@ -22,6 +22,8 @@ export async function POST(request: Request) {
     const cfg = await getConfig(tenantId);
     const username = cfg['DATAFORSEO_USERNAME'];
     const password = cfg['DATAFORSEO_PASSWORD'];
+    const languageCode = cfg['DATAFORSEO_LANGUAGE'] || 'de';
+    const locationCode = cfg['DATAFORSEO_LOCATION'] ? parseInt(cfg['DATAFORSEO_LOCATION'], 10) : 2276;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     const seedKeywords = clusters.map((c) => c.name);
-    const suggestions = await fetchKeywordIdeas(seedKeywords, username, password, 'de', 2276, limit);
+    const suggestions = await fetchKeywordIdeas(seedKeywords, username, password, languageCode, locationCode, limit);
 
     // Load existing keywords and ideas to mark as "already covered"
     const existingKws = await db.select({ keyword: urlKeywords.keyword })

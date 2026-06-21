@@ -1,7 +1,6 @@
-"use client";
-
 import { useState, useCallback } from 'react';
 import { KeywordIdeaResult } from '@/lib/dataforseo';
+import { TopicIdea } from '@/lib/db/topic-journey-types';
 
 export type SuggestionWithCoverage = KeywordIdeaResult & { alreadyCovered: boolean };
 
@@ -32,27 +31,29 @@ export function useTopicDiscovery() {
   const adoptIdea = useCallback(async (
     idea: SuggestionWithCoverage,
     clusterId: string,
-  ) => {
+  ): Promise<TopicIdea> => {
     const res = await fetch(`/api/topic-clusters/${clusterId}/ideas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        keyword:          idea.keyword,
-        searchVolume:     idea.searchVolume,
+        keyword:           idea.keyword,
+        searchVolume:      idea.searchVolume,
         keywordDifficulty: idea.keywordDifficulty,
-        source:           'dataforseo',
+        source:            'dataforseo',
       }),
     });
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.error ?? 'Fehler beim Speichern');
     }
+    const created: TopicIdea = await res.json();
     // Mark as covered locally
     setSuggestions((prev) =>
       prev.map((s) =>
         s.keyword === idea.keyword ? { ...s, alreadyCovered: true } : s
       )
     );
+    return created;
   }, []);
 
   return { suggestions, isLoading, error, refresh, adoptIdea };

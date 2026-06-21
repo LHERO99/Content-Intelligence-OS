@@ -7,6 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useI18n } from '@/i18n/use-i18n';
 import { TopicClusterWithStats } from '@/lib/db/topic-journey-types';
 import { toast } from 'sonner';
@@ -20,24 +21,43 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cluster?: TopicClusterWithStats | null;
-  onCreate: (data: { name: string; description?: string; color?: string }) => Promise<any>;
-  onUpdate: (id: string, data: { name?: string; description?: string; color?: string }) => Promise<any>;
+  allClusters: TopicClusterWithStats[];
+  onCreate: (data: { name: string; description?: string; color?: string; parentId?: string | null }) => Promise<any>;
+  onUpdate: (id: string, data: { name?: string; description?: string; color?: string; parentId?: string | null }) => Promise<any>;
 }
 
-export function CreateClusterModal({ open, onOpenChange, cluster, onCreate, onUpdate }: Props) {
+export function CreateClusterModal({ open, onOpenChange, cluster, allClusters, onCreate, onUpdate }: Props) {
   const { t } = useI18n();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [parentId, setParentId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEdit = !!cluster;
+
+  // Eligible parents: all clusters except the cluster being edited and its descendants
+  const getDescendantIds = (id: string, flat: TopicClusterWithStats[]): Set<string> => {
+    const ids = new Set<string>();
+    const queue = [id];
+    while (queue.length) {
+      const cur = queue.shift()!;
+      ids.add(cur);
+      flat.filter(c => c.parentId === cur).forEach(c => queue.push(c.id));
+    }
+    return ids;
+  };
+
+  const eligibleParents = isEdit && cluster
+    ? allClusters.filter(c => !getDescendantIds(cluster.id, allClusters).has(c.id))
+    : allClusters;
 
   useEffect(() => {
     if (open) {
       setName(cluster?.name ?? '');
       setDescription(cluster?.description ?? '');
       setColor(cluster?.color ?? PRESET_COLORS[0]);
+      setParentId(cluster?.parentId ?? null);
     }
   }, [open, cluster]);
 
@@ -46,9 +66,9 @@ export function CreateClusterModal({ open, onOpenChange, cluster, onCreate, onUp
     setIsSubmitting(true);
     try {
       if (isEdit && cluster) {
-        await onUpdate(cluster.id, { name: name.trim(), description: description.trim() || undefined, color });
+        await onUpdate(cluster.id, { name: name.trim(), description: description.trim() || undefined, color, parentId });
       } else {
-        await onCreate({ name: name.trim(), description: description.trim() || undefined, color });
+        await onCreate({ name: name.trim(), description: description.trim() || undefined, color, parentId });
       }
       onOpenChange(false);
     } catch (e: any) {
@@ -74,6 +94,28 @@ export function CreateClusterModal({ open, onOpenChange, cluster, onCreate, onUp
               placeholder="z.B. Vitamine & Nahrungsergänzung"
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Übergeordnetes Thema <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Select value={parentId ?? '__none__'} onValueChange={(v) => setParentId(v === '__none__' ? null : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Kein übergeordnetes Thema" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Kein übergeordnetes Thema</SelectItem>
+                {eligibleParents
+                  .filter(c => !isEdit || c.id !== cluster?.id)
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                        {c.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">

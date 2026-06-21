@@ -35,9 +35,13 @@ const strategyItems = [
   { title: "journeys",  url: "/journeys",  icon: GitBranch },
 ]
 
+// Planning section items
+const planningItems = [
+  { title: "contentPlanning", url: "/planning", icon: FileText },
+]
+
 // Content section items
 const contentItems = [
-  { title: "contentPlanning",   url: "/planning",   icon: FileText  },
   { title: "contentCreation",   url: "/creation",   icon: PenTool   },
   { title: "contentMonitoring", url: "/monitoring", icon: Activity  },
   { title: "contentHistory",    url: "/history",    icon: History   },
@@ -134,6 +138,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {strategyItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton render={<Link href={item.url} />}>
+                      <item.icon />
+                      <span>{t(`sidebar.${item.title}`)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* ── Planung Section ── */}
+        {!isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("sidebar.sectionPlanning")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {planningItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton render={<Link href={item.url} />}>
                       <item.icon />

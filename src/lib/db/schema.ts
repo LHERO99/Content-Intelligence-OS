@@ -768,6 +768,7 @@ export const topicClusters = pgTable(
   {
     id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    parentId:    text('parent_id'),  // self-reference — FK enforced in SQL migration
     name:        text('name').notNull(),
     description: text('description'),
     color:       text('color').notNull().default('#6366f1'),
@@ -776,6 +777,7 @@ export const topicClusters = pgTable(
   },
   (t) => ({
     tenantIdx:  index('topic_clusters_tenant_idx').on(t.tenantId),
+    parentIdx:  index('topic_clusters_parent_idx').on(t.parentId),
     nameUnique: uniqueIndex('topic_clusters_name_tenant_idx').on(t.name, t.tenantId),
   })
 );

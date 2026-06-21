@@ -12,6 +12,21 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+/** Build an arbitrary-depth tree from a flat list using parentId */
+export function buildClusterTree(flat: TopicClusterWithStats[]): TopicClusterWithStats[] {
+  const map = new Map<string, TopicClusterWithStats>();
+  flat.forEach((c) => map.set(c.id, { ...c, children: [] }));
+  const roots: TopicClusterWithStats[] = [];
+  map.forEach((c) => {
+    if (c.parentId && map.has(c.parentId)) {
+      map.get(c.parentId)!.children.push(c);
+    } else {
+      roots.push(c);
+    }
+  });
+  return roots;
+}
+
 export function useTopicClusters() {
   const [clusters, setClusters] = useState<TopicClusterWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,17 +45,17 @@ export function useTopicClusters() {
     }
   }, []);
 
-  const createCluster = useCallback(async (input: { name: string; description?: string; color?: string }) => {
+  const createCluster = useCallback(async (input: { name: string; description?: string; color?: string; parentId?: string | null }) => {
     const created = await apiFetch<TopicClusterWithStats>('/api/topic-clusters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     });
-    setClusters((prev) => [{ ...created, urlCount: 0, ideaCount: 0, totalSearchVolume: 0, avgRanking: null, statusBreakdown: { backlog: 0, planned: 0, inProgress: 0, published: 0 } }, ...prev]);
+    setClusters((prev) => [{ ...created, urlCount: 0, ideaCount: 0, totalSearchVolume: 0, avgRanking: null, statusBreakdown: { backlog: 0, planned: 0, inProgress: 0, published: 0 }, children: [] }, ...prev]);
     return created;
   }, []);
 
-  const updateCluster = useCallback(async (id: string, input: { name?: string; description?: string; color?: string }) => {
+  const updateCluster = useCallback(async (id: string, input: { name?: string; description?: string; color?: string; parentId?: string | null }) => {
     const updated = await apiFetch<TopicClusterWithStats>(`/api/topic-clusters/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

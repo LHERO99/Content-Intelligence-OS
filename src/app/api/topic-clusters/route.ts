@@ -18,6 +18,7 @@ export async function GET() {
       .select({
         id:               topicClusters.id,
         tenantId:         topicClusters.tenantId,
+        parentId:         topicClusters.parentId,
         name:             topicClusters.name,
         description:      topicClusters.description,
         color:            topicClusters.color,
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     const tenantId = session.user?.tenantId as string;
 
     const body = await request.json();
-    const { name, description, color } = body;
+    const { name, description, color, parentId } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'Name ist erforderlich' }, { status: 400 });
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
 
     const [cluster] = await db
       .insert(topicClusters)
-      .values({ tenantId, name: name.trim(), description: description ?? null, color: color ?? '#6366f1' })
+      .values({ tenantId, name: name.trim(), description: description ?? null, color: color ?? '#6366f1', parentId: parentId ?? null })
       .returning();
 
     return NextResponse.json(cluster, { status: 201 });

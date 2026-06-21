@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { TopicClusterWithStats } from '@/lib/db/topic-journey-types';
+import { buildClusterTree } from '@/features/topic-map/hooks/use-topic-clusters';
 
 // Lazy-load ECharts to avoid SSR issues
 let echarts: any = null;
@@ -9,6 +10,19 @@ let echarts: any = null;
 interface Props {
   clusters: TopicClusterWithStats[];
   onClusterClick: (id: string) => void;
+}
+
+/** Recursively converts a TopicClusterWithStats tree into ECharts sunburst data */
+function toSunburstData(node: TopicClusterWithStats): any {
+  return {
+    name: node.name,
+    value: node.totalSearchVolume || node.urlCount || 1,
+    itemStyle: { color: node.color },
+    _clusterId: node.id,
+    children: node.children.length > 0
+      ? node.children.map(toSunburstData)
+      : undefined,
+  };
 }
 
 export function ClusterSunburst({ clusters, onClusterClick }: Props) {
@@ -31,24 +45,27 @@ export function ClusterSunburst({ clusters, onClusterClick }: Props) {
       const chart = echarts.init(containerRef.current, undefined, { renderer: 'svg' });
       chartRef.current = chart;
 
-      const data = clusters.map((c) => ({
-        name: c.name,
-        value: c.totalSearchVolume || c.urlCount || 1,
-        itemStyle: { color: c.color },
-        _clusterId: c.id,
-      }));
+      // Build tree and map to sunburst data
+      const tree = buildClusterTree(clusters);
+      const data = tree.map(toSunburstData);
 
       chart.setOption({
         series: [{
           type: 'sunburst',
           data,
-          radius: ['20%', '80%'],
+          radius: ['15%', '85%'],
           itemStyle: { borderWidth: 2, borderColor: '#fff' },
           label: {
             show: true,
             rotate: 'radial',
             fontSize: 11,
           },
+          levels: [
+            {},  // centre (unused)
+            { r0: '15%', r: '50%', label: { rotate: 'tangential' } },  // root clusters
+            { r0: '50%', r: '75%', label: { align: 'right' } },        // level-2
+            { r0: '75%', r: '85%', label: { position: 'outside' } },   // level-3+
+          ],
           emphasis: {
             focus: 'ancestor',
             itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' },
