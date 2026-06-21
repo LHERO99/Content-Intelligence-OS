@@ -757,6 +757,108 @@ export const agentRunMessages = pgTable(
 );
 
 // ===========================================================================
+// TOPIC MAP & JOURNEY MAPPING
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// topic_clusters - Manually defined topic clusters
+// ---------------------------------------------------------------------------
+export const topicClusters = pgTable(
+  'topic_clusters',
+  {
+    id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    name:        text('name').notNull(),
+    description: text('description'),
+    color:       text('color').notNull().default('#6366f1'),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:  index('topic_clusters_tenant_idx').on(t.tenantId),
+    nameUnique: uniqueIndex('topic_clusters_name_tenant_idx').on(t.name, t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// url_topic_clusters - Junction: URL ↔ Topic Cluster
+// ---------------------------------------------------------------------------
+export const urlTopicClusters = pgTable(
+  'url_topic_clusters',
+  {
+    urlId:          text('url_id').notNull().references(() => urls.id, { onDelete: 'cascade' }),
+    topicClusterId: text('topic_cluster_id').notNull().references(() => topicClusters.id, { onDelete: 'cascade' }),
+    tenantId:       text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk:         primaryKey({ columns: [t.urlId, t.topicClusterId] }),
+    tenantIdx:  index('url_topic_clusters_tenant_idx').on(t.tenantId),
+    clusterIdx: index('url_topic_clusters_cluster_idx').on(t.topicClusterId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// topic_ideas - Unplanned topic ideas per cluster
+// ---------------------------------------------------------------------------
+export const topicIdeas = pgTable(
+  'topic_ideas',
+  {
+    id:                text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:          text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    topicClusterId:    text('topic_cluster_id').notNull().references(() => topicClusters.id, { onDelete: 'cascade' }),
+    keyword:           text('keyword').notNull(),
+    searchVolume:      integer('search_volume'),
+    keywordDifficulty: integer('keyword_difficulty'),
+    source:            text('source').$type<'manual' | 'dataforseo'>().notNull().default('manual'),
+    createdAt:         timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:  index('topic_ideas_tenant_idx').on(t.tenantId),
+    clusterIdx: index('topic_ideas_cluster_idx').on(t.topicClusterId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// journeys - Customer journey definitions
+// ---------------------------------------------------------------------------
+export const journeys = pgTable(
+  'journeys',
+  {
+    id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    name:        text('name').notNull(),
+    description: text('description'),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('journeys_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// journey_page_mappings - URL ↔ Journey phase assignments
+// ---------------------------------------------------------------------------
+export const journeyPageMappings = pgTable(
+  'journey_page_mappings',
+  {
+    id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    journeyId:   text('journey_id').notNull().references(() => journeys.id, { onDelete: 'cascade' }),
+    urlId:       text('url_id').notNull().references(() => urls.id, { onDelete: 'cascade' }),
+    funnelPhase: text('funnel_phase').$type<'awareness' | 'consideration' | 'decision' | 'retention'>().notNull(),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    journeyUrlUnique: uniqueIndex('journey_page_mappings_journey_url_idx').on(t.journeyId, t.urlId),
+    tenantIdx:        index('journey_page_mappings_tenant_idx').on(t.tenantId),
+    journeyIdx:       index('journey_page_mappings_journey_idx').on(t.journeyId),
+    phaseIdx:         index('journey_page_mappings_phase_idx').on(t.journeyId, t.funnelPhase),
+  })
+);
+
+// ===========================================================================
 // BACKWARDS COMPATIBILITY ALIASES
 // ===========================================================================
 export const keywordMap = urlKeywords;

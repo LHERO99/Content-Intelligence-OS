@@ -26,6 +26,8 @@ import {
   users as usersTable,
   tenants as tenantsTable,
   urlCostSummary,
+  urlTopicClusters,
+  topicClusters,
 } from './db/schema';
 
 export * from './postgres-types';
@@ -143,11 +145,16 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
   return withTenant(tenant, async (tx) => {
     const rows = await tx
       .select({
-        keyword: urlKeywords,
-        url: urls,
+        keyword:  urlKeywords,
+        url:      urls,
         planning: planningStatus,
-        cycle: executionCycles,
+        cycle:    executionCycles,
         publishing: publishingStatus,
+        cluster: {
+          topicClusterId:    topicClusters.id,
+          topicClusterName:  topicClusters.name,
+          topicClusterColor: topicClusters.color,
+        },
       })
       .from(urlKeywords)
       .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
@@ -166,6 +173,14 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
         )
       )
       .leftJoin(publishingStatus, eq(publishingStatus.cycleId, executionCycles.id))
+      .leftJoin(
+        urlTopicClusters,
+        and(
+          eq(urlTopicClusters.urlId, urls.id),
+          eq(urlTopicClusters.tenantId, tenant),
+        )
+      )
+      .leftJoin(topicClusters, eq(topicClusters.id, urlTopicClusters.topicClusterId))
       .where(
         and(
           eq(urlKeywords.tenantId, tenant),
@@ -207,7 +222,7 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       editorMap.set(e.keywordId, arr);
     }
 
-    return rows.map(({ keyword: kw, url, planning, cycle, publishing }) => ({
+    return rows.map(({ keyword: kw, url, planning, cycle, publishing, cluster }) => ({
       id: kw.id,
       Keyword: kw.keyword,
       Target_URL: url.url,
@@ -228,6 +243,10 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       optimizationRequestedAt: planning?.optimizationRequestedAt?.toISOString(),
       agentRunId: cycle?.agentRunId ?? null,
       cycleId: cycle?.id ?? null,
+      topicClusterId:    cluster?.topicClusterId ?? null,
+      topicClusterName:  cluster?.topicClusterName ?? null,
+      topicClusterColor: cluster?.topicClusterColor ?? null,
+      urlId:             url.id,
     }));
   });
 }

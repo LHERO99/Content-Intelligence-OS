@@ -40,6 +40,14 @@ export interface KeywordMap {
   agentRunId?: string | null;
   /** Execution cycle ID for cancel/restart operations */
   cycleId?: number | null;
+  /** ID of the assigned Topic Cluster (null = no cluster) */
+  topicClusterId?: string | null;
+  /** Name of the assigned Topic Cluster */
+  topicClusterName?: string | null;
+  /** Color of the assigned Topic Cluster */
+  topicClusterColor?: string | null;
+  /** URL UUID (from urls.id) — needed for topic cluster assignment API calls */
+  urlId?: string;
 }
 
 export interface SkippedKeyword extends Partial<KeywordMap> {

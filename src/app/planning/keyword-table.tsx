@@ -29,8 +29,8 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 
 // Feature Imports
-import { 
-  EditKeywordModal, 
+import {
+  EditKeywordModal,
   KeywordFilterBar,
   PlanningTable,
   PlanningHeader,
@@ -38,10 +38,23 @@ import {
 } from "@/features/planning/components";
 import { PlanningService } from "@/features/planning/services/planning-service";
 import { useI18n } from "@/i18n/use-i18n";
+import { useTopicClusters } from "@/features/topic-map/hooks/use-topic-clusters";
 
 interface KeywordTableProps {
   keywords: KeywordMap[];
 }
+
+const DEFAULT_COLUMN_ORDER = [
+  "select",
+  "Keyword",
+  "Main_Keyword",
+  "Search_Volume",
+  "Difficulty",
+  "Article_Count",
+  "Avg_Product_Value",
+  "Target_URL",
+  "topicCluster",
+];
 
 export function KeywordTable({ keywords }: KeywordTableProps) {
   const { t } = useI18n();
@@ -58,6 +71,18 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
   const [editingKeyword, setEditingKeyword] = React.useState<KeywordMap | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
+  // Local data state for optimistic updates
+  const [data, setData] = React.useState<KeywordMap[]>(keywords);
+  React.useEffect(() => {
+    setData(keywords);
+  }, [keywords]);
+
+  // Topic clusters
+  const { clusters, refresh: refreshClusters } = useTopicClusters();
+  React.useEffect(() => {
+    refreshClusters();
+  }, [refreshClusters]);
+
   const updateData = async (id: string, updates: any) => {
     try {
       await PlanningService.updateKeyword(id, updates);
@@ -68,20 +93,80 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
     }
   };
 
+  const handleClusterAssign = React.useCallback(async (keywordId: string, newClusterId: string | null) => {
+    const row = data.find((d) => d.id === keywordId);
+    if (!row) return;
+    const urlId = row.urlId;
+    if (!urlId) return;
+
+    const oldClusterId = row.topicClusterId ?? null;
+    if (oldClusterId === newClusterId) return;
+
+    // Optimistic update — update all keywords sharing the same URL
+    const newCluster = clusters.find((c) => c.id === newClusterId);
+    setData((prev) =>
+      prev.map((r) =>
+        r.urlId === urlId
+          ? {
+              ...r,
+              topicClusterId:    newClusterId,
+              topicClusterName:  newCluster?.name ?? null,
+              topicClusterColor: newCluster?.color ?? null,
+            }
+          : r,
+      ),
+    );
+
+    try {
+      if (oldClusterId) {
+        await fetch(`/api/topic-clusters/${oldClusterId}/urls/${urlId}`, { method: "DELETE" });
+      }
+      if (newClusterId) {
+        await fetch(`/api/topic-clusters/${newClusterId}/urls`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ urlId }),
+        });
+      }
+    } catch {
+      // Rollback on error
+      setData((prev) =>
+        prev.map((r) =>
+          r.urlId === urlId
+            ? {
+                ...r,
+                topicClusterId:    oldClusterId,
+                topicClusterName:  row.topicClusterName ?? null,
+                topicClusterColor: row.topicClusterColor ?? null,
+              }
+            : r,
+        ),
+      );
+      addAlert({ title: "Fehler", message: "Cluster-Zuweisung fehlgeschlagen.", type: "error" });
+    }
+  }, [data, clusters, addAlert]);
+
   React.useEffect(() => {
     const savedOrder = localStorage.getItem("keyword-table-column-order");
-    const defaultOrder = ["select", "Keyword", "Main_Keyword", "Search_Volume", "Difficulty", "Article_Count", "Avg_Product_Value", "Target_URL"];
     if (savedOrder) {
       try {
         const parsedOrder = JSON.parse(savedOrder) as string[];
-        const filteredOrder = parsedOrder.filter(id => defaultOrder.includes(id));
-        setColumnOrder(["select", ...filteredOrder.filter(id => id !== "select")]);
-      } catch (e) { setColumnOrder(defaultOrder); }
-    } else { setColumnOrder(defaultOrder); }
+        const filteredOrder = parsedOrder.filter((id) => DEFAULT_COLUMN_ORDER.includes(id));
+        // Append any newly added columns not present in the saved order
+        const newColumns = DEFAULT_COLUMN_ORDER.filter(
+          (id) => !parsedOrder.includes(id) && id !== "select",
+        );
+        setColumnOrder(["select", ...filteredOrder.filter((id) => id !== "select"), ...newColumns]);
+      } catch (e) {
+        setColumnOrder(DEFAULT_COLUMN_ORDER);
+      }
+    } else {
+      setColumnOrder(DEFAULT_COLUMN_ORDER);
+    }
   }, []);
 
   const table = useReactTable({
-    data: keywords,
+    data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -96,6 +181,12 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
     enableSortingRemoval: false,
     initialState: { pagination: { pageSize: 50 } },
     state: { sorting, columnFilters, columnVisibility, rowSelection, columnOrder },
+    meta: {
+      clusters,
+      onClusterAssign: (keywordId: string, newClusterId: string | null) => {
+        handleClusterAssign(keywordId, newClusterId);
+      },
+    },
   });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor));
@@ -115,17 +206,17 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
 
   return (
     <div className="w-full space-y-6">
-      <PlanningHeader 
-        icon={Map} 
-        title={t("planning.keywordMap")} 
-        description={t("planning.keywordMapDesc")} 
+      <PlanningHeader
+        icon={Map}
+        title={t("planning.keywordMap")}
+        description={t("planning.keywordMapDesc")}
       />
       <KeywordFilterBar table={table} columns={columns} />
-      <PlanningTable 
-        table={table} 
-        columnOrder={columnOrder} 
-        sensors={sensors} 
-        onDragEnd={handleDragEnd} 
+      <PlanningTable
+        table={table}
+        columnOrder={columnOrder}
+        sensors={sensors}
+        onDragEnd={handleDragEnd}
         onRowClick={(keyword) => { setEditingKeyword(keyword); setIsEditModalOpen(true); }}
       />
       <div className="flex items-center justify-end space-x-2 py-4">
@@ -139,11 +230,11 @@ export function KeywordTable({ keywords }: KeywordTableProps) {
           <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{t("planning.next")}</Button>
         </div>
       </div>
-      <EditKeywordModal 
-        keyword={editingKeyword} 
-        open={isEditModalOpen} 
-        onOpenChange={setIsEditModalOpen} 
-        onSave={updateData} 
+      <EditKeywordModal
+        keyword={editingKeyword}
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSave={updateData}
       />
     </div>
   );
