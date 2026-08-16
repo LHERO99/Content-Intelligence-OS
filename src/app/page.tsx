@@ -190,14 +190,21 @@ export default function DashboardPage() {
       {/* Setup checklist — shown until all required fields are configured */}
       {setupStatus && (() => {
         const s = setupStatus;
-        const requiredDone = s.keywordMap.ok && s.integrations.gsc || s.integrations.sistrix || s.integrations.dataforseo;
-        // Hide entire card only when keyword map + at least one integration is ok
+        const requiredDone = s.tenantDomain.ok && s.keywordMap.ok && s.integrations.gsc || s.integrations.sistrix || s.integrations.dataforseo;
+        // Hide entire card only when tenant domain + keyword map + at least one integration is ok
         const atLeastOneIntegration = s.integrations.gsc || s.integrations.sistrix || s.integrations.dataforseo;
-        if (s.keywordMap.ok && atLeastOneIntegration) return null;
+        if (s.tenantDomain.ok && s.keywordMap.ok && atLeastOneIntegration) return null;
 
         type CheckItem = { ok: boolean; label: string; desc: string; href: string; cta: string };
 
         const requiredItems: CheckItem[] = [
+          {
+            ok:    s.tenantDomain.ok,
+            label: t("setup.tenantDomain"),
+            desc:  s.tenantDomain.ok ? t("setup.tenantDomainOk") : t("setup.tenantDomainMissing"),
+            href:  "/admin?tab=general",
+            cta:   t("setup.tenantDomainCta"),
+          },
           {
             ok:    s.keywordMap.ok,
             label: t("setup.keywordMap"),
@@ -244,7 +251,7 @@ export default function DashboardPage() {
             ok:    s.optional.branding.ok,
             label: t("setup.branding"),
             desc:  s.optional.branding.ok ? t("setup.brandingOk") : t("setup.brandingMissing"),
-            href:  "/admin?tab=branding",
+            href:  "/admin?tab=general",
             cta:   t("setup.brandingCta"),
           },
           {

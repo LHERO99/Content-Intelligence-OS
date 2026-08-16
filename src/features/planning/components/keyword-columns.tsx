@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KeywordMap } from "@/lib/postgres-types";
 import { textColumnFilterFn } from "./filter-utils";
+import { TopicClusterCell } from "./topic-cluster-cell";
 
 export const keywordColumns: ColumnDef<KeywordMap>[] = [
   {
@@ -63,6 +64,31 @@ export const keywordColumns: ColumnDef<KeywordMap>[] = [
             )}
           </Tooltip>
         </TooltipProvider>
+      );
+    },
+  },
+  {
+    id: "topicCluster",
+    accessorKey: "topicClusterId",
+    header: "Topic Cluster",
+    size: 160,
+    enableSorting: true,
+    enableColumnFilter: false,
+    cell: ({ row, table }) => {
+      const clusterId    = row.original.topicClusterId ?? null;
+      const clusterName  = row.original.topicClusterName ?? null;
+      const clusterColor = row.original.topicClusterColor ?? null;
+      const clusters     = (table.options.meta as any)?.clusters ?? [];
+      return (
+        <TopicClusterCell
+          clusterId={clusterId}
+          clusterName={clusterName}
+          clusterColor={clusterColor}
+          clusters={clusters}
+          onAssign={(newClusterId) =>
+            (table.options.meta as any)?.onClusterAssign?.(row.original.id, newClusterId)
+          }
+        />
       );
     },
   },

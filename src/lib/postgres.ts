@@ -26,6 +26,8 @@ import {
   users as usersTable,
   tenants as tenantsTable,
   urlCostSummary,
+  urlTopicClusters,
+  topicClusters,
 } from './db/schema';
 
 export * from './postgres-types';
@@ -108,6 +110,9 @@ function mapToOldStatus(
   // Active production states
   if (execution?.status === 'commissioned') return 'Beauftragt';
   if (execution?.status === 'in_progress') return 'In Arbeit';
+  // Terminal failure/cancellation states — cycle is preserved (not deleted)
+  if (execution?.status === 'failed') return 'Fehlgeschlagen';
+  if (execution?.status === 'cancelled') return 'Abgebrochen';
   // Only treat 'delivered' as Angeliefert when the publishing step has not yet
   // been completed.  Once publishingStatus = 'published', this cycle is terminal.
   if (execution?.status === 'delivered' && publishing?.status !== 'published') return 'Angeliefert';
@@ -140,11 +145,16 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
   return withTenant(tenant, async (tx) => {
     const rows = await tx
       .select({
-        keyword: urlKeywords,
-        url: urls,
+        keyword:  urlKeywords,
+        url:      urls,
         planning: planningStatus,
-        cycle: executionCycles,
+        cycle:    executionCycles,
         publishing: publishingStatus,
+        cluster: {
+          topicClusterId:    topicClusters.id,
+          topicClusterName:  topicClusters.name,
+          topicClusterColor: topicClusters.color,
+        },
       })
       .from(urlKeywords)
       .innerJoin(urls, eq(urls.id, urlKeywords.urlId))
@@ -163,6 +173,14 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
         )
       )
       .leftJoin(publishingStatus, eq(publishingStatus.cycleId, executionCycles.id))
+      .leftJoin(
+        urlTopicClusters,
+        and(
+          eq(urlTopicClusters.urlId, urls.id),
+          eq(urlTopicClusters.tenantId, tenant),
+        )
+      )
+      .leftJoin(topicClusters, eq(topicClusters.id, urlTopicClusters.topicClusterId))
       .where(
         and(
           eq(urlKeywords.tenantId, tenant),
@@ -204,7 +222,7 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       editorMap.set(e.keywordId, arr);
     }
 
-    return rows.map(({ keyword: kw, url, planning, cycle, publishing }) => ({
+    return rows.map(({ keyword: kw, url, planning, cycle, publishing, cluster }) => ({
       id: kw.id,
       Keyword: kw.keyword,
       Target_URL: url.url,
@@ -223,6 +241,12 @@ export async function getKeywordMap(tenantId?: string): Promise<KeywordMap[]> {
       Page_Type: url.pageType as any,
       Last_Published: toIsoDate(publishing?.publishedAt),
       optimizationRequestedAt: planning?.optimizationRequestedAt?.toISOString(),
+      agentRunId: cycle?.agentRunId ?? null,
+      cycleId: cycle?.id ?? null,
+      topicClusterId:    cluster?.topicClusterId ?? null,
+      topicClusterName:  cluster?.topicClusterName ?? null,
+      topicClusterColor: cluster?.topicClusterColor ?? null,
+      urlId:             url.id,
     }));
   });
 }
@@ -290,6 +314,8 @@ export async function getKeyword(keywordId: string, tenantId?: string): Promise<
       Action_Type: mapToOldActionType(planning?.plannedActionType ?? cycle?.actionType),
       Page_Type: url.pageType as any,
       Last_Published: toIsoDate(publishing?.publishedAt),
+      agentRunId: cycle?.agentRunId ?? null,
+      cycleId: cycle?.id ?? null,
     };
   });
 }
@@ -1266,15 +1292,17 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
         url: urls,
         cycle: executionCycles,
         version: executionVersions,
+        user: usersTable,
       })
       .from(processEvents)
       .leftJoin(urls, eq(urls.id, processEvents.urlId))
       .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
       .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .leftJoin(usersTable, eq(usersTable.id, processEvents.userId))
       .where(and(eq(processEvents.urlId, urlRecord.id), eq(processEvents.tenantId, tenant)))
       .orderBy(desc(processEvents.eventTimestamp));
 
-    return events.map(({ event, url, cycle, version }) => ({
+    return events.map(({ event, url, cycle, version, user }) => ({
       id: String(event.id),
       ID: event.id,
       Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
@@ -1288,6 +1316,8 @@ export async function getContentHistoryByUrl(targetUrl: string, tenantId?: strin
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
       Commission_Log_Id: cycle?.id,
+      User_Name: user?.name ?? undefined,
+      User_Email: user?.email ?? undefined,
     }));
   });
 }
@@ -1325,18 +1355,20 @@ export async function getContentHistoryByUrlOrKeywords(
         url: urls,
         cycle: executionCycles,
         version: executionVersions,
+        user: usersTable,
       })
       .from(processEvents)
       .leftJoin(urls, eq(urls.id, processEvents.urlId))
       .leftJoin(executionCycles, eq(executionCycles.id, processEvents.cycleId))
       .leftJoin(executionVersions, eq(executionVersions.id, processEvents.versionId))
+      .leftJoin(usersTable, eq(usersTable.id, processEvents.userId))
       .where(and(
         eq(processEvents.tenantId, tenant),
         keywordIdsToQuery.length > 0 ? inArray(processEvents.keywordId, keywordIdsToQuery.filter(Boolean) as string[]) : sql`1=1`
       ))
       .orderBy(desc(processEvents.eventTimestamp));
 
-    return events.map(({ event, url, cycle, version }) => ({
+    return events.map(({ event, url, cycle, version, user }) => ({
       id: String(event.id),
       ID: event.id,
       Keyword_ID: event.keywordId ? [event.keywordId] : undefined,
@@ -1350,6 +1382,8 @@ export async function getContentHistoryByUrlOrKeywords(
       Updated_At: event.eventTimestamp.toISOString(),
       Editor: event.userId ? [event.userId] : undefined,
       Commission_Log_Id: cycle?.id,
+      User_Name: user?.name ?? undefined,
+      User_Email: user?.email ?? undefined,
     }));
   });
 }
@@ -2081,3 +2115,315 @@ export async function purgeOldPerformanceData(retainDays: number = 400, tenantId
 }
 export async function getPotentialTrends(tenantId?: string): Promise<PotentialTrend[]> { return []; }
 export async function createTrend(trend: any, tenantId?: string): Promise<PotentialTrend | null> { return null; }
+
+// ---------------------------------------------------------------------------
+// KPI by Year — live join on execution_cycles × urls × cost_config
+// Used for yearly breakdowns in the monitoring KPI overview.
+// Does NOT use url_cost_summary (which is cumulative all-time only).
+// ---------------------------------------------------------------------------
+export interface KpiByYear {
+  totalAgencySavings: number;
+  totalOverheadSavings: number;
+  created: number;
+  optimized: number;
+}
+
+export async function getKpiByYear(
+  year: number,
+  tenantId?: string
+): Promise<KpiByYear> {
+  const tenant = tid(tenantId);
+  return withTenant(tenant, async (tx) => {
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+
+    // All delivered cycles within the year, with their URL's page type
+    const cycles = await tx
+      .select({
+        actionType: executionCycles.actionType,
+        pageType: urls.pageType,
+      })
+      .from(executionCycles)
+      .innerJoin(urls, eq(urls.id, executionCycles.urlId))
+      .where(
+        and(
+          eq(executionCycles.tenantId, tenant),
+          eq(executionCycles.status, 'delivered'),
+          gte(executionCycles.deliveredAt, startDate),
+          lt(executionCycles.deliveredAt, endDate)
+        )
+      );
+
+    if (cycles.length === 0) {
+      return { totalAgencySavings: 0, totalOverheadSavings: 0, created: 0, optimized: 0 };
+    }
+
+    // Cost config lookup: "PageType|CostActionType" → { agencyCost, overheadCost }
+    const costConfigs = await tx
+      .select()
+      .from(costConfigTable)
+      .where(eq(costConfigTable.tenantId, tenant));
+
+    const costLookup = new Map<string, { agencyCost: number; overheadCost: number }>();
+    for (const cfg of costConfigs) {
+      costLookup.set(`${cfg.pageType}|${cfg.actionType}`, {
+        agencyCost: Number(cfg.agencyCost),
+        overheadCost: Number(cfg.overheadCost),
+      });
+    }
+
+    let totalAgencySavings = 0;
+    let totalOverheadSavings = 0;
+    let created = 0;
+    let optimized = 0;
+
+    for (const cycle of cycles) {
+      const pageType = cycle.pageType ?? 'Kategorie';
+      // DB enum: 'creation' | 'optimization' → cost_config: 'Erstellung' | 'Optimierung'
+      const costActionType = cycle.actionType === 'creation' ? 'Erstellung' : 'Optimierung';
+      const cost = costLookup.get(`${pageType}|${costActionType}`);
+      if (cost) {
+        totalAgencySavings += cost.agencyCost;
+        totalOverheadSavings += cost.overheadCost;
+      }
+      if (cycle.actionType === 'creation') created++;
+      else optimized++;
+    }
+
+    return { totalAgencySavings, totalOverheadSavings, created, optimized };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Aggregate KPIs — SQL-computed, in-memory cached for 1h per tenant
+//
+// avgTTR:          Ø days from first creation delivery until main keyword
+//                  reaches ranking ≤ 10 (uses keyword_rankings, not GSC position)
+// stabilityIndex:  Ø optimization cycles needed until main keyword is stable
+//                  in top 5 for 6 consecutive weekly data points
+// avgTTP:          Ø days from first creation delivery until GSC clicks
+//                  exceed the 30-day pre-delivery baseline by ≥ 20%
+// ---------------------------------------------------------------------------
+export interface AggregateKpis {
+  avgTTR:               number;
+  ttrUrlCount:          number;   // URLs die Top-10 erreicht haben
+  ttrSuccessRate:       number;   // % aller creation-delivered URLs mit Ranking-Daten
+  stabilityIndex:       number;
+  stabilityUrlCount:    number;   // URLs mit ≥6 konsekutiven Top-5-Wochen
+  stabilitySuccessRate: number;   // % aller URLs mit mind. einem Top-5-Datenpunkt
+  avgTTP:               number;
+  ttpUrlCount:          number;   // URLs die 20%-Lift erreicht haben
+  ttpSuccessRate:       number;   // % aller creation-delivered URLs mit GSC-Daten danach
+}
+
+const _aggregateKpiCache = new Map<string, { value: AggregateKpis; expiresAt: number }>();
+
+export async function getAggregateKpis(tenantId?: string): Promise<AggregateKpis> {
+  const tenant = tid(tenantId);
+
+  const cached = _aggregateKpiCache.get(tenant);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const result = await withTenant(tenant, async (tx) => {
+    // ------------------------------------------------------------------
+    // avgTTR: days from first creation delivery → main keyword top 10
+    // ------------------------------------------------------------------
+    const ttrRows = await tx.execute(sql`
+      WITH first_top10 AS (
+        SELECT
+          ec.url_id,
+          ec.delivered_at::date AS delivered_date,
+          MIN(kr.date)          AS first_top10_date
+        FROM execution_cycles ec
+        JOIN url_keywords uk
+          ON uk.url_id = ec.url_id
+         AND uk.main_keyword = true
+         AND uk.tenant_id = ${tenant}
+        JOIN keyword_rankings kr
+          ON kr.keyword_id = uk.id
+         AND kr.tenant_id  = ${tenant}
+         AND kr.date       >= ec.delivered_at::date
+         AND kr.ranking    <= 10
+        WHERE ec.tenant_id  = ${tenant}
+          AND ec.status     = 'delivered'
+          AND ec.action_type = 'creation'
+        GROUP BY ec.url_id, ec.delivered_at
+      )
+      SELECT
+        ROUND(AVG(first_top10_date - delivered_date)) AS avg_ttr,
+        COUNT(*)                                       AS ttr_count,
+        (
+          SELECT COUNT(DISTINCT ec2.url_id)
+          FROM execution_cycles ec2
+          JOIN url_keywords uk2
+            ON uk2.url_id     = ec2.url_id
+           AND uk2.main_keyword = true
+           AND uk2.tenant_id  = ${tenant}
+          JOIN keyword_rankings kr2
+            ON kr2.keyword_id = uk2.id
+           AND kr2.tenant_id  = ${tenant}
+           AND kr2.date       >= ec2.delivered_at::date
+          WHERE ec2.tenant_id   = ${tenant}
+            AND ec2.status      = 'delivered'
+            AND ec2.action_type = 'creation'
+        ) AS ttr_eligible
+      FROM first_top10
+    `);
+
+    // ------------------------------------------------------------------
+    // stabilityIndex: Islands & Gaps — 6 consecutive weeks in top 5
+    // ------------------------------------------------------------------
+    const stabilityRows = await tx.execute(sql`
+      WITH main_rankings AS (
+        SELECT
+          uk.url_id,
+          kr.date,
+          kr.ranking,
+          ROW_NUMBER() OVER (PARTITION BY uk.url_id ORDER BY kr.date) AS rn_all
+        FROM url_keywords uk
+        JOIN keyword_rankings kr
+          ON kr.keyword_id = uk.id
+         AND kr.tenant_id  = ${tenant}
+        WHERE uk.tenant_id    = ${tenant}
+          AND uk.main_keyword = true
+      ),
+      top5_only AS (
+        SELECT
+          url_id,
+          date,
+          rn_all,
+          ROW_NUMBER() OVER (PARTITION BY url_id ORDER BY date) AS rn_top5
+        FROM main_rankings
+        WHERE ranking <= 5
+      ),
+      grouped AS (
+        SELECT url_id, date, rn_all - rn_top5 AS grp
+        FROM top5_only
+      ),
+      stability_windows AS (
+        SELECT url_id, MIN(date) AS stability_start
+        FROM grouped
+        GROUP BY url_id, grp
+        HAVING COUNT(*) >= 6
+      ),
+      first_stable AS (
+        SELECT url_id, MIN(stability_start) AS first_stable_date
+        FROM stability_windows
+        GROUP BY url_id
+      ),
+      opt_before AS (
+        SELECT ec.url_id, COUNT(*) AS opt_count
+        FROM execution_cycles ec
+        JOIN first_stable fs ON fs.url_id = ec.url_id
+        WHERE ec.tenant_id   = ${tenant}
+          AND ec.status      = 'delivered'
+          AND ec.action_type = 'optimization'
+          AND ec.delivered_at < fs.first_stable_date
+        GROUP BY ec.url_id
+      )
+      SELECT
+        ROUND(AVG(opt_count)::numeric, 1) AS stability_index,
+        COUNT(*)                           AS stability_count,
+        (
+          SELECT COUNT(DISTINCT uk2.url_id)
+          FROM url_keywords uk2
+          JOIN keyword_rankings kr2
+            ON kr2.keyword_id = uk2.id
+           AND kr2.tenant_id  = ${tenant}
+          WHERE uk2.tenant_id    = ${tenant}
+            AND uk2.main_keyword = true
+        ) AS stability_eligible
+      FROM opt_before
+    `);
+
+    // ------------------------------------------------------------------
+    // avgTTP: days from first creation delivery → GSC clicks +20% lift
+    // ------------------------------------------------------------------
+    const ttpRows = await tx.execute(sql`
+      WITH first_delivery AS (
+        SELECT url_id, MIN(delivered_at) AS first_delivered_at
+        FROM execution_cycles
+        WHERE tenant_id   = ${tenant}
+          AND status      = 'delivered'
+          AND action_type = 'creation'
+        GROUP BY url_id
+      ),
+      baselines AS (
+        SELECT
+          u.id            AS url_id,
+          u.target_url,
+          fd.first_delivered_at,
+          COALESCE(AVG(up.gsc_clicks), 0) AS baseline_clicks
+        FROM urls u
+        JOIN first_delivery fd ON fd.url_id = u.id
+        LEFT JOIN url_performance up
+          ON  up.target_url = u.target_url
+          AND up.tenant_id  = ${tenant}
+          AND up.date >= (fd.first_delivered_at::date - INTERVAL '30 days')
+          AND up.date <   fd.first_delivered_at::date
+        WHERE u.tenant_id = ${tenant}
+        GROUP BY u.id, u.target_url, fd.first_delivered_at
+      ),
+      first_lift AS (
+        SELECT
+          b.url_id,
+          b.first_delivered_at,
+          MIN(up.date) AS lift_date
+        FROM baselines b
+        JOIN urls u ON u.id = b.url_id
+        JOIN url_performance up
+          ON  up.target_url = u.target_url
+          AND up.tenant_id  = ${tenant}
+          AND up.date > b.first_delivered_at::date
+          AND up.gsc_clicks > GREATEST(b.baseline_clicks * 1.2, 1)
+        GROUP BY b.url_id, b.first_delivered_at
+      )
+      SELECT
+        ROUND(AVG(lift_date - first_delivered_at::date)) AS avg_ttp,
+        COUNT(*)                                          AS ttp_count,
+        (
+          SELECT COUNT(DISTINCT b2.url_id)
+          FROM baselines b2
+          JOIN urls u2 ON u2.id = b2.url_id
+          JOIN url_performance up2
+            ON  up2.target_url = u2.target_url
+            AND up2.tenant_id  = ${tenant}
+            AND up2.date       > b2.first_delivered_at::date
+        ) AS ttp_eligible
+      FROM first_lift
+    `);
+
+    const ttrRow       = (ttrRows[0]       ?? {}) as Record<string, unknown>;
+    const stabilityRow = (stabilityRows[0] ?? {}) as Record<string, unknown>;
+    const ttpRow       = (ttpRows[0]       ?? {}) as Record<string, unknown>;
+
+    const safeRate = (count: number, eligible: number) =>
+      eligible > 0 ? Math.round((count / eligible) * 100) : 0;
+
+    const ttrCount     = Number(ttrRow.ttr_count               ?? 0) || 0;
+    const ttrEligible  = Number(ttrRow.ttr_eligible            ?? 0) || 0;
+    const stabCount    = Number(stabilityRow.stability_count   ?? 0) || 0;
+    const stabEligible = Number(stabilityRow.stability_eligible ?? 0) || 0;
+    const ttpCount     = Number(ttpRow.ttp_count               ?? 0) || 0;
+    const ttpEligible  = Number(ttpRow.ttp_eligible            ?? 0) || 0;
+
+    return {
+      avgTTR:               Number(ttrRow.avg_ttr              ?? 0) || 0,
+      ttrUrlCount:          ttrCount,
+      ttrSuccessRate:       safeRate(ttrCount, ttrEligible),
+      stabilityIndex:       Number(stabilityRow.stability_index ?? 0) || 0,
+      stabilityUrlCount:    stabCount,
+      stabilitySuccessRate: safeRate(stabCount, stabEligible),
+      avgTTP:               Number(ttpRow.avg_ttp              ?? 0) || 0,
+      ttpUrlCount:          ttpCount,
+      ttpSuccessRate:       safeRate(ttpCount, ttpEligible),
+    };
+  });
+
+  _aggregateKpiCache.set(tenant, {
+    value:     result,
+    expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour TTL
+  });
+
+  return result;
+}

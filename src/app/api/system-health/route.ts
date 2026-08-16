@@ -77,7 +77,8 @@ async function checkCronSync(
   id: 'cron:sync-gsc' | 'cron:sync-dataforseo' | 'cron:sync-sistrix',
   label: string,
   tenantId?: string,
-  staleAfterDays = 8
+  staleAfterDays = 8,
+  configKey?: string,
 ): Promise<HealthCheck> {
   const logs = await getLatestAuditLogByPrefix(`${id}:`, 1, tenantId);
   const latest = logs[0];
@@ -113,12 +114,58 @@ async function checkCronSync(
   }
 
   if (latest.action.endsWith(':skipped')) {
+    let skippedReason = 'not_configured';
+    try {
+      const p = JSON.parse(latest.rawPayload || '{}');
+      if (p.skippedReason) skippedReason = String(p.skippedReason);
+    } catch {}
+
+    if (skippedReason === 'no_urls') {
+      return {
+        id,
+        label,
+        status: 'ok',
+        detail: 'Nothing to sync — no URLs in this run',
+        detailKey: 'dashboard.systemHealth.cron.noUrls',
+        checkedAt: latest.timestamp,
+      };
+    }
+
+    // Audit log says "not configured" — but maybe the key was added since then.
+    // Re-check the current config to avoid showing a stale warning.
+    if (skippedReason === 'not_configured' && configKey && tenantId) {
+      try {
+        const currentConfig = await getConfig(tenantId);
+        if (currentConfig[configKey]?.trim()) {
+          return {
+            id,
+            label,
+            status: 'ok',
+            detail: 'Configured — sync pending next run',
+            detailKey: 'dashboard.systemHealth.cron.configuredPending',
+            checkedAt: latest.timestamp,
+          };
+        }
+      } catch {}
+    }
+
     return {
       id,
       label,
       status: 'warning',
       detail: 'Integration not configured — sync skipped',
       detailKey: 'dashboard.systemHealth.cron.skipped',
+      checkedAt: latest.timestamp,
+    };
+  }
+
+  if (latest.action.endsWith(':no_urls')) {
+    return {
+      id,
+      label,
+      status: 'ok',
+      detail: 'Nothing to sync — no URLs in this run',
+      detailKey: 'dashboard.systemHealth.cron.noUrls',
       checkedAt: latest.timestamp,
     };
   }
@@ -386,7 +433,7 @@ export async function GET(req: NextRequest) {
       checkDatabase(tenantId),
       checkCronSync('cron:sync-gsc', 'GSC Sync', tenantId),
       checkCronSync('cron:sync-dataforseo', 'DataForSEO Sync', tenantId),
-      checkCronSync('cron:sync-sistrix', 'Sistrix Sync', tenantId),
+      checkCronSync('cron:sync-sistrix', 'Sistrix Sync', tenantId, 8, 'SISTRIX_API_KEY'),
       checkIntegrations(tenantId),
       checkAgentRuns(tenantId),
       checkContentPipeline(tenantId),

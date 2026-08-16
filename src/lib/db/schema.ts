@@ -647,6 +647,220 @@ export const urlCostSummary = pgTable(
 );
 
 // ===========================================================================
+// AGENT WORKFLOW RUNS  (replaces JSON-blob storage in config table)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// agent_workflow_runs — one row per agent run execution
+// ---------------------------------------------------------------------------
+export const agentWorkflowRuns = pgTable(
+  'agent_workflow_runs',
+  {
+    id:               text('id').primaryKey(),
+    tenantId:         text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    workflowId:       text('workflow_id').notNull(),
+    workflowVersionId: text('workflow_version_id').notNull(),
+    trigger:          text('trigger').notNull().default('manual'),
+    // pending | running | success | failed | cancelled
+    status:           text('status').notNull().default('pending'),
+    idempotencyKey:   text('idempotency_key').notNull(),
+    input:            jsonb('input'),
+    output:           jsonb('output'),
+    // Stored separately so SQL queries can filter/read without parsing JSONB
+    finalHtml:        text('final_html'),
+    // Set to true by cancel requests; the running loop polls this flag
+    cancelRequested:  boolean('cancel_requested').notNull().default(false),
+    deletedAt:        timestamp('deleted_at', { withTimezone: true }),
+    startedAt:        timestamp('started_at', { withTimezone: true }).defaultNow(),
+    finishedAt:       timestamp('finished_at', { withTimezone: true }),
+    durationMs:       integer('duration_ms'),
+    createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:        index('awr_tenant_idx').on(t.tenantId),
+    workflowIdx:      index('awr_workflow_idx').on(t.tenantId, t.workflowId),
+    statusIdx:        index('awr_status_idx').on(t.tenantId, t.status),
+    idempotencyIdx:   uniqueIndex('awr_idempotency_idx').on(t.tenantId, t.workflowVersionId, t.idempotencyKey),
+    createdAtIdx:     index('awr_created_at_idx').on(t.tenantId, t.createdAt),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// agent_run_steps — one row per individual LLM call within a run
+// ---------------------------------------------------------------------------
+export const agentRunSteps = pgTable(
+  'agent_run_steps',
+  {
+    id:            text('id').primaryKey(),
+    tenantId:      text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    runId:         text('run_id').notNull().references(() => agentWorkflowRuns.id, { onDelete: 'cascade' }),
+    nodeId:        text('node_id').notNull(),
+    nodeName:      text('node_name').notNull(),
+    nodeType:      text('node_type').notNull(),
+    provider:      text('provider').notNull(),
+    model:         text('model').notNull(),
+    attempt:       integer('attempt').notNull().default(1),
+    // pending | running | success | failed | skipped
+    status:        text('status').notNull().default('pending'),
+    round:         integer('round'),
+    // orchestrator_decision | subagent_execution
+    phase:         text('phase'),
+    correlationId: text('correlation_id'),
+    // Full payloads — no size limits now that we use PostgreSQL
+    input:         jsonb('input'),
+    output:        jsonb('output'),
+    error:         text('error'),
+    startedAt:     timestamp('started_at', { withTimezone: true }),
+    finishedAt:    timestamp('finished_at', { withTimezone: true }),
+    durationMs:    integer('duration_ms'),
+    createdAt:     timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:     timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:    index('ars_tenant_idx').on(t.tenantId),
+    runIdx:       index('ars_run_idx').on(t.runId),
+    roundIdx:     index('ars_round_idx').on(t.runId, t.round),
+    createdAtIdx: index('ars_created_at_idx').on(t.runId, t.createdAt),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// agent_run_messages — inter-agent messages (task_request / task_result / control)
+// ---------------------------------------------------------------------------
+export const agentRunMessages = pgTable(
+  'agent_run_messages',
+  {
+    id:             text('id').primaryKey(),
+    tenantId:       text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    runId:          text('run_id').notNull().references(() => agentWorkflowRuns.id, { onDelete: 'cascade' }),
+    fromNodeId:     text('from_node_id').notNull(),
+    fromNodeName:   text('from_node_name').notNull(),
+    toNodeId:       text('to_node_id').notNull(),
+    toNodeName:     text('to_node_name').notNull(),
+    channel:        text('channel').notNull(),
+    // task_request | task_result | control
+    messageType:    text('message_type'),
+    correlationId:  text('correlation_id'),
+    round:          integer('round'),
+    targetInputKey: text('target_input_key').notNull(),
+    // Full payload stored without truncation
+    payload:        jsonb('payload'),
+    createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:       index('arm_tenant_idx').on(t.tenantId),
+    runIdx:          index('arm_run_idx').on(t.runId),
+    correlationIdx:  index('arm_correlation_idx').on(t.runId, t.correlationId),
+    createdAtIdx:    index('arm_created_at_idx').on(t.runId, t.createdAt),
+  })
+);
+
+// ===========================================================================
+// TOPIC MAP & JOURNEY MAPPING
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// topic_clusters - Manually defined topic clusters
+// ---------------------------------------------------------------------------
+export const topicClusters = pgTable(
+  'topic_clusters',
+  {
+    id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    parentId:    text('parent_id'),  // self-reference — FK enforced in SQL migration
+    name:        text('name').notNull(),
+    description: text('description'),
+    color:       text('color').notNull().default('#6366f1'),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:  index('topic_clusters_tenant_idx').on(t.tenantId),
+    parentIdx:  index('topic_clusters_parent_idx').on(t.parentId),
+    nameUnique: uniqueIndex('topic_clusters_name_tenant_idx').on(t.name, t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// url_topic_clusters - Junction: URL ↔ Topic Cluster
+// ---------------------------------------------------------------------------
+export const urlTopicClusters = pgTable(
+  'url_topic_clusters',
+  {
+    urlId:          text('url_id').notNull().references(() => urls.id, { onDelete: 'cascade' }),
+    topicClusterId: text('topic_cluster_id').notNull().references(() => topicClusters.id, { onDelete: 'cascade' }),
+    tenantId:       text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk:         primaryKey({ columns: [t.urlId, t.topicClusterId] }),
+    tenantIdx:  index('url_topic_clusters_tenant_idx').on(t.tenantId),
+    clusterIdx: index('url_topic_clusters_cluster_idx').on(t.topicClusterId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// topic_ideas - Unplanned topic ideas per cluster
+// ---------------------------------------------------------------------------
+export const topicIdeas = pgTable(
+  'topic_ideas',
+  {
+    id:                text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:          text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    topicClusterId:    text('topic_cluster_id').notNull().references(() => topicClusters.id, { onDelete: 'cascade' }),
+    keyword:           text('keyword').notNull(),
+    searchVolume:      integer('search_volume'),
+    keywordDifficulty: integer('keyword_difficulty'),
+    source:            text('source').$type<'manual' | 'dataforseo'>().notNull().default('manual'),
+    createdAt:         timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx:  index('topic_ideas_tenant_idx').on(t.tenantId),
+    clusterIdx: index('topic_ideas_cluster_idx').on(t.topicClusterId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// journeys - Customer journey definitions
+// ---------------------------------------------------------------------------
+export const journeys = pgTable(
+  'journeys',
+  {
+    id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    name:        text('name').notNull(),
+    description: text('description'),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    tenantIdx: index('journeys_tenant_idx').on(t.tenantId),
+  })
+);
+
+// ---------------------------------------------------------------------------
+// journey_page_mappings - URL ↔ Journey phase assignments
+// ---------------------------------------------------------------------------
+export const journeyPageMappings = pgTable(
+  'journey_page_mappings',
+  {
+    id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId:    text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    journeyId:   text('journey_id').notNull().references(() => journeys.id, { onDelete: 'cascade' }),
+    urlId:       text('url_id').notNull().references(() => urls.id, { onDelete: 'cascade' }),
+    funnelPhase: text('funnel_phase').$type<'awareness' | 'consideration' | 'decision' | 'retention'>().notNull(),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    journeyUrlUnique: uniqueIndex('journey_page_mappings_journey_url_idx').on(t.journeyId, t.urlId),
+    tenantIdx:        index('journey_page_mappings_tenant_idx').on(t.tenantId),
+    journeyIdx:       index('journey_page_mappings_journey_idx').on(t.journeyId),
+    phaseIdx:         index('journey_page_mappings_phase_idx').on(t.journeyId, t.funnelPhase),
+  })
+);
+
+// ===========================================================================
 // BACKWARDS COMPATIBILITY ALIASES
 // ===========================================================================
 export const keywordMap = urlKeywords;

@@ -10,3 +10,4 @@ export * from "./PlanningHeader";
 export * from "./editorial-columns";
 export * from "./keyword-columns";
 export * from "./suggestion-columns";
+export * from "./topic-cluster-cell";

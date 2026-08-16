@@ -53,6 +53,7 @@ export function AIEditorWorkspace({
   const [activeMode, setActiveMode] = useState<WorkspaceMode>('preview');
   const [workingContent, setWorkingContent] = useState(v2Content);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   // previewContent holds the latest AI proposal (not yet saved). null = no active proposal.
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(currentStatus === 'Published');
@@ -134,11 +135,10 @@ export function AIEditorWorkspace({
       
       setWorkingContent(html);
       toast.success(tr('Änderungen erfolgreich gespeichert', 'Changes saved successfully'));
+      setIsSaved(true);
       
       // Trigger a global refresh to update polling/parent data
       window.dispatchEvent(new CustomEvent('refresh-planning-data'));
-      
-      setActiveMode('preview');
     } catch (error) {
       toast.error(tr('Fehler beim Speichern des Contents', 'Error saving content'));
     } finally {
@@ -177,6 +177,10 @@ export function AIEditorWorkspace({
   };
 
   const handlePublish = async () => {
+    // Guard: prevent re-publishing an already-published cycle.
+    // The disabled attribute on TooltipTrigger does not reliably block click events on
+    // non-native-button elements, so we add an explicit early-return here.
+    if (isPublished) return;
     setIsSaving(true);
     try {
       await PlanningService.updateKeyword(keywordId, {
@@ -460,7 +464,9 @@ export function AIEditorWorkspace({
             <RichTextEditor 
               content={workingContent} 
               onSave={handleSaveContent} 
-              isSaving={isSaving} 
+              isSaving={isSaving}
+              isSaved={isSaved}
+              onContentChange={() => setIsSaved(false)}
             />
           </div>
         )}

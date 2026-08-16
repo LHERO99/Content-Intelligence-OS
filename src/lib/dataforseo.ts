@@ -105,6 +105,72 @@ async function fetchSerpBatch(
  * @param languageCode - ISO language code, e.g. "de" (default)
  * @param locationCode - DataForSEO location code, e.g. 2276 for Germany (default)
  */
+export interface KeywordIdeaResult {
+  keyword: string;
+  searchVolume: number | null;
+  keywordDifficulty: number | null;
+  competition: number | null;
+  cpc: number | null;
+}
+
+/**
+ * Fetches keyword ideas for a list of seed keywords.
+ * Uses DataForSEO Labs: Google Keyword Ideas (live).
+ * POST /v3/dataforseo_labs/google/keyword_ideas/live
+ */
+export async function fetchKeywordIdeas(
+  seedKeywords: string[],
+  username: string,
+  password: string,
+  languageCode = 'de',
+  locationCode = 2276,
+  limit = 100
+): Promise<KeywordIdeaResult[]> {
+  if (!seedKeywords.length) return [];
+  if (!username || !password) throw new Error('DataForSEO credentials missing');
+
+  const auth = buildAuthHeader(username, password);
+
+  const body = [{
+    keywords:             seedKeywords.slice(0, 200),
+    language_code:        languageCode,
+    location_code:        locationCode,
+    limit,
+    include_seed_keyword: false,
+    filters: [
+      ['keyword_info.search_volume', '>', 100],
+    ],
+  }];
+
+  const response = await fetch(
+    `${DATAFORSEO_BASE}/dataforseo_labs/google/keyword_ideas/live`,
+    {
+      method: 'POST',
+      headers: { Authorization: auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`DataForSEO Keyword Ideas request failed (${response.status}): ${text.slice(0, 200)}`);
+  }
+
+  const json = await response.json();
+  const items: any[] = json?.tasks?.[0]?.result?.[0]?.items ?? [];
+
+  return items.map((item: any) => ({
+    keyword:           item.keyword ?? '',
+    searchVolume:      item.keyword_info?.search_volume ?? null,
+    keywordDifficulty: item.keyword_properties?.keyword_difficulty ?? null,
+    competition:       item.keyword_info?.competition ?? null,
+    cpc:               item.keyword_info?.cpc ?? null,
+  }));
+}
+
+/**
+ * Fetches current SERP rankings for a list of keywords for a given domain.
+ */
 export async function fetchKeywordRankings(
   keywords: Array<{ keywordId: string; keyword: string }>,
   targetUrl: string,

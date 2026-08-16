@@ -38,7 +38,9 @@ import {
   AlertTriangle,
   LayoutDashboard,
   List,
-  Map
+  Map,
+  CalendarDays,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -47,10 +49,10 @@ import { UrlDetail } from "./url-detail";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useI18n } from "@/i18n/use-i18n";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface MonitoringData {
   metrics: {
-    avgTTR: number;
     totalAgencySavings: number;
     totalOverheadSavings: number;
     counts: Record<string, number>;
@@ -68,6 +70,25 @@ interface MonitoringData {
     optimizationEligibility: 'ELIGIBLE' | 'NO_PUBLISHED_CONTENT' | 'ALREADY_IN_WORKFLOW';
     savings: number;
   }>;
+}
+
+interface YearlyKpi {
+  totalAgencySavings: number;
+  totalOverheadSavings: number;
+  created: number;
+  optimized: number;
+}
+
+interface AggregateKpis {
+  avgTTR:               number;
+  ttrUrlCount:          number;
+  ttrSuccessRate:       number;
+  stabilityIndex:       number;
+  stabilityUrlCount:    number;
+  stabilitySuccessRate: number;
+  avgTTP:               number;
+  ttpUrlCount:          number;
+  ttpSuccessRate:       number;
 }
 
 const ELIGIBILITY_MESSAGES = {
@@ -100,9 +121,40 @@ export default function MonitoringPage() {
     }
     return "overview";
   });
+
+  const currentYear = new Date().getFullYear();
+  const lastYear = currentYear - 1;
+  const [selectedPeriod, setSelectedPeriod] = useState<'all' | number>(currentYear);
+  const [yearlyKpi, setYearlyKpi] = useState<YearlyKpi | null>(null);
+  const [yearlyKpiLoading, setYearlyKpiLoading] = useState(false);
+  const [aggregateKpis, setAggregateKpis] = useState<AggregateKpis | null>(null);
+  const [aggregateKpisLoading, setAggregateKpisLoading] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setAggregateKpisLoading(true);
+    fetch('/api/monitoring/aggregate-kpis')
+      .then(r => r.json())
+      .then(d => setAggregateKpis(d))
+      .catch(err => console.error('[AggregateKpis] fetch error:', err))
+      .finally(() => setAggregateKpisLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (selectedPeriod === 'all') {
+      setYearlyKpi(null);
+      return;
+    }
+    setYearlyKpiLoading(true);
+    fetch(`/api/monitoring/kpi?year=${selectedPeriod}`)
+      .then(r => r.json())
+      .then(d => setYearlyKpi(d))
+      .catch(err => console.error('[KPI] fetch error:', err))
+      .finally(() => setYearlyKpiLoading(false));
+  }, [selectedPeriod]);
 
   const fetchData = async () => {
     try {
@@ -322,17 +374,62 @@ export default function MonitoringPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Period switcher */}
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground mr-1">{tr("Zeitraum", "Period")}:</span>
+            {([lastYear, currentYear] as number[]).map(year => (
+              <Button
+                key={year}
+                size="sm"
+                variant={selectedPeriod === year ? 'default' : 'outline'}
+                className="h-7 px-3 text-xs"
+                onClick={() => setSelectedPeriod(year)}
+              >
+                {year}
+              </Button>
+            ))}
+            <Button
+              size="sm"
+              variant={selectedPeriod === 'all' ? 'default' : 'outline'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setSelectedPeriod('all')}
+            >
+              {tr("Gesamt", "All time")}
+            </Button>
+            {yearlyKpiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
                   {t("monitoring.avgTimeToRank")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.avgTimeToRank")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{data?.metrics.avgTTR || 0} {t("monitoring.days")}</div>
+                {aggregateKpisLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                ) : (
+                  <div className="text-2xl font-bold text-primary">{aggregateKpis?.avgTTR ?? 0} {t("monitoring.days")}</div>
+                )}
                 <p className="text-xs text-muted-foreground">{tr("Von Veröffentlichung bis Top 10 Ranking", "From publication to top 10 ranking")}</p>
+                {!aggregateKpisLoading && (
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                    <span>{t("monitoring.basis")}: {aggregateKpis?.ttrUrlCount ?? 0} URLs</span>
+                    <span>·</span>
+                    <span>{aggregateKpis?.ttrSuccessRate ?? 0}% {t("monitoring.successRate")}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -341,13 +438,24 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Coins className="h-4 w-4" />
                   {t("monitoring.agencySavings")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-primary-foreground/50 hover:text-primary-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.agencySavings")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {data?.metrics.totalAgencySavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
+                  {(selectedPeriod === 'all'
+                    ? (data?.metrics.totalAgencySavings ?? 0)
+                    : (yearlyKpi?.totalAgencySavings ?? 0)
+                  ).toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
-                <p className="text-xs opacity-80">{tr("Gesamtvolumen durch KI-Workflow", "Total volume through AI workflow")}</p>
+                <p className="text-xs opacity-80">{tr("Eingesparte Agenturkosten", "Saved agency costs")}</p>
               </CardContent>
             </Card>
 
@@ -356,11 +464,22 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <MousePointer2 className="h-4 w-4 text-primary" />
                   {t("monitoring.overheadSavings")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.overheadSavings")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary">
-                  {data?.metrics.totalOverheadSavings.toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
+                  {(selectedPeriod === 'all'
+                    ? (data?.metrics.totalOverheadSavings ?? 0)
+                    : (yearlyKpi?.totalOverheadSavings ?? 0)
+                  ).toLocaleString(locale === "de" ? 'de-DE' : 'en-US', { style: 'currency', currency: 'EUR' })}
                 </div>
                 <p className="text-xs text-muted-foreground">{tr("Reduzierter interner Aufwand", "Reduced internal effort")}</p>
               </CardContent>
@@ -371,25 +490,47 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <LayoutList className="h-4 w-4 text-primary" />
                   {t("monitoring.contentUpdates")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.contentUpdates")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">
-                  {(data?.metrics.counts.neuerstellung_ratgeber || 0) +
-                    (data?.metrics.counts.optimierung_ratgeber || 0) +
-                    (data?.metrics.counts.neuerstellung_kategorie || 0) +
-                    (data?.metrics.counts.optimierung_kategorie || 0) +
-                    (data?.metrics.counts.neuerstellung_marke || 0) +
-                    (data?.metrics.counts.optimierung_marke || 0) +
-                    (data?.metrics.counts.neuerstellung_produkt || 0) +
-                    (data?.metrics.counts.optimierung_produkt || 0)}
-                </div>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
-                  <span>{tr("Ratgeber", "Guide")}: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
-                  <span>{tr("Kategorie", "Category")}: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
-                  <span>{tr("Marke", "Brand")}: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
-                  <span>{tr("Produkt", "Product")}: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
-                </div>
+                {selectedPeriod === 'all' ? (
+                  <>
+                    <div className="text-2xl font-bold text-primary">
+                      {(data?.metrics.counts.neuerstellung_ratgeber || 0) +
+                        (data?.metrics.counts.optimierung_ratgeber || 0) +
+                        (data?.metrics.counts.neuerstellung_kategorie || 0) +
+                        (data?.metrics.counts.optimierung_kategorie || 0) +
+                        (data?.metrics.counts.neuerstellung_marke || 0) +
+                        (data?.metrics.counts.optimierung_marke || 0) +
+                        (data?.metrics.counts.neuerstellung_produkt || 0) +
+                        (data?.metrics.counts.optimierung_produkt || 0)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
+                      <span>{tr("Ratgeber", "Guide")}: {(data?.metrics.counts.neuerstellung_ratgeber || 0) + (data?.metrics.counts.optimierung_ratgeber || 0)}</span>
+                      <span>{tr("Kategorie", "Category")}: {(data?.metrics.counts.neuerstellung_kategorie || 0) + (data?.metrics.counts.optimierung_kategorie || 0)}</span>
+                      <span>{tr("Marke", "Brand")}: {(data?.metrics.counts.neuerstellung_marke || 0) + (data?.metrics.counts.optimierung_marke || 0)}</span>
+                      <span>{tr("Produkt", "Product")}: {(data?.metrics.counts.neuerstellung_produkt || 0) + (data?.metrics.counts.optimierung_produkt || 0)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-primary">
+                      {(yearlyKpi?.created ?? 0) + (yearlyKpi?.optimized ?? 0)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] mt-1 text-muted-foreground uppercase tracking-wider">
+                      <span>{tr("Erstellt", "Created")}: {yearlyKpi?.created ?? 0}</span>
+                      <span>{tr("Optimiert", "Optimized")}: {yearlyKpi?.optimized ?? 0}</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -400,17 +541,43 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-primary" />
                   {t("monitoringDetail.textsInPeriod")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.textsInPeriod")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
-                <CardDescription className="text-[10px]">{t("monitoringDetail.createdVsOptimized")}</CardDescription>
+                <CardDescription className="text-[10px]">
+                  {selectedPeriod === 'all'
+                    ? tr("Gesamt über alle Jahre", "All time total")
+                    : `${selectedPeriod}`}
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col justify-center h-[100px]">
                 <div className="flex justify-between items-end border-b pb-2">
                   <span className="text-sm text-muted-foreground">{t("monitoringDetail.created")}:</span>
-                  <span className="text-xl font-bold text-primary">0</span>
+                  <span className="text-xl font-bold text-primary">
+                    {selectedPeriod === 'all'
+                      ? (data?.metrics.counts.neuerstellung_ratgeber || 0) +
+                        (data?.metrics.counts.neuerstellung_kategorie || 0) +
+                        (data?.metrics.counts.neuerstellung_marke || 0) +
+                        (data?.metrics.counts.neuerstellung_produkt || 0)
+                      : (yearlyKpi?.created ?? 0)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-end pt-2">
                   <span className="text-sm text-muted-foreground">{t("monitoringDetail.optimized")}:</span>
-                  <span className="text-xl font-bold text-primary">0</span>
+                  <span className="text-xl font-bold text-primary">
+                    {selectedPeriod === 'all'
+                      ? (data?.metrics.counts.optimierung_ratgeber || 0) +
+                        (data?.metrics.counts.optimierung_kategorie || 0) +
+                        (data?.metrics.counts.optimierung_marke || 0) +
+                        (data?.metrics.counts.optimierung_produkt || 0)
+                      : (yearlyKpi?.optimized ?? 0)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -420,12 +587,33 @@ export default function MonitoringPage() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
                   {t("monitoringDetail.stabilityIndex")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.stabilityIndex")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                 <CardDescription className="text-[10px]">{t("monitoringDetail.avgOptimizationsToPeak")}</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[100px]">
-                <div className="text-3xl font-bold text-primary">0.0</div>
-                <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
+              <CardContent className="pb-4">
+                {aggregateKpisLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                ) : (
+                  <>
+                    <div className="flex items-center">
+                      <div className="text-3xl font-bold text-primary">{aggregateKpis?.stabilityIndex ?? 0}</div>
+                      <span className="ml-2 text-sm text-muted-foreground">{t("monitoringDetail.cycles")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                      <span>{t("monitoring.basis")}: {aggregateKpis?.stabilityUrlCount ?? 0} URLs</span>
+                      <span>·</span>
+                      <span>{aggregateKpis?.stabilitySuccessRate ?? 0}% {t("monitoring.successRate")}</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -433,13 +621,34 @@ export default function MonitoringPage() {
               <CardHeader>
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Time-to-Performance
+                  {t("monitoringDetail.timeToPerformance")}
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-help inline-flex items-center ml-auto">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] leading-relaxed">
+                      {t("monitoring.tooltips.timeToPerformance")}
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
                   <CardDescription className="text-[10px]">{t("monitoringDetail.avgDaysToLift")}</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[100px]">
-                <div className="text-3xl font-bold text-primary">0</div>
-                <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
+              <CardContent className="pb-4">
+                {aggregateKpisLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+                ) : (
+                  <>
+                    <div className="flex items-center">
+                      <div className="text-3xl font-bold text-primary">{aggregateKpis?.avgTTP ?? 0}</div>
+                      <span className="ml-2 text-sm text-muted-foreground">{t("monitoring.days")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                      <span>{t("monitoring.basis")}: {aggregateKpis?.ttpUrlCount ?? 0} URLs</span>
+                      <span>·</span>
+                      <span>{aggregateKpis?.ttpSuccessRate ?? 0}% {t("monitoring.successRate")}</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -514,7 +723,7 @@ export default function MonitoringPage() {
                             </TableCell>
                             <TableCell className="max-w-md">
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-medium truncate">{item.url}</span>
+                                <span className="font-medium truncate" title={item.url}>{item.url}</span>
                                 {item.lastActionDate && (
                                     <span className="text-[10px] text-muted-foreground">
                                     {t("monitoring.update")}: {new Date(item.lastActionDate).toLocaleDateString(locale === "de" ? 'de-DE' : 'en-US')}

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale, Globe } from "lucide-react"
+import { LayoutDashboard, FileText, PenTool, Activity, LogOut, User, ShieldCheck, History, Workflow, Building2, BarChart3, MessageSquare, ShieldAlert, Scale, Globe, Network, GitBranch } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -29,33 +29,22 @@ import {
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 
-// Menu items.
-const items = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Content-Planung",
-    url: "/planning",
-    icon: FileText,
-  },
-  {
-    title: "Content-Erstellung",
-    url: "/creation",
-    icon: PenTool,
-  },
-  {
-    title: "Content-Monitoring",
-    url: "/monitoring",
-    icon: Activity,
-  },
-  {
-    title: "Content-Historie",
-    url: "/history",
-    icon: History,
-  },
+// Strategy section items
+const strategyItems = [
+  { title: "topicMap",  url: "/topic-map", icon: Network   },
+  { title: "journeys",  url: "/journeys",  icon: GitBranch },
+]
+
+// Planning section items
+const planningItems = [
+  { title: "contentPlanning", url: "/planning", icon: FileText },
+]
+
+// Content section items
+const contentItems = [
+  { title: "contentCreation",   url: "/creation",   icon: PenTool   },
+  { title: "contentMonitoring", url: "/monitoring", icon: Activity  },
+  { title: "contentHistory",    url: "/history",    icon: History   },
 ]
 
 const adminItems = [
@@ -67,31 +56,11 @@ const adminItems = [
 ]
 
 const superAdminItems = [
-  {
-    title: "navDashboard",
-    url: "/super-admin/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "navTenants",
-    url: "/super-admin/tenants",
-    icon: Building2,
-  },
-  {
-    title: "navPricing",
-    url: "/super-admin/pricing",
-    icon: BarChart3,
-  },
-  {
-    title: "navFeedback",
-    url: "/super-admin/feedback",
-    icon: MessageSquare,
-  },
-  {
-    title: "navHealth",
-    url: "/super-admin/health",
-    icon: Activity,
-  },
+  { title: "navDashboard", url: "/super-admin/dashboard", icon: LayoutDashboard },
+  { title: "navTenants",   url: "/super-admin/tenants",   icon: Building2       },
+  { title: "navPricing",   url: "/super-admin/pricing",   icon: BarChart3       },
+  { title: "navFeedback",  url: "/super-admin/feedback",  icon: MessageSquare   },
+  { title: "navHealth",    url: "/super-admin/health",    icon: Activity        },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -108,6 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-center px-1">
             <Image
+              key={logoUrl}
               src={logoUrl}
               alt="App Logo"
               width={120}
@@ -145,34 +115,74 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         )}
 
-        {/* ── Regular Content Navigation (hidden for SuperAdmin) ── */}
+        {/* ── Dashboard ── */}
         {!isSuperAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>{t("sidebar.navigation")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {items.map((item) => {
-                  const localizedTitle =
-                    item.url === "/"
-                      ? t("sidebar.dashboard")
-                      : item.url === "/planning"
-                        ? t("sidebar.contentPlanning")
-                        : item.url === "/creation"
-                          ? t("sidebar.contentCreation")
-                          : item.url === "/monitoring"
-                            ? t("sidebar.contentMonitoring")
-                            : item.url === "/history"
-                              ? t("sidebar.contentHistory")
-                              : item.title
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton render={<Link href={item.url} />}>
-                        <item.icon />
-                        <span>{localizedTitle}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
+                <SidebarMenuItem>
+                  <SidebarMenuButton render={<Link href="/" />}>
+                    <LayoutDashboard />
+                    <span>{t("sidebar.dashboard")}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* ── Strategie Section ── */}
+        {!isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("sidebar.sectionStrategy")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {strategyItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton render={<Link href={item.url} />}>
+                      <item.icon />
+                      <span>{t(`sidebar.${item.title}`)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* ── Planung Section ── */}
+        {!isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("sidebar.sectionPlanning")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {planningItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton render={<Link href={item.url} />}>
+                      <item.icon />
+                      <span>{t(`sidebar.${item.title}`)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* ── Content Section ── */}
+        {!isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("sidebar.sectionContent")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {contentItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton render={<Link href={item.url} />}>
+                      <item.icon />
+                      <span>{t(`sidebar.${item.title}`)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
 
               {session?.user?.role === "Admin" && (

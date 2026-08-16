@@ -211,7 +211,8 @@ export async function syncDataForSeoForKeywords(
   dfsUsername: string,
   dfsPassword: string,
   force: boolean = false,
-  tenantId?: string
+  tenantId?: string,
+  tenantDomain?: string
 ): Promise<Pick<SyncResult, 'keywordsProcessed' | 'rankingRowsUpserted' | 'rankingsSkipped' | 'errors'>> {
   const errors: string[] = [];
   const weekDate = getCurrentWeekMonday();
@@ -239,9 +240,12 @@ export async function syncDataForSeoForKeywords(
 
   for (const [url, urlKeywords] of byUrl) {
     try {
+      // Prefer the centrally configured tenant domain over extracting it from the URL.
+      // This ensures all tenants use their own domain for ranking queries.
+      const targetForRanking = tenantDomain?.trim() ? tenantDomain.trim() : url;
       const rankings = await fetchKeywordRankings(
         urlKeywords.map(kw => ({ keywordId: kw.id, keyword: kw.Keyword })),
-        url,
+        targetForRanking,
         dfsUsername,
         dfsPassword
       );
@@ -367,6 +371,7 @@ export async function syncDataForSeoChunk(tenantId?: string): Promise<ChunkSyncR
 
   const dfsUsername = config.DATAFORSEO_USERNAME?.trim();
   const dfsPassword = config.DATAFORSEO_PASSWORD?.trim();
+  const tenantDomain = config.TENANT_DOMAIN?.trim();
 
   if (!dfsUsername || !dfsPassword) {
     return { ...baseResult, skippedDataforseo: true, errors: ['DataForSEO skipped: credentials not configured'], hasMore: false, nextCursor: 0, totalItems: 0 };
@@ -384,7 +389,7 @@ export async function syncDataForSeoChunk(tenantId?: string): Promise<ChunkSyncR
   }
 
   const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-    await syncDataForSeoForKeywords(chunk, dfsUsername, dfsPassword, false, tenantId);
+    await syncDataForSeoForKeywords(chunk, dfsUsername, dfsPassword, false, tenantId, tenantDomain);
 
   const nextCursor = cursor + chunk.length;
   const hasMore = nextCursor < totalItems;
@@ -431,6 +436,7 @@ export async function syncPerformanceForUrls(targetUrls: string[], tenantId?: st
   const sistrixApiKey = config.SISTRIX_API_KEY?.trim();
   const dfsUsername = config.DATAFORSEO_USERNAME?.trim();
   const dfsPassword = config.DATAFORSEO_PASSWORD?.trim();
+  const tenantDomain = config.TENANT_DOMAIN?.trim();
 
   const hasGsc = !!(gscRefreshToken && gscSiteUrl);
   const hasSistrix = !!sistrixApiKey;
@@ -477,7 +483,7 @@ export async function syncPerformanceForUrls(targetUrls: string[], tenantId?: st
       );
       if (urlKeywords.length > 0) {
         const { keywordsProcessed, rankingRowsUpserted, rankingsSkipped, errors } =
-          await syncDataForSeoForKeywords(urlKeywords, dfsUsername!, dfsPassword!, false, tenantId);
+          await syncDataForSeoForKeywords(urlKeywords, dfsUsername!, dfsPassword!, false, tenantId, tenantDomain);
         result.keywordsProcessed = keywordsProcessed;
         result.rankingRowsUpserted = rankingRowsUpserted;
         result.rankingsSkipped = rankingsSkipped;

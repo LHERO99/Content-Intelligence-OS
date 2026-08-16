@@ -415,6 +415,25 @@ export function RunDetailModal({
                       </pre>
                     </div>
                   )}
+
+                  {/* Final HTML Preview */}
+                  {run.finalHtml && (
+                    <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 mb-2 font-medium">Final HTML</p>
+                      <div
+                        className="prose prose-invert prose-sm max-w-none text-slate-200 bg-black/20 rounded-lg p-3 border border-white/5 max-h-96 overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(run.finalHtml) }}
+                      />
+                      <details className="mt-2 group">
+                        <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 transition-colors select-none">
+                          HTML-Quelltext anzeigen ▼
+                        </summary>
+                        <pre className="mt-1.5 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words bg-black/30 rounded-lg p-3 overflow-x-auto border border-white/5 leading-relaxed max-h-60">
+                          {run.finalHtml}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
                 </div>
               )}
             </>

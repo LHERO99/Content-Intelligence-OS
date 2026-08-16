@@ -431,6 +431,22 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
     );
   }
 
+  async isCancelRequested(tenantId: string, runId: string): Promise<boolean> {
+    const store = await loadStore();
+    const run = store.runs.find((r) => r.id === runId && r.tenantId === tenantId);
+    return run?.cancelRequested ?? false;
+  }
+
+  async requestCancel(tenantId: string, runId: string): Promise<void> {
+    const store = await loadStore();
+    const nextRuns = store.runs.map((r) =>
+      r.id === runId && r.tenantId === tenantId
+        ? { ...r, cancelRequested: true, updatedAt: nowIso() }
+        : r
+    );
+    await persistRuns(nextRuns, store.runSteps, store.messages);
+  }
+
   async cancelRun(tenantId: string, runId: string): Promise<WorkflowRunV2 | null> {
     const store = await loadStore();
     const run = store.runs.find((entry) => entry.id === runId && entry.tenantId === tenantId && !entry.deletedAt);
@@ -493,36 +509,29 @@ export class AirtableWorkflowRunRepositoryV2 implements WorkflowRunRepositoryV2 
 }
 
 export class AirtableIntegrationSecretProviderV2 implements IntegrationSecretProviderV2 {
-  async getOpenAIApiKey(): Promise<string | null> {
-    const config = await getConfig();
+  async getOpenAIApiKey(tenantId?: string): Promise<string | null> {
+    const config = await getConfig(tenantId);
     return (config.OPENAI_API_KEY || '').trim() || null;
   }
 
-  async getOpenRouterApiKey(): Promise<string | null> {
-    const config = await getConfig();
+  async getOpenRouterApiKey(tenantId?: string): Promise<string | null> {
+    const config = await getConfig(tenantId);
     return (config.OPENROUTER_API_KEY || '').trim() || null;
   }
 
-  async getGeminiApiKey(): Promise<string | null> {
-    const config = await getConfig();
+  async getGeminiApiKey(tenantId?: string): Promise<string | null> {
+    const config = await getConfig(tenantId);
     return (config.GEMINI_API_KEY || '').trim() || null;
   }
 
-  async getVertexLegalConfig(): Promise<{ projectId: string; location: string; endpointId: string; accessToken?: string } | null> {
-    const config = await getConfig();
-    const projectId = (config.VERTEX_AI_PROJECT_ID || '').trim();
-    const location = (config.VERTEX_AI_LOCATION || '').trim();
-    const endpointId = (config.VERTEX_AI_ENDPOINT_ID || '').trim();
-    const accessToken = (config.VERTEX_AI_ACCESS_TOKEN || '').trim();
+  async getGitHubModelsApiKey(tenantId?: string): Promise<string | null> {
+    const config = await getConfig(tenantId);
+    return (config.GITHUB_MODELS_API_KEY || '').trim() || null;
+  }
 
-    if (!projectId || !location || !endpointId) return null;
-
-    return {
-      projectId,
-      location,
-      endpointId,
-      accessToken: accessToken || undefined,
-    };
+  async getPerplexityApiKey(tenantId?: string): Promise<string | null> {
+    const config = await getConfig(tenantId);
+    return (config.PERPLEXITY_API_KEY || '').trim() || null;
   }
 }
 
@@ -530,177 +539,106 @@ export class LlmAgentModelRunnerV2 implements AgentModelRunnerV2 {
   constructor(private readonly secrets: IntegrationSecretProviderV2) {}
 
   async runStep(input: {
-    provider: 'openai' | 'openrouter' | 'gemini' | 'vertex_legal';
+    provider: 'openai' | 'openrouter' | 'gemini' | 'copilot' | 'perplexity';
     model: string;
     instruction: string;
     payload: Record<string, unknown>;
     timeoutMs: number;
+    tenantId: string;
   }): Promise<Record<string, unknown>> {
-    if (input.provider === 'openai') {
-      const key = await this.secrets.getOpenAIApiKey();
-      if (!key) throw new Error('OPENAI_API_KEY ist nicht hinterlegt.');
+    const { provider, model, instruction, payload, timeoutMs, tenantId } = input;
 
+    // ── Shared OpenAI-compatible helper ──────────────────────────────────────
+    const callOpenAICompat = async (
+      url: string,
+      apiKey: string,
+      extraHeaders?: Record<string, string>
+    ): Promise<Record<string, unknown>> => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
+      const timeout = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
       try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${key}`,
-            'Content-Type': 'application/json',
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model: input.model,
-            messages: [
-              { role: 'system', content: input.instruction },
-              { role: 'user', content: JSON.stringify(input.payload) },
-            ],
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`OpenAI Fehler (${response.status})`);
-        }
-
-        const json = await response.json();
-        const content = json?.choices?.[0]?.message?.content || '';
-        return {
-          provider: 'openai',
-          model: input.model,
-          text: content,
-          response: json,
-        };
-      } finally {
-        clearTimeout(timeout);
-      }
-    }
-
-    if (input.provider === 'openrouter') {
-      const key = await this.secrets.getOpenRouterApiKey();
-      if (!key) throw new Error('OPENROUTER_API_KEY ist nicht hinterlegt.');
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${key}`,
-            'Content-Type': 'application/json',
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model: input.model,
-            messages: [
-              { role: 'system', content: input.instruction },
-              { role: 'user', content: JSON.stringify(input.payload) },
-            ],
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`OpenRouter Fehler (${response.status})`);
-        }
-
-        const json = await response.json();
-        const content = json?.choices?.[0]?.message?.content || '';
-        return {
-          provider: 'openrouter',
-          model: input.model,
-          text: content,
-          response: json,
-        };
-      } finally {
-        clearTimeout(timeout);
-      }
-    }
-
-    if (input.provider === 'vertex_legal') {
-      const vertex = await this.secrets.getVertexLegalConfig();
-      if (!vertex) {
-        throw new Error('Vertex Legal Konfiguration fehlt (PROJECT_ID, LOCATION, ENDPOINT_ID).');
-      }
-
-      if (!vertex.accessToken) {
-        throw new Error('VERTEX_AI_ACCESS_TOKEN fehlt. Bitte im Integrations-Tab hinterlegen.');
-      }
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
-      try {
-        const url = `https://${vertex.location}-aiplatform.googleapis.com/v1/projects/${encodeURIComponent(vertex.projectId)}/locations/${encodeURIComponent(vertex.location)}/endpoints/${encodeURIComponent(vertex.endpointId)}:predict`;
         const response = await fetch(url, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${vertex.accessToken}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
+            ...extraHeaders,
           },
           signal: controller.signal,
           body: JSON.stringify({
-            instances: [
-              {
-                instruction: input.instruction,
-                model: input.model,
-                payload: input.payload,
-              },
+            model,
+            messages: [
+              { role: 'system', content: instruction },
+              { role: 'user', content: JSON.stringify(payload) },
             ],
           }),
         });
-
-        if (!response.ok) {
-          throw new Error(`Vertex Legal Endpoint Fehler (${response.status})`);
-        }
-
+        if (!response.ok) throw new Error(`${provider} Fehler (${response.status})`);
         const json = await response.json();
-        return {
-          provider: 'vertex_legal',
-          model: input.model,
-          text: JSON.stringify(json?.predictions?.[0] || json || {}),
-          response: json,
-        };
+        const content = json?.choices?.[0]?.message?.content || '';
+        return { provider, model, text: content, response: json };
       } finally {
         clearTimeout(timeout);
       }
+    };
+
+    // ── OpenAI ───────────────────────────────────────────────────────────────
+    if (provider === 'openai') {
+      const key = await this.secrets.getOpenAIApiKey(tenantId);
+      if (!key) throw new Error('OPENAI_API_KEY ist nicht hinterlegt.');
+      return callOpenAICompat('https://api.openai.com/v1/chat/completions', key);
     }
 
-    const key = await this.secrets.getGeminiApiKey();
+    // ── OpenRouter ───────────────────────────────────────────────────────────
+    if (provider === 'openrouter') {
+      const key = await this.secrets.getOpenRouterApiKey(tenantId);
+      if (!key) throw new Error('OPENROUTER_API_KEY ist nicht hinterlegt.');
+      return callOpenAICompat(
+        'https://openrouter.ai/api/v1/chat/completions',
+        key,
+        { 'HTTP-Referer': 'https://seo-content-tool', 'X-Title': 'SEO Content Tool' }
+      );
+    }
+
+    // ── Copilot / GitHub Models ──────────────────────────────────────────────
+    if (provider === 'copilot') {
+      const key = await this.secrets.getGitHubModelsApiKey(tenantId);
+      if (!key) throw new Error('GITHUB_MODELS_API_KEY ist nicht hinterlegt.');
+      return callOpenAICompat('https://models.inference.ai.azure.com/chat/completions', key);
+    }
+
+    // ── Perplexity ───────────────────────────────────────────────────────────
+    if (provider === 'perplexity') {
+      const key = await this.secrets.getPerplexityApiKey(tenantId);
+      if (!key) throw new Error('PERPLEXITY_API_KEY ist nicht hinterlegt.');
+      return callOpenAICompat('https://api.perplexity.ai/chat/completions', key);
+    }
+
+    // ── Gemini ───────────────────────────────────────────────────────────────
+    const key = await this.secrets.getGeminiApiKey(tenantId);
     if (!key) throw new Error('GEMINI_API_KEY ist nicht hinterlegt.');
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
+    const timeout = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(input.model)}:generateContent?key=${encodeURIComponent(key)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
           body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: `${input.instruction}\n\n${JSON.stringify(input.payload)}` }],
-              },
-            ],
+            contents: [{
+              role: 'user',
+              parts: [{ text: `${instruction}\n\n${JSON.stringify(payload)}` }],
+            }],
           }),
         }
       );
-
-      if (!response.ok) {
-        throw new Error(`Gemini Fehler (${response.status})`);
-      }
-
+      if (!response.ok) throw new Error(`Gemini Fehler (${response.status})`);
       const json = await response.json();
-      const content = json?.candidates?.[0]?.content?.parts?.map((part: any) => part?.text || '').join('\n') || '';
-      return {
-        provider: 'gemini',
-        model: input.model,
-        text: content,
-        response: json,
-      };
+      const content = json?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '').join('\n') || '';
+      return { provider: 'gemini', model, text: content, response: json };
     } finally {
       clearTimeout(timeout);
     }

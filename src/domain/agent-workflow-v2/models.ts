@@ -4,7 +4,7 @@ export type WorkflowMode = 'default' | 'custom';
 export type WorkflowState = 'draft' | 'published' | 'archived';
 
 export type AgentStepType = 'orchestrator' | 'research' | 'analysis' | 'briefing' | 'draft' | 'review' | 'custom';
-export type AgentProvider = 'openai' | 'openrouter' | 'gemini' | 'vertex_legal';
+export type AgentProvider = 'openai' | 'openrouter' | 'gemini' | 'copilot' | 'perplexity';
 
 export type RunStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
 export type StepStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped';
@@ -19,6 +19,8 @@ export interface WorkflowNodeConfig {
   timeoutMs: number;
   retries: number;
   enabled: boolean;
+  /** Max orchestrator rounds for the run. Only used on the orchestrator node. Default: 20 */
+  maxRounds?: number;
 }
 
 export interface WorkflowNodeV2 {
@@ -88,6 +90,10 @@ export interface WorkflowRunV2 {
   idempotencyKey: string;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
+  /** The final rendered HTML output — stored in its own column for easy access */
+  finalHtml?: string;
+  /** When true the running loop will stop after the current LLM call completes */
+  cancelRequested?: boolean;
   startedAt: string;
   finishedAt?: string;
   durationMs?: number;
@@ -176,4 +182,6 @@ export interface RunWorkflowInputV2 {
   input?: Record<string, unknown>;
   idempotencyKey?: string;
   runFrom?: 'draft' | 'published';
+  /** Pre-generated run ID — pass this so the caller can link it before the run starts */
+  runId?: string;
 }

@@ -159,7 +159,6 @@ export function AIChatPanel({
           instructions: sentInput,
           modelId,
           providerId,
-          tenantId: 'default',
         }),
       });
 

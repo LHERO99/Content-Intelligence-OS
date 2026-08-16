@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { KeywordMap, ContentLog, KeywordStatus } from '@/lib/postgres-types';
 import { triggerN8nAction } from '@/lib/n8n';
 import { AIEditorWorkspace } from './ai-editor-workspace';
 import { cn } from '@/lib/utils';
 import {
   Loader2, Send, Zap, Clock, FileText, AlertTriangle,
-  RefreshCw, Map as MapIcon, ChevronLeft, ChevronRight, User,
+  RefreshCw, Map as MapIcon, User, Square, RotateCcw, Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -19,14 +19,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useI18n } from '@/i18n/use-i18n';
 import { toLocaleTag } from '@/i18n/locale-utils';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-/**
- * One entry in the Auftrags-Liste = one commissioning event.
- * Derived from a single "Content wurde beauftragt" log entry.
- */
 interface JobEntry {
-  /** ID of the "Content wurde beauftragt" content_log row */
   commissionLogId: number;
   commissionedAt: string;
   keywordId: string;
@@ -34,73 +29,50 @@ interface JobEntry {
   targetUrl?: string;
   actionType: 'Erstellung' | 'Optimierung';
   keywordStatus: KeywordStatus;
-  /** ID of the next "Content angeliefert" log after this commissioning event */
   deliveryLogId?: number;
-  /**
-   * ID of the newest v2 log for this cycle (used to load the displayed body).
-   * After a manual save a new log is created; displayLogId points to that newer log
-   * so the editor always shows the latest saved version, not the original delivery.
-   * Falls back to deliveryLogId for cycles without a Commission_Log_Id (pre-migration).
-   */
   displayLogId?: number;
-  /** True when the keyword was reset to Planned after a failed run */
+  /** True when the keyword was reset to Planned after a failed run (legacy) */
   isFailedRetry: boolean;
-  /** User who commissioned the content */
   userName?: string;
   userEmail?: string;
+  /** ID of the linked agent_workflow_run (from execution_cycles.agent_run_id) */
+  agentRunId?: string | null;
+  /** execution_cycle.id — needed for cancel/restart */
+  cycleId?: number | null;
+}
+
+interface AgentProgress {
+  round?: number;
+  activeAgentName?: string;
+  phase?: string;
 }
 
 const PAGE_SIZE = 20;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function buildJobEntries(
-  contentLogs: ContentLog[],
-  keywords: KeywordMap[],
-): JobEntry[] {
+function buildJobEntries(contentLogs: ContentLog[], keywords: KeywordMap[]): JobEntry[] {
   const kwMap: Record<string, KeywordMap> = {};
-  keywords.forEach((k) => {
-    kwMap[k.id] = k;
-  });
+  keywords.forEach((k) => { kwMap[k.id] = k; });
 
-  // All commissioning events, newest first (logs are already sorted desc by API)
-  // Extra safeguard: only show commission logs for keywords that are actually commissioned
   const commissioningLogs = contentLogs.filter((l) => {
     const keywordId = l.Keyword_ID?.[0];
-    if (!keywordId) return false;
-    
-    // Must have the correct event label
-    if (l.Event_Label !== 'Content wurde beauftragt') return false;
-    
-    // Extra safety: keyword must actually be in commissioned workflow status
+    if (!keywordId || l.Event_Label !== 'Content wurde beauftragt') return false;
     const keyword = kwMap[keywordId];
-    if (!keyword) return false;
-    
-    // Only show main keywords in commission list
-    // (All keywords of a URL share the same execution cycle)
-    if (keyword.Main_Keyword !== 'Y') return false;
-    
-    // Only show if keyword is in the commissioned workflow (not just "Planned")
-    return keyword.Status === 'Beauftragt' || 
-           keyword.Status === 'In Arbeit' || 
-           keyword.Status === 'Angeliefert' || 
-           keyword.Status === 'Review' ||
-           keyword.Status === 'Published';
+    if (!keyword || keyword.Main_Keyword !== 'Y') return false;
+    return (
+      keyword.Status === 'Beauftragt' || keyword.Status === 'In Arbeit' ||
+      keyword.Status === 'Angeliefert' || keyword.Status === 'Review' ||
+      keyword.Status === 'Published' || keyword.Status === 'Fehlgeschlagen' ||
+      keyword.Status === 'Abgebrochen'
+    );
   });
 
-  // All delivery logs (v2 = has actual content body)
   const deliveryLogs = contentLogs.filter(
     (l) => l.Event_Label === 'Content angeliefert' && l.Version === 'v2',
   );
+  const publishLogs = contentLogs.filter((l) => l.Event_Label === 'Content veröffentlicht');
 
-  // All publish logs — used to determine per-cycle published status
-  const publishLogs = contentLogs.filter(
-    (l) => l.Event_Label === 'Content veröffentlicht',
-  );
-
-  // Newest v2 log per commission cycle — tracks the latest saved version for display.
-  // After a manual save the new log has Commission_Log_Id set; this map always points
-  // to the most recent v2 entry so bodyCache always fetches the latest content.
   const latestV2LogByCommission = new Map<number, ContentLog>();
   for (const log of contentLogs) {
     if (log.Version !== 'v2' || log.Commission_Log_Id == null) continue;
@@ -110,8 +82,6 @@ function buildJobEntries(
     }
   }
 
-  // Identify the "active" (newest) commissioning log ID per keyword.
-  // commissioningLogs are already sorted newest-first from the API.
   const activeCommissionIdByKeyword = new Map<string, number>();
   for (const cl of commissioningLogs) {
     const kwId = cl.Keyword_ID?.[0];
@@ -123,57 +93,45 @@ function buildJobEntries(
   return commissioningLogs.filter(cl => cl.Keyword_ID?.[0]).map((cl): JobEntry => {
     const kwId = cl.Keyword_ID![0];
     const kw = kwMap[kwId];
-    const commissionedAt = cl.Created_At;
 
-    // --- Delivery lookup ---
-    // Prefer FK-based lookup (Commission_Log_Id set on new data).
-    // Fall back to temporal proximity for rows that pre-date this migration.
-    let delivery = deliveryLogs.find(
-      (dl) => dl.Commission_Log_Id != null && dl.Commission_Log_Id === cl.ID,
-    );
+    let delivery = deliveryLogs.find((dl) => dl.Commission_Log_Id != null && dl.Commission_Log_Id === cl.ID);
     if (!delivery) {
-      // Temporal fallback: earliest delivery for the same keyword AFTER this commissioning
       delivery = deliveryLogs
-        .filter(
-          (dl) =>
-            dl.Commission_Log_Id == null &&
-            dl.Keyword_ID?.[0] === kwId &&
-            new Date(dl.Created_At!).getTime() > new Date(commissionedAt).getTime(),
+        .filter((dl) =>
+          dl.Commission_Log_Id == null && dl.Keyword_ID?.[0] === kwId &&
+          new Date(dl.Created_At!).getTime() > new Date(cl.Created_At).getTime(),
         )
         .sort((a, b) => new Date(a.Created_At!).getTime() - new Date(b.Created_At!).getTime())[0];
     }
 
-    // --- Per-cycle publish status ---
-    // A cycle is "Published" when it has its own "Content veröffentlicht" log entry
-    // linked via Commission_Log_Id FK. For legacy data (no FK) we fall back to kw.Status
-    // only for the active (newest) cycle.
-    const publishLog = publishLogs.find(
-      (pl) => pl.Commission_Log_Id != null && pl.Commission_Log_Id === cl.ID,
-    );
-
+    const publishLog = publishLogs.find((pl) => pl.Commission_Log_Id != null && pl.Commission_Log_Id === cl.ID);
     const isActiveCycle = activeCommissionIdByKeyword.get(kwId) === cl.ID;
+
     let keywordStatus: KeywordStatus;
     if (publishLog) {
       keywordStatus = 'Published';
     } else if (isActiveCycle) {
-      // Active cycle: use the live kw.Status (tracks Beauftragt → In Arbeit → Angeliefert etc.)
-      keywordStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+      const rawStatus = kw?.Status ?? ('Backlog' as KeywordStatus);
+      if (rawStatus === 'Published') {
+        const contamination = publishLogs.some(
+          (pl) => pl.Commission_Log_Id != null && pl.Commission_Log_Id !== cl.ID && pl.Keyword_ID?.[0] === kwId,
+        );
+        keywordStatus = contamination
+          ? (delivery ? 'Angeliefert' : 'Backlog' as KeywordStatus)
+          : 'Published';
+      } else {
+        keywordStatus = rawStatus;
+      }
     } else {
-      // Older cycle without a FK-linked publish log — legacy data.
-      // Show Published only if kw.Status is Published AND this cycle has a delivery log.
-      keywordStatus = (kw?.Status === 'Published' && !!delivery)
-        ? 'Published'
-        : ('Backlog' as KeywordStatus);
+      keywordStatus = (kw?.Status === 'Published' && !!delivery) ? 'Published' : 'Backlog' as KeywordStatus;
     }
 
-    // displayLogId: prefer the newest FK-linked v2 log; fall back to deliveryLogId
-    // for pre-migration cycles that have no Commission_Log_Id on any content log.
     const latestV2Log = latestV2LogByCommission.get(cl.ID);
     const displayLogId = latestV2Log?.ID ?? delivery?.ID;
 
     return {
       commissionLogId: cl.ID,
-      commissionedAt,
+      commissionedAt: cl.Created_At,
       keywordId: kwId,
       keyword: kw?.Keyword ?? kwId,
       targetUrl: kw?.Target_URL ?? cl.Target_URL,
@@ -181,10 +139,11 @@ function buildJobEntries(
       keywordStatus,
       deliveryLogId: delivery?.ID,
       displayLogId,
-      // Failed = active cycle keyword was reset to Planned with no delivery yet
       isFailedRetry: isActiveCycle && keywordStatus === 'Planned' && !delivery,
       userName: cl.User_Name,
       userEmail: cl.User_Email,
+      agentRunId: kw?.agentRunId ?? null,
+      cycleId: kw?.cycleId ?? null,
     };
   });
 }
@@ -199,20 +158,22 @@ export default function CreationPage() {
   const [keywords, setKeywords] = useState<KeywordMap[]>([]);
   const [contentLogs, setContentLogs] = useState<ContentLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [retrying, setRetrying] = useState<string | null>(null);
 
-  // Which job row is selected (commission log id as string key)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-
-  // Pagination
-  const [jobPage, setJobPage] = useState(0);
-
-  // Body cache: logId → { contentBody, Content_Body, Event_Label }
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [bodyCache, setBodyCache] = useState<
     Record<string, { contentBody?: string; Content_Body?: string; Event_Label?: string }>
   >({});
 
-  // ── Data fetching ────────────────────────────────────────────────────────────
+  // Action states
+  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+  const [restartingJobId, setRestartingJobId] = useState<string | null>(null);
+
+  // Agent progress for active runs
+  const [agentProgress, setAgentProgress] = useState<AgentProgress>({});
+
+  // ── Data fetching ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
       try {
@@ -241,29 +202,52 @@ export default function CreationPage() {
     };
   }, []);
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
-  const allJobs = useMemo(
-    () => buildJobEntries(contentLogs, keywords),
-    [contentLogs, keywords],
-  );
-
-  const totalPages = Math.ceil(allJobs.length / PAGE_SIZE);
-  const pagedJobs = allJobs.slice(jobPage * PAGE_SIZE, (jobPage + 1) * PAGE_SIZE);
-
+  // ── Agent progress polling (when selected job is active) ─────────────────
+  const allJobs = useMemo(() => buildJobEntries(contentLogs, keywords), [contentLogs, keywords]);
   const selectedJob = allJobs.find((j) => j.commissionLogId === selectedJobId) ?? null;
 
-  // Keyword record for the selected job (needed by AIEditorWorkspace)
-  const selectedKeyword = selectedJob
-    ? keywords.find((k) => k.id === selectedJob.keywordId)
-    : null;
+  useEffect(() => {
+    const runId = selectedJob?.agentRunId;
+    const isActive = selectedJob?.keywordStatus === 'Beauftragt' || selectedJob?.keywordStatus === 'In Arbeit';
+    if (!runId || !isActive) {
+      setAgentProgress({});
+      return;
+    }
 
-  // ── Body on-demand loading ───────────────────────────────────────────────────
-  // Use displayLogId (newest v2 log for the cycle) so that after a manual save
-  // the editor reloads the latest saved body rather than the original delivery.
-  // Falls back to deliveryLogId for pre-migration cycles (no Commission_Log_Id).
-  const displayLogId = selectedJob?.displayLogId
-    ? String(selectedJob.displayLogId)
-    : null;
+    let cancelled = false;
+    async function pollProgress() {
+      try {
+        const res = await fetch(`/api/agent-workflows-v2/runs/${runId}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const run = data?.run ?? data;
+        const steps: any[] = run?.steps ?? [];
+        if (steps.length > 0) {
+          const lastStep = steps[steps.length - 1];
+          setAgentProgress({
+            round: lastStep.round,
+            activeAgentName: lastStep.nodeName,
+            phase: lastStep.phase,
+          });
+        }
+      } catch {}
+    }
+
+    pollProgress();
+    const interval = setInterval(pollProgress, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [selectedJob?.agentRunId, selectedJob?.keywordStatus]);
+
+  // ── Derived data ──────────────────────────────────────────────────────────
+  const visibleJobs = useMemo(() => allJobs.slice(0, visibleCount), [allJobs, visibleCount]);
+  const hasMore = visibleCount < allJobs.length;
+  const selectedKeyword = selectedJob ? keywords.find((k) => k.id === selectedJob.keywordId) : null;
+
+  // ── Body on-demand loading ────────────────────────────────────────────────
+  const displayLogId = selectedJob?.displayLogId ? String(selectedJob.displayLogId) : null;
 
   useEffect(() => {
     if (!displayLogId || bodyCache[displayLogId] !== undefined) return;
@@ -272,66 +256,118 @@ export default function CreationPage() {
       .then((data) => {
         if (data && displayLogId) setBodyCache((prev) => ({ ...prev, [displayLogId]: data }));
       })
-      .catch(() => {/* non-critical */});
+      .catch(() => {});
   }, [displayLogId]);
 
   const displayedBody = displayLogId ? bodyCache[displayLogId] : undefined;
-  const v2Content = displayedBody?.contentBody ?? displayedBody?.Content_Body ?? '';
 
-  // v1 content: first non-v2 log for the keyword (legacy plain text, rarely used)
+  const lastV2Ref = useRef<Record<number, string>>({});
+  const v2ContentRaw = displayedBody?.contentBody ?? displayedBody?.Content_Body ?? '';
+  if (v2ContentRaw && selectedJobId != null) lastV2Ref.current[selectedJobId] = v2ContentRaw;
+  const v2Content = v2ContentRaw || (selectedJobId != null ? lastV2Ref.current[selectedJobId] ?? '' : '');
+
   const v1Content = useMemo(() => {
     if (!selectedJob) return '';
     return (
       contentLogs
-        .filter(
-          (l) =>
-            l.Keyword_ID?.[0] === selectedJob.keywordId && l.Version === 'v1',
-        )
-        .sort(
-          (a, b) =>
-            new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime(),
-        )[0]?.Content_Body ?? ''
+        .filter((l) => l.Keyword_ID?.[0] === selectedJob.keywordId && l.Version === 'v1')
+        .sort((a, b) => new Date(a.Created_At).getTime() - new Date(b.Created_At).getTime())
+        [0]?.Content_Body ?? ''
     );
   }, [selectedJob, contentLogs]);
 
-  // ── Retry handler ────────────────────────────────────────────────────────────
-  const handleRetry = async (job: JobEntry) => {
+  // ── Cancel handler ────────────────────────────────────────────────────────
+  const handleCancel = async (job: JobEntry) => {
     try {
-      setRetrying(String(job.commissionLogId));
-      const actionType =
-        job.actionType === 'Optimierung' ? 'COMMISSION_OPTIMIZATION' : 'COMMISSION_CONTENT';
+      setCancellingJobId(String(job.commissionLogId));
+      const res = await fetch('/api/agent-webhook/runs/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cycleId: job.cycleId, runId: job.agentRunId }),
+      });
+      if (!res.ok) throw new Error('Cancel failed');
+      toast.success(tr('Agent-Run wird abgebrochen.', 'Agent run is being cancelled.'));
+      window.dispatchEvent(new Event('refresh-planning-data'));
+    } catch {
+      toast.error(tr('Fehler beim Abbrechen.', 'Error cancelling run.'));
+    } finally {
+      setCancellingJobId(null);
+    }
+  };
+
+  // ── Restart handler ───────────────────────────────────────────────────────
+  const handleRestart = async (job: JobEntry) => {
+    if (!job.cycleId) {
+      // Fallback: legacy retry (creates new cycle)
+      return handleLegacyRetry(job);
+    }
+    try {
+      setRestartingJobId(String(job.commissionLogId));
+      const res = await fetch('/api/agent-webhook/runs/restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cycleId: job.cycleId }),
+      });
+      if (!res.ok) throw new Error('Restart failed');
+      toast.success(tr('Agent-Run wird neu gestartet.', 'Agent run restarted.'));
+      window.dispatchEvent(new Event('refresh-planning-data'));
+    } catch {
+      toast.error(tr('Fehler beim Neu-Starten.', 'Error restarting run.'));
+    } finally {
+      setRestartingJobId(null);
+    }
+  };
+
+  const handleLegacyRetry = async (job: JobEntry) => {
+    try {
+      setRestartingJobId(String(job.commissionLogId));
+      const actionType = job.actionType === 'Optimierung' ? 'COMMISSION_OPTIMIZATION' : 'COMMISSION_CONTENT';
       await triggerN8nAction(actionType, {
         keywordId: job.keywordId,
         keyword: job.keyword,
         targetUrl: job.targetUrl ?? '',
       });
       toast.success(tr('Content erneut beauftragt.', 'Content re-commissioned.'));
+      window.dispatchEvent(new Event('refresh-planning-data'));
     } catch {
       toast.error(tr('Fehler beim erneuten Beauftragen.', 'Error re-commissioning content.'));
     } finally {
-      setRetrying(null);
+      setRestartingJobId(null);
     }
   };
 
-  // ── Status badge styling ─────────────────────────────────────────────────────
+  // ── Status helpers ────────────────────────────────────────────────────────
   const statusBadgeClass = (job: JobEntry) => {
-    if (job.isFailedRetry) return 'bg-red-100 text-red-700 border-red-200';
-    const s = job.keywordStatus;
-    if (s === 'Beauftragt' || s === 'In Arbeit')
+    if (job.isFailedRetry || job.keywordStatus === 'Fehlgeschlagen')
+      return 'bg-red-100 text-red-700 border-red-200';
+    if (job.keywordStatus === 'Abgebrochen')
+      return 'bg-orange-100 text-orange-700 border-orange-200';
+    if (job.keywordStatus === 'Beauftragt' || job.keywordStatus === 'In Arbeit')
       return 'bg-amber-100 text-amber-700 border-amber-200';
-    if (s === 'Angeliefert') return 'bg-primary text-primary-foreground border-primary';
-    if (s === 'Review') return 'bg-purple-100 text-purple-700 border-purple-200';
-    if (s === 'Optimierung') return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+    if (job.keywordStatus === 'Angeliefert')
+      return 'bg-primary text-primary-foreground border-primary';
+    if (job.keywordStatus === 'Review')
+      return 'bg-purple-100 text-purple-700 border-purple-200';
+    if (job.keywordStatus === 'Optimierung')
+      return 'bg-indigo-100 text-indigo-700 border-indigo-200';
     return 'bg-primary/15 text-primary border-primary/25';
   };
 
   const statusLabel = (job: JobEntry) => {
-    if (job.isFailedRetry) return tr('Fehlgeschlagen', 'Failed');
-    const s = job.keywordStatus;
-    if (s === 'Beauftragt' || s === 'In Arbeit') return t('creation.inProgress');
-    if (s === 'Published') return tr('Veröffentlicht', 'Published');
-    return s;
+    if (job.isFailedRetry || job.keywordStatus === 'Fehlgeschlagen')
+      return tr('Fehlgeschlagen', 'Failed');
+    if (job.keywordStatus === 'Abgebrochen') return tr('Abgebrochen', 'Cancelled');
+    if (job.keywordStatus === 'Beauftragt' || job.keywordStatus === 'In Arbeit')
+      return t('creation.inProgress');
+    if (job.keywordStatus === 'Published') return tr('Veröffentlicht', 'Published');
+    return job.keywordStatus;
   };
+
+  const isRunning = (job: JobEntry) =>
+    job.keywordStatus === 'Beauftragt' || job.keywordStatus === 'In Arbeit';
+
+  const isTerminal = (job: JobEntry) =>
+    job.isFailedRetry || job.keywordStatus === 'Fehlgeschlagen' || job.keywordStatus === 'Abgebrochen';
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -342,7 +378,7 @@ export default function CreationPage() {
     );
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] space-y-6 text-primary">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
@@ -358,7 +394,8 @@ export default function CreationPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-          {/* ── Left: Auftrags-Liste ─────────────────────────────────────────── */}
+
+          {/* ── Left: Auftrags-Liste ──────────────────────────────────────── */}
           <Card className="lg:col-span-4 flex flex-col overflow-hidden border-primary/20 h-full">
             <CardHeader className="bg-primary/10 border-b border-primary/20 py-4 shrink-0">
               <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
@@ -372,8 +409,8 @@ export default function CreationPage() {
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-              <ScrollArea className="flex-1">
+            <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+              <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
                 <Table>
                   <TableHeader className="bg-primary/5 sticky top-0 z-10">
                     <TableRow>
@@ -382,53 +419,63 @@ export default function CreationPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedJobs.length > 0 ? (
-                      pagedJobs.map((job) => (
-                        <TableRow
-                          key={job.commissionLogId}
-                          className={cn(
-                            'cursor-pointer transition-all hover:bg-primary/10 relative',
-                            selectedJobId === job.commissionLogId
-                              ? 'bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]'
-                              : 'border-l-4 border-l-transparent',
-                          )}
-                          onClick={() => setSelectedJobId(job.commissionLogId)}
-                        >
-                          <TableCell className="font-medium">
-                            <div className="flex flex-col gap-1 py-1">
-                              <span className="text-sm font-bold leading-tight">{job.keyword}</span>
-                              {job.userName && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
-                                  <User className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">
-                                    {job.userName}
+                    {visibleJobs.length > 0 ? (
+                      <>
+                        {visibleJobs.map((job) => (
+                          <TableRow
+                            key={job.commissionLogId}
+                            className={cn(
+                              'cursor-pointer transition-all hover:bg-primary/10 relative',
+                              selectedJobId === job.commissionLogId
+                                ? 'bg-primary/10 !bg-primary/10 border-l-4 border-l-primary shadow-[inset_4px_0_0_0_var(--primary)]'
+                                : 'border-l-4 border-l-transparent',
+                            )}
+                            onClick={() => setSelectedJobId(job.commissionLogId)}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex flex-col gap-1 py-1">
+                                <span className="text-sm font-bold leading-tight">{job.keyword}</span>
+                                {job.userName && (
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground truncate max-w-[200px]">
+                                    <User className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{job.userName}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50"
+                                  >
+                                    {job.actionType}
+                                  </Badge>
+                                  <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                    <Clock className="h-3 w-3 text-slate-400" />
+                                    {formatDate(job.commissionedAt)}
                                   </span>
                                 </div>
-                              )}
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <Badge
-                                  variant="outline"
-                                  className="text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold border-slate-200 text-slate-500 bg-slate-50/50"
-                                >
-                                  {job.actionType}
-                                </Badge>
-                                <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-                                  <Clock className="h-3 w-3 text-slate-400" />
-                                  {formatDate(job.commissionedAt)}
-                                </span>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              variant="secondary"
-                              className={cn('whitespace-nowrap', statusBadgeClass(job))}
-                            >
-                              {statusLabel(job)}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex flex-col items-end gap-1">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn('whitespace-nowrap', statusBadgeClass(job))}
+                                >
+                                  {isRunning(job) && <Loader2 className="h-3 w-3 mr-1 animate-spin inline" />}
+                                  {statusLabel(job)}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {hasMore && (
+                          <TableRow>
+                            <TableCell colSpan={2} className="py-3 text-center">
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground/50" />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     ) : keywords.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={2} className="py-8">
@@ -459,43 +506,10 @@ export default function CreationPage() {
                   </TableBody>
                 </Table>
               </ScrollArea>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="shrink-0 flex items-center justify-between border-t border-primary/10 px-3 py-2 bg-primary/5">
-                  <span className="text-[11px] text-muted-foreground">
-                    {jobPage * PAGE_SIZE + 1}–{Math.min((jobPage + 1) * PAGE_SIZE, allJobs.length)}{' '}
-                    {tr('von', 'of')} {allJobs.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      disabled={jobPage === 0}
-                      onClick={() => setJobPage((p) => p - 1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-[11px] font-medium text-primary tabular-nums">
-                      {jobPage + 1} / {totalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      disabled={jobPage >= totalPages - 1}
-                      onClick={() => setJobPage((p) => p + 1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          {/* ── Right: Editor & Preview ──────────────────────────────────────── */}
+          {/* ── Right: Editor & Preview ───────────────────────────────────── */}
           <div className="lg:col-span-8 flex flex-col gap-4 overflow-hidden h-full">
             {!selectedJob ? (
               <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed border-primary/30 rounded-xl bg-white/50">
@@ -504,58 +518,147 @@ export default function CreationPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-4 flex-1 min-h-0 h-full">
-                <div className="flex items-center justify-between shrink-0">
-                  <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    {t('creation.preview')}: {selectedJob.keyword}
+
+                {/* Job header with action buttons */}
+                <div className="flex items-center justify-between shrink-0 gap-2">
+                  <h3 className="text-lg font-bold text-primary flex items-center gap-2 min-w-0">
+                    <FileText className="h-5 w-5 shrink-0" />
+                    <span className="truncate">{t('creation.preview')}: {selectedJob.keyword}</span>
                     <Badge
                       variant="outline"
-                      className="ml-1 text-xs font-semibold border-slate-200 text-slate-600 bg-slate-50"
+                      className="ml-1 text-xs font-semibold border-slate-200 text-slate-600 bg-slate-50 shrink-0"
                     >
                       {selectedJob.actionType}
                     </Badge>
                   </h3>
+
+                  {/* Cancel button — shown while run is active */}
+                  {isRunning(selectedJob) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCancel(selectedJob)}
+                      disabled={cancellingJobId === String(selectedJob.commissionLogId)}
+                      className="border-red-300 text-red-600 hover:bg-red-50 shrink-0"
+                    >
+                      {cancellingJobId === String(selectedJob.commissionLogId) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Square className="h-4 w-4 mr-1" />
+                      )}
+                      {tr('Abbrechen', 'Cancel')}
+                    </Button>
+                  )}
+
+                  {/* Restart button — shown for failed/cancelled */}
+                  {isTerminal(selectedJob) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRestart(selectedJob)}
+                      disabled={restartingJobId === String(selectedJob.commissionLogId)}
+                      className="border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+                    >
+                      {restartingJobId === String(selectedJob.commissionLogId) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                      )}
+                      {tr('Neu starten', 'Restart')}
+                    </Button>
+                  )}
                 </div>
 
                 <div className="flex-1 min-h-0">
-                  {selectedJob.isFailedRetry ? (
-                    <div className="flex flex-col items-center justify-center h-full border border-red-200 rounded-lg bg-red-50/40 gap-4 p-8 text-center">
-                      <AlertTriangle className="h-10 w-10 text-red-500" />
+
+                  {/* Terminal states: failed or cancelled */}
+                  {isTerminal(selectedJob) ? (
+                    <div className={cn(
+                      'flex flex-col items-center justify-center h-full border rounded-lg gap-4 p-8 text-center',
+                      selectedJob.keywordStatus === 'Abgebrochen'
+                        ? 'border-orange-200 bg-orange-50/40'
+                        : 'border-red-200 bg-red-50/40',
+                    )}>
+                      <AlertTriangle className={cn(
+                        'h-10 w-10',
+                        selectedJob.keywordStatus === 'Abgebrochen' ? 'text-orange-500' : 'text-red-500',
+                      )} />
                       <div>
-                        <p className="text-sm font-semibold text-red-700">
-                          {tr('Agent-Run fehlgeschlagen', 'Agent run failed')}
+                        <p className={cn(
+                          'text-sm font-semibold',
+                          selectedJob.keywordStatus === 'Abgebrochen' ? 'text-orange-700' : 'text-red-700',
+                        )}>
+                          {selectedJob.keywordStatus === 'Abgebrochen'
+                            ? tr('Agent-Run abgebrochen', 'Agent run cancelled')
+                            : tr('Agent-Run fehlgeschlagen', 'Agent run failed')}
                         </p>
-                        <p className="text-xs text-red-500 mt-1">
-                          {tr(
-                            'Der letzte Ausführungsversuch ist fehlgeschlagen. Du kannst den Auftrag erneut anstoßen.',
-                            'The last execution attempt failed. You can re-commission the content.',
-                          )}
+                        <p className={cn(
+                          'text-xs mt-1',
+                          selectedJob.keywordStatus === 'Abgebrochen' ? 'text-orange-500' : 'text-red-500',
+                        )}>
+                          {selectedJob.keywordStatus === 'Abgebrochen'
+                            ? tr(
+                                'Der Auftrag wurde abgebrochen. Du kannst ihn jederzeit neu starten.',
+                                'The run was cancelled. You can restart it at any time.',
+                              )
+                            : tr(
+                                'Der letzte Ausführungsversuch ist fehlgeschlagen. Du kannst den Auftrag neu starten.',
+                                'The last execution attempt failed. You can restart the run.',
+                              )}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleRetry(selectedJob)}
-                        disabled={retrying === String(selectedJob.commissionLogId)}
-                        className={cn(
-                          'inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                          'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed',
-                        )}
+                      <Button
+                        onClick={() => handleRestart(selectedJob)}
+                        disabled={restartingJobId === String(selectedJob.commissionLogId)}
+                        className={selectedJob.keywordStatus === 'Abgebrochen'
+                          ? 'bg-orange-600 text-white hover:bg-orange-700'
+                          : 'bg-red-600 text-white hover:bg-red-700'}
                       >
-                        {retrying === String(selectedJob.commissionLogId) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {restartingJobId === String(selectedJob.commissionLogId) ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         ) : (
-                          <RefreshCw className="h-4 w-4" />
+                          <RotateCcw className="h-4 w-4 mr-2" />
                         )}
-                        {tr('Erneut beauftragen', 'Re-commission')}
-                      </button>
+                        {tr('Neu starten', 'Restart')}
+                      </Button>
                     </div>
+
                   ) : !v2Content ? (
-                    <div className="flex flex-col items-center justify-center h-full border rounded-lg bg-muted/10">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">{t('creation.generating')}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1 italic">
-                        {t('creation.generatingHint')}
-                      </p>
+                    /* Active run: spinner + progress */
+                    <div className="flex flex-col items-center justify-center h-full border rounded-lg bg-muted/10 gap-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground">{t('creation.generating')}</p>
+                        {agentProgress.round && (
+                          <div className="flex items-center justify-center gap-1.5 mt-2 text-xs text-primary/70">
+                            <Activity className="h-3.5 w-3.5" />
+                            <span>
+                              {tr('Runde', 'Round')} {agentProgress.round}
+                              {agentProgress.activeAgentName && (
+                                <> · <span className="font-medium">{agentProgress.activeAgentName}</span></>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-muted-foreground mt-1 italic">
+                          {t('creation.generatingHint')}
+                        </p>
+                      </div>
+                      {/* Cancel while in spinner state */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCancel(selectedJob)}
+                        disabled={cancellingJobId === String(selectedJob.commissionLogId)}
+                        className="border-red-300 text-red-600 hover:bg-red-50 text-xs"
+                      >
+                        {cancellingJobId === String(selectedJob.commissionLogId)
+                          ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          : <Square className="h-3 w-3 mr-1" />}
+                        {tr('Abbrechen', 'Cancel')}
+                      </Button>
                     </div>
+
                   ) : (
                     <AIEditorWorkspace
                       v1Content={v1Content}
